@@ -36,3 +36,20 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 - CONFIGURATION_REQUIRED -> IMPLEMENTED hanya dengan kredensial/infra live + verifikasi.
 - PLANNED/NOT_STARTED -> IMPLEMENTED hanya lewat implementasi nyata + tes hijau.
 - Nilai dihitung ulang otomatis dari registry setiap wave (Wave 7 re-audit: 0 mismatch).
+
+## Metode skor UI/UX 1000/100 (program UIUX-0001..UIUX-1000)
+
+Sumber item: docs/AUTONOMOUS/UIUX-1000-TODO.md (generator: docs/AUTONOMOUS/gen_uiux_todo.py).
+Alokasi: A) 141 fitur IMPLEMENTED/PARTIAL x 5 cek (renders/empty/loading/error/mobile390) = 705;
+B) global 150 (120 sweep 20 halaman x 6 breakpoint 1920/1366/1024/768/390/360 + 30 nav-peran/keyboard/focus-visible/kontras/reduced-motion/form/toast);
+C) susulan QA + gap site.css 145 (66 residual 11 halaman + 45 gap CSS + 34 misc). Totaltepat 1000.
+
+Aturan skor (raw + skala):
+- Setiap item bernilai 1 poin: DONE = 1, TODO/BLOCKED = 0.
+- UI/UX raw = completed/1000 (mis. 250 DONE -> raw 250/1000).
+- UI/UX maturity (skala 100) = completed/10 (mis. 250 DONE -> 25.0/100).
+- Kedua angka dicatat berdampingan setiap wave; maturity TIDAK menggantikan raw.
+- Kriteria DONE: bukti screenshot/verify.json per baris (kolom Status -> DONE + bukti).
+
+Baseline wave-0 (2026-11-18): raw 0/1000, maturity 0.0/100 (seluruh item TODO).
+Pelacakan: gelombang UIUX-01..UIUX-10 di docs/AUTONOMOUS/TASK-QUEUE.json (100 item per wave, rantai UIUX-01->...->UIUX-10).

@@ -52,8 +52,8 @@
     if (r.status === 401) { location.href = '/login'; return null; }
     return r.json();
   }
-  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'mkt', 'pengaturan'];
-  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', mkt: 'marketing', pengaturan: 'pengaturan' };
+  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'mkt', 'pengaturan', 'audit', 'jobs'];
+  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', mkt: 'marketing', pengaturan: 'pengaturan', audit: 'audit', jobs: 'jobs' };
   window.apptab = function (x) {
     TABS.forEach(function (k) {
       var el = document.getElementById('p-' + k);
@@ -789,5 +789,83 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('crm-recent-btn', 'click', crmRecent);
   crmTags();
   crmRecent();
+  /* ---- audit viewer + jobs queue (additive) ---- */
+  async function dlCsv(url, filename, msgId) {
+    var r = await fetch(url, { headers: H });
+    if (!r.ok) { pmsg(msgId, 'Gagal ekspor (' + r.status + ').'); return; }
+    var blob = await r.blob();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
+  on('keu-csv', 'click', function () { dlCsv('/api/v1/reports/matters-csv', 'matters.csv', 'keu-msg'); });
+  async function loadAudit() {
+    var box = document.getElementById('audit-rows');
+    if (!box) return;
+    var sel = document.getElementById('audit-entity');
+    var ent = sel && sel.value ? '?entity=' + encodeURIComponent(sel.value) : '';
+    box.innerHTML = '<tr><td colspan="5" class="text-muted">Memuat…</td></tr>';
+    try {
+      var r = await fetch('/api/v1/audit' + ent, { headers: H });
+      if (r.status === 401) { location.href = '/login'; return; }
+      if (r.status === 403) {
+        box.innerHTML = '<tr><td colspan="5" class="text-muted">Tidak ada akses.</td></tr>';
+        pmsg('audit-msg', '');
+        var note = document.getElementById('audit-note');
+        if (note) note.textContent = 'Butuh peran Owner, Admin, atau Auditor untuk membaca jejak audit.';
+        return;
+      }
+      if (!r.ok) { pmsg('audit-msg', 'Gagal memuat (' + r.status + ').'); return; }
+      pmsg('audit-msg', '');
+      var v = await r.json();
+      box.innerHTML = v.map(function (x) {
+        return '<tr><td>' + x.id + '</td><td>' + esc(x.actor) + '</td><td>' + esc(x.action) + '</td><td>' + esc(x.entity) + (x.entity_id ? ' #' + x.entity_id : '') + '</td><td>' + esc(x.created) + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada entri audit.</td></tr>';
+    } catch (e) { pmsg('audit-msg', 'Server tidak terjangkau.'); }
+  }
+  async function loadJobs() {
+    var box = document.getElementById('job-rows');
+    if (!box) return;
+    var v = await j('/api/v1/jobs');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + x.attempts + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Antrean kosong.</td></tr>';
+  }
+  on('audit-reload', 'click', loadAudit);
+  on('audit-entity', 'change', loadAudit);
+  on('job-btn', 'click', async function () {
+    var kind = pval('job-kind');
+    if (!kind) { pmsg('job-msg', 'Isi jenis job dulu.'); return; }
+    var r = await ppost('/api/v1/jobs', { kind: kind });
+    if (!r.ok) { pmsg('job-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('job-msg', '');
+    document.getElementById('job-kind').value = '';
+    loadJobs();
+  });
+  qsa('.snav[data-tab="audit"], .snav[data-tab="jobs"]', function (a) {
+    a.addEventListener('click', function () {
+      if (a.dataset.tab === 'audit') loadAudit(); else loadJobs();
+    });
+  });
+  setInterval(function () {
+    var p = document.getElementById('p-jobs');
+    if (p && !p.classList.contains('hidden')) loadJobs();
+  }, 15000);
+  /* ---- command palette: Ctrl+K / Cmd+K focuses global search ---- */
+  document.addEventListener('keydown', function (ev) {
+    if (!(ev.ctrlKey || ev.metaKey) || (ev.key !== 'k' && ev.key !== 'K')) return;
+    var q = document.getElementById('q');
+    if (!q) return;
+    ev.preventDefault();
+    q.focus();
+    if (q.select) q.select();
+  });
   mktRefresh();
+  loadAudit();
+  loadJobs();
 })();
