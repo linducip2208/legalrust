@@ -220,3 +220,6 @@ footer.site a{color:#8A97B5}
 .cal-d.empty{background:transparent}
 .cal-today{background:#1D5BD8;color:#fff;font-weight:800}
 @media(max-width:960px){.dash{grid-template-columns:1fr}.dash-side{display:none;position:fixed;inset:0 auto 0 0;width:260px;z-index:60;max-height:none}.dash-side.open{display:flex}.side-brand .side-close{display:inline-flex}.dash-top #sbToggle{display:inline-flex}.dash-top .navbar-brand{display:none}}
+.set-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.set-row .form-control{flex:1;min-width:160px}
+.tok-plain{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px;word-break:break-all}

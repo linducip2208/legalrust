@@ -1265,3 +1265,166 @@ impl MarketingStore for MysqlOps {
             .collect())
     }
 }
+
+fn crm_meeting_row(x: &sqlx::mysql::MySqlRow) -> Result<MeetingRow, StoreError> {
+    use sqlx::Row;
+    Ok(MeetingRow {
+        id: x.get::<u64, _>("id") as i64,
+        org: x.get::<String, _>("org_id"),
+        client_id: x.get::<u64, _>("client_id") as i64,
+        title: x.get::<String, _>("title"),
+        notes: x.get::<Option<String>, _>("notes"),
+        happened_at: x
+            .get::<chrono::NaiveDateTime, _>("happened_at")
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string(),
+        created_by: x.get::<String, _>("created_by"),
+    })
+}
+
+fn crm_tag_row(x: &sqlx::mysql::MySqlRow) -> Result<ClientTagRow, StoreError> {
+    use sqlx::Row;
+    Ok(ClientTagRow {
+        id: x.get::<u64, _>("id") as i64,
+        org: x.get::<String, _>("org_id"),
+        name: x.get::<String, _>("name"),
+    })
+}
+
+#[async_trait::async_trait]
+impl super::ops::CrmStore for MysqlOps {
+    async fn meeting_create(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        notes: Option<&str>,
+        happened_at: &str,
+        created_by: &str,
+    ) -> Result<MeetingRow, StoreError> {
+        if title.trim().chars().count() < 3 {
+            return Err(StoreError::Conflict(
+                "title must be at least 3 chars".into(),
+            ));
+        }
+        let ts = chrono::NaiveDateTime::parse_from_str(happened_at, "%Y-%m-%d %H:%M:%S")
+            .map_err(|_| StoreError::Conflict("happened_at must be YYYY-MM-DD HH:MM:SS".into()))?;
+        let r = sqlx::query("INSERT INTO client_meetings (org_id, client_id, title, notes, happened_at, created_by) VALUES (?,?,?,?,?,?)").bind(org).bind(client_id as u64).bind(title).bind(notes).bind(ts).bind(created_by).execute(&self.pool).await.map_err(db_err)?;
+        Ok(MeetingRow {
+            id: r.last_insert_id() as i64,
+            org: org.into(),
+            client_id,
+            title: title.into(),
+            notes: notes.map(str::to_string),
+            happened_at: ts.format("%Y-%m-%d %H:%M:%S").to_string(),
+            created_by: created_by.into(),
+        })
+    }
+    async fn meeting_list_by_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<MeetingRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, title, notes, happened_at, created_by FROM client_meetings WHERE org_id=? AND client_id=? ORDER BY id").bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(crm_meeting_row).collect()
+    }
+    async fn meeting_list_by_org(&self, org: &str) -> Result<Vec<MeetingRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, title, notes, happened_at, created_by FROM client_meetings WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(crm_meeting_row).collect()
+    }
+    async fn meeting_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_meetings WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn tag_create(&self, org: &str, name: &str) -> Result<ClientTagRow, StoreError> {
+        let clean = name.trim();
+        if clean.is_empty() {
+            return Err(StoreError::Conflict("tag name required".into()));
+        }
+        if clean.chars().count() > 64 {
+            return Err(StoreError::Conflict(
+                "tag name must be at most 64 chars".into(),
+            ));
+        }
+        let r = sqlx::query("INSERT INTO client_tags (org_id, name) VALUES (?,?)")
+            .bind(org)
+            .bind(clean)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(ClientTagRow {
+            id: r.last_insert_id() as i64,
+            org: org.into(),
+            name: clean.into(),
+        })
+    }
+    async fn tag_list(&self, org: &str) -> Result<Vec<ClientTagRow>, StoreError> {
+        let rows =
+            sqlx::query("SELECT id, org_id, name FROM client_tags WHERE org_id=? ORDER BY id")
+                .bind(org)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?;
+        rows.iter().map(crm_tag_row).collect()
+    }
+    async fn tag_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_tags WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn tag_attach(&self, org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError> {
+        let tag: Option<sqlx::mysql::MySqlRow> =
+            sqlx::query("SELECT id FROM client_tags WHERE id=? AND org_id=?")
+                .bind(tag_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?;
+        if tag.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        // Idempotent: re-attaching an existing link is a no-op.
+        sqlx::query("INSERT IGNORE INTO client_tag_links (tag_id, client_id) VALUES (?,?)")
+            .bind(tag_id as u64)
+            .bind(client_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn tag_detach(&self, _org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError> {
+        // Idempotent: detaching a missing link is a no-op.
+        sqlx::query("DELETE FROM client_tag_links WHERE tag_id=? AND client_id=?")
+            .bind(tag_id as u64)
+            .bind(client_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn tags_for_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientTagRow>, StoreError> {
+        let rows = sqlx::query("SELECT t.id, t.org_id, t.name FROM client_tags t JOIN client_tag_links l ON l.tag_id=t.id WHERE t.org_id=? AND l.client_id=? ORDER BY t.id").bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(crm_tag_row).collect()
+    }
+}

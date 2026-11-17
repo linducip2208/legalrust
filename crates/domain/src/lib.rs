@@ -388,6 +388,140 @@ pub fn validate_trust_lines(lines: &[TrustEntryLine], amount_minor: i64) -> Resu
     Ok(())
 }
 
+// ---- CRM (client meetings + tags) ----
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MeetingInput {
+    pub title: String,
+    pub notes: Option<String>,
+    pub happened_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MeetingError {
+    TitleTooShort,
+    BadTimestamp,
+}
+
+impl std::fmt::Display for MeetingError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MeetingError::TitleTooShort => write!(f, "title must be at least 3 chars"),
+            MeetingError::BadTimestamp => write!(f, "happened_at must be YYYY-MM-DD HH:MM:SS"),
+        }
+    }
+}
+
+impl std::error::Error for MeetingError {}
+
+/// Title needs >= 3 chars; happened_at must parse as "%Y-%m-%d %H:%M:%S".
+pub fn validate_meeting(input: &MeetingInput) -> Result<(), MeetingError> {
+    if input.title.trim().chars().count() < 3 {
+        return Err(MeetingError::TitleTooShort);
+    }
+    if chrono::NaiveDateTime::parse_from_str(&input.happened_at, "%Y-%m-%d %H:%M:%S").is_err() {
+        return Err(MeetingError::BadTimestamp);
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TagName(String);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TagError {
+    Empty,
+    TooLong,
+}
+
+impl std::fmt::Display for TagError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TagError::Empty => write!(f, "tag name must not be empty"),
+            TagError::TooLong => write!(f, "tag name must be at most 64 chars"),
+        }
+    }
+}
+
+impl std::error::Error for TagError {}
+
+impl TagName {
+    pub fn parse(raw: &str) -> Result<TagName, TagError> {
+        let name = raw.trim();
+        if name.is_empty() {
+            return Err(TagError::Empty);
+        }
+        if name.chars().count() > 64 {
+            return Err(TagError::TooLong);
+        }
+        Ok(TagName(name.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[cfg(test)]
+mod crm_tests {
+    use super::*;
+
+    #[test]
+    fn valid_meeting_passes() {
+        let input = MeetingInput {
+            title: "Kickoff call".into(),
+            notes: Some("discussed scope".into()),
+            happened_at: "2026-11-18 10:00:00".into(),
+        };
+        assert!(validate_meeting(&input).is_ok());
+    }
+
+    #[test]
+    fn short_title_rejected() {
+        for bad in ["", "  ", "ab"] {
+            let input = MeetingInput {
+                title: bad.into(),
+                notes: None,
+                happened_at: "2026-11-18 10:00:00".into(),
+            };
+            assert_eq!(validate_meeting(&input), Err(MeetingError::TitleTooShort));
+        }
+    }
+
+    #[test]
+    fn bad_timestamp_rejected() {
+        for bad in ["", "2026-11-18", "2026-13-40 99:99:99", "18/11/2026 10:00"] {
+            let input = MeetingInput {
+                title: "Kickoff call".into(),
+                notes: None,
+                happened_at: bad.into(),
+            };
+            assert_eq!(validate_meeting(&input), Err(MeetingError::BadTimestamp));
+        }
+    }
+
+    #[test]
+    fn tag_parse_trims_and_roundtrips() {
+        let tag = TagName::parse("  vip  ").expect("parse");
+        assert_eq!(tag.as_str(), "vip");
+    }
+
+    #[test]
+    fn tag_rejects_empty() {
+        for bad in ["", "   "] {
+            assert_eq!(TagName::parse(bad), Err(TagError::Empty));
+        }
+    }
+
+    #[test]
+    fn tag_rejects_overlong() {
+        let long = "x".repeat(65);
+        assert_eq!(TagName::parse(&long), Err(TagError::TooLong));
+        let max = "y".repeat(64);
+        assert!(TagName::parse(&max).is_ok());
+    }
+}
+
 #[cfg(test)]
 mod trust_tests {
     use super::*;

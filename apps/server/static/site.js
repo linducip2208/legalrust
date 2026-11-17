@@ -52,8 +52,8 @@
     if (r.status === 401) { location.href = '/login'; return null; }
     return r.json();
   }
-  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'mkt'];
-  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', mkt: 'marketing' };
+  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'mkt', 'pengaturan'];
+  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', mkt: 'marketing', pengaturan: 'pengaturan' };
   window.apptab = function (x) {
     TABS.forEach(function (k) {
       var el = document.getElementById('p-' + k);
@@ -297,10 +297,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       if (dt) dt.innerHTML = '<option value="">Pilih template…</option>' + optSel(tpls, 'id', function (x) { return x.name + ' v' + x.version; });
       var fs = document.getElementById('fin-sum');
       if (fs) fs.innerHTML = '<div>Trust total: <strong>' + fmtRp(trustSum) + '</strong> (' + tr.length + ' rekening)</div><div>Invoice outstanding: <strong>' + fmtRp(invBal) + '</strong> (' + invN + ' invoice' + (invCap ? ', 20 terakhir' : '') + ')</div>';
-      var bn = document.getElementById('bell-n');
-      if (bn) bn.textContent = nt.length ? (nt.length > 5 ? '5+' : String(nt.length)) : '';
-      var bl = document.getElementById('bell-list');
-      if (bl) bl.innerHTML = nt.slice(-5).reverse().map(function (x) { return '<div class="q-group"><strong>' + esc(x.kind) + '</strong><div>' + esc(x.title) + '</div></div>'; }).join('') || '<div class="text-muted">Tidak ada notifikasi.</div>';
+      refreshNotifs();
       loadTasks();
     } catch (e) { document.getElementById('err').textContent = 'Gagal memuat: ' + e; }
   })();
@@ -329,6 +326,86 @@ qsa('#sbToggle, #sbToggle2', function (b) {
 
   /* ---- command-center actions (all endpoints live; 501 noted in UI) ---- */
   on('bell', 'click', function () { var l = document.getElementById('bell-list'); if (l) l.classList.toggle('show'); });
+  /* ---- notifications dropdown: 5 latest, unread badge, click marks read ---- */
+  async function refreshNotifs() {
+    var bn = document.getElementById('bell-n');
+    var bl = document.getElementById('bell-list');
+    if (!bl) return;
+    var list = await j('/api/v1/notifications');
+    if (!list) { bl.innerHTML = '<div class="text-muted">Gagal memuat.</div>'; return; }
+    var unread = list.filter(function (x) { return !x.read; });
+    if (bn) bn.textContent = unread.length ? (unread.length > 5 ? '5+' : String(unread.length)) : '';
+    bl.innerHTML = list.slice(-5).reverse().map(function (x) {
+      var act = x.read ? '<span class="text-muted small">dibaca</span>'
+        : '<button class="btn btn-sm btn-outline-primary nread" data-id="' + x.id + '">Tandai dibaca</button>';
+      return '<div class="q-group"><strong>' + esc(x.kind) + '</strong><div>' + esc(x.title) + '</div><div class="mt-1">' + act + '</div></div>';
+    }).join('') || '<div class="text-muted">Tidak ada notifikasi.</div>';
+    qsa('.nread', function (b) {
+      b.addEventListener('click', async function (ev) {
+        ev.stopPropagation();
+        var r = await ppost('/api/v1/notifications/' + b.dataset.id + '/read', {});
+        if (!r.ok) return;
+        refreshNotifs();
+      });
+    });
+  }
+  /* ---- pengaturan: token API, kata sandi, peran ---- */
+  async function loadTokens() {
+    var box = document.getElementById('tok-list');
+    if (!box) return;
+    var v = await j('/api/v1/auth/tokens');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.id) + '</td><td>' + esc(x.name) + '</td><td><button class="btn btn-sm btn-outline-danger trev" data-id="' + esc(x.id) + '">Cabut</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada token.</td></tr>';
+    qsa('.trev', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/auth/tokens/' + encodeURIComponent(b.dataset.id), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('tok-msg', 'Gagal mencabut (' + r.status + ').'); return; }
+        pmsg('tok-msg', '');
+        loadTokens();
+      });
+    });
+  }
+  on('tok-btn', 'click', async function () {
+    var nm = pval('tok-name');
+    if (nm.length < 2) { pmsg('tok-msg', 'Nama minimal 2 huruf.'); return; }
+    var r = await ppost('/api/v1/auth/tokens', { name: nm });
+    if (!r.ok) { pmsg('tok-msg', 'Gagal (' + r.status + ').'); return; }
+    var v = await r.json();
+    pmsg('tok-msg', '');
+    var pl = document.getElementById('tok-plain');
+    if (pl) { pl.textContent = 'Token (sekali tampil): ' + v.token; pl.classList.remove('hidden'); }
+    var ni = document.getElementById('tok-name'); if (ni) ni.value = '';
+    loadTokens();
+  });
+  on('pw-btn', 'click', async function () {
+    var r = await ppost('/api/v1/auth/password', { current_password: pval('pw-cur'), new_password: pval('pw-new') });
+    if (!r.ok) { pmsg('pw-msg', 'Gagal (' + r.status + '). Periksa sandi lama (min 12).'); return; }
+    var a = document.getElementById('pw-cur'); if (a) a.value = '';
+    var b = document.getElementById('pw-new'); if (b) b.value = '';
+    pmsg('pw-msg', 'Kata sandi diubah.');
+  });
+  on('role-btn', 'click', async function () {
+    var uid = pval('role-uid');
+    var sel = document.getElementById('role-sel');
+    if (!uid) { pmsg('role-msg', 'Isi UID pengguna manual.'); return; }
+    var r = await ppost('/api/v1/users/' + encodeURIComponent(uid) + '/roles', { role: sel ? sel.value : '' });
+    if (!r.ok) { pmsg('role-msg', 'Gagal (' + r.status + '). Perlu hak Assign / peran valid.'); return; }
+    pmsg('role-msg', 'Peran ditetapkan.');
+  });
+  on('cli-csv', 'click', async function () {
+    var r = await fetch('/api/v1/clients.csv', { headers: H });
+    if (!r.ok) { pmsg('cli-msg', 'Gagal ekspor (' + r.status + ').'); return; }
+    var blob = await r.blob();
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'clients.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+  loadTokens();
   [['qa-client', 'klien', 'cli-name'], ['qa-matter', 'klien', 'mat-title'], ['qa-upload', 'dok', 'dn'], ['qa-ocr', 'ocr', 'ocr-doc'], ['qa-deed', 'akta', 'deed-number'], ['qa-invoice', 'keu', 'invm-total']].forEach(function (x) {
     on(x[0], 'click', function () { window.apptab(x[1]); var t = document.getElementById(x[2]); if (t) t.focus(); });
   });

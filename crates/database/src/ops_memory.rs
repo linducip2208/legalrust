@@ -1,6 +1,6 @@
 use super::ops::*;
 use super::store::StoreError;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 #[derive(Debug, Default)]
 struct Inner {
@@ -29,6 +29,9 @@ struct Inner {
     mkt_plans: HashMap<String, MarketingPlanRow>,
     mkt_faqs: HashMap<String, MarketingFaqRow>,
     mkt_articles: HashMap<String, MarketingArticleRow>,
+    meetings: HashMap<i64, MeetingRow>,
+    crm_tags: HashMap<i64, ClientTagRow>,
+    crm_links: HashSet<(i64, i64)>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -1277,5 +1280,338 @@ mod marketing_tests {
             .await
             .unwrap_err();
         assert!(matches!(err, StoreError::Conflict(_)));
+    }
+}
+
+fn crm_check_meeting(title: &str, happened_at: &str) -> Result<(), StoreError> {
+    if title.trim().chars().count() < 3 {
+        return Err(StoreError::Conflict(
+            "title must be at least 3 chars".into(),
+        ));
+    }
+    if chrono::NaiveDateTime::parse_from_str(happened_at, "%Y-%m-%d %H:%M:%S").is_err() {
+        return Err(StoreError::Conflict(
+            "happened_at must be YYYY-MM-DD HH:MM:SS".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn crm_check_tag(name: &str) -> Result<String, StoreError> {
+    let clean = name.trim();
+    if clean.is_empty() {
+        return Err(StoreError::Conflict("tag name required".into()));
+    }
+    if clean.chars().count() > 64 {
+        return Err(StoreError::Conflict(
+            "tag name must be at most 64 chars".into(),
+        ));
+    }
+    Ok(clean.to_string())
+}
+
+#[async_trait::async_trait]
+impl super::ops::CrmStore for MemoryOps {
+    async fn meeting_create(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        notes: Option<&str>,
+        happened_at: &str,
+        created_by: &str,
+    ) -> Result<MeetingRow, StoreError> {
+        crm_check_meeting(title, happened_at)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        let r = MeetingRow {
+            id,
+            org: org.into(),
+            client_id,
+            title: title.into(),
+            notes: notes.map(str::to_string),
+            happened_at: happened_at.into(),
+            created_by: created_by.into(),
+        };
+        m.meetings.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn meeting_list_by_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<MeetingRow>, StoreError> {
+        let mut v: Vec<MeetingRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .meetings
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn meeting_list_by_org(&self, org: &str) -> Result<Vec<MeetingRow>, StoreError> {
+        let mut v: Vec<MeetingRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .meetings
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn meeting_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.meetings.get(&id) {
+            Some(r) if r.org == org => {
+                m.meetings.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn tag_create(&self, org: &str, name: &str) -> Result<ClientTagRow, StoreError> {
+        let clean = crm_check_tag(name)?;
+        let mut m = self.inner.lock().unwrap();
+        if m.crm_tags.values().any(|t| t.org == org && t.name == clean) {
+            return Err(StoreError::Conflict("tag taken".into()));
+        }
+        let id = self.next(&mut m);
+        let r = ClientTagRow {
+            id,
+            org: org.into(),
+            name: clean,
+        };
+        m.crm_tags.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn tag_list(&self, org: &str) -> Result<Vec<ClientTagRow>, StoreError> {
+        let mut v: Vec<ClientTagRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .crm_tags
+            .values()
+            .filter(|t| t.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|t| t.id);
+        Ok(v)
+    }
+    async fn tag_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.crm_tags.get(&id) {
+            Some(t) if t.org == org => {
+                m.crm_tags.remove(&id);
+                // Cascade: drop links the way ON DELETE CASCADE does in MySQL.
+                m.crm_links.retain(|(tid, _)| *tid != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn tag_attach(&self, org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.crm_tags.get(&tag_id).is_some_and(|t| t.org == org) {
+            return Err(StoreError::NotFound);
+        }
+        // Idempotent: re-attaching an existing link is a no-op.
+        m.crm_links.insert((tag_id, client_id));
+        Ok(())
+    }
+    async fn tag_detach(&self, _org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError> {
+        // Idempotent: detaching a missing link is a no-op.
+        self.inner
+            .lock()
+            .unwrap()
+            .crm_links
+            .remove(&(tag_id, client_id));
+        Ok(())
+    }
+    async fn tags_for_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientTagRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        let mut v: Vec<ClientTagRow> = m
+            .crm_tags
+            .values()
+            .filter(|t| t.org == org && m.crm_links.contains(&(t.id, client_id)))
+            .cloned()
+            .collect();
+        v.sort_by_key(|t| t.id);
+        Ok(v)
+    }
+}
+
+#[cfg(test)]
+mod crm_tests {
+    use super::*;
+    use crate::ops::CrmStore;
+
+    #[tokio::test]
+    async fn meeting_crud_scoped_by_client() {
+        let ops = MemoryOps::default();
+        let a = ops
+            .meeting_create(
+                "org1",
+                7,
+                "Kickoff call",
+                Some("scope notes"),
+                "2026-11-18 10:00:00",
+                "alice",
+            )
+            .await
+            .unwrap();
+        assert_eq!(a.client_id, 7);
+        ops.meeting_create("org1", 8, "Site visit", None, "2026-11-19 09:00:00", "bob")
+            .await
+            .unwrap();
+        let mine = ops.meeting_list_by_client("org1", 7).await.unwrap();
+        assert_eq!(mine.len(), 1);
+        assert_eq!(mine[0].title, "Kickoff call");
+        assert_eq!(ops.meeting_list_by_org("org1").await.unwrap().len(), 2);
+        ops.meeting_delete("org1", a.id).await.unwrap();
+        assert!(ops
+            .meeting_list_by_client("org1", 7)
+            .await
+            .unwrap()
+            .is_empty());
+        assert_eq!(ops.meeting_list_by_org("org1").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn meeting_rejects_short_title() {
+        let ops = MemoryOps::default();
+        for bad in ["", "  ", "ab"] {
+            let err = ops
+                .meeting_create("org1", 1, bad, None, "2026-11-18 10:00:00", "alice")
+                .await
+                .unwrap_err();
+            assert!(matches!(err, StoreError::Conflict(_)));
+        }
+    }
+
+    #[tokio::test]
+    async fn meeting_rejects_bad_timestamp() {
+        let ops = MemoryOps::default();
+        for bad in ["", "2026-11-18", "2026-13-40 99:99:99"] {
+            let err = ops
+                .meeting_create("org1", 1, "Kickoff call", None, bad, "alice")
+                .await
+                .unwrap_err();
+            assert!(matches!(err, StoreError::Conflict(_)));
+        }
+    }
+
+    #[tokio::test]
+    async fn meeting_delete_missing_or_foreign_org_is_not_found() {
+        let ops = MemoryOps::default();
+        let err = ops.meeting_delete("org1", 999).await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
+        let a = ops
+            .meeting_create(
+                "org1",
+                1,
+                "Kickoff call",
+                None,
+                "2026-11-18 10:00:00",
+                "alice",
+            )
+            .await
+            .unwrap();
+        let err = ops.meeting_delete("org2", a.id).await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
+        // Row untouched by the foreign-org delete.
+        assert_eq!(ops.meeting_list_by_org("org1").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn tag_validation_and_dedup() {
+        let ops = MemoryOps::default();
+        for bad in ["", "   ", &"x".repeat(65)] {
+            let err = ops.tag_create("org1", bad).await.unwrap_err();
+            assert!(matches!(err, StoreError::Conflict(_)));
+        }
+        let t = ops.tag_create("org1", "  vip  ").await.unwrap();
+        assert_eq!(t.name, "vip");
+        let err = ops.tag_create("org1", "vip").await.unwrap_err();
+        assert!(matches!(err, StoreError::Conflict(_)));
+        // Same name in another org is fine.
+        let other = ops.tag_create("org2", "vip").await.unwrap();
+        assert_ne!(t.id, other.id);
+        assert_eq!(ops.tag_list("org1").await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn tag_attach_detach_idempotent() {
+        let ops = MemoryOps::default();
+        let t = ops.tag_create("org1", "vip").await.unwrap();
+        // Unknown tag cannot be attached.
+        let err = ops.tag_attach("org1", 999, 7).await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
+        ops.tag_attach("org1", t.id, 7).await.unwrap();
+        // Re-attach is a no-op, not a conflict.
+        ops.tag_attach("org1", t.id, 7).await.unwrap();
+        let tags = ops.tags_for_client("org1", 7).await.unwrap();
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags[0].name, "vip");
+        ops.tag_detach("org1", t.id, 7).await.unwrap();
+        // Re-detach is a no-op.
+        ops.tag_detach("org1", t.id, 7).await.unwrap();
+        assert!(ops.tags_for_client("org1", 7).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn tag_delete_cascades_links() {
+        let ops = MemoryOps::default();
+        let keep = ops.tag_create("org1", "keep").await.unwrap();
+        let drop = ops.tag_create("org1", "drop").await.unwrap();
+        ops.tag_attach("org1", keep.id, 7).await.unwrap();
+        ops.tag_attach("org1", drop.id, 7).await.unwrap();
+        assert_eq!(ops.tags_for_client("org1", 7).await.unwrap().len(), 2);
+        ops.tag_delete("org1", drop.id).await.unwrap();
+        // Link rows vanish with the tag (mirrors ON DELETE CASCADE).
+        let tags = ops.tags_for_client("org1", 7).await.unwrap();
+        assert_eq!(tags.len(), 1);
+        assert_eq!(tags[0].id, keep.id);
+        let err = ops.tag_delete("org1", drop.id).await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
+    }
+
+    #[tokio::test]
+    async fn crm_state_scoped_by_org() {
+        let ops = MemoryOps::default();
+        let t = ops.tag_create("org1", "vip").await.unwrap();
+        ops.tag_attach("org1", t.id, 7).await.unwrap();
+        ops.meeting_create(
+            "org1",
+            7,
+            "Kickoff call",
+            None,
+            "2026-11-18 10:00:00",
+            "alice",
+        )
+        .await
+        .unwrap();
+        // Other org sees nothing.
+        assert!(ops.meeting_list_by_org("org2").await.unwrap().is_empty());
+        assert!(ops
+            .meeting_list_by_client("org2", 7)
+            .await
+            .unwrap()
+            .is_empty());
+        assert!(ops.tags_for_client("org2", 7).await.unwrap().is_empty());
+        assert!(ops.tag_list("org2").await.unwrap().is_empty());
+        // Cross-org attach is rejected.
+        let err = ops.tag_attach("org2", t.id, 7).await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
     }
 }

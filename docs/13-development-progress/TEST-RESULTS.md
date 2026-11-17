@@ -1,7 +1,7 @@
 # TEST RESULTS
 ## 2026-11-17 — full workspace (SQLX_OFFLINE=true, isolated target dir, no live DB)
 - `cargo fmt --all -- --check`: PASS. - `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
-- `cargo test --workspace`: **203 passed, 0 failed** (server API 65 incl. search + marketing admin + 16 public/SEO; store 11; AI 16; OCR 16; mobile 12; auth 12; app pages; full crate matrix).
+- `cargo test --workspace`: **232 passed, 0 failed** (server API 80 incl. UI wiring + search + marketing; store 17 incl. CRM; AI 16; OCR 16; mobile 12; auth 12; app pages; full crate matrix).
 - Live (same day, :8080 + Laragon proxy): landing + 22 public pages + sitemap/robots 200; Tabler + ComfyUI assets 200; pricing/faqs/articles seeded live.
 - Live (same day, :8080 + Laragon proxy): Tabler landing + vendor CSS + ComfyUI hero/CTA PNGs 200; /public/pricing + /public/faqs 200; H1 verified in served HTML.
 - Live-DB (same day, Laragon MySQL 8.4.9): migrations 0001–0009 applied to `legalrust_drill`; `live_mysql_register_and_matter` PASS (1.28s); row counts organizations=1 users=1 roles=12 permissions=12.

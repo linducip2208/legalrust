@@ -1,8 +1,8 @@
 # LEGALRUST AUTONOMOUS PROGRESS (master)
 
 ## Status ringkas
-- Fase: Wave 1 (Foundation) → berjalan. Checklist penerimaan: 28/32 = 87/100 (docs/13-development-progress/ACCEPTANCE.md).
-- Tes terakhir: 187 passed, 0 failed (lihat docs/13-development-progress/TEST-RESULTS.md).
+- Fase: Wave 1 (Foundation) → berjalan. Checklist penerimaan: 28/32 = 87/100 (recount 2026-11-18, unchanged — lihat docs/13-development-progress/ACCEPTANCE.md + docs/AUTONOMOUS/FINAL-REPORT.md §15).
+- Tes terakhir: 224 passed, 0 failed, 1 ignored (live-DB) — ukur 2026-11-18 (`cargo test --workspace`, SQLX_OFFLINE=true, target-finalverify). `cargo fmt --check` MERAH (2 files perlu rewrapping, formatting-only — jalankan `cargo fmt --all` sebelum gate berikut).
 - Live lokal: http://legalrust.test/ (server :8080 + Laragon proxy + MySQL Laragon).
 
 ## Wave map

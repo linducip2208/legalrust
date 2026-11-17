@@ -2770,3 +2770,219 @@ async fn dash_search_still_green() {
         .iter()
         .any(|d| d["id"].as_i64() == Some(did)));
 }
+
+#[tokio::test]
+async fn ui5_tokens_crud_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ui5tok@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/tokens",
+            r#"{"name":"ci-token"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let plain = j["token"].as_str().unwrap().to_string();
+    let tid = j["id"].as_str().unwrap().to_string();
+    assert!(plain.starts_with("lr_"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/tokens", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let list = body_json(res).await;
+    assert!(list.as_array().unwrap().iter().any(|t| t["id"] == tid));
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/auth/tokens/{tid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/tokens", &tok))
+        .await
+        .unwrap();
+    assert!(!body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["id"] == tid));
+}
+
+#[tokio::test]
+async fn ui5_password_change_then_login_with_new() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ui5pw@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/password",
+            r#"{"current_password":"password1-2-3","new_password":"password9-9-9"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"ui5pw@x.id","password":"password9-9-9"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"ui5pw@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn ui5_role_assign_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ui5role@x.id").await;
+    let me = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let uid = me["user_id"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{uid}/roles"),
+            r#"{"role":"auditor"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r == "auditor"));
+}
+
+#[tokio::test]
+async fn ui5_role_assign_invalid_422() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ui5badrole@x.id").await;
+    let me = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let uid = me["user_id"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{uid}/roles"),
+            r#"{"role":"presiden"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn ui5_clients_csv_export() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ui5csv@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"PT UI5","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ctype = res
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(ctype.contains("text/csv"), "content-type was {ctype}");
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(bytes.to_vec()).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(lines.next().unwrap(), "id,display_name,kind");
+    let first = lines.next().expect("one client row");
+    assert!(first.contains("PT UI5"), "row was {first}");
+    assert!(first.contains("corporate"), "row was {first}");
+}
+
+#[tokio::test]
+async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
+    let a = app();
+    let (st, _, t) = page_get(&a, "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "p-pengaturan",
+        "tok-name",
+        "tok-btn",
+        "tok-list",
+        "tok-plain",
+        "pw-cur",
+        "pw-new",
+        "pw-btn",
+        "role-uid",
+        "role-sel",
+        "role-btn",
+        "role-msg",
+        "cli-csv",
+        "bell-n",
+        "bell-list",
+        "Pengaturan",
+        "Ekspor CSV",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+    assert!(
+        t.contains("data-tab=\"pengaturan\""),
+        "missing pengaturan tab link"
+    );
+    let (st, _, t) = page_get(&a, "/login").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Lupa kata sandi?"), "login missing Lupa link");
+    assert!(t.contains("href=\"/faq\""), "Lupa link must point to /faq");
+    let (st, _, _) = page_get(&a, "/faq").await;
+    assert_eq!(st, StatusCode::OK);
+}

@@ -185,6 +185,22 @@ pub struct MarketingArticleRow {
     pub body_md: String,
     pub published: bool,
 }
+#[derive(Debug, Clone)]
+pub struct MeetingRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub title: String,
+    pub notes: Option<String>,
+    pub happened_at: String,
+    pub created_by: String,
+}
+#[derive(Debug, Clone)]
+pub struct ClientTagRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+}
 
 /// String-level pipeline guard mirroring `legalrust-domain::MarketingLeadStatus`.
 /// Kept here so the database crate needs no domain dependency.
@@ -433,4 +449,34 @@ pub trait OpsStore: Send + Sync {
         ref_id: i64,
         created_by: &str,
     ) -> Result<(TrustEntryRow, TrustEntryRow), StoreError>;
+}
+
+#[async_trait::async_trait]
+pub trait CrmStore: Send + Sync {
+    async fn meeting_create(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        notes: Option<&str>,
+        happened_at: &str,
+        created_by: &str,
+    ) -> Result<MeetingRow, StoreError>;
+    async fn meeting_list_by_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<MeetingRow>, StoreError>;
+    async fn meeting_list_by_org(&self, org: &str) -> Result<Vec<MeetingRow>, StoreError>;
+    async fn meeting_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn tag_create(&self, org: &str, name: &str) -> Result<ClientTagRow, StoreError>;
+    async fn tag_list(&self, org: &str) -> Result<Vec<ClientTagRow>, StoreError>;
+    async fn tag_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn tag_attach(&self, org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError>;
+    async fn tag_detach(&self, org: &str, tag_id: i64, client_id: i64) -> Result<(), StoreError>;
+    async fn tags_for_client(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientTagRow>, StoreError>;
 }
