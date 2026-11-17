@@ -53,14 +53,14 @@
     return r.json();
   }
   window.apptab = function (x) {
-    ['ringkas', 'dok', 'akta', 'keu'].forEach(function (k) {
+    ['ringkas', 'dok', 'akta', 'keu', 'mkt'].forEach(function (k) {
       document.getElementById('p-' + k).classList.toggle('hidden', k !== x);
     });
-    var lbl = { ringkas: 'ringkasan', dok: 'dokumen', akta: 'akta', keu: 'keuangan' }[x];
+    var lbl = { ringkas: 'ringkasan', dok: 'dokumen', akta: 'akta', keu: 'keuangan', mkt: 'marketing' }[x];
     qsa('#tabs .nav-link', function (a) { a.classList.toggle('active', a.textContent.toLowerCase().includes(lbl)); });
   };
   qsa('#tabs .nav-link', function (a, i) {
-    a.addEventListener('click', function (ev) { ev.preventDefault(); window.apptab(['ringkas', 'dok', 'akta', 'keu'][i]); });
+    a.addEventListener('click', function (ev) { ev.preventDefault(); window.apptab(['ringkas', 'dok', 'akta', 'keu', 'mkt'][i]); });
   });
   qsa('.logout', function (a) {
     a.addEventListener('click', async function (ev) {
@@ -158,4 +158,183 @@
     if (!r.ok) { document.getElementById('ue').textContent = 'Gagal unggah (' + r.status + ')'; return; }
     location.reload();
   });
+
+  /* ---- marketing admin (RBAC-gated: Permission::Approve; 401 -> /login) ---- */
+  var MKT_NEXT = { new: 'contacted', contacted: 'qualified', qualified: 'demo', demo: 'proposal', proposal: 'negotiation', negotiation: 'won' };
+  var mktLeadCache = [], mktPlanCache = [], mktArtCache = [];
+  function mktErr(m) { var e = document.getElementById('mkt-err'); if (e) e.textContent = m; }
+  async function mktFetch(u, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({}, H, opts.headers || {});
+    var r = await fetch(u, opts);
+    if (r.status === 401) { location.href = '/login'; return null; }
+    return r;
+  }
+  function mktPost(u, body) {
+    return mktFetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  }
+  async function mktLeads() {
+    if (!document.getElementById('mkt-leads')) return;
+    var f = document.getElementById('mkt-status-filter');
+    var q = f && f.value ? '?status=' + encodeURIComponent(f.value) : '';
+    var r = await mktFetch('/api/v1/admin/leads' + q);
+    if (!r) return;
+    if (!r.ok) { mktErr('Gagal memuat leads (' + r.status + ').'); return; }
+    mktErr('');
+    mktLeadCache = await r.json();
+    document.getElementById('mkt-leads').innerHTML = mktLeadCache.map(function (l) {
+      var nx = MKT_NEXT[l.status];
+      return '<tr><td>' + l.id + '</td><td>' + hesc(l.name) + '</td><td>' + hesc(l.email) + '</td>'
+        + '<td><span class="badge bg-blue-lt">' + hesc(l.status) + '</span></td><td>'
+        + (nx ? '<button class="btn btn-sm btn-outline-primary mkt-adv" data-id="' + l.id + '" data-to="' + nx + '">' + nx + '</button> ' : '')
+        + '<input class="form-control mkt-assign" data-id="' + l.id + '" placeholder="assignee" value="' + hesc(l.assigned_to || '') + '">'
+        + '<details class="mkt-notes"><summary>Catatan</summary><div class="mkt-note-form"><input class="form-control mkt-note" data-id="' + l.id + '" placeholder="tulis catatan"><button class="btn btn-sm btn-secondary mkt-note-btn" data-id="' + l.id + '">Kirim</button></div></details>'
+        + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada leads.</td></tr>';
+    qsa('.mkt-adv', function (b) {
+      b.addEventListener('click', async function () {
+        var r2 = await mktFetch('/api/v1/admin/leads/' + b.dataset.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: b.dataset.to }) });
+        if (!r2) return;
+        if (!r2.ok) { mktErr('Gagal ubah status (' + r2.status + ').'); return; }
+        mktLeads();
+      });
+    });
+    qsa('.mkt-assign', function (inp) {
+      inp.addEventListener('change', async function () {
+        var r2 = await mktPost('/api/v1/admin/leads/' + inp.dataset.id + '/assign', { assignee: inp.value || null });
+        if (!r2) return;
+        if (!r2.ok) { mktErr('Gagal assign (' + r2.status + ').'); return; }
+        mktLeads();
+      });
+    });
+    qsa('.mkt-note-btn', function (b) {
+      b.addEventListener('click', async function () {
+        var box = document.querySelector('.mkt-note[data-id="' + b.dataset.id + '"]');
+        var r2 = await mktPost('/api/v1/admin/leads/' + b.dataset.id + '/notes', { note: box ? box.value : '' });
+        if (!r2) return;
+        if (!r2.ok) { mktErr('Gagal simpan catatan (' + r2.status + ').'); return; }
+        if (box) box.value = '';
+        mktErr('Catatan tersimpan.');
+      });
+    });
+  }
+  async function mktDemos() {
+    if (!document.getElementById('mkt-demos')) return;
+    var r = await mktFetch('/api/v1/admin/demo-requests');
+    if (!r || !r.ok) return;
+    var v = await r.json();
+    document.getElementById('mkt-demos').innerHTML = v.map(function (d) {
+      return '<tr><td>' + d.id + '</td><td>' + hesc(d.name) + '</td><td>' + hesc(d.email) + '</td><td>' + hesc(d.company || '-') + '</td><td>' + hesc(d.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada permintaan demo.</td></tr>';
+  }
+  async function mktContacts() {
+    if (!document.getElementById('mkt-contacts')) return;
+    var r = await mktFetch('/api/v1/admin/contacts');
+    if (!r || !r.ok) return;
+    var v = await r.json();
+    document.getElementById('mkt-contacts').innerHTML = v.map(function (c) {
+      return '<tr><td>' + c.id + '</td><td>' + hesc(c.name) + '</td><td>' + hesc(c.subject) + '</td><td>' + hesc(c.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada pesan kontak.</td></tr>';
+  }
+  async function mktPlans() {
+    if (!document.getElementById('mkt-plans')) return;
+    var r = await mktFetch('/api/v1/public/pricing');
+    if (!r || !r.ok) return;
+    mktPlanCache = await r.json();
+    document.getElementById('mkt-plans').innerHTML = mktPlanCache.map(function (p, i) {
+      return '<tr><td>' + hesc(p.code) + '</td><td>' + hesc(p.name) + '</td><td>Rp ' + (p.monthly_minor || 0).toLocaleString('id-ID') + '</td>'
+        + '<td>' + (p.active ? 'aktif' : 'nonaktif') + '</td>'
+        + '<td><button class="btn btn-sm btn-outline-primary mkt-plan-toggle" data-i="' + i + '">' + (p.active ? 'Nonaktifkan' : 'Aktifkan') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada paket.</td></tr>';
+    qsa('.mkt-plan-toggle', function (b) {
+      b.addEventListener('click', async function () {
+        var p = mktPlanCache[+b.dataset.i];
+        var feats = Array.isArray(p.features) ? p.features : [];
+        var r2 = await mktPost('/api/v1/admin/pricing', { code: p.code, name: p.name, monthly_minor: p.monthly_minor, annual_minor: p.annual_minor, features: feats, active: !p.active });
+        if (!r2) return;
+        if (!r2.ok) { mktErr('Gagal toggle paket (' + r2.status + ').'); return; }
+        mktPlans();
+      });
+    });
+  }
+  async function mktFaqs() {
+    if (!document.getElementById('mkt-faqs')) return;
+    var r = await mktFetch('/api/v1/public/faqs');
+    if (!r || !r.ok) return;
+    var v = await r.json();
+    document.getElementById('mkt-faqs').innerHTML = v.map(function (f) {
+      return '<tr><td>' + hesc(f.slug) + '</td><td>' + hesc(f.question) + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada FAQ.</td></tr>';
+  }
+  async function mktArticles() {
+    if (!document.getElementById('mkt-articles')) return;
+    var r = await mktFetch('/api/v1/public/articles?published=0');
+    if (!r || !r.ok) return;
+    mktArtCache = await r.json();
+    document.getElementById('mkt-articles').innerHTML = mktArtCache.map(function (a, i) {
+      return '<tr><td>' + hesc(a.slug) + '</td><td>' + hesc(a.title) + '</td><td>' + (a.published ? 'ya' : 'tidak') + '</td>'
+        + '<td><button class="btn btn-sm btn-outline-primary mkt-art-toggle" data-i="' + i + '">' + (a.published ? 'Unpublish' : 'Publish') + '</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada artikel.</td></tr>';
+    qsa('.mkt-art-toggle', function (b) {
+      b.addEventListener('click', async function () {
+        var a = mktArtCache[+b.dataset.i];
+        var r2 = await mktPost('/api/v1/admin/articles', { slug: a.slug, title: a.title, body_md: a.body_md, published: !a.published });
+        if (!r2) return;
+        if (!r2.ok) { mktErr('Gagal toggle artikel (' + r2.status + ').'); return; }
+        mktArticles();
+      });
+    });
+  }
+  function mktRefresh() { mktLeads(); mktDemos(); mktContacts(); mktPlans(); mktFaqs(); mktArticles(); }
+  on('mkt-reload', 'click', mktRefresh);
+  on('mkt-status-filter', 'change', mktLeads);
+  on('mkt-csv', 'click', function () {
+    var rows = [['id', 'name', 'email', 'status', 'assigned_to']].concat(mktLeadCache.map(function (l) {
+      return [l.id, l.name, l.email, l.status, l.assigned_to || ''];
+    }));
+    var csv = rows.map(function (r) {
+      return r.map(function (v) {
+        v = String(v);
+        return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      }).join(',');
+    }).join('\n');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'leads.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+  on('mkt-sub-btn', 'click', async function () {
+    var em = document.getElementById('mkt-sub-email').value;
+    var msg = document.getElementById('mkt-sub-msg');
+    var r = await mktPost('/api/v1/public/newsletter/subscribe', { email: em });
+    if (!r) return;
+    if (!r.ok) { msg.textContent = 'Subscribe gagal (' + r.status + ').'; return; }
+    var c = document.getElementById('mkt-news-count');
+    c.textContent = String(+c.textContent + 1);
+    msg.textContent = 'Berhasil subscribe.';
+  });
+  on('mkt-faq-add', 'click', async function () {
+    var r = await mktPost('/api/v1/admin/faqs', {
+      slug: document.getElementById('faq-slug').value,
+      question: document.getElementById('faq-q').value,
+      answer: document.getElementById('faq-a').value
+    });
+    if (!r) return;
+    if (!r.ok) { mktErr('Gagal tambah FAQ (' + r.status + ').'); return; }
+    mktFaqs();
+  });
+  on('mkt-art-add', 'click', async function () {
+    var r = await mktPost('/api/v1/admin/articles', {
+      slug: document.getElementById('art-slug').value,
+      title: document.getElementById('art-title').value,
+      body_md: document.getElementById('art-body').value || '-',
+      published: document.getElementById('art-pub').checked
+    });
+    if (!r) return;
+    if (!r.ok) { mktErr('Gagal simpan artikel (' + r.status + ').'); return; }
+    mktArticles();
+  });
+  mktRefresh();
 })();

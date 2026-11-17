@@ -2102,3 +2102,291 @@ async fn app_page_has_search_box() {
     assert!(t.contains("id=\"q\""), "missing search input");
     assert!(t.contains("id=\"qres\""), "missing results dropdown");
 }
+
+#[tokio::test]
+async fn mkt_app_has_marketing_tab_and_admin_refs() {
+    let a = app();
+    let (_, _, t) = page_get(&a, "/app").await;
+    assert!(t.contains("Marketing"), "missing Marketing nav tab");
+    assert!(t.contains("id=\"p-mkt\""), "missing p-mkt section");
+    assert!(t.contains("class=\"hidden\""), "p-mkt must start hidden");
+    for id in [
+        "mkt-status-filter",
+        "mkt-leads",
+        "mkt-csv",
+        "mkt-demos",
+        "mkt-contacts",
+        "mkt-news-count",
+        "mkt-sub-btn",
+        "mkt-plans",
+        "mkt-faqs",
+        "mkt-faq-add",
+        "mkt-articles",
+        "mkt-art-add",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing #{id}");
+    }
+    let (_, _, js) = page_get(&a, "/static/site.js").await;
+    for ep in [
+        "/api/v1/admin/leads",
+        "/api/v1/admin/demo-requests",
+        "/api/v1/admin/contacts",
+        "/api/v1/admin/pricing",
+        "/api/v1/admin/faqs",
+        "/api/v1/admin/articles",
+    ] {
+        assert!(js.contains(ep), "site.js missing {ep}");
+    }
+}
+
+#[tokio::test]
+async fn mkt_admin_lead_full_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktfull@x.id").await;
+    // create
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Full Flow","email":"full@x.id","company":"PT Flow","source":"manual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    // assign
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/assign"),
+            r#"{"assignee":"staff-9"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["assigned_to"].as_str().unwrap(),
+        "staff-9"
+    );
+    // status advance new -> contacted
+    let res = a
+        .clone()
+        .oneshot(put_auth(
+            &format!("/api/v1/admin/leads/{lid}"),
+            r#"{"status":"contacted"}"#,
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["status"].as_str().unwrap(),
+        "contacted"
+    );
+    // note
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/notes"),
+            r#"{"note":"hubungi ulang senin"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // follow-up add + list
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/follow-ups"),
+            r#"{"due_at":"2026-12-02 10:00:00","note":"call back"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}/follow-ups"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // soft delete parks as lost
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "lost");
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "lost");
+}
+
+#[tokio::test]
+async fn mkt_admin_routes_require_auth_401() {
+    use tower::ServiceExt;
+    let a = app();
+    for (m, uri, body) in [
+        ("GET", "/api/v1/admin/leads", None),
+        ("GET", "/api/v1/admin/leads/1", None),
+        ("PUT", "/api/v1/admin/leads/1", Some(r#"{"status":"lost"}"#)),
+        ("DELETE", "/api/v1/admin/leads/1", None),
+        (
+            "POST",
+            "/api/v1/admin/leads/1/notes",
+            Some(r#"{"note":"x"}"#),
+        ),
+        (
+            "POST",
+            "/api/v1/admin/leads/1/assign",
+            Some(r#"{"assignee":"s"}"#),
+        ),
+        ("GET", "/api/v1/admin/leads/1/follow-ups", None),
+        ("GET", "/api/v1/admin/contacts", None),
+        ("GET", "/api/v1/admin/demo-requests", None),
+        (
+            "POST",
+            "/api/v1/admin/pricing",
+            Some(r#"{"code":"x","name":"X","monthly_minor":1,"annual_minor":1}"#),
+        ),
+        (
+            "POST",
+            "/api/v1/admin/faqs",
+            Some(r#"{"slug":"x","question":"q","answer":"a"}"#),
+        ),
+        (
+            "POST",
+            "/api/v1/admin/articles",
+            Some(r#"{"slug":"x","title":"t","body_md":"b"}"#),
+        ),
+    ] {
+        let req = Request::builder()
+            .uri(uri)
+            .method(m)
+            .header("content-type", "application/json")
+            .body(Body::from(body.unwrap_or("").to_string()))
+            .unwrap();
+        let res = a.clone().oneshot(req).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{m} {uri}");
+    }
+}
+
+#[tokio::test]
+async fn mkt_admin_pricing_toggle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mkttoggle@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/pricing",
+            r#"{"code":"team","name":"Team","monthly_minor":199000,"annual_minor":1990000,"features":["akta"],"active":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["active"].as_bool(), Some(true));
+    // toggle off with same code
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/pricing",
+            r#"{"code":"team","name":"Team","monthly_minor":199000,"annual_minor":1990000,"features":["akta"],"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["active"].as_bool(), Some(false));
+    // inactive plan hidden from public list
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/pricing"))
+        .await
+        .unwrap();
+    assert!(!body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["code"] == "team"));
+}
+
+#[tokio::test]
+async fn mkt_admin_article_publish_toggle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktpub@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/articles",
+            r##"{"slug":"toggle-art","title":"Toggle Art","body_md":"# Isi","published":false}"##,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["published"].as_bool(), Some(false));
+    // draft invisible publicly
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/articles/toggle-art"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // publish with same slug
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/articles",
+            r##"{"slug":"toggle-art","title":"Toggle Art","body_md":"# Isi","published":true}"##,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["published"].as_bool(), Some(true));
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/articles/toggle-art"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn mkt_app_page_csp_safe_and_js_wires_marketing() {
+    let (_, _, t) = page_get(&app(), "/app").await;
+    assert!(!t.contains("onclick"), "inline handler in /app");
+    assert!(!t.contains("style=\""), "inline style in /app");
+    assert!(!t.contains("<style"), "style tag in /app");
+    let (_, _, js) = page_get(&app(), "/static/site.js").await;
+    for needle in [
+        "mktRefresh",
+        "mkt-leads",
+        "mkt-status-filter",
+        "mkt-csv",
+        "mkt-adv",
+        "mkt-note-btn",
+        "mkt-plan-toggle",
+        "mkt-art-toggle",
+        "mkt-sub-btn",
+        "mkt-faq-add",
+        "mkt-art-add",
+        "leads.csv",
+    ] {
+        assert!(js.contains(needle), "site.js missing {needle}");
+    }
+    assert!(!js.contains("onclick"), "inline handler in site.js");
+}

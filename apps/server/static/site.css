@@ -141,3 +141,12 @@ footer.site a{color:#8A97B5}
 .roadmap li{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:13.5px;color:#3D4C6E}
 .fineprint{font-size:12.5px;color:#8A97B5;margin-top:12px;line-height:1.6}
 @media(max-width:960px){.split{grid-template-columns:1fr}.split.flip .txt{order:0}.steps4{grid-template-columns:1fr}.legend{grid-template-columns:1fr 1fr}.showcase{padding:40px 0}}
+.mkt-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.mkt-row .form-label{margin:0}
+.mkt-filter{max-width:220px}
+.mkt-mail{max-width:260px}
+.mkt-assign{max-width:160px;margin-top:6px}
+.mkt-notes{margin-top:6px}
+.mkt-notes summary{cursor:pointer;font-size:12.5px;font-weight:600;color:#29407A}
+.mkt-note-form{display:flex;gap:8px;margin-top:6px}
+.mkt-note-form .form-control{max-width:260px}
