@@ -1933,69 +1933,58 @@ table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
 .rv.in{opacity:1;transform:none;filter:none}\
 @media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
 
-const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust â€” Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>
+const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>
 body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
 @font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}
-.hero{background:linear-gradient(180deg,rgba(234,242,255,.93),rgba(247,250,255,.95)),url('/static/hero-office.png') center/cover}
-.hero h1{letter-spacing:-.02em}.mock-shadow{box-shadow:0 40px 80px -32px rgba(15,40,120,.35)}
-.cta-bg{background:linear-gradient(100deg,rgba(11,43,168,.94),rgba(29,91,216,.88)),url('/static/cta-building.png') center/cover}
+.hero{background:linear-gradient(100deg,rgba(247,250,255,.96) 30%,rgba(247,250,255,.55) 60%,rgba(247,250,255,.15)),url('/static/hero-office.png') center/cover}
+.hero h1{letter-spacing:-.02em}
+.mock-shadow{box-shadow:0 40px 80px -32px rgba(15,40,120,.35)}
+.cta-bg{background:linear-gradient(100deg,rgba(11,43,168,.88),rgba(29,91,216,.55)),url('/static/cta-building.png') center/cover}
 .rv{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.32,.72,0,1),transform .8s cubic-bezier(.32,.72,0,1)}
 .rv.in{opacity:1;transform:none}
 </style></head><body>
-<header class="navbar navbar-expand-md navbar-light sticky-top bg-white border-bottom"><div class="container-xl">
-<a href="/" class="navbar-brand d-flex align-items-center gap-2"><span class="text-primary" style="font-size:26px">âš–ï¸</span><span><strong>LegalRust</strong><span class="d-block text-muted" style="font-size:11px">Smart Legal Solution</span></span></a>
-<button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#nav"><span class="navbar-toggler-icon"></span></button>
-<div class="collapse navbar-collapse" id="nav"><ul class="navbar-nav mx-auto gap-1">
-<li class="nav-item"><a class="nav-link active" href="/">Beranda</a></li>
-<li class="nav-item"><a class="nav-link" href="#fitur">Fitur</a></li>
-<li class="nav-item"><a class="nav-link" href="/app">Solusi</a></li>
-<li class="nav-item"><a class="nav-link" href="#harga">Harga</a></li>
-<li class="nav-item"><a class="nav-link" href="#fitur">Tentang</a></li>
-<li class="nav-item"><a class="nav-link" href="/login">Kontak</a></li></ul>
-<div class="d-flex gap-2"><a href="/login" class="btn btn-outline-primary">Masuk</a><a href="/login" class="btn btn-primary">Coba Gratis <i class="ti ti-arrow-right"></i></a></div></div></div></header>
+<div class="container-xl"><div class="d-flex align-items-center gap-3 py-3"><a href="/" class="d-flex align-items-center gap-2 text-decoration-none"><span style="font-size:26px">⚖️</span><span><strong>LegalRust</strong><span class="d-block text-muted" style="font-size:11px">Smart Legal Solution</span></span></a><nav class="d-none d-md-flex gap-3 mx-auto"><a class="btn btn-primary btn-sm" href="/">Beranda</a><a class="btn btn-ghost-secondary btn-sm" href="#fitur">Fitur</a><a class="btn btn-ghost-secondary btn-sm" href="/app">Solusi</a><a class="btn btn-ghost-secondary btn-sm" href="#harga">Harga</a><a class="btn btn-ghost-secondary btn-sm" href="#fitur">Tentang</a><a class="btn btn-ghost-secondary btn-sm" href="/login">Kontak</a></nav><div class="ms-auto d-flex gap-2"><a href="/login" class="btn btn-outline-primary">Masuk</a><a href="/login" class="btn btn-primary">Coba Gratis <i class="ti ti-arrow-right"></i></a></div></div></div>
 <section class="hero"><div class="container-xl"><div class="row align-items-center py-5">
-<div class="col-lg-6 py-4"><span class="badge bg-white text-primary border rv">ðŸš€ Solusi LegalTech Terdepan di Indonesia</span>
+<div class="col-lg-6 py-4"><span class="badge bg-white text-primary border rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
 <h1 class="display-5 fw-bolder mt-3 rv">Kelola Perkara Hukum Lebih Mudah, <span class="text-primary">Profesional dan Terpercaya.</span></h1>
 <p class="text-muted fs-4 mt-3 rv">Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal. Kelola perkara, dokumen, akta, OCR, dan proses administrasi dalam satu platform.</p>
-<div class="d-flex gap-2 mt-4 rv"><a href="/login" class="btn btn-primary btn-lg">â–¶ Mulai Gratis</a><a href="/app" class="btn btn-outline-primary btn-lg">Lihat Demo</a></div>
-<div class="d-flex gap-4 mt-4 text-muted rv"><span><i class="ti ti-check text-primary"></i> Platform Terintegrasi</span><span><i class="ti ti-check text-primary"></i> Workflow Lebih Efisien</span><span><i class="ti ti-check text-primary"></i> Keamanan Berlapis</span></div></div>
-<div class="col-lg-6 py-4"><div class="card mock-shadow rv"><div class="card-header"><ul class="nav nav-pills card-header-pills ms-auto"><li class="nav-item"><span class="badge bg-blue-lt">Dasbor live Anda â€” ilustrasi</span></li></ul></div>
+<div class="d-flex gap-2 mt-4 rv"><a href="/login" class="btn btn-primary btn-lg">▶ Mulai Gratis</a><a href="/app" class="btn btn-outline-primary btn-lg">Lihat Demo</a></div>
+<div class="d-flex gap-4 mt-4 text-muted flex-wrap rv"><span><i class="ti ti-check text-primary"></i> Platform Terintegrasi</span><span><i class="ti ti-check text-primary"></i> Workflow Lebih Efisien</span><span><i class="ti ti-check text-primary"></i> Keamanan Berlapis</span></div></div>
+<div class="col-lg-6 py-4"><div class="card mock-shadow rv"><div class="card-header"><span class="badge bg-blue-lt">Dasbor live Anda — ilustrasi</span></div>
 <div class="card-body"><div class="row g-2">
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Total Perkara</div><div class="h2 m-0">128</div><div class="text-success small">â†‘ 12.5%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Dokumen</div><div class="h2 m-0">842</div><div class="text-success small">â†‘ 18.7%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Klien Aktif</div><div class="h2 m-0">256</div><div class="text-success small">â†‘ 8.2%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Pendapatan</div><div class="h2 m-0">Rp 248 jt</div><div class="text-success small">â†‘ 14.6%</div></div></div></div>
+<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Total Perkara</div><div class="h2 m-0">128</div><div class="text-success small">↑ 12.5%</div></div></div></div>
+<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Dokumen</div><div class="h2 m-0">842</div><div class="text-success small">↑ 18.7%</div></div></div></div>
+<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Klien Aktif</div><div class="h2 m-0">256</div><div class="text-success small">↑ 8.2%</div></div></div></div>
+<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Pendapatan</div><div class="h2 m-0">Rp 248 jt</div><div class="text-success small">↑ 14.6%</div></div></div></div>
 </div><div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody>
 <tr><td><strong>M-1047</strong></td><td>Akta Jual Beli Tanah</td><td><span class="badge bg-green-lt">review</span></td></tr>
 <tr><td><strong>M-1046</strong></td><td>Pendirian PT Maju Bersama</td><td><span class="badge bg-yellow-lt">draft</span></td></tr>
 <tr><td><strong>M-1045</strong></td><td>Perjanjian Kredit Bank</td><td><span class="badge bg-blue-lt">approved</span></td></tr>
 </tbody></table></div></div></div></div>
 </div></div></section>
-<div class="container-xl"><div class="card mt-n3 mb-4 rv"><div class="card-body d-flex align-items-center gap-4 flex-wrap py-3">
+<div class="container-xl"><div class="card mt-3 mb-2 rv"><div class="card-body d-flex align-items-center gap-3 flex-wrap py-3">
 <div><strong>Dipercaya oleh</strong><div class="text-muted">Ribuan Profesional</div></div>
 <span class="badge bg-azure-lt">NOTARIS</span><span class="badge bg-azure-lt">PPAT</span><span class="badge bg-azure-lt">FIRMA HUKUM</span><span class="badge bg-azure-lt">KORPORAT</span><span class="badge bg-azure-lt">ADVOKAT</span></div></div>
-<div class="text-center mt-5" id="fitur"><span class="badge bg-blue-lt rv">FITUR UNGGULAN</span>
-<h2 class="mt-2 rv">Semua yang Anda Butuhkan dalam Satu Platform</h2>
-<p class="text-muted rv">Dari manajemen perkara hingga laporan analitik, semua terintegrasi dengan sempurna.</p></div>
+<div class="text-center mt-5" id="fitur"><span class="badge bg-blue-lt rv">FITUR UNGGULAN</span><h2 class="mt-2 rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="text-muted rv">Dari manajemen perkara hingga laporan analitik, semua terintegrasi dengan sempurna.</p></div>
 <div class="row g-3 mt-2">
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-scale fs-2 text-primary"></i><h3 class="mt-2">Manajemen Perkara</h3><p class="text-muted">Klien, tugas, jadwal, dan status perkara dalam satu alur tertib dan teraudit. <a href="/app">Buka dasbor â†’</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-file-search fs-2 text-primary"></i><h3 class="mt-2">OCR &amp; Verifikasi</h3><p class="text-muted">Ekstraksi KTP/KK/NPWP/sertifikat dengan skor kepercayaan + review manusia. <a href="/app">Lihat alur â†’</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-writing fs-2 text-primary"></i><h3 class="mt-2">Generasi Akta</h3><p class="text-muted">Template render variabel dengan guard transisi draft â†’ review â†’ approved â†’ signed. <a href="/app">Lihat alur â†’</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-wallet fs-2 text-primary"></i><h3 class="mt-2">Keuangan &amp; Trust</h3><p class="text-muted">Invoice anti-overpay dan rekening dana klien anti-saldo-negatif. <a href="/app">Lihat alur â†’</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-chart-bar fs-2 text-primary"></i><h3 class="mt-2">Laporan &amp; Analitik</h3><p class="text-muted">Ekspor CSV perkara dan trust ledger siap olah. <a href="/api/v1/version">Cek API â†’</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-shield-check fs-2 text-primary"></i><h3 class="mt-2">Keamanan Berlapis</h3><p class="text-muted">Argon2, JWT + lockout, RBAC per endpoint, jejak audit. <a href="/api/v1/version">Cek API â†’</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-scale fs-2 text-primary"></i><h3 class="mt-2">Manajemen Perkara</h3><p class="text-muted">Klien, tugas, jadwal, dan status perkara dalam satu alur tertib dan teraudit. <a href="/app">Buka dasbor →</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-file-search fs-2 text-primary"></i><h3 class="mt-2">OCR &amp; Verifikasi</h3><p class="text-muted">Ekstraksi KTP/KK/NPWP/sertifikat dengan skor kepercayaan + review manusia. <a href="/app">Lihat alur →</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-writing fs-2 text-primary"></i><h3 class="mt-2">Generasi Akta</h3><p class="text-muted">Template render variabel dengan guard transisi draft → review → approved → signed. <a href="/app">Lihat alur →</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-wallet fs-2 text-primary"></i><h3 class="mt-2">Keuangan &amp; Trust</h3><p class="text-muted">Invoice anti-overpay dan rekening dana klien anti-saldo-negatif. <a href="/app">Lihat alur →</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-chart-bar fs-2 text-primary"></i><h3 class="mt-2">Laporan &amp; Analitik</h3><p class="text-muted">Ekspor CSV perkara dan trust ledger siap olah. <a href="/api/v1/version">Cek API →</a></p></div></div></div>
+<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-shield-check fs-2 text-primary"></i><h3 class="mt-2">Keamanan Berlapis</h3><p class="text-muted">Argon2, JWT + lockout, RBAC per endpoint, jejak audit. <a href="/api/v1/version">Cek API →</a></p></div></div></div>
 </div>
 <div class="card cta-bg text-white mt-5 rv" id="harga"><div class="card-body p-5"><div class="row align-items-center">
-<div class="col-lg-8"><h2>Bangun Praktik Hukum yang Lebih Modern.</h2><p class="opacity-75">Mulai gratis â€” harga paket menyusul dari backend/CMS. <a href="/login" class="text-white text-decoration-underline">Mulai Perjalanan Anda dengan LegalRust â†’</a></p></div>
+<div class="col-lg-8"><h2>Bangun Praktik Hukum yang Lebih Modern.</h2><p class="opacity-75">Mulai gratis — harga paket menyusul dari backend/CMS. <a href="/login" class="text-white text-decoration-underline">Mulai Perjalanan Anda dengan LegalRust →</a></p></div>
 <div class="col-lg-4"><a href="/login" class="btn btn-light btn-lg w-100">Mulai Sekarang</a></div></div></div></div>
-<footer class="d-flex justify-content-between flex-wrap gap-2 py-4 text-muted"><span>Â© 2026 LegalRust â€” Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> Â· <a href="/syarat-ketentuan">Syarat</a> Â· <a href="/faq">FAQ</a> Â· <a href="/healthz">Status</a></span></footer></div>
+<footer class="d-flex justify-content-between flex-wrap gap-2 py-4 text-muted"><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
 <script src="/static/vendor/tabler.min.js"></script>
 <script>const io=new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.add('in')),{threshold:.1});document.querySelectorAll('.rv').forEach(el=>io.observe(el));</script>
 </body></html>"##;
 
-const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk â€” LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body class="d-flex flex-column">
+const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body class="d-flex flex-column">
 <div class="page page-center flex-fill"><div class="container container-tight py-4">
-<div class="text-center mb-4"><a href="/">âš–ï¸ <strong>LegalRust</strong></a><div class="text-muted">Smart Legal Solution</div></div>
+<div class="text-center mb-4"><a href="/">⚖️ <strong>LegalRust</strong></a><div class="text-muted">Smart Legal Solution</div></div>
 <div class="card card-md"><div class="card-body">
 <h2 class="h2 text-center mb-1">Masuk</h2><p class="text-muted text-center">Sesi JWT + proteksi brute-force 5x percobaan</p>
 <div class="btn-group w-100 mb-3"><button class="btn btn-primary" id="t1" onclick="tab(1)">Masuk</button><button class="btn" id="t2" onclick="tab(2)">Daftar organisasi</button></div>
@@ -2014,9 +2003,9 @@ const j=await r.json();if(!r.ok){e.textContent=mode===1?'Gagal masuk ('+r.status
 localStorage.setItem('lr_token',j.token);location.href='/app';}catch(x){e.textContent='Server tidak terjangkau.';document.getElementById('go').disabled=false;}}</script>
 </body></html>"##;
 
-const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor â€” LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body>
+const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body>
 <div class="page"><header class="navbar navbar-expand-md navbar-light sticky-top bg-white border-bottom"><div class="container-xl">
-<a href="/" class="navbar-brand">âš–ï¸ <strong>LegalRust</strong></a>
+<a href="/" class="navbar-brand">⚖️ <strong>LegalRust</strong></a>
 <ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="#" onclick="tab('ringkas');return false">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('dok');return false">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('akta');return false">Akta</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('keu');return false">Keuangan</a></li></ul>
 <button class="btn btn-outline-danger btn-sm" onclick="out()">Keluar</button></div></header>
 <div class="page-wrapper"><div class="container-xl py-4">
@@ -2036,13 +2025,13 @@ const H={'Authorization':'Bearer '+t};
 async function j(u){const r=await fetch(u,{headers:H});if(r.status===401){location.href='/login';return null;}return r.json();}
 function tab(x){['ringkas','dok','akta','keu'].forEach(k=>{document.getElementById('p-'+k).style.display=k===x?'block':'none';});document.querySelectorAll('#tabs .nav-link').forEach(a=>a.classList.toggle('active',a.textContent.toLowerCase().includes({ringkas:'ringkasan',dok:'dokumen',akta:'akta',keu:'keuangan'}[x])));}
 (async()=>{try{
-const me=await j('/api/v1/orgs/me');document.getElementById('hi').textContent='Dasbor â€” '+me.org_id.slice(0,8)+'â€¦';
+const me=await j('/api/v1/orgs/me');document.getElementById('hi').textContent='Dasbor — '+me.org_id.slice(0,8)+'…';
 const c=await j('/api/v1/clients'),m=await j('/api/v1/matters'),d=await j('/api/v1/documents'),a=await j('/api/v1/deeds'),tr=await j('/api/v1/trust/accounts');
 const cards=[['Klien',c.length],['Perkara',m.length],['Dokumen',d.length],['Akta',a.length],['Trust',tr.length],['Saldo trust','Rp '+tr.reduce((s,x)=>s+(x.balance||0),0).toLocaleString('id-ID')]];
 document.getElementById('g').innerHTML=cards.map(x=>'<div class="col-6 col-md-4"><div class="card"><div class="card-body"><div class="text-muted">'+x[0]+'</div><div class="h1 m-0">'+x[1]+'</div></div></div></div>').join('');
 document.getElementById('m').innerHTML=m.map(x=>'<tr><td><strong>'+x.number+'</strong></td><td>'+x.title+'</td><td><span class="badge bg-green-lt">'+x.status+'</span></td></tr>').join('');
 document.getElementById('dl').innerHTML=d.map(x=>'<tr><td>'+x.id+'</td><td>'+x.name+'</td></tr>').join('');
-document.getElementById('al').innerHTML=a.map(x=>'<tr><td>'+x.id+'</td><td>'+x.number+'</td><td><span class="badge bg-blue-lt">'+x.state+'</span></td><td><button class="btn btn-sm btn-outline-primary" onclick="adv('+x.id+',\''+x.state+'\')">Maju â†’</button></td></tr>').join('');
+document.getElementById('al').innerHTML=a.map(x=>'<tr><td>'+x.id+'</td><td>'+x.number+'</td><td><span class="badge bg-blue-lt">'+x.state+'</span></td><td><button class="btn btn-sm btn-outline-primary" onclick="adv('+x.id+',\''+x.state+'\')">Maju →</button></td></tr>').join('');
 document.getElementById('tl').innerHTML=tr.map(x=>'<tr><td>'+x.id+'</td><td>'+x.client_id+'</td><td>Rp '+(x.balance||0).toLocaleString('id-ID')+'</td></tr>').join('');
 }catch(e){document.getElementById('err').textContent='Gagal memuat: '+e;}})();
 const NX={draft:'review',review:'approved',approved:'signed'};
@@ -2055,7 +2044,7 @@ const meta=await (await fetch('/api/v1/documents',{method:'POST',headers:{...H,'
 const r=await fetch('/api/v1/documents/'+meta.id+'/content',{method:'PUT',headers:H,body:buf});
 if(!r.ok){document.getElementById('ue').textContent='Gagal unggah ('+r.status+')';return;}location.reload();}
 async function invs(){const id=document.getElementById('km').value;const v=await j('/api/v1/matters/'+id+'/invoices');
-document.getElementById('il').innerHTML=v.map(x=>'<div>#'+x.number+' â€” Rp '+x.total.toLocaleString('id-ID')+'</div>').join('')||'Belum ada invoice.';}
+document.getElementById('il').innerHTML=v.map(x=>'<div>#'+x.number+' — Rp '+x.total.toLocaleString('id-ID')+'</div>').join('')||'Belum ada invoice.';}
 async function trf(){const r=await fetch('/api/v1/trust/transfer',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({from:+document.getElementById('tf').value,to:+document.getElementById('tt').value,amount_minor:+document.getElementById('ta').value})});
 if(!r.ok){document.getElementById('te').textContent='Gagal ('+r.status+'): saldo tidak cukup?';return;}location.reload();}
 async function out(){try{await fetch('/api/v1/auth/logout',{method:'POST',headers:H});}catch(x){}localStorage.removeItem('lr_token');location.href='/login';}
