@@ -20,6 +20,15 @@ struct Inner {
     notifs: HashMap<i64, (String, String, String, String, bool)>,
     shares: HashMap<i64, ShareRow>,
     audits: Vec<AuditRow>,
+    mkt_leads: HashMap<i64, MarketingLeadRow>,
+    mkt_notes: HashMap<i64, Vec<MarketingNoteRow>>,
+    mkt_followups: HashMap<i64, MarketingFollowUpRow>,
+    mkt_demos: HashMap<i64, MarketingDemoRow>,
+    mkt_contacts: HashMap<i64, MarketingContactRow>,
+    mkt_subs: HashMap<String, MarketingSubscriberRow>,
+    mkt_plans: HashMap<String, MarketingPlanRow>,
+    mkt_faqs: HashMap<String, MarketingFaqRow>,
+    mkt_articles: HashMap<String, MarketingArticleRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -776,6 +785,479 @@ mod trust_tests {
         assert!(matches!(err, StoreError::Conflict(_)));
         let (_, entries) = ops.trust_get("org1", b.id).await.unwrap();
         assert!(entries.is_empty());
+    }
+}
+
+#[async_trait::async_trait]
+impl super::ops::MarketingStore for MemoryOps {
+    async fn mkt_lead_create(
+        &self,
+        org: Option<&str>,
+        name: &str,
+        email: &str,
+        phone: Option<&str>,
+        company: Option<&str>,
+        source: &str,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        if name.trim().is_empty() || !email.contains('@') {
+            return Err(StoreError::Conflict("name and valid email required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        let r = MarketingLeadRow {
+            id,
+            org: org.map(str::to_string),
+            name: name.into(),
+            email: email.into(),
+            phone: phone.map(str::to_string),
+            company: company.map(str::to_string),
+            source: source.into(),
+            status: "new".into(),
+            assigned_to: None,
+        };
+        m.mkt_leads.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn mkt_lead_list(&self, org: Option<&str>) -> Result<Vec<MarketingLeadRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_leads
+            .values()
+            .filter(|l| l.org.as_deref() == org)
+            .cloned()
+            .collect())
+    }
+    async fn mkt_lead_get(&self, id: i64) -> Result<MarketingLeadRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .mkt_leads
+            .get(&id)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
+    async fn mkt_lead_set_status(
+        &self,
+        id: i64,
+        status: &str,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let l = m.mkt_leads.get_mut(&id).ok_or(StoreError::NotFound)?;
+        if !super::ops::marketing_allowed_transition(&l.status, status) {
+            return Err(StoreError::Conflict(format!(
+                "illegal transition {} -> {status}",
+                l.status
+            )));
+        }
+        l.status = status.into();
+        Ok(l.clone())
+    }
+    async fn mkt_lead_assign(
+        &self,
+        id: i64,
+        assignee: Option<&str>,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let l = m.mkt_leads.get_mut(&id).ok_or(StoreError::NotFound)?;
+        l.assigned_to = assignee.map(str::to_string);
+        Ok(l.clone())
+    }
+    async fn mkt_note_add(
+        &self,
+        lead: i64,
+        author: &str,
+        note: &str,
+    ) -> Result<MarketingNoteRow, StoreError> {
+        if note.trim().is_empty() {
+            return Err(StoreError::Conflict("note required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if !m.mkt_leads.contains_key(&lead) {
+            return Err(StoreError::NotFound);
+        }
+        let id = m.seq + 1;
+        m.seq = id;
+        let r = MarketingNoteRow {
+            id,
+            lead_id: lead,
+            author: author.into(),
+            note: note.into(),
+        };
+        m.mkt_notes.entry(lead).or_default().push(r.clone());
+        Ok(r)
+    }
+    async fn mkt_note_list(&self, lead: i64) -> Result<Vec<MarketingNoteRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        if !m.mkt_leads.contains_key(&lead) {
+            return Err(StoreError::NotFound);
+        }
+        Ok(m.mkt_notes.get(&lead).cloned().unwrap_or_default())
+    }
+    async fn mkt_followup_add(
+        &self,
+        lead: i64,
+        due_at: &str,
+        note: &str,
+    ) -> Result<MarketingFollowUpRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.mkt_leads.contains_key(&lead) {
+            return Err(StoreError::NotFound);
+        }
+        let id = m.seq + 1;
+        m.seq = id;
+        let r = MarketingFollowUpRow {
+            id,
+            lead_id: lead,
+            due_at: due_at.into(),
+            done: false,
+            note: note.into(),
+        };
+        m.mkt_followups.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn mkt_followup_list(&self, lead: i64) -> Result<Vec<MarketingFollowUpRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        if !m.mkt_leads.contains_key(&lead) {
+            return Err(StoreError::NotFound);
+        }
+        Ok(m.mkt_followups
+            .values()
+            .filter(|f| f.lead_id == lead)
+            .cloned()
+            .collect())
+    }
+    async fn mkt_followup_done(&self, id: i64) -> Result<MarketingFollowUpRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let f = m.mkt_followups.get_mut(&id).ok_or(StoreError::NotFound)?;
+        f.done = true;
+        Ok(f.clone())
+    }
+    async fn mkt_demo_create(
+        &self,
+        lead: Option<i64>,
+        name: &str,
+        email: &str,
+        company: &str,
+        preferred_at: Option<&str>,
+    ) -> Result<MarketingDemoRow, StoreError> {
+        if !email.contains('@') {
+            return Err(StoreError::Conflict("valid email required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some(lid) = lead {
+            if !m.mkt_leads.contains_key(&lid) {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let id = self.next(&mut m);
+        let r = MarketingDemoRow {
+            id,
+            lead_id: lead,
+            name: name.into(),
+            email: email.into(),
+            company: company.into(),
+            preferred_at: preferred_at.map(str::to_string),
+            status: "new".into(),
+        };
+        m.mkt_demos.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn mkt_demo_list(&self) -> Result<Vec<MarketingDemoRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_demos
+            .values()
+            .cloned()
+            .collect())
+    }
+    async fn mkt_contact_create(
+        &self,
+        name: &str,
+        email: &str,
+        subject: &str,
+        message: &str,
+    ) -> Result<MarketingContactRow, StoreError> {
+        if !email.contains('@') || message.trim().is_empty() {
+            return Err(StoreError::Conflict(
+                "valid email and message required".into(),
+            ));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        let r = MarketingContactRow {
+            id,
+            name: name.into(),
+            email: email.into(),
+            subject: subject.into(),
+            message: message.into(),
+            status: "new".into(),
+        };
+        m.mkt_contacts.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn mkt_contact_list(&self) -> Result<Vec<MarketingContactRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_contacts
+            .values()
+            .cloned()
+            .collect())
+    }
+    async fn mkt_subscribe(&self, email: &str) -> Result<MarketingSubscriberRow, StoreError> {
+        let key = email.trim().to_lowercase();
+        if !key.contains('@') {
+            return Err(StoreError::Conflict("valid email required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.mkt_subs.contains_key(&key) {
+            return Err(StoreError::Conflict("already subscribed".into()));
+        }
+        let r = MarketingSubscriberRow {
+            email: key.clone(),
+            confirmed: false,
+        };
+        m.mkt_subs.insert(key, r.clone());
+        Ok(r)
+    }
+    async fn mkt_unsubscribe(&self, email: &str) -> Result<(), StoreError> {
+        let key = email.trim().to_lowercase();
+        self.inner
+            .lock()
+            .unwrap()
+            .mkt_subs
+            .remove(&key)
+            .map(|_| ())
+            .ok_or(StoreError::NotFound)
+    }
+    async fn mkt_pricing_upsert(
+        &self,
+        code: &str,
+        name: &str,
+        monthly_minor: i64,
+        annual_minor: i64,
+        features_json: &str,
+        active: bool,
+    ) -> Result<MarketingPlanRow, StoreError> {
+        if code.trim().is_empty() {
+            return Err(StoreError::Conflict("code required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = m.mkt_plans.get(code).map(|p| p.id).unwrap_or_else(|| {
+            m.seq += 1;
+            m.seq
+        });
+        let r = MarketingPlanRow {
+            id,
+            code: code.into(),
+            name: name.into(),
+            monthly_minor,
+            annual_minor,
+            features_json: features_json.into(),
+            active,
+        };
+        m.mkt_plans.insert(code.into(), r.clone());
+        Ok(r)
+    }
+    async fn mkt_pricing_list(&self) -> Result<Vec<MarketingPlanRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_plans
+            .values()
+            .cloned()
+            .collect())
+    }
+    async fn mkt_faq_upsert(
+        &self,
+        slug: &str,
+        question: &str,
+        answer: &str,
+        sort: i64,
+    ) -> Result<MarketingFaqRow, StoreError> {
+        if slug.trim().is_empty() {
+            return Err(StoreError::Conflict("slug required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = m.mkt_faqs.get(slug).map(|f| f.id).unwrap_or_else(|| {
+            m.seq += 1;
+            m.seq
+        });
+        let r = MarketingFaqRow {
+            id,
+            slug: slug.into(),
+            question: question.into(),
+            answer: answer.into(),
+            sort,
+        };
+        m.mkt_faqs.insert(slug.into(), r.clone());
+        Ok(r)
+    }
+    async fn mkt_faq_list(&self) -> Result<Vec<MarketingFaqRow>, StoreError> {
+        let mut v: Vec<MarketingFaqRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_faqs
+            .values()
+            .cloned()
+            .collect();
+        v.sort_by_key(|f| f.sort);
+        Ok(v)
+    }
+    async fn mkt_article_upsert(
+        &self,
+        slug: &str,
+        title: &str,
+        body_md: &str,
+        published: bool,
+    ) -> Result<MarketingArticleRow, StoreError> {
+        if slug.trim().is_empty() {
+            return Err(StoreError::Conflict("slug required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = m.mkt_articles.get(slug).map(|a| a.id).unwrap_or_else(|| {
+            m.seq += 1;
+            m.seq
+        });
+        let r = MarketingArticleRow {
+            id,
+            slug: slug.into(),
+            title: title.into(),
+            body_md: body_md.into(),
+            published,
+        };
+        m.mkt_articles.insert(slug.into(), r.clone());
+        Ok(r)
+    }
+    async fn mkt_article_get(&self, slug: &str) -> Result<MarketingArticleRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .mkt_articles
+            .get(slug)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
+    async fn mkt_article_list(
+        &self,
+        published_only: bool,
+    ) -> Result<Vec<MarketingArticleRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .mkt_articles
+            .values()
+            .filter(|a| !published_only || a.published)
+            .cloned()
+            .collect())
+    }
+}
+
+#[cfg(test)]
+mod marketing_tests {
+    use super::*;
+    use crate::ops::{MarketingStore, OpsStore};
+
+    #[tokio::test]
+    async fn pipeline_transition_ok_and_illegal() {
+        let ops = MemoryOps::default();
+        let l = ops
+            .mkt_lead_create(None, "Acme", "a@acme.id", None, None, "website")
+            .await
+            .unwrap();
+        assert_eq!(l.status, "new");
+        let l = ops.mkt_lead_set_status(l.id, "contacted").await.unwrap();
+        assert_eq!(l.status, "contacted");
+        // skip-ahead is illegal
+        let err = ops.mkt_lead_set_status(l.id, "demo").await.unwrap_err();
+        assert!(matches!(err, StoreError::Conflict(_)));
+        // status unchanged after illegal move
+        assert_eq!(ops.mkt_lead_get(l.id).await.unwrap().status, "contacted");
+        // unknown status is illegal
+        let err = ops.mkt_lead_set_status(l.id, "bogus").await.unwrap_err();
+        assert!(matches!(err, StoreError::Conflict(_)));
+    }
+
+    #[tokio::test]
+    async fn newsletter_duplicate_is_conflict() {
+        let ops = MemoryOps::default();
+        ops.mkt_subscribe("user@example.com").await.unwrap();
+        let err = ops.mkt_subscribe("user@example.com").await.unwrap_err();
+        assert!(matches!(err, StoreError::Conflict(_)));
+        ops.mkt_unsubscribe("user@example.com").await.unwrap();
+        // resubscribe after unsubscribe works
+        ops.mkt_subscribe("user@example.com").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn followup_done_flow() {
+        let ops = MemoryOps::default();
+        let l = ops
+            .mkt_lead_create(None, "Acme", "a@acme.id", None, None, "website")
+            .await
+            .unwrap();
+        let f = ops
+            .mkt_followup_add(l.id, "2026-12-01 10:00:00", "call back")
+            .await
+            .unwrap();
+        assert!(!f.done);
+        let list = ops.mkt_followup_list(l.id).await.unwrap();
+        assert_eq!(list.len(), 1);
+        let done = ops.mkt_followup_done(f.id).await.unwrap();
+        assert!(done.done);
+    }
+
+    #[tokio::test]
+    async fn notes_require_lead_and_content() {
+        let ops = MemoryOps::default();
+        let err = ops.mkt_note_add(999, "me", "hi").await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
+        let l = ops
+            .mkt_lead_create(None, "Acme", "a@acme.id", None, None, "website")
+            .await
+            .unwrap();
+        let err = ops.mkt_note_add(l.id, "me", "  ").await.unwrap_err();
+        assert!(matches!(err, StoreError::Conflict(_)));
+        let n = ops.mkt_note_add(l.id, "me", "called").await.unwrap();
+        assert_eq!(ops.mkt_note_list(l.id).await.unwrap().len(), 1);
+        assert_eq!(n.note, "called");
+    }
+
+    #[tokio::test]
+    async fn catalog_upsert_flows() {
+        let ops = MemoryOps::default();
+        let p = ops
+            .mkt_pricing_upsert("pro", "Pro", 99000, 990000, "[]", true)
+            .await
+            .unwrap();
+        let p2 = ops
+            .mkt_pricing_upsert("pro", "Pro+", 149000, 1490000, "[]", true)
+            .await
+            .unwrap();
+        assert_eq!(p.id, p2.id);
+        assert_eq!(ops.mkt_pricing_list().await.unwrap().len(), 1);
+        ops.mkt_faq_upsert("s1", "Q?", "A.", 1).await.unwrap();
+        assert_eq!(ops.mkt_faq_list().await.unwrap().len(), 1);
+        ops.mkt_article_upsert("hello", "Hello", "# hi", false)
+            .await
+            .unwrap();
+        assert!(ops.mkt_article_list(true).await.unwrap().is_empty());
+        assert_eq!(ops.mkt_article_list(false).await.unwrap().len(), 1);
+        ops.mkt_article_upsert("hello", "Hello", "# hi", true)
+            .await
+            .unwrap();
+        assert_eq!(ops.mkt_article_list(true).await.unwrap().len(), 1);
+        assert_eq!(ops.mkt_article_get("hello").await.unwrap().title, "Hello");
+        let err = ops.mkt_article_get("missing").await.unwrap_err();
+        assert!(matches!(err, StoreError::NotFound));
     }
 
     #[tokio::test]

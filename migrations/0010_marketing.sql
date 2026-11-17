@@ -1,0 +1,91 @@
+-- 0010 marketing backend storage (public site: leads, demos, contact, newsletter, content)
+CREATE TABLE IF NOT EXISTS marketing_leads (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  org_id CHAR(36) NULL,
+  name VARCHAR(191) NOT NULL,
+  email VARCHAR(191) NOT NULL,
+  phone VARCHAR(64) NULL,
+  company VARCHAR(191) NULL,
+  source VARCHAR(64) NOT NULL DEFAULT 'website',
+  status VARCHAR(32) NOT NULL DEFAULT 'new',
+  assigned_to VARCHAR(191) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY ix_mkt_lead_org (org_id),
+  KEY ix_mkt_lead_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_demo_requests (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lead_id BIGINT UNSIGNED NULL,
+  name VARCHAR(191) NOT NULL,
+  email VARCHAR(191) NOT NULL,
+  company VARCHAR(191) NOT NULL DEFAULT '',
+  preferred_at DATETIME NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'new',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mkt_demo_lead FOREIGN KEY (lead_id) REFERENCES marketing_leads (id) ON DELETE SET NULL,
+  KEY ix_mkt_demo_lead (lead_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_contact_messages (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(191) NOT NULL,
+  email VARCHAR(191) NOT NULL,
+  subject VARCHAR(255) NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
+  status VARCHAR(32) NOT NULL DEFAULT 'new',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY ix_mkt_contact_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_newsletter_subscribers (
+  email VARCHAR(191) NOT NULL PRIMARY KEY,
+  confirmed TINYINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_lead_notes (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lead_id BIGINT UNSIGNED NOT NULL,
+  author VARCHAR(191) NOT NULL,
+  note TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mkt_note_lead FOREIGN KEY (lead_id) REFERENCES marketing_leads (id) ON DELETE CASCADE,
+  KEY ix_mkt_note_lead (lead_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_follow_ups (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  lead_id BIGINT UNSIGNED NOT NULL,
+  due_at DATETIME NOT NULL,
+  done TINYINT NOT NULL DEFAULT 0,
+  note VARCHAR(1024) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mkt_followup_lead FOREIGN KEY (lead_id) REFERENCES marketing_leads (id) ON DELETE CASCADE,
+  KEY ix_mkt_followup_lead (lead_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_pricing_plans (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(64) NOT NULL,
+  name VARCHAR(191) NOT NULL,
+  monthly_minor BIGINT NOT NULL DEFAULT 0,
+  annual_minor BIGINT NOT NULL DEFAULT 0,
+  features_json JSON NOT NULL,
+  active TINYINT NOT NULL DEFAULT 1,
+  UNIQUE KEY uq_mkt_plan_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_faqs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(191) NOT NULL,
+  question VARCHAR(512) NOT NULL,
+  answer TEXT NOT NULL,
+  sort INT NOT NULL DEFAULT 0,
+  UNIQUE KEY uq_mkt_faq_slug (slug),
+  KEY ix_mkt_faq_sort (sort)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS marketing_articles (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  slug VARCHAR(191) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  body_md MEDIUMTEXT NOT NULL,
+  published TINYINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_mkt_article_slug (slug)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

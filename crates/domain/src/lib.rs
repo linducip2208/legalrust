@@ -92,6 +92,8 @@ impl Permission {
         ]
     }
 }
+// ---- Marketing lead pipeline ----
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -99,6 +101,167 @@ mod tests {
     fn twelve_roles_and_permissions() {
         assert_eq!(Role::all().len(), 12);
         assert_eq!(Permission::all().len(), 12);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MarketingLeadStatus {
+    New,
+    Contacted,
+    Qualified,
+    Demo,
+    Proposal,
+    Negotiation,
+    Won,
+    Lost,
+}
+
+impl MarketingLeadStatus {
+    pub fn parse(s: &str) -> Option<MarketingLeadStatus> {
+        Some(match s {
+            "new" => MarketingLeadStatus::New,
+            "contacted" => MarketingLeadStatus::Contacted,
+            "qualified" => MarketingLeadStatus::Qualified,
+            "demo" => MarketingLeadStatus::Demo,
+            "proposal" => MarketingLeadStatus::Proposal,
+            "negotiation" => MarketingLeadStatus::Negotiation,
+            "won" => MarketingLeadStatus::Won,
+            "lost" => MarketingLeadStatus::Lost,
+            _ => return None,
+        })
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            MarketingLeadStatus::New => "new",
+            MarketingLeadStatus::Contacted => "contacted",
+            MarketingLeadStatus::Qualified => "qualified",
+            MarketingLeadStatus::Demo => "demo",
+            MarketingLeadStatus::Proposal => "proposal",
+            MarketingLeadStatus::Negotiation => "negotiation",
+            MarketingLeadStatus::Won => "won",
+            MarketingLeadStatus::Lost => "lost",
+        }
+    }
+
+    /// Forward-only pipeline with terminal won/lost; lost may reopen to new.
+    pub fn allowed_transition(from: MarketingLeadStatus, to: MarketingLeadStatus) -> bool {
+        use MarketingLeadStatus::*;
+        matches!(
+            (from, to),
+            (New, Contacted)
+                | (New, Lost)
+                | (Contacted, Qualified)
+                | (Contacted, Lost)
+                | (Qualified, Demo)
+                | (Qualified, Lost)
+                | (Demo, Proposal)
+                | (Demo, Lost)
+                | (Proposal, Negotiation)
+                | (Proposal, Lost)
+                | (Negotiation, Won)
+                | (Negotiation, Lost)
+                | (Lost, New)
+        )
+    }
+}
+
+#[cfg(test)]
+mod marketing_tests {
+    use super::*;
+
+    #[test]
+    fn parse_all_statuses_roundtrip() {
+        for s in [
+            "new",
+            "contacted",
+            "qualified",
+            "demo",
+            "proposal",
+            "negotiation",
+            "won",
+            "lost",
+        ] {
+            let st = MarketingLeadStatus::parse(s).expect("parse");
+            assert_eq!(st.as_str(), s);
+        }
+        assert_eq!(MarketingLeadStatus::parse("bogus"), None);
+    }
+
+    #[test]
+    fn happy_path_pipeline_is_allowed() {
+        use MarketingLeadStatus::*;
+        let path = [
+            (New, Contacted),
+            (Contacted, Qualified),
+            (Qualified, Demo),
+            (Demo, Proposal),
+            (Proposal, Negotiation),
+            (Negotiation, Won),
+        ];
+        for (from, to) in path {
+            assert!(MarketingLeadStatus::allowed_transition(from, to));
+        }
+    }
+
+    #[test]
+    fn skip_ahead_is_illegal() {
+        use MarketingLeadStatus::*;
+        assert!(!MarketingLeadStatus::allowed_transition(New, Qualified));
+        assert!(!MarketingLeadStatus::allowed_transition(New, Demo));
+        assert!(!MarketingLeadStatus::allowed_transition(Contacted, Demo));
+        assert!(!MarketingLeadStatus::allowed_transition(Demo, Won));
+    }
+
+    #[test]
+    fn lost_from_any_stage_but_terminal_won() {
+        use MarketingLeadStatus::*;
+        for from in [New, Contacted, Qualified, Demo, Proposal, Negotiation] {
+            assert!(MarketingLeadStatus::allowed_transition(from, Lost));
+        }
+        assert!(!MarketingLeadStatus::allowed_transition(Won, Lost));
+        assert!(!MarketingLeadStatus::allowed_transition(Lost, Won));
+    }
+
+    #[test]
+    fn lost_can_reopen_to_new() {
+        use MarketingLeadStatus::*;
+        assert!(MarketingLeadStatus::allowed_transition(Lost, New));
+        assert!(!MarketingLeadStatus::allowed_transition(Lost, Contacted));
+    }
+
+    #[test]
+    fn terminal_won_has_no_outgoing() {
+        use MarketingLeadStatus::*;
+        for to in [
+            New,
+            Contacted,
+            Qualified,
+            Demo,
+            Proposal,
+            Negotiation,
+            Won,
+            Lost,
+        ] {
+            assert!(!MarketingLeadStatus::allowed_transition(Won, to));
+        }
+    }
+
+    #[test]
+    fn self_transition_is_illegal() {
+        use MarketingLeadStatus::*;
+        for st in [
+            New,
+            Contacted,
+            Qualified,
+            Demo,
+            Proposal,
+            Negotiation,
+            Won,
+            Lost,
+        ] {
+            assert!(!MarketingLeadStatus::allowed_transition(st, st));
+        }
     }
 }
 

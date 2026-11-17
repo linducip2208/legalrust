@@ -43,6 +43,11 @@
 - Final workspace verification (main): fmt PASS, clippy `-D warnings` PASS, `cargo test --workspace` **118 passed, 0 failed** (+29: mobile 12, integrations 14, ocr 3).
 - Acceptance 28/32 = 87/100. Remaining: OCR/AI providers live, final security audit, production deployment + counsel sign-off.
 
+## 2026-11-17 (12) — wave 4: marketing backend + Tabler + WAN (main)
+- Migration 0010 marketing (9 tabel) + MarketingStore (memory+MySQL) + lead status state-machine; 23 endpoint public/admin (lead pipeline, notes, assign, follow-up, pricing/faq/article CMS) — RBAC Approve + audit.
+- Landing/login/dasbor dirombak ke Tabler self-host (CSS+JS+49 ikon woff2 lokal, font PlusJakarta lokal, nol CDN). Foto hero/CTA + 4 aset fitur dari ComfyUI RealVisXL (reviewed, approved). WAN 2.1 T2V 1.3B terkonfimasi ada + render 9 frame jalan (user pilih: foto saja — render video dibatalkan, stills diekstrak dari frame bila perlu).
+- Workspace: fmt PASS, clippy -D warnings PASS, **171 passed, 0 failed**. Binary :8080 di-swap; legalrust.test 200 semua (landing, vendor, hero, pricing, faqs).
+
 ## 2026-11-17 (10) — swap binary :8080, legalrust.test live (main)
 - Penyebab NOT_FOUND: PID 37512 (binary lama, tanpa route halaman) masih memegang :8080. Dihentikan, `cargo build`, start binary baru dengan JWT_SECRET/INTEGRATION_SECRET dari `.env` + DATABASE_URL root-tanpa-password ke DB `legalrust` (baru dibuat).
 - Hasil: `/` 200 landing, `/healthz` ok, `/readyz` db:true (migrasi 0001–0009 jalan), register+login 200, `http://legalrust.test/` 200 HTML landing via proxy Laragon.
@@ -52,7 +57,6 @@
 - Live check di :8093: `/`, `/login`, `/app` semua 200 + HTML benar. `legalrust.test` (proxy Laragon → :8080) otomatis ikut tampil setelah server :8080 di-restart dengan binary baru.
 - Tes `public_pages_serve_landing_login_app` hijau. Workspace kini **119 passed, 0 failed**.
 
-## 2026-11-17 (11) — redesign total UI publik (main, keluhan user valid)
-- Gaya editorial-luxury: paper hangat + serif Fraunces + Plus Jakarta Sans, floating island nav, hero masif, strip statistik jujur (32/119/9/100%), bento asimetris 6 fitur sesuai kemampuan nyata (DMS, akta, OCR, keuangan, trust ledger, AI/RAG/audit), reveal-on-scroll + hover spring physics.
+## 2026-11-17 (11) — redesign total UI publik (main, keluhan user valid)- Gaya editorial-luxury: paper hangat + serif Fraunces + Plus Jakarta Sans, floating island nav, hero masif, strip statistik jujur (32/119/9/100%), bento asimetris 6 fitur sesuai kemampuan nyata (DMS, akta, OCR, keuangan, trust ledger, AI/RAG/audit), reveal-on-scroll + hover spring physics.
 - Login: kartu double-bezel, tab Masuk/Daftar organisasi, pesan error + loading state. Dasbor: 6 kartu stat (termasuk total saldo trust Rp) + tabel perkara ber-badge status.
 - Binary :8080 di-swap; `legalrust.test/` + `/login` + `/app` 200 terverifikasi live.

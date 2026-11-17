@@ -820,3 +820,450 @@ impl OpsStore for MysqlOps {
         Ok((a, b))
     }
 }
+
+fn mkt_lead_row(x: &sqlx::mysql::MySqlRow) -> Result<MarketingLeadRow, StoreError> {
+    use sqlx::Row;
+    Ok(MarketingLeadRow {
+        id: x.get::<u64, _>("id") as i64,
+        org: x.get::<Option<String>, _>("org_id"),
+        name: x.get::<String, _>("name"),
+        email: x.get::<String, _>("email"),
+        phone: x.get::<Option<String>, _>("phone"),
+        company: x.get::<Option<String>, _>("company"),
+        source: x.get::<String, _>("source"),
+        status: x.get::<String, _>("status"),
+        assigned_to: x.get::<Option<String>, _>("assigned_to"),
+    })
+}
+
+#[async_trait::async_trait]
+impl MarketingStore for MysqlOps {
+    async fn mkt_lead_create(
+        &self,
+        org: Option<&str>,
+        name: &str,
+        email: &str,
+        phone: Option<&str>,
+        company: Option<&str>,
+        source: &str,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        if name.trim().is_empty() || !email.contains('@') {
+            return Err(StoreError::Conflict("name and valid email required".into()));
+        }
+        let r = sqlx::query("INSERT INTO marketing_leads (org_id, name, email, phone, company, source) VALUES (?,?,?,?,?,?)").bind(org).bind(name).bind(email).bind(phone).bind(company).bind(source).execute(&self.pool).await.map_err(db_err)?;
+        Ok(MarketingLeadRow {
+            id: r.last_insert_id() as i64,
+            org: org.map(str::to_string),
+            name: name.into(),
+            email: email.into(),
+            phone: phone.map(str::to_string),
+            company: company.map(str::to_string),
+            source: source.into(),
+            status: "new".into(),
+            assigned_to: None,
+        })
+    }
+    async fn mkt_lead_list(&self, org: Option<&str>) -> Result<Vec<MarketingLeadRow>, StoreError> {
+        let rows = if let Some(o) = org {
+            sqlx::query("SELECT id, org_id, name, email, phone, company, source, status, assigned_to FROM marketing_leads WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(o).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, name, email, phone, company, source, status, assigned_to FROM marketing_leads WHERE org_id IS NULL ORDER BY id DESC LIMIT 200").fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        rows.iter().map(mkt_lead_row).collect()
+    }
+    async fn mkt_lead_get(&self, id: i64) -> Result<MarketingLeadRow, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, name, email, phone, company, source, status, assigned_to FROM marketing_leads WHERE id=?").bind(id as u64).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        mkt_lead_row(&x)
+    }
+    async fn mkt_lead_set_status(
+        &self,
+        id: i64,
+        status: &str,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        use sqlx::Row;
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: String = sqlx::query("SELECT status FROM marketing_leads WHERE id=? FOR UPDATE")
+            .bind(id as u64)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .ok_or(StoreError::NotFound)?
+            .try_get("status")
+            .map_err(|e| StoreError::Db(e.to_string()))?;
+        if !marketing_allowed_transition(&cur, status) {
+            return Err(StoreError::Conflict(format!(
+                "illegal transition {cur} -> {status}"
+            )));
+        }
+        sqlx::query("UPDATE marketing_leads SET status=? WHERE id=?")
+            .bind(status)
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        self.mkt_lead_get(id).await
+    }
+    async fn mkt_lead_assign(
+        &self,
+        id: i64,
+        assignee: Option<&str>,
+    ) -> Result<MarketingLeadRow, StoreError> {
+        let n = sqlx::query("UPDATE marketing_leads SET assigned_to=? WHERE id=?")
+            .bind(assignee)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        self.mkt_lead_get(id).await
+    }
+    async fn mkt_note_add(
+        &self,
+        lead: i64,
+        author: &str,
+        note: &str,
+    ) -> Result<MarketingNoteRow, StoreError> {
+        if note.trim().is_empty() {
+            return Err(StoreError::Conflict("note required".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO marketing_lead_notes (lead_id, author, note) VALUES (?,?,?)")
+                .bind(lead as u64)
+                .bind(author)
+                .bind(note)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(MarketingNoteRow {
+            id: r.last_insert_id() as i64,
+            lead_id: lead,
+            author: author.into(),
+            note: note.into(),
+        })
+    }
+    async fn mkt_note_list(&self, lead: i64) -> Result<Vec<MarketingNoteRow>, StoreError> {
+        use sqlx::Row;
+        // Surface NotFound for notes on a missing lead instead of an empty list.
+        self.mkt_lead_get(lead).await?;
+        let rows = sqlx::query("SELECT id, lead_id, author, note FROM marketing_lead_notes WHERE lead_id=? ORDER BY id").bind(lead as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingNoteRow {
+                id: x.get::<u64, _>("id") as i64,
+                lead_id: x.get::<u64, _>("lead_id") as i64,
+                author: x.get::<String, _>("author"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn mkt_followup_add(
+        &self,
+        lead: i64,
+        due_at: &str,
+        note: &str,
+    ) -> Result<MarketingFollowUpRow, StoreError> {
+        let r =
+            sqlx::query("INSERT INTO marketing_follow_ups (lead_id, due_at, note) VALUES (?,?,?)")
+                .bind(lead as u64)
+                .bind(due_at)
+                .bind(note)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(MarketingFollowUpRow {
+            id: r.last_insert_id() as i64,
+            lead_id: lead,
+            due_at: due_at.into(),
+            done: false,
+            note: note.into(),
+        })
+    }
+    async fn mkt_followup_list(&self, lead: i64) -> Result<Vec<MarketingFollowUpRow>, StoreError> {
+        use sqlx::Row;
+        self.mkt_lead_get(lead).await?;
+        let rows = sqlx::query("SELECT id, lead_id, due_at, done, note FROM marketing_follow_ups WHERE lead_id=? ORDER BY id").bind(lead as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingFollowUpRow {
+                id: x.get::<u64, _>("id") as i64,
+                lead_id: x.get::<u64, _>("lead_id") as i64,
+                due_at: x.get::<chrono::NaiveDateTime, _>("due_at").to_string(),
+                done: x.get::<bool, _>("done"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn mkt_followup_done(&self, id: i64) -> Result<MarketingFollowUpRow, StoreError> {
+        use sqlx::Row;
+        let n = sqlx::query("UPDATE marketing_follow_ups SET done=1 WHERE id=?")
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        let x = sqlx::query(
+            "SELECT id, lead_id, due_at, done, note FROM marketing_follow_ups WHERE id=?",
+        )
+        .bind(id as u64)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(MarketingFollowUpRow {
+            id: x.get::<u64, _>("id") as i64,
+            lead_id: x.get::<u64, _>("lead_id") as i64,
+            due_at: x.get::<chrono::NaiveDateTime, _>("due_at").to_string(),
+            done: x.get::<bool, _>("done"),
+            note: x.get::<String, _>("note"),
+        })
+    }
+    async fn mkt_demo_create(
+        &self,
+        lead: Option<i64>,
+        name: &str,
+        email: &str,
+        company: &str,
+        preferred_at: Option<&str>,
+    ) -> Result<MarketingDemoRow, StoreError> {
+        if !email.contains('@') {
+            return Err(StoreError::Conflict("valid email required".into()));
+        }
+        let r = sqlx::query("INSERT INTO marketing_demo_requests (lead_id, name, email, company, preferred_at) VALUES (?,?,?,?,?)").bind(lead.map(|v| v as u64)).bind(name).bind(email).bind(company).bind(preferred_at).execute(&self.pool).await.map_err(db_err)?;
+        Ok(MarketingDemoRow {
+            id: r.last_insert_id() as i64,
+            lead_id: lead,
+            name: name.into(),
+            email: email.into(),
+            company: company.into(),
+            preferred_at: preferred_at.map(str::to_string),
+            status: "new".into(),
+        })
+    }
+    async fn mkt_demo_list(&self) -> Result<Vec<MarketingDemoRow>, StoreError> {
+        use sqlx::Row;
+        let rows = sqlx::query("SELECT id, lead_id, name, email, company, preferred_at, status FROM marketing_demo_requests ORDER BY id DESC LIMIT 200").fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingDemoRow {
+                id: x.get::<u64, _>("id") as i64,
+                lead_id: x.get::<Option<u64>, _>("lead_id").map(|v| v as i64),
+                name: x.get::<String, _>("name"),
+                email: x.get::<String, _>("email"),
+                company: x.get::<String, _>("company"),
+                preferred_at: x
+                    .get::<Option<chrono::NaiveDateTime>, _>("preferred_at")
+                    .map(|v| v.to_string()),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn mkt_contact_create(
+        &self,
+        name: &str,
+        email: &str,
+        subject: &str,
+        message: &str,
+    ) -> Result<MarketingContactRow, StoreError> {
+        if !email.contains('@') || message.trim().is_empty() {
+            return Err(StoreError::Conflict(
+                "valid email and message required".into(),
+            ));
+        }
+        let r = sqlx::query("INSERT INTO marketing_contact_messages (name, email, subject, message) VALUES (?,?,?,?)").bind(name).bind(email).bind(subject).bind(message).execute(&self.pool).await.map_err(db_err)?;
+        Ok(MarketingContactRow {
+            id: r.last_insert_id() as i64,
+            name: name.into(),
+            email: email.into(),
+            subject: subject.into(),
+            message: message.into(),
+            status: "new".into(),
+        })
+    }
+    async fn mkt_contact_list(&self) -> Result<Vec<MarketingContactRow>, StoreError> {
+        use sqlx::Row;
+        let rows = sqlx::query("SELECT id, name, email, subject, message, status FROM marketing_contact_messages ORDER BY id DESC LIMIT 200").fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingContactRow {
+                id: x.get::<u64, _>("id") as i64,
+                name: x.get::<String, _>("name"),
+                email: x.get::<String, _>("email"),
+                subject: x.get::<String, _>("subject"),
+                message: x.get::<String, _>("message"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn mkt_subscribe(&self, email: &str) -> Result<MarketingSubscriberRow, StoreError> {
+        let key = email.trim().to_lowercase();
+        if !key.contains('@') {
+            return Err(StoreError::Conflict("valid email required".into()));
+        }
+        sqlx::query("INSERT INTO marketing_newsletter_subscribers (email) VALUES (?)")
+            .bind(&key)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(MarketingSubscriberRow {
+            email: key,
+            confirmed: false,
+        })
+    }
+    async fn mkt_unsubscribe(&self, email: &str) -> Result<(), StoreError> {
+        let key = email.trim().to_lowercase();
+        let n = sqlx::query("DELETE FROM marketing_newsletter_subscribers WHERE email=?")
+            .bind(&key)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn mkt_pricing_upsert(
+        &self,
+        code: &str,
+        name: &str,
+        monthly_minor: i64,
+        annual_minor: i64,
+        features_json: &str,
+        active: bool,
+    ) -> Result<MarketingPlanRow, StoreError> {
+        if code.trim().is_empty() {
+            return Err(StoreError::Conflict("code required".into()));
+        }
+        sqlx::query("INSERT INTO marketing_pricing_plans (code, name, monthly_minor, annual_minor, features_json, active) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE name=VALUES(name), monthly_minor=VALUES(monthly_minor), annual_minor=VALUES(annual_minor), features_json=VALUES(features_json), active=VALUES(active)").bind(code).bind(name).bind(monthly_minor).bind(annual_minor).bind(features_json).bind(active).execute(&self.pool).await.map_err(db_err)?;
+        use sqlx::Row;
+        let x = sqlx::query("SELECT id, code, name, monthly_minor, annual_minor, CAST(features_json AS CHAR) AS features_json, active FROM marketing_pricing_plans WHERE code=?").bind(code).fetch_one(&self.pool).await.map_err(db_err)?;
+        Ok(MarketingPlanRow {
+            id: x.get::<u64, _>("id") as i64,
+            code: x.get::<String, _>("code"),
+            name: x.get::<String, _>("name"),
+            monthly_minor: x.get::<i64, _>("monthly_minor"),
+            annual_minor: x.get::<i64, _>("annual_minor"),
+            features_json: x.get::<String, _>("features_json"),
+            active: x.get::<bool, _>("active"),
+        })
+    }
+    async fn mkt_pricing_list(&self) -> Result<Vec<MarketingPlanRow>, StoreError> {
+        use sqlx::Row;
+        let rows = sqlx::query("SELECT id, code, name, monthly_minor, annual_minor, CAST(features_json AS CHAR) AS features_json, active FROM marketing_pricing_plans ORDER BY id").fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingPlanRow {
+                id: x.get::<u64, _>("id") as i64,
+                code: x.get::<String, _>("code"),
+                name: x.get::<String, _>("name"),
+                monthly_minor: x.get::<i64, _>("monthly_minor"),
+                annual_minor: x.get::<i64, _>("annual_minor"),
+                features_json: x.get::<String, _>("features_json"),
+                active: x.get::<bool, _>("active"),
+            })
+            .collect())
+    }
+    async fn mkt_faq_upsert(
+        &self,
+        slug: &str,
+        question: &str,
+        answer: &str,
+        sort: i64,
+    ) -> Result<MarketingFaqRow, StoreError> {
+        if slug.trim().is_empty() {
+            return Err(StoreError::Conflict("slug required".into()));
+        }
+        sqlx::query("INSERT INTO marketing_faqs (slug, question, answer, sort) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE question=VALUES(question), answer=VALUES(answer), sort=VALUES(sort)").bind(slug).bind(question).bind(answer).bind(sort as i32).execute(&self.pool).await.map_err(db_err)?;
+        use sqlx::Row;
+        let x =
+            sqlx::query("SELECT id, slug, question, answer, sort FROM marketing_faqs WHERE slug=?")
+                .bind(slug)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(MarketingFaqRow {
+            id: x.get::<u64, _>("id") as i64,
+            slug: x.get::<String, _>("slug"),
+            question: x.get::<String, _>("question"),
+            answer: x.get::<String, _>("answer"),
+            sort: x.get::<i32, _>("sort") as i64,
+        })
+    }
+    async fn mkt_faq_list(&self) -> Result<Vec<MarketingFaqRow>, StoreError> {
+        use sqlx::Row;
+        let rows = sqlx::query(
+            "SELECT id, slug, question, answer, sort FROM marketing_faqs ORDER BY sort, id",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingFaqRow {
+                id: x.get::<u64, _>("id") as i64,
+                slug: x.get::<String, _>("slug"),
+                question: x.get::<String, _>("question"),
+                answer: x.get::<String, _>("answer"),
+                sort: x.get::<i32, _>("sort") as i64,
+            })
+            .collect())
+    }
+    async fn mkt_article_upsert(
+        &self,
+        slug: &str,
+        title: &str,
+        body_md: &str,
+        published: bool,
+    ) -> Result<MarketingArticleRow, StoreError> {
+        if slug.trim().is_empty() {
+            return Err(StoreError::Conflict("slug required".into()));
+        }
+        sqlx::query("INSERT INTO marketing_articles (slug, title, body_md, published) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE title=VALUES(title), body_md=VALUES(body_md), published=VALUES(published)").bind(slug).bind(title).bind(body_md).bind(published).execute(&self.pool).await.map_err(db_err)?;
+        self.mkt_article_get(slug).await
+    }
+    async fn mkt_article_get(&self, slug: &str) -> Result<MarketingArticleRow, StoreError> {
+        use sqlx::Row;
+        let x = sqlx::query(
+            "SELECT id, slug, title, body_md, published FROM marketing_articles WHERE slug=?",
+        )
+        .bind(slug)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .ok_or(StoreError::NotFound)?;
+        Ok(MarketingArticleRow {
+            id: x.get::<u64, _>("id") as i64,
+            slug: x.get::<String, _>("slug"),
+            title: x.get::<String, _>("title"),
+            body_md: x.get::<String, _>("body_md"),
+            published: x.get::<bool, _>("published"),
+        })
+    }
+    async fn mkt_article_list(
+        &self,
+        published_only: bool,
+    ) -> Result<Vec<MarketingArticleRow>, StoreError> {
+        use sqlx::Row;
+        let rows = if published_only {
+            sqlx::query("SELECT id, slug, title, body_md, published FROM marketing_articles WHERE published=1 ORDER BY id DESC LIMIT 200").fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, slug, title, body_md, published FROM marketing_articles ORDER BY id DESC LIMIT 200").fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingArticleRow {
+                id: x.get::<u64, _>("id") as i64,
+                slug: x.get::<String, _>("slug"),
+                title: x.get::<String, _>("title"),
+                body_md: x.get::<String, _>("body_md"),
+                published: x.get::<bool, _>("published"),
+            })
+            .collect())
+    }
+}

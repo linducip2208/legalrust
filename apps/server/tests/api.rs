@@ -1037,6 +1037,453 @@ async fn shares_reports_audit_jobs_trust_sse() {
     assert_eq!(res.headers()["content-type"], "text/event-stream");
 }
 
+fn pub_post(uri: &str, json: &str) -> Request<Body> {
+    Request::builder()
+        .uri(uri)
+        .method("POST")
+        .header("content-type", "application/json")
+        .body(Body::from(json.to_string()))
+        .unwrap()
+}
+fn pub_get(uri: &str) -> Request<Body> {
+    Request::builder().uri(uri).body(Body::empty()).unwrap()
+}
+fn put_auth(uri: &str, json: &str, tok: &str) -> Request<Body> {
+    Request::builder()
+        .uri(uri)
+        .method("PUT")
+        .header("content-type", "application/json")
+        .header(
+            "authorization",
+            format!("Bearer {tok}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::from(json.to_string()))
+        .unwrap()
+}
+fn del_auth(uri: &str, tok: &str) -> Request<Body> {
+    Request::builder()
+        .uri(uri)
+        .method("DELETE")
+        .header(
+            "authorization",
+            format!("Bearer {tok}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::empty())
+        .unwrap()
+}
+
+#[tokio::test]
+async fn mkt_public_contact_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/contact",
+            r#"{"name":"Budi","email":"budi@x.id","subject":"Harga","message":"Minta penawaran paket notaris"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["id"].as_i64().unwrap() > 0);
+    assert!(j["lead_id"].as_i64().unwrap() > 0);
+}
+
+#[tokio::test]
+async fn mkt_public_contact_invalid_email_422() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/contact",
+            r#"{"name":"Budi","email":"not-an-email","subject":"Hi","message":"hello world"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn mkt_newsletter_subscribe_then_dup_409() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/subscribe",
+            r#"{"email":"news@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/subscribe",
+            r#"{"email":"news@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn mkt_public_demo_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/demo-requests",
+            r#"{"name":"Sari","email":"sari@x.id","company":"PT Maju","preferred_at":"2026-12-01"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["id"].as_i64().unwrap() > 0);
+    assert!(j["lead_id"].as_i64().unwrap() > 0);
+}
+
+#[tokio::test]
+async fn mkt_public_sales_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/sales-inquiries",
+            r#"{"name":"Tono","email":"tono@x.id","company":"PT Mundur","message":"Butuh integrasi API dokumen"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "new");
+}
+
+#[tokio::test]
+async fn mkt_public_pricing_and_faq_lists() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktcms@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/pricing",
+            r#"{"code":"pro","name":"Pro","monthly_minor":99000,"annual_minor":990000,"features":["akta","ocr"],"active":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/faqs",
+            r#"{"slug":"harga","question":"Berapa harga?","answer":"Mulai gratis.","sort":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/pricing"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j.as_array().unwrap().iter().any(|p| p["code"] == "pro"));
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/faqs"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j.as_array().unwrap().iter().any(|f| f["slug"] == "harga"));
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/features"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn mkt_admin_unauthorized_401() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/admin/leads"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn mkt_admin_lead_pipeline_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktpipe@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Prospek","email":"p@x.id","company":"PT Calon","source":"manual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "new");
+    let res = a
+        .clone()
+        .oneshot(put_auth(
+            &format!("/api/v1/admin/leads/{lid}"),
+            r#"{"status":"contacted"}"#,
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/admin/leads?status=contacted&limit=10", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|l| l["id"].as_i64() == Some(lid)));
+}
+
+#[tokio::test]
+async fn mkt_admin_lead_illegal_transition_409() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktbad@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Skip","email":"skip@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(put_auth(
+            &format!("/api/v1/admin/leads/{lid}"),
+            r#"{"status":"qualified"}"#,
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn mkt_admin_assign_note_followup_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktflow@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Follow","email":"f@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/assign"),
+            r#"{"assignee":"staff-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["assigned_to"].as_str().unwrap(),
+        "staff-1"
+    );
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/notes"),
+            r#"{"note":"called twice"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/admin/leads/{lid}/follow-ups"),
+            r#"{"due_at":"2026-12-02 10:00:00","note":"call back"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}/follow-ups"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn mkt_admin_delete_soft_parks_lost() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mktdel@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Gone","email":"gone@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "lost");
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "lost");
+}
+
+#[tokio::test]
+async fn mkt_public_article_404_and_published_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/articles/nope-missing"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let tok = reg(&a, "mktart@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/articles",
+            r##"{"slug":"panduan-akta","title":"Panduan Akta","body_md":"# Isi","published":true}"##,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/admin/articles",
+            r#"{"slug":"draft-x","title":"Draft","body_md":"wip"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/articles/panduan-akta"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["title"].as_str().unwrap(),
+        "Panduan Akta"
+    );
+    let res = a
+        .clone()
+        .oneshot(pub_get("/api/v1/public/articles?published=1"))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["slug"] == "panduan-akta"));
+}
+
+#[tokio::test]
+async fn mkt_admin_contacts_demos_lists() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/contact",
+            r#"{"name":"List","email":"list@x.id","subject":"Tanya","message":"apakah ada demo produk?"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/demo-requests",
+            r#"{"name":"List","email":"list@x.id","company":"PT List"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tok = reg(&a, "mktlist@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/admin/contacts", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/admin/demo-requests", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+}
+
 #[tokio::test]
 async fn trust_transfer_json_flow() {
     use tower::ServiceExt;

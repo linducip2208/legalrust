@@ -108,6 +108,193 @@ pub struct AuditRow {
     pub entity_id: i64,
     pub created: String,
 }
+#[derive(Debug, Clone)]
+pub struct MarketingLeadRow {
+    pub id: i64,
+    pub org: Option<String>,
+    pub name: String,
+    pub email: String,
+    pub phone: Option<String>,
+    pub company: Option<String>,
+    pub source: String,
+    pub status: String,
+    pub assigned_to: Option<String>,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingDemoRow {
+    pub id: i64,
+    pub lead_id: Option<i64>,
+    pub name: String,
+    pub email: String,
+    pub company: String,
+    pub preferred_at: Option<String>,
+    pub status: String,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingContactRow {
+    pub id: i64,
+    pub name: String,
+    pub email: String,
+    pub subject: String,
+    pub message: String,
+    pub status: String,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingSubscriberRow {
+    pub email: String,
+    pub confirmed: bool,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingNoteRow {
+    pub id: i64,
+    pub lead_id: i64,
+    pub author: String,
+    pub note: String,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingFollowUpRow {
+    pub id: i64,
+    pub lead_id: i64,
+    pub due_at: String,
+    pub done: bool,
+    pub note: String,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingPlanRow {
+    pub id: i64,
+    pub code: String,
+    pub name: String,
+    pub monthly_minor: i64,
+    pub annual_minor: i64,
+    pub features_json: String,
+    pub active: bool,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingFaqRow {
+    pub id: i64,
+    pub slug: String,
+    pub question: String,
+    pub answer: String,
+    pub sort: i64,
+}
+#[derive(Debug, Clone)]
+pub struct MarketingArticleRow {
+    pub id: i64,
+    pub slug: String,
+    pub title: String,
+    pub body_md: String,
+    pub published: bool,
+}
+
+/// String-level pipeline guard mirroring `legalrust-domain::MarketingLeadStatus`.
+/// Kept here so the database crate needs no domain dependency.
+pub fn marketing_allowed_transition(from: &str, to: &str) -> bool {
+    matches!(
+        (from, to),
+        ("new", "contacted")
+            | ("new", "lost")
+            | ("contacted", "qualified")
+            | ("contacted", "lost")
+            | ("qualified", "demo")
+            | ("qualified", "lost")
+            | ("demo", "proposal")
+            | ("demo", "lost")
+            | ("proposal", "negotiation")
+            | ("proposal", "lost")
+            | ("negotiation", "won")
+            | ("negotiation", "lost")
+            | ("lost", "new")
+    )
+}
+
+#[async_trait::async_trait]
+pub trait MarketingStore: Send + Sync {
+    async fn mkt_lead_create(
+        &self,
+        org: Option<&str>,
+        name: &str,
+        email: &str,
+        phone: Option<&str>,
+        company: Option<&str>,
+        source: &str,
+    ) -> Result<MarketingLeadRow, StoreError>;
+    async fn mkt_lead_list(&self, org: Option<&str>) -> Result<Vec<MarketingLeadRow>, StoreError>;
+    async fn mkt_lead_get(&self, id: i64) -> Result<MarketingLeadRow, StoreError>;
+    async fn mkt_lead_set_status(
+        &self,
+        id: i64,
+        status: &str,
+    ) -> Result<MarketingLeadRow, StoreError>;
+    async fn mkt_lead_assign(
+        &self,
+        id: i64,
+        assignee: Option<&str>,
+    ) -> Result<MarketingLeadRow, StoreError>;
+    async fn mkt_note_add(
+        &self,
+        lead: i64,
+        author: &str,
+        note: &str,
+    ) -> Result<MarketingNoteRow, StoreError>;
+    async fn mkt_note_list(&self, lead: i64) -> Result<Vec<MarketingNoteRow>, StoreError>;
+    async fn mkt_followup_add(
+        &self,
+        lead: i64,
+        due_at: &str,
+        note: &str,
+    ) -> Result<MarketingFollowUpRow, StoreError>;
+    async fn mkt_followup_list(&self, lead: i64) -> Result<Vec<MarketingFollowUpRow>, StoreError>;
+    async fn mkt_followup_done(&self, id: i64) -> Result<MarketingFollowUpRow, StoreError>;
+    async fn mkt_demo_create(
+        &self,
+        lead: Option<i64>,
+        name: &str,
+        email: &str,
+        company: &str,
+        preferred_at: Option<&str>,
+    ) -> Result<MarketingDemoRow, StoreError>;
+    async fn mkt_demo_list(&self) -> Result<Vec<MarketingDemoRow>, StoreError>;
+    async fn mkt_contact_create(
+        &self,
+        name: &str,
+        email: &str,
+        subject: &str,
+        message: &str,
+    ) -> Result<MarketingContactRow, StoreError>;
+    async fn mkt_contact_list(&self) -> Result<Vec<MarketingContactRow>, StoreError>;
+    async fn mkt_subscribe(&self, email: &str) -> Result<MarketingSubscriberRow, StoreError>;
+    async fn mkt_unsubscribe(&self, email: &str) -> Result<(), StoreError>;
+    async fn mkt_pricing_upsert(
+        &self,
+        code: &str,
+        name: &str,
+        monthly_minor: i64,
+        annual_minor: i64,
+        features_json: &str,
+        active: bool,
+    ) -> Result<MarketingPlanRow, StoreError>;
+    async fn mkt_pricing_list(&self) -> Result<Vec<MarketingPlanRow>, StoreError>;
+    async fn mkt_faq_upsert(
+        &self,
+        slug: &str,
+        question: &str,
+        answer: &str,
+        sort: i64,
+    ) -> Result<MarketingFaqRow, StoreError>;
+    async fn mkt_faq_list(&self) -> Result<Vec<MarketingFaqRow>, StoreError>;
+    async fn mkt_article_upsert(
+        &self,
+        slug: &str,
+        title: &str,
+        body_md: &str,
+        published: bool,
+    ) -> Result<MarketingArticleRow, StoreError>;
+    async fn mkt_article_get(&self, slug: &str) -> Result<MarketingArticleRow, StoreError>;
+    async fn mkt_article_list(
+        &self,
+        published_only: bool,
+    ) -> Result<Vec<MarketingArticleRow>, StoreError>;
+}
 #[async_trait::async_trait]
 pub trait OpsStore: Send + Sync {
     async fn ocr_create(&self, org: &str, doc: i64, doc_type: &str) -> Result<i64, StoreError>;

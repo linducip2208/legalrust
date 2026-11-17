@@ -31,6 +31,9 @@ pub enum DbError {
     Migrate(String),
 }
 pub use ops::{
-    AuditRow, DeedRow, InvoiceRow, JobRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow,
-    RagHit, ShareRow, TemplateRow, TrustAccountRow, TrustEntryRow,
+    marketing_allowed_transition, AuditRow, DeedRow, InvoiceRow, JobRow, MarketingArticleRow,
+    MarketingContactRow, MarketingDemoRow, MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow,
+    MarketingNoteRow, MarketingPlanRow, MarketingStore, MarketingSubscriberRow, NotifRow,
+    OcrFieldRow, OcrJobRow, OpsStore, PaymentRow, RagHit, ShareRow, TemplateRow, TrustAccountRow,
+    TrustEntryRow,
 };

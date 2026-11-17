@@ -29,26 +29,29 @@ async fn main() -> anyhow::Result<()> {
             None
         }
     };
-    let (users, core, ops): (
+    #[allow(clippy::type_complexity)]
+    let (users, core, ops, mkt): (
         Arc<dyn legalrust_database::UserStore>,
         Arc<dyn legalrust_database::CoreStore>,
         Arc<dyn legalrust_database::OpsStore>,
+        Arc<dyn legalrust_database::MarketingStore>,
     ) = match &pool {
         Some(p) => {
             let m = Arc::new(legalrust_database::mysql::MysqlStores::new(p.clone()));
             let o = Arc::new(legalrust_database::ops_mysql::MysqlOps::new(p.clone()));
-            (m.clone(), m, o)
+            (m.clone(), m, o.clone(), o)
         }
         None => {
             let m = Arc::new(legalrust_database::memory::MemoryStores::default());
             let o = Arc::new(legalrust_database::ops_memory::MemoryOps::default());
-            (m.clone(), m, o)
+            (m.clone(), m, o.clone(), o)
         }
     };
     let mut stores = Stores::new(
         users,
         core,
         ops,
+        mkt,
         Arc::new(LocalStore::new(std::path::PathBuf::from("./var/objects"))),
         secret,
     );
