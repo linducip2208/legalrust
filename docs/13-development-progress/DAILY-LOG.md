@@ -68,3 +68,10 @@
 ## 2026-11-17 (11) — redesign total UI publik (main, keluhan user valid)- Gaya editorial-luxury: paper hangat + serif Fraunces + Plus Jakarta Sans, floating island nav, hero masif, strip statistik jujur (32/119/9/100%), bento asimetris 6 fitur sesuai kemampuan nyata (DMS, akta, OCR, keuangan, trust ledger, AI/RAG/audit), reveal-on-scroll + hover spring physics.
 - Login: kartu double-bezel, tab Masuk/Daftar organisasi, pesan error + loading state. Dasbor: 6 kartu stat (termasuk total saldo trust Rp) + tabel perkara ber-badge status.
 - Binary :8080 di-swap; `legalrust.test/` + `/login` + `/app` 200 terverifikasi live.
+
+## 2026-11-18 — autonomous wave (E. Setiawan + agents)
+- Global search: `GET /api/v1/search` tenant-scoped + search box /app (59 API tests green).
+- Audit repo formal: INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP/RISK-REGISTER.
+- Marketing admin API (23 routes) + 10 tests; workspace **197 passed, 0 failed**.
+- Fix TIMESTAMP decode panic (DATE_FORMAT/UNIX_TIMESTAMP); /orgs/me 200.
+- Mobile overflow fixed + verified; server logging ke logs/autonomous/.
