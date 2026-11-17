@@ -7905,7 +7905,7 @@
   "evidence": [
    "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
    "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing",
-   "note: workspace Cargo.toml: argon2 0.5 + jsonwebtoken 9; lib.rs:1454-1456 hash_password/verify_password live"
+   "note: crates/auth/Cargo.toml: argon2 0.5; lib.rs:1454-1456 legalrust_auth::hash_password/verify_password live"
   ]
  },
  {
