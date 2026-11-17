@@ -1,0 +1,103 @@
+from_id,from_title,to_id,to_title,relation
+F-D01-014,Risk-based KYC tiering (CDD/EDD),F-D02-029,Client risk profile,risk-tier-consumed-by
+F-D01-024,Duplicate identity detection,F-D02-025,Client data merge & dedupe,candidate-merge
+F-D01-022,Minor / guardian identity handling,F-D02-001,Client master record (individual),creates-record-in
+F-D01-021,Consent capture for data processing (UU PDP),F-D02-027,Client consent & preference center,syncs-to
+F-D01-028,KYC renewal & re-verification scheduler,F-D02-026,Client data correction request,triggers
+F-D01-006,Biometric face match (selfie vs ID),F-D19-002,Client registration with KYC,verifies-for
+F-D01-019,Corporate representative authority check,F-D13-017,Corporate seller board-resolution verification,evidences
+F-D01-031,NIK masking & display policy,F-D22-011,Field-level encryption (NIK/PII),protected-by
+F-D01-017,Address verification workflow,F-D02-001,Client master record (individual),enriches
+F-D02-008,Conflict-of-interest check,F-D03-001,Matter / project creation wizard,gates
+F-D02-014,Engagement letter management,F-D03-001,Matter / project creation wizard,spawns-matter-via
+F-D02-017,Client portal invitation management,F-D19-002,Client registration with KYC,mirrors
+F-D02-012,Meeting & visit log,F-D07-021,Meeting-notes summarization,feeds-AI
+F-D02-005,Contact management & roles,F-D06-005,Witness (saksi) management,sources-witnesses
+F-D02-008,Conflict-of-interest check,F-D11-014,Conflict-of-interest register,records-in
+F-D03-008,Deadline & SLA engine,F-D18-012,Deadline reminder engine,emits-event-to
+F-D03-013,Time entry (manual),F-D15-002,Time-based billing rules,billable-source-for
+F-D03-016,Matter budget vs actual,F-D14-014,Matter cost allocation,budget-basis-for
+F-D03-015,Timesheet approval,F-D09-001,Approval request composer,routes-to
+F-D03-018,Expense attachment to matter,F-D14-029,Reimbursement workflow,claims-via
+F-D03-033,Client matter statement,F-D19-004,Matter progress view,published-to
+F-D04-036,Document OCR queue trigger,F-D05-025,Batch OCR job scheduler,enqueues
+F-D04-013,Full-text content indexing,F-D07-002,Matter-grounded Q&A (RAG),retrieved-by
+F-D04-017,Document access link (internal),F-D19-007,Shared-document viewer,opens-in
+F-D04-015,Duplicate document detection,F-D05-018,Duplicate scan detection,corroborated-by
+F-D04-007,Document retention schedule,F-D11-011,Data-retention rule engine,driven-by
+F-D04-001,Document upload (multi-file),F-D05-025,Batch OCR job scheduler,auto-enqueues
+F-D05-001,KTP OCR extraction pipeline,F-D01-001,National ID (KTP-el) capture & validation,fills
+F-D05-019,Confidence scoring per field,F-D05-021,Human-in-the-loop review UI,bands-to
+F-D05-022,Reviewer correction capture & learning log,F-D20-010,OCR accuracy trend & benchmark report,feeds-metrics
+F-D05-035,Expiry-date extraction & validation,F-D02-040,Client document expiry monitoring,updates
+F-D05-018,Duplicate scan detection,F-D04-015,Duplicate document detection,corroborates
+F-D05-038,OCR artifact PII redaction (images/results),F-D22-012,PII masking in logs/traces,extends-platform-control
+F-D06-006,Deed numbering (repertorium),F-D12-001,Repertorium (deed daily log),registers-in
+F-D06-018,Deed approval before signing,F-D09-001,Approval request composer,routes-to
+F-D06-007,Minuta vs salinan vs kutipan tracking,F-D04-040,Protocol (notary) document segregation,segregated-by
+F-D06-035,Deed fee computation hook,F-D15-001,Fee-schedule library,prices-from
+F-D06-026,Deed copy issuance log,F-D19-026,Request copy of deed extract,serves
+F-D06-029,Deed delivery receipt,F-D13-028,Certificate handover receipt,parallels
+F-D06-017,Deed comparison (draft vs minuta),F-D04-003,Document versioning (major/minor),diffs
+F-D06-022,Deed search by number/party/date,F-D23-004,Deed full-text & faceted discovery,indexed-by
+F-D06-002,Clause library with versioning,F-D23-007,Clause-library search,searched-via
+F-D07-002,Matter-grounded Q&A (RAG),F-D04-013,Full-text content indexing,retrieves-from
+F-D07-017,Human approval gate for AI drafts,F-D09-001,Approval request composer,delegates-to
+F-D07-014,Token usage metering,F-D07-015,Per-matter AI cost allocation,aggregated-by
+F-D07-008,Citation & source tracking,F-D23-009,Knowledge-base search,links-evidence
+F-D08-018,E-signature step connector,F-D10-015,Signing link via secure URL,hands-off-to
+F-D08-003,Sequential approval chains,F-D09-001,Approval request composer,executes
+F-D08-012,Webhook triggers (inbound),F-D21-009,Inbound webhook receiver,consumes
+F-D08-027,Stuck-instance detection,F-D25-009,Background-job monitor,watched-by
+F-D09-029,E-signature binding on approval,F-D10-003,Signature order orchestration,binds-to
+F-D09-018,Overdue approval alerts,F-D18-013,Approval notification routing,emits-to
+F-D09-017,Approval dashboard,F-D20-012,Approval bottleneck report,analyzed-in
+F-D10-006,Signer identity binding (KYC),F-D01-006,Biometric face match (selfie vs ID),verified-via
+F-D10-021,Signed-document vault,F-D04-009,Document archiving,archives-to
+F-D10-031,E-sign webhook callbacks,F-D21-009,Inbound webhook receiver,publishes-to
+F-D10-001,PSrE provider adapter (certified),F-D21-016,PSrE e-sign adapter,connects-via
+F-D10-016,Signing reminder schedule,F-D18-014,E-sign event notifications,notifies-via
+F-D11-011,Data-retention rule engine,F-D04-007,Document retention schedule,drives
+F-D11-013,Protocol retention (25-year) scheduler,F-D12-003,Protocol book register,schedules
+F-D11-008,Breach notification workflow (72h),F-D22-029,Breach containment & forensic preservation runbook,escalated-from
+F-D11-009,Vendor / processor register,F-D21-034,Partner onboarding workflow,onboards-via
+F-D11-021,Corrective-action (CAPA) tracker,F-D22-031,Pen-test finding tracker,remediates
+F-D12-005,Monthly notary report pack,F-D20-001,Standard report library,reported-in
+F-D12-010,Penghadap appointment scheduler,F-D19-011,Appointment booking,syncs-with
+F-D13-005,AJB drafting (sale & purchase),F-D06-003,Deed drafting wizard,reuses-engine
+F-D13-004,BPN verification request tracker,F-D21-013,BPN integration adapter,calls
+F-D13-018,Tax (PPh) computation worksheet,F-D14-025,Withholding-tax (PPh 23/21) tracker,posts-to
+F-D13-028,Certificate handover receipt,F-D06-029,Deed delivery receipt,recorded-via
+F-D13-009,SKMHT drafting & expiry monitor,F-D18-012,Deadline reminder engine,monitored-by
+F-D14-011,Client trust (escrow) ledger,F-D15-015,Payment recording (multi-method),settles-into
+F-D14-025,Withholding-tax (PPh 23/21) tracker,F-D21-023,E-faktur export adapter,reported-via
+F-D14-022,Bank reconciliation,F-D21-014,Bank / VA integration,imports-from
+F-D15-011,Invoice approval workflow,F-D09-001,Approval request composer,routes-to
+F-D15-010,E-invoice data capture,F-D21-023,E-faktur export adapter,exports-via
+F-D15-015,Payment recording (multi-method),F-D19-010,Online payment checkout,settles
+F-D15-037,Subscription renewal scheduler,F-D18-015,Payment notifications,notified-by
+F-D16-017,MFA enrollment (TOTP),F-D22-002,MFA enforcement policy,enforced-by
+F-D16-014,SSO (OIDC/SAML) integration,F-D21-021,SSO/SCIM connectors,federated-via
+F-D16-027,Access review campaigns,F-D11-028,Control test scheduler,evidenced-by
+F-D16-009,Data-scope rules (office/matter),F-D20-020,Report access control,constrains
+F-D17-007,Inter-office matter referral,F-D03-023,Related-matter linking,links
+F-D17-001,Tenant provisioning,F-D25-002,Tenant onboarding console (admin),administered-in
+F-D18-012,Deadline reminder engine,F-D03-008,Deadline & SLA engine,watches
+F-D19-006,Secure document upload,F-D04-001,Document upload (multi-file),stores-via
+F-D19-004,Matter progress view,F-D03-033,Client matter statement,renders
+F-D20-013,Deadline compliance report,F-D03-008,Deadline & SLA engine,measures
+F-D20-012,Approval bottleneck report,F-D09-017,Approval dashboard,drills-to
+F-D21-011,Dukcapil connector,F-D01-010,Dukcapil verification integration adapter,serves
+F-D22-026,Audit-log integrity (hash chain),F-D25-019,Audit-log viewer (global),surfaced-in
+F-D23-036,OCR-text search,F-D04-013,Full-text content indexing,searches
+F-D23-007,Clause-library search,F-D06-002,Clause library with versioning,searches
+F-D24-008,Mobile KYC capture flow,F-D01-001,National ID (KTP-el) capture & validation,captures-for
+F-D24-015,Offline approval queue with deferred sync,F-D09-006,Mobile approval inbox,syncs-to
+F-D24-037,Photo-to-PDF bundling,F-D04-025,Scanned-document ingestion,ingests-to
+F-D24-038,Field-report generator,F-D20-002,Ad-hoc report builder,exports-to
+F-D25-020,Retention-policy designer,F-D11-011,Data-retention rule engine,configures
+F-D25-016,Integration registry admin,F-D21-031,Integration health monitor,watched-by
+F-D11-019,Whistleblowing intake channel,F-D11-020,Incident register & triage,intakes-to
+F-D22-030,Security training tracker,F-D11-023,Compliance training assignments,complements
+F-D12-003,Protocol book register,F-D06-031,Deed protocol-box transfer scheduler,fed-by
+F-D07-021,Meeting-notes summarization,F-D02-012,Meeting & visit log,summarizes

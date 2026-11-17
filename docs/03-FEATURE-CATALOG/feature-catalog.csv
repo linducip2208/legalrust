@@ -1,0 +1,1001 @@
+id,domain,domain_name,title,priority,complexity,effort
+F-D01-001,D01,Identity & KYC,National ID (KTP-el) capture & validation,P3-Low,XL,6-10 w
+F-D01-002,D01,Identity & KYC,Family Card (KK) capture & linking,P3-Low,XL,6-10 w
+F-D01-003,D01,Identity & KYC,Tax ID (NPWP) verification,P0-Critical,XL,6-10 w
+F-D01-004,D01,Identity & KYC,Passport capture & MRZ validation,P1-High,XL,6-10 w
+F-D01-005,D01,Identity & KYC,Driver license capture,P2-Medium,L,3-5 w
+F-D01-006,D01,Identity & KYC,Biometric face match (selfie vs ID),P0-Critical,L,3-5 w
+F-D01-007,D01,Identity & KYC,Liveness detection (passive),P0-Critical,M,1-2 w
+F-D01-008,D01,Identity & KYC,Liveness detection (active challenge),P0-Critical,L,3-5 w
+F-D01-009,D01,Identity & KYC,NIK checksum & format validation,P3-Low,M,1-2 w
+F-D01-010,D01,Identity & KYC,Dukcapil verification integration adapter,P0-Critical,M,1-2 w
+F-D01-011,D01,Identity & KYC,Sanctions / watchlist screening,P1-High,XL,6-10 w
+F-D01-012,D01,Identity & KYC,PEP screening,P3-Low,S,3-5 d
+F-D01-013,D01,Identity & KYC,Adverse media screening,P1-High,M,1-2 w
+F-D01-014,D01,Identity & KYC,Risk-based KYC tiering (CDD/EDD),P0-Critical,L,3-5 w
+F-D01-015,D01,Identity & KYC,Document authenticity signals,P0-Critical,XL,6-10 w
+F-D01-016,D01,Identity & KYC,Expiry tracking for identity documents,P0-Critical,M,1-2 w
+F-D01-017,D01,Identity & KYC,Address verification workflow,P0-Critical,XL,6-10 w
+F-D01-018,D01,Identity & KYC,Beneficial owner identification,P2-Medium,XL,6-10 w
+F-D01-019,D01,Identity & KYC,Corporate representative authority check,P0-Critical,S,3-5 d
+F-D01-020,D01,Identity & KYC,Power of attorney verification for identity,P0-Critical,S,3-5 d
+F-D01-021,D01,Identity & KYC,Consent capture for data processing (UU PDP),P3-Low,XL,6-10 w
+F-D01-022,D01,Identity & KYC,Minor / guardian identity handling,P3-Low,L,3-5 w
+F-D01-023,D01,Identity & KYC,Foreigner (KITAS/KITAP) identity handling,P1-High,M,1-2 w
+F-D01-024,D01,Identity & KYC,Duplicate identity detection,P3-Low,L,3-5 w
+F-D01-025,D01,Identity & KYC,Identity confidence scoring,P3-Low,XL,6-10 w
+F-D01-026,D01,Identity & KYC,Manual review queue for low-confidence KYC,P2-Medium,L,3-5 w
+F-D01-027,D01,Identity & KYC,KYC audit trail & evidence pack,P1-High,S,3-5 d
+F-D01-028,D01,Identity & KYC,KYC renewal & re-verification scheduler,P0-Critical,M,1-2 w
+F-D01-029,D01,Identity & KYC,Bulk KYC import for corporate clients,P1-High,S,3-5 d
+F-D01-030,D01,Identity & KYC,KYC API for partner onboarding,P1-High,M,1-2 w
+F-D01-031,D01,Identity & KYC,NIK masking & display policy,P1-High,L,3-5 w
+F-D01-032,D01,Identity & KYC,Biometric template protection,P2-Medium,XL,6-10 w
+F-D01-033,D01,Identity & KYC,KYC document retention & purge,P0-Critical,L,3-5 w
+F-D01-034,D01,Identity & KYC,Offline KYC capture & deferred sync,P3-Low,L,3-5 w
+F-D01-035,D01,Identity & KYC,Field agent KYC mobile capture,P2-Medium,XL,6-10 w
+F-D01-036,D01,Identity & KYC,KYC rejection & appeal workflow,P3-Low,M,1-2 w
+F-D01-037,D01,Identity & KYC,KYC dashboard & SLA tracking,P3-Low,XL,6-10 w
+F-D01-038,D01,Identity & KYC,KYC data correction workflow,P0-Critical,XL,6-10 w
+F-D01-039,D01,Identity & KYC,Identity fraud flagging & case referral,P3-Low,XL,6-10 w
+F-D01-040,D01,Identity & KYC,KYC quality sampling & auditor review,P1-High,M,1-2 w
+F-D02-001,D02,Client & CRM,Client master record (individual),P0-Critical,S,3-5 d
+F-D02-002,D02,Client & CRM,Client master record (corporate),P3-Low,L,3-5 w
+F-D02-003,D02,Client & CRM,Client master record (government/institution),P0-Critical,XL,6-10 w
+F-D02-004,D02,Client & CRM,Lead intake & qualification,P1-High,M,1-2 w
+F-D02-005,D02,Client & CRM,Contact management & roles,P3-Low,S,3-5 d
+F-D02-006,D02,Client & CRM,Client hierarchy (group/subsidiary),P2-Medium,XL,6-10 w
+F-D02-007,D02,Client & CRM,Client segmentation & tagging,P1-High,XL,6-10 w
+F-D02-008,D02,Client & CRM,Conflict-of-interest check,P3-Low,XL,6-10 w
+F-D02-009,D02,Client & CRM,Client onboarding checklist,P2-Medium,M,1-2 w
+F-D02-010,D02,Client & CRM,Client offboarding & file closure,P3-Low,L,3-5 w
+F-D02-011,D02,Client & CRM,Client communication timeline,P2-Medium,S,3-5 d
+F-D02-012,D02,Client & CRM,Meeting & visit log,P0-Critical,L,3-5 w
+F-D02-013,D02,Client & CRM,Quotation & engagement proposal,P0-Critical,XL,6-10 w
+F-D02-014,D02,Client & CRM,Engagement letter management,P0-Critical,XL,6-10 w
+F-D02-015,D02,Client & CRM,Client fee arrangement profiles,P3-Low,XL,6-10 w
+F-D02-016,D02,Client & CRM,Client document request tracker,P2-Medium,L,3-5 w
+F-D02-017,D02,Client & CRM,Client portal invitation management,P0-Critical,L,3-5 w
+F-D02-018,D02,Client & CRM,Client satisfaction survey,P1-High,M,1-2 w
+F-D02-019,D02,Client & CRM,Client referral tracking,P3-Low,XL,6-10 w
+F-D02-020,D02,Client & CRM,Client lifetime value view,P2-Medium,XL,6-10 w
+F-D02-021,D02,Client & CRM,Pipeline & opportunity tracking,P1-High,XL,6-10 w
+F-D02-022,D02,Client & CRM,Marketing campaign tracking,P0-Critical,S,3-5 d
+F-D02-023,D02,Client & CRM,Event & seminar management,P1-High,S,3-5 d
+F-D02-024,D02,Client & CRM,Lost-client / win-back workflow,P2-Medium,L,3-5 w
+F-D02-025,D02,Client & CRM,Client data merge & dedupe,P3-Low,M,1-2 w
+F-D02-026,D02,Client & CRM,Client data correction request,P2-Medium,M,1-2 w
+F-D02-027,D02,Client & CRM,Client consent & preference center,P2-Medium,S,3-5 d
+F-D02-028,D02,Client & CRM,Corporate client employee roster,P2-Medium,M,1-2 w
+F-D02-029,D02,Client & CRM,Client risk profile,P2-Medium,L,3-5 w
+F-D02-030,D02,Client & CRM,VIP / priority client flagging,P3-Low,S,3-5 d
+F-D02-031,D02,Client & CRM,Client credit limit & exposure,P3-Low,XL,6-10 w
+F-D02-032,D02,Client & CRM,Client birthday / key-date reminders,P3-Low,L,3-5 w
+F-D02-033,D02,Client & CRM,Client feedback & complaint handling,P3-Low,XL,6-10 w
+F-D02-034,D02,Client & CRM,Multi-contact notification routing,P3-Low,M,1-2 w
+F-D02-035,D02,Client & CRM,Client search (360 view),P1-High,XL,6-10 w
+F-D02-036,D02,Client & CRM,Client export (controlled),P0-Critical,M,1-2 w
+F-D02-037,D02,Client & CRM,CRM dashboard per partner,P1-High,S,3-5 d
+F-D02-038,D02,Client & CRM,CRM audit trail,P3-Low,M,1-2 w
+F-D02-039,D02,Client & CRM,Data retention for prospects,P3-Low,M,1-2 w
+F-D02-040,D02,Client & CRM,Client document expiry monitoring,P2-Medium,M,1-2 w
+F-D03-001,D03,Project & Case Management,Matter / project creation wizard,P3-Low,S,3-5 d
+F-D03-002,D03,Project & Case Management,Matter numbering scheme,P0-Critical,L,3-5 w
+F-D03-003,D03,Project & Case Management,Matter classification & practice area,P2-Medium,S,3-5 d
+F-D03-004,D03,Project & Case Management,Matter stage pipeline,P1-High,S,3-5 d
+F-D03-005,D03,Project & Case Management,Task breakdown & assignment,P0-Critical,L,3-5 w
+F-D03-006,D03,Project & Case Management,Task dependencies,P3-Low,M,1-2 w
+F-D03-007,D03,Project & Case Management,Milestone tracking,P0-Critical,L,3-5 w
+F-D03-008,D03,Project & Case Management,Deadline & SLA engine,P2-Medium,L,3-5 w
+F-D03-009,D03,Project & Case Management,Court / agency deadline calculator,P3-Low,L,3-5 w
+F-D03-010,D03,Project & Case Management,Calendar integration (matter deadlines),P3-Low,S,3-5 d
+F-D03-011,D03,Project & Case Management,Kanban matter board,P2-Medium,S,3-5 d
+F-D03-012,D03,Project & Case Management,Gantt timeline view,P1-High,L,3-5 w
+F-D03-013,D03,Project & Case Management,Time entry (manual),P0-Critical,XL,6-10 w
+F-D03-014,D03,Project & Case Management,Timer-based time capture,P2-Medium,S,3-5 d
+F-D03-015,D03,Project & Case Management,Timesheet approval,P0-Critical,S,3-5 d
+F-D03-016,D03,Project & Case Management,Matter budget vs actual,P0-Critical,M,1-2 w
+F-D03-017,D03,Project & Case Management,Cost advance (panjar) tracking,P2-Medium,M,1-2 w
+F-D03-018,D03,Project & Case Management,Expense attachment to matter,P2-Medium,M,1-2 w
+F-D03-019,D03,Project & Case Management,Matter team & staffing,P1-High,L,3-5 w
+F-D03-020,D03,Project & Case Management,Workload & capacity view,P1-High,S,3-5 d
+F-D03-021,D03,Project & Case Management,Matter priority & escalation,P0-Critical,L,3-5 w
+F-D03-022,D03,Project & Case Management,Sub-matter / workstream grouping,P1-High,L,3-5 w
+F-D03-023,D03,Project & Case Management,Related-matter linking,P0-Critical,L,3-5 w
+F-D03-024,D03,Project & Case Management,Matter templates library,P1-High,L,3-5 w
+F-D03-025,D03,Project & Case Management,Recurring matter scheduler,P1-High,XL,6-10 w
+F-D03-026,D03,Project & Case Management,Matter notes & activity feed,P1-High,L,3-5 w
+F-D03-027,D03,Project & Case Management,Internal memo on matter,P0-Critical,L,3-5 w
+F-D03-028,D03,Project & Case Management,Matter hold / suspension,P1-High,M,1-2 w
+F-D03-029,D03,Project & Case Management,Matter reopen workflow,P3-Low,L,3-5 w
+F-D03-030,D03,Project & Case Management,Matter closure checklist,P2-Medium,XL,6-10 w
+F-D03-031,D03,Project & Case Management,Post-matter review & lessons learned,P2-Medium,S,3-5 d
+F-D03-032,D03,Project & Case Management,Matter profitability report,P3-Low,S,3-5 d
+F-D03-033,D03,Project & Case Management,Client matter statement,P1-High,M,1-2 w
+F-D03-034,D03,Project & Case Management,Matter access control,P2-Medium,XL,6-10 w
+F-D03-035,D03,Project & Case Management,Matter audit history,P2-Medium,M,1-2 w
+F-D03-036,D03,Project & Case Management,Bulk matter import,P2-Medium,L,3-5 w
+F-D03-037,D03,Project & Case Management,Matter archive & retrieval,P3-Low,M,1-2 w
+F-D03-038,D03,Project & Case Management,Matter dashboard (firm-wide),P3-Low,XL,6-10 w
+F-D03-039,D03,Project & Case Management,Matter SLA breach alerts,P1-High,XL,6-10 w
+F-D03-040,D03,Project & Case Management,Matter inbox triage & auto-assignment,P2-Medium,L,3-5 w
+F-D04-001,D04,Document Management,Document upload (multi-file),P1-High,M,1-2 w
+F-D04-002,D04,Document Management,Folder hierarchy per matter,P1-High,M,1-2 w
+F-D04-003,D04,Document Management,Document versioning (major/minor),P2-Medium,L,3-5 w
+F-D04-004,D04,Document Management,Check-in / check-out locking,P2-Medium,L,3-5 w
+F-D04-005,D04,Document Management,Document metadata schema,P1-High,M,1-2 w
+F-D04-006,D04,Document Management,Custom metadata fields,P2-Medium,XL,6-10 w
+F-D04-007,D04,Document Management,Document retention schedule,P2-Medium,M,1-2 w
+F-D04-008,D04,Document Management,Document legal-hold application & release,P1-High,L,3-5 w
+F-D04-009,D04,Document Management,Document archiving,P3-Low,M,1-2 w
+F-D04-010,D04,Document Management,Secure document deletion,P2-Medium,L,3-5 w
+F-D04-011,D04,Document Management,Bulk download (matter bundle),P0-Critical,L,3-5 w
+F-D04-012,D04,Document Management,Document preview (PDF/Office/image),P0-Critical,M,1-2 w
+F-D04-013,D04,Document Management,Full-text content indexing,P3-Low,S,3-5 d
+F-D04-014,D04,Document Management,Document thumbnail generation,P2-Medium,S,3-5 d
+F-D04-015,D04,Document Management,Duplicate document detection,P2-Medium,L,3-5 w
+F-D04-016,D04,Document Management,Virus / malware scan on upload,P1-High,XL,6-10 w
+F-D04-017,D04,Document Management,Document access link (internal),P2-Medium,M,1-2 w
+F-D04-018,D04,Document Management,Document watermarking,P3-Low,L,3-5 w
+F-D04-019,D04,Document Management,Document stamping (received/controlled),P0-Critical,M,1-2 w
+F-D04-020,D04,Document Management,Redaction tools,P3-Low,L,3-5 w
+F-D04-021,D04,Document Management,Comparison (doc-to-doc diff),P2-Medium,S,3-5 d
+F-D04-022,D04,Document Management,Document approval routing,P1-High,XL,6-10 w
+F-D04-023,D04,Document Management,Document expiry alerts,P3-Low,S,3-5 d
+F-D04-024,D04,Document Management,Template-based document creation,P0-Critical,XL,6-10 w
+F-D04-025,D04,Document Management,Scanned-document ingestion,P1-High,M,1-2 w
+F-D04-026,D04,Document Management,Email-to-matter filing,P2-Medium,M,1-2 w
+F-D04-027,D04,Document Management,Document favorites & recent list,P3-Low,M,1-2 w
+F-D04-028,D04,Document Management,Document activity history,P0-Critical,M,1-2 w
+F-D04-029,D04,Document Management,Storage quota per tenant/office,P1-High,S,3-5 d
+F-D04-030,D04,Document Management,S3/MinIO object lifecycle policy,P1-High,S,3-5 d
+F-D04-031,D04,Document Management,Trash / recycle bin with restore,P2-Medium,L,3-5 w
+F-D04-032,D04,Document Management,Document export manifest,P0-Critical,L,3-5 w
+F-D04-033,D04,Document Management,Document integrity hash (SHA-256),P2-Medium,XL,6-10 w
+F-D04-034,D04,Document Management,Offline document cache,P0-Critical,M,1-2 w
+F-D04-035,D04,Document Management,Large-file chunked upload,P1-High,S,3-5 d
+F-D04-036,D04,Document Management,Document OCR queue trigger,P0-Critical,S,3-5 d
+F-D04-037,D04,Document Management,Document tagging,P2-Medium,M,1-2 w
+F-D04-038,D04,Document Management,Document dashboard,P2-Medium,L,3-5 w
+F-D04-039,D04,Document Management,Document audit trail,P2-Medium,M,1-2 w
+F-D04-040,D04,Document Management,Protocol (notary) document segregation,P0-Critical,XL,6-10 w
+F-D05-001,D05,OCR & Document Intelligence,KTP OCR extraction pipeline,P0-Critical,L,3-5 w
+F-D05-002,D05,OCR & Document Intelligence,KK OCR extraction pipeline,P3-Low,L,3-5 w
+F-D05-003,D05,OCR & Document Intelligence,NPWP OCR extraction pipeline,P1-High,S,3-5 d
+F-D05-004,D05,OCR & Document Intelligence,Passport OCR (MRZ + visual zone),P1-High,XL,6-10 w
+F-D05-005,D05,OCR & Document Intelligence,Property certificate (SHM/SHGB) OCR,P2-Medium,M,1-2 w
+F-D05-006,D05,OCR & Document Intelligence,Deed (akta) OCR with structure parsing,P3-Low,XL,6-10 w
+F-D05-007,D05,OCR & Document Intelligence,Contract OCR with clause segmentation,P3-Low,L,3-5 w
+F-D05-008,D05,OCR & Document Intelligence,General PDF OCR (native + scanned),P1-High,XL,6-10 w
+F-D05-009,D05,OCR & Document Intelligence,Multi-page document orchestration,P3-Low,S,3-5 d
+F-D05-010,D05,OCR & Document Intelligence,Table extraction & cell reconstruction,P0-Critical,M,1-2 w
+F-D05-011,D05,OCR & Document Intelligence,Layout detection (headers/footers/columns),P2-Medium,L,3-5 w
+F-D05-012,D05,OCR & Document Intelligence,Document classification model,P0-Critical,XL,6-10 w
+F-D05-013,D05,OCR & Document Intelligence,Image enhancement pre-processing,P1-High,S,3-5 d
+F-D05-014,D05,OCR & Document Intelligence,Deskew & orientation correction,P2-Medium,L,3-5 w
+F-D05-015,D05,OCR & Document Intelligence,Denoising & binarization,P2-Medium,L,3-5 w
+F-D05-016,D05,OCR & Document Intelligence,Perspective correction (mobile photos),P0-Critical,M,1-2 w
+F-D05-017,D05,OCR & Document Intelligence,Blur & glare detection gate,P0-Critical,L,3-5 w
+F-D05-018,D05,OCR & Document Intelligence,Duplicate scan detection,P2-Medium,M,1-2 w
+F-D05-019,D05,OCR & Document Intelligence,Confidence scoring per field,P0-Critical,XL,6-10 w
+F-D05-020,D05,OCR & Document Intelligence,Field-level validation rules (ID) ,P1-High,L,3-5 w
+F-D05-021,D05,OCR & Document Intelligence,Human-in-the-loop review UI,P1-High,M,1-2 w
+F-D05-022,D05,OCR & Document Intelligence,Reviewer correction capture & learning log,P0-Critical,XL,6-10 w
+F-D05-023,D05,OCR & Document Intelligence,OCR result versioning,P3-Low,XL,6-10 w
+F-D05-024,D05,OCR & Document Intelligence,Secure archival of source images,P0-Critical,M,1-2 w
+F-D05-025,D05,OCR & Document Intelligence,Batch OCR job scheduler,P3-Low,L,3-5 w
+F-D05-026,D05,OCR & Document Intelligence,OCR cost & usage metering,P3-Low,L,3-5 w
+F-D05-027,D05,OCR & Document Intelligence,OCR engine router (multi-engine),P0-Critical,S,3-5 d
+F-D05-028,D05,OCR & Document Intelligence,Engine benchmark harness (CER/WER),P2-Medium,XL,6-10 w
+F-D05-029,D05,OCR & Document Intelligence,Indonesian document test corpus registry,P1-High,L,3-5 w
+F-D05-030,D05,OCR & Document Intelligence,Handwriting flag & routing,P3-Low,S,3-5 d
+F-D05-031,D05,OCR & Document Intelligence,Stamp & signature region detection,P1-High,L,3-5 w
+F-D05-032,D05,OCR & Document Intelligence,QR / barcode decode on documents,P0-Critical,L,3-5 w
+F-D05-033,D05,OCR & Document Intelligence,Language detection (ID/EN),P1-High,M,1-2 w
+F-D05-034,D05,OCR & Document Intelligence,NIK/KK cross-field consistency check,P2-Medium,XL,6-10 w
+F-D05-035,D05,OCR & Document Intelligence,Expiry-date extraction & validation,P2-Medium,L,3-5 w
+F-D05-036,D05,OCR & Document Intelligence,Low-quality image rejection with guidance,P0-Critical,L,3-5 w
+F-D05-037,D05,OCR & Document Intelligence,OCR audit trail,P1-High,M,1-2 w
+F-D05-038,D05,OCR & Document Intelligence,OCR artifact PII redaction (images/results),P2-Medium,M,1-2 w
+F-D05-039,D05,OCR & Document Intelligence,OCR retry & dead-letter queue,P0-Critical,L,3-5 w
+F-D05-040,D05,OCR & Document Intelligence,OCR accuracy dashboard,P2-Medium,XL,6-10 w
+F-D06-001,D06,Deed Generation,Deed template library (notarial),P3-Low,L,3-5 w
+F-D06-002,D06,Deed Generation,Clause library with versioning,P3-Low,S,3-5 d
+F-D06-003,D06,Deed Generation,Deed drafting wizard,P1-High,S,3-5 d
+F-D06-004,D06,Deed Generation,Party (penghadap) data binding,P0-Critical,L,3-5 w
+F-D06-005,D06,Deed Generation,Witness (saksi) management,P1-High,L,3-5 w
+F-D06-006,D06,Deed Generation,Deed numbering (repertorium),P3-Low,L,3-5 w
+F-D06-007,D06,Deed Generation,Minuta vs salinan vs kutipan tracking,P0-Critical,L,3-5 w
+F-D06-008,D06,Deed Generation,Deed reading (pembacaan) minutes,P0-Critical,M,1-2 w
+F-D06-009,D06,Deed Generation,Deed signing ceremony checklist,P0-Critical,L,3-5 w
+F-D06-010,D06,Deed Generation,Fingerprint capture log,P0-Critical,L,3-5 w
+F-D06-011,D06,Deed Generation,Deed amendment (renvoi) handling,P2-Medium,M,1-2 w
+F-D06-012,D06,Deed Generation,Deed attachment (lampiran) manager,P2-Medium,XL,6-10 w
+F-D06-013,D06,Deed Generation,Bilingual deed support (ID/EN),P2-Medium,XL,6-10 w
+F-D06-014,D06,Deed Generation,Deed schema validation,P1-High,S,3-5 d
+F-D06-015,D06,Deed Generation,Mandatory-field completeness gate,P1-High,L,3-5 w
+F-D06-016,D06,Deed Generation,Legal citation insertion,P2-Medium,L,3-5 w
+F-D06-017,D06,Deed Generation,Deed comparison (draft vs minuta),P1-High,S,3-5 d
+F-D06-018,D06,Deed Generation,Deed approval before signing,P0-Critical,M,1-2 w
+F-D06-019,D06,Deed Generation,Deed PDF rendering (print-ready),P3-Low,M,1-2 w
+F-D06-020,D06,Deed Generation,Deed XML/structured archive,P3-Low,S,3-5 d
+F-D06-021,D06,Deed Generation,Deed registration to external log,P3-Low,S,3-5 d
+F-D06-022,D06,Deed Generation,Deed search by number/party/date,P2-Medium,XL,6-10 w
+F-D06-023,D06,Deed Generation,Deed confidentiality classification,P1-High,L,3-5 w
+F-D06-024,D06,Deed Generation,Deed correction (akta perbaikan),P3-Low,L,3-5 w
+F-D06-025,D06,Deed Generation,Deed cancellation workflow,P0-Critical,XL,6-10 w
+F-D06-026,D06,Deed Generation,Deed copy issuance log,P0-Critical,XL,6-10 w
+F-D06-027,D06,Deed Generation,Deed excerpt issuance,P3-Low,L,3-5 w
+F-D06-028,D06,Deed Generation,Deed legalization log,P1-High,L,3-5 w
+F-D06-029,D06,Deed Generation,Deed delivery receipt,P2-Medium,XL,6-10 w
+F-D06-030,D06,Deed Generation,Deed storage location tracking,P3-Low,XL,6-10 w
+F-D06-031,D06,Deed Generation,Deed protocol-box transfer scheduler,P0-Critical,XL,6-10 w
+F-D06-032,D06,Deed Generation,Deed template access control,P1-High,XL,6-10 w
+F-D06-033,D06,Deed Generation,Deed variable audit (who changed what),P3-Low,XL,6-10 w
+F-D06-034,D06,Deed Generation,Deed multi-party signature order,P3-Low,XL,6-10 w
+F-D06-035,D06,Deed Generation,Deed fee computation hook,P0-Critical,M,1-2 w
+F-D06-036,D06,Deed Generation,Deed dashboard (monthly volume),P3-Low,S,3-5 d
+F-D06-037,D06,Deed Generation,Deed audit trail,P3-Low,XL,6-10 w
+F-D06-038,D06,Deed Generation,Deed export for supervision,P0-Critical,S,3-5 d
+F-D06-039,D06,Deed Generation,Deed disaster-recovery copy,P3-Low,XL,6-10 w
+F-D06-040,D06,Deed Generation,Deed print & binding manifest,P3-Low,M,1-2 w
+F-D07-001,D07,AI Legal Assistant,Conversational legal Q&A (ID),P2-Medium,S,3-5 d
+F-D07-002,D07,AI Legal Assistant,Matter-grounded Q&A (RAG),P2-Medium,L,3-5 w
+F-D07-003,D07,AI Legal Assistant,Document summarization,P3-Low,S,3-5 d
+F-D07-004,D07,AI Legal Assistant,Contract clause extraction,P2-Medium,M,1-2 w
+F-D07-005,D07,AI Legal Assistant,Risk clause flagging,P0-Critical,M,1-2 w
+F-D07-006,D07,AI Legal Assistant,Obligation & deadline extraction,P1-High,S,3-5 d
+F-D07-007,D07,AI Legal Assistant,Document comparison (AI diff narrative),P3-Low,M,1-2 w
+F-D07-008,D07,AI Legal Assistant,Citation & source tracking,P0-Critical,S,3-5 d
+F-D07-009,D07,AI Legal Assistant,Legal knowledge base ingestion,P0-Critical,S,3-5 d
+F-D07-010,D07,AI Legal Assistant,Knowledge base versioning,P3-Low,L,3-5 w
+F-D07-011,D07,AI Legal Assistant,Prompt template library,P3-Low,S,3-5 d
+F-D07-012,D07,AI Legal Assistant,Prompt versioning & rollback,P0-Critical,XL,6-10 w
+F-D07-013,D07,AI Legal Assistant,Model router (cost/quality/latency),P0-Critical,M,1-2 w
+F-D07-014,D07,AI Legal Assistant,Token usage metering,P1-High,L,3-5 w
+F-D07-015,D07,AI Legal Assistant,Per-matter AI cost allocation,P2-Medium,M,1-2 w
+F-D07-016,D07,AI Legal Assistant,AI confidence & disclaimer banner,P0-Critical,XL,6-10 w
+F-D07-017,D07,AI Legal Assistant,Human approval gate for AI drafts,P3-Low,S,3-5 d
+F-D07-018,D07,AI Legal Assistant,AI-assisted deed clause drafting,P2-Medium,S,3-5 d
+F-D07-019,D07,AI Legal Assistant,AI-assisted engagement letter drafting,P0-Critical,M,1-2 w
+F-D07-020,D07,AI Legal Assistant,AI-assisted email drafting,P1-High,XL,6-10 w
+F-D07-021,D07,AI Legal Assistant,Meeting-notes summarization,P2-Medium,L,3-5 w
+F-D07-022,D07,AI Legal Assistant,Regulation change digest,P1-High,XL,6-10 w
+F-D07-023,D07,AI Legal Assistant,Case-law research helper,P0-Critical,M,1-2 w
+F-D07-024,D07,AI Legal Assistant,Precedent retrieval,P3-Low,XL,6-10 w
+F-D07-025,D07,AI Legal Assistant,Jurisdiction guardrail (ID-first),P3-Low,XL,6-10 w
+F-D07-026,D07,AI Legal Assistant,Hallucination mitigation controls,P1-High,XL,6-10 w
+F-D07-027,D07,AI Legal Assistant,Prompt-injection protection,P1-High,XL,6-10 w
+F-D07-028,D07,AI Legal Assistant,PII redaction before model call,P3-Low,M,1-2 w
+F-D07-029,D07,AI Legal Assistant,Local-model execution path,P0-Critical,L,3-5 w
+F-D07-030,D07,AI Legal Assistant,Model evaluation harness,P3-Low,XL,6-10 w
+F-D07-031,D07,AI Legal Assistant,Feedback (thumbs up/down + correction),P3-Low,XL,6-10 w
+F-D07-032,D07,AI Legal Assistant,AI audit trail (prompt/response/model),P2-Medium,XL,6-10 w
+F-D07-033,D07,AI Legal Assistant,AI data retention policy,P0-Critical,XL,6-10 w
+F-D07-034,D07,AI Legal Assistant,Blocked-topic policy (validity certification),P3-Low,XL,6-10 w
+F-D07-035,D07,AI Legal Assistant,Multi-language response (ID/EN),P3-Low,XL,6-10 w
+F-D07-036,D07,AI Legal Assistant,Voice-to-text inquiry capture,P3-Low,L,3-5 w
+F-D07-037,D07,AI Legal Assistant,AI workspace (side panel),P1-High,XL,6-10 w
+F-D07-038,D07,AI Legal Assistant,AI spend & model-mix analytics,P1-High,S,3-5 d
+F-D07-039,D07,AI Legal Assistant,AI incident & correction log,P2-Medium,XL,6-10 w
+F-D07-040,D07,AI Legal Assistant,AI red-team prompt test suite,P1-High,L,3-5 w
+F-D08-001,D08,Workflow Automation,Visual workflow designer,P1-High,S,3-5 d
+F-D08-002,D08,Workflow Automation,Workflow template gallery,P0-Critical,XL,6-10 w
+F-D08-003,D08,Workflow Automation,Sequential approval chains,P2-Medium,L,3-5 w
+F-D08-004,D08,Workflow Automation,Parallel approval branches,P1-High,S,3-5 d
+F-D08-005,D08,Workflow Automation,Conditional routing rules,P3-Low,L,3-5 w
+F-D08-006,D08,Workflow Automation,SLA timers & escalation,P1-High,M,1-2 w
+F-D08-007,D08,Workflow Automation,Reminder & nudge automation,P1-High,XL,6-10 w
+F-D08-008,D08,Workflow Automation,Task auto-creation from events,P2-Medium,XL,6-10 w
+F-D08-009,D08,Workflow Automation,Document-driven triggers,P1-High,S,3-5 d
+F-D08-010,D08,Workflow Automation,Status-driven triggers,P3-Low,S,3-5 d
+F-D08-011,D08,Workflow Automation,Scheduled (cron) triggers,P0-Critical,S,3-5 d
+F-D08-012,D08,Workflow Automation,Webhook triggers (inbound),P2-Medium,S,3-5 d
+F-D08-013,D08,Workflow Automation,Outbound webhook actions,P3-Low,S,3-5 d
+F-D08-014,D08,Workflow Automation,Email action nodes,P3-Low,M,1-2 w
+F-D08-015,D08,Workflow Automation,Notification action nodes,P2-Medium,XL,6-10 w
+F-D08-016,D08,Workflow Automation,Assignment & load-balance node,P2-Medium,L,3-5 w
+F-D08-017,D08,Workflow Automation,Form-collection step,P0-Critical,M,1-2 w
+F-D08-018,D08,Workflow Automation,E-signature step connector,P2-Medium,S,3-5 d
+F-D08-019,D08,Workflow Automation,Payment-collection step,P0-Critical,S,3-5 d
+F-D08-020,D08,Workflow Automation,OCR step connector,P1-High,M,1-2 w
+F-D08-021,D08,Workflow Automation,AI step connector,P2-Medium,XL,6-10 w
+F-D08-022,D08,Workflow Automation,Human-review step,P2-Medium,M,1-2 w
+F-D08-023,D08,Workflow Automation,Sub-workflow (reusable) calls,P2-Medium,M,1-2 w
+F-D08-024,D08,Workflow Automation,Workflow versioning,P1-High,S,3-5 d
+F-D08-025,D08,Workflow Automation,Workflow simulation / dry-run,P0-Critical,L,3-5 w
+F-D08-026,D08,Workflow Automation,Workflow instance dashboard,P0-Critical,M,1-2 w
+F-D08-027,D08,Workflow Automation,Stuck-instance detection,P0-Critical,XL,6-10 w
+F-D08-028,D08,Workflow Automation,Retry with backoff policy,P0-Critical,XL,6-10 w
+F-D08-029,D08,Workflow Automation,Idempotency keys for steps,P2-Medium,S,3-5 d
+F-D08-030,D08,Workflow Automation,Compensation / rollback actions,P3-Low,XL,6-10 w
+F-D08-031,D08,Workflow Automation,Event log per instance,P2-Medium,M,1-2 w
+F-D08-032,D08,Workflow Automation,Bulk workflow starter (CSV),P3-Low,M,1-2 w
+F-D08-033,D08,Workflow Automation,Workflow permissions,P0-Critical,M,1-2 w
+F-D08-034,D08,Workflow Automation,Workflow audit trail,P3-Low,L,3-5 w
+F-D08-035,D08,Workflow Automation,Workflow KPI (cycle time),P1-High,M,1-2 w
+F-D08-036,D08,Workflow Automation,Workflow export/import,P2-Medium,L,3-5 w
+F-D08-037,D08,Workflow Automation,Workflow deprecation,P2-Medium,L,3-5 w
+F-D08-038,D08,Workflow Automation,NATS event backbone binding,P2-Medium,S,3-5 d
+F-D08-039,D08,Workflow Automation,Worker pool autoscaling hooks,P2-Medium,S,3-5 d
+F-D08-040,D08,Workflow Automation,Workflow error inbox,P2-Medium,M,1-2 w
+F-D09-001,D09,Approval Management,Approval request composer,P3-Low,S,3-5 d
+F-D09-002,D09,Approval Management,Multi-level approval matrix,P2-Medium,S,3-5 d
+F-D09-003,D09,Approval Management,Delegation of authority,P3-Low,XL,6-10 w
+F-D09-004,D09,Approval Management,Out-of-office delegation,P0-Critical,S,3-5 d
+F-D09-005,D09,Approval Management,Approval SLA & escalation,P0-Critical,L,3-5 w
+F-D09-006,D09,Approval Management,Mobile approval inbox,P2-Medium,M,1-2 w
+F-D09-007,D09,Approval Management,Bulk approval (controlled),P2-Medium,M,1-2 w
+F-D09-008,D09,Approval Management,Approval with comments,P1-High,L,3-5 w
+F-D09-009,D09,Approval Management,Conditional approval,P0-Critical,XL,6-10 w
+F-D09-010,D09,Approval Management,Rework / return-to-drafter,P2-Medium,M,1-2 w
+F-D09-011,D09,Approval Management,Approval attachment review,P0-Critical,XL,6-10 w
+F-D09-012,D09,Approval Management,Amount-threshold routing,P1-High,M,1-2 w
+F-D09-013,D09,Approval Management,Matter-risk routing,P3-Low,S,3-5 d
+F-D09-014,D09,Approval Management,Quorum approval (M-of-N),P2-Medium,L,3-5 w
+F-D09-015,D09,Approval Management,Sequential vs parallel policy,P0-Critical,L,3-5 w
+F-D09-016,D09,Approval Management,Approval audit pack,P1-High,L,3-5 w
+F-D09-017,D09,Approval Management,Approval dashboard,P0-Critical,L,3-5 w
+F-D09-018,D09,Approval Management,Overdue approval alerts,P0-Critical,S,3-5 d
+F-D09-019,D09,Approval Management,Approval calendar view,P0-Critical,M,1-2 w
+F-D09-020,D09,Approval Management,Substitute approver rules,P3-Low,M,1-2 w
+F-D09-021,D09,Approval Management,Approval policy versioning,P3-Low,M,1-2 w
+F-D09-022,D09,Approval Management,Emergency / fast-track approval,P2-Medium,L,3-5 w
+F-D09-023,D09,Approval Management,Approval freeze during audit,P0-Critical,S,3-5 d
+F-D09-024,D09,Approval Management,Approval evidence (who/when/why),P1-High,XL,6-10 w
+F-D09-025,D09,Approval Management,Approval revocation,P1-High,L,3-5 w
+F-D09-026,D09,Approval Management,Post-approval amendment workflow,P1-High,M,1-2 w
+F-D09-027,D09,Approval Management,Approval analytics (bottlenecks),P1-High,L,3-5 w
+F-D09-028,D09,Approval Management,Approval digest & escalation preferences,P1-High,L,3-5 w
+F-D09-029,D09,Approval Management,E-signature binding on approval,P3-Low,L,3-5 w
+F-D09-030,D09,Approval Management,Approval API for integrations,P3-Low,M,1-2 w
+F-D09-031,D09,Approval Management,Approval archive & retrieval,P3-Low,L,3-5 w
+F-D09-032,D09,Approval Management,Approval role mapping,P0-Critical,S,3-5 d
+F-D09-033,D09,Approval Management,Approval conflict detection,P0-Critical,L,3-5 w
+F-D09-034,D09,Approval Management,Approval simulation,P0-Critical,L,3-5 w
+F-D09-035,D09,Approval Management,Approval export (auditor),P1-High,L,3-5 w
+F-D09-036,D09,Approval Management,Approval integrity hash,P2-Medium,S,3-5 d
+F-D09-037,D09,Approval Management,Approval replay protection,P1-High,L,3-5 w
+F-D09-038,D09,Approval Management,Approval comment redaction,P0-Critical,L,3-5 w
+F-D09-039,D09,Approval Management,Approval read-receipt,P1-High,XL,6-10 w
+F-D09-040,D09,Approval Management,Approval quorum override with dual control,P3-Low,L,3-5 w
+F-D10-001,D10,Electronic Signature,PSrE provider adapter (certified),P3-Low,L,3-5 w
+F-D10-002,D10,Electronic Signature,Uncertified e-sign path (low-risk),P3-Low,XL,6-10 w
+F-D10-003,D10,Electronic Signature,Signature order orchestration,P3-Low,M,1-2 w
+F-D10-004,D10,Electronic Signature,Sequential signing,P1-High,L,3-5 w
+F-D10-005,D10,Electronic Signature,Parallel signing,P2-Medium,M,1-2 w
+F-D10-006,D10,Electronic Signature,Signer identity binding (KYC),P2-Medium,S,3-5 d
+F-D10-007,D10,Electronic Signature,Signer OTP challenge,P1-High,S,3-5 d
+F-D10-008,D10,Electronic Signature,Signer consent capture,P3-Low,L,3-5 w
+F-D10-009,D10,Electronic Signature,Document hash sealing (pre-sign),P3-Low,XL,6-10 w
+F-D10-010,D10,Electronic Signature,Long-term validation (LTV) artifacts,P0-Critical,S,3-5 d
+F-D10-011,D10,Electronic Signature,Timestamp authority (TSA) binding,P0-Critical,XL,6-10 w
+F-D10-012,D10,Electronic Signature,Signature appearance placement,P2-Medium,L,3-5 w
+F-D10-013,D10,Electronic Signature,Initials on every page option,P1-High,M,1-2 w
+F-D10-014,D10,Electronic Signature,Bulk signing session,P1-High,XL,6-10 w
+F-D10-015,D10,Electronic Signature,Signing link via secure URL,P3-Low,XL,6-10 w
+F-D10-016,D10,Electronic Signature,Signing reminder schedule,P1-High,S,3-5 d
+F-D10-017,D10,Electronic Signature,Signer decline handling,P3-Low,M,1-2 w
+F-D10-018,D10,Electronic Signature,Signer reassignment,P0-Critical,M,1-2 w
+F-D10-019,D10,Electronic Signature,Document preview before signing,P2-Medium,XL,6-10 w
+F-D10-020,D10,Electronic Signature,Post-sign tamper evidence,P0-Critical,XL,6-10 w
+F-D10-021,D10,Electronic Signature,Signed-document vault,P1-High,XL,6-10 w
+F-D10-022,D10,Electronic Signature,Signature verification page,P3-Low,XL,6-10 w
+F-D10-023,D10,Electronic Signature,Verification QR code,P0-Critical,XL,6-10 w
+F-D10-024,D10,Electronic Signature,Revocation / invalidation log,P2-Medium,L,3-5 w
+F-D10-025,D10,Electronic Signature,Provider failover routing,P0-Critical,S,3-5 d
+F-D10-026,D10,Electronic Signature,E-sign cost tracking,P0-Critical,L,3-5 w
+F-D10-027,D10,Electronic Signature,E-sign regulatory guardrail (akta exclusion),P3-Low,M,1-2 w
+F-D10-028,D10,Electronic Signature,Notarial act exclusion warning,P2-Medium,L,3-5 w
+F-D10-029,D10,Electronic Signature,Signing ceremony log,P3-Low,M,1-2 w
+F-D10-030,D10,Electronic Signature,Signer accessibility support,P3-Low,M,1-2 w
+F-D10-031,D10,Electronic Signature,E-sign webhook callbacks,P1-High,S,3-5 d
+F-D10-032,D10,Electronic Signature,E-sign audit trail,P1-High,L,3-5 w
+F-D10-033,D10,Electronic Signature,E-sign retention policy,P2-Medium,L,3-5 w
+F-D10-034,D10,Electronic Signature,Provider credential vault,P2-Medium,XL,6-10 w
+F-D10-035,D10,Electronic Signature,E-sign dashboard,P2-Medium,XL,6-10 w
+F-D10-036,D10,Electronic Signature,Sandbox vs production provider mode,P0-Critical,M,1-2 w
+F-D10-037,D10,Electronic Signature,Signature font/hand-drawn capture,P0-Critical,M,1-2 w
+F-D10-038,D10,Electronic Signature,Signer device & IP logging,P2-Medium,M,1-2 w
+F-D10-039,D10,Electronic Signature,Multi-document signing bundle,P1-High,M,1-2 w
+F-D10-040,D10,Electronic Signature,Co-signer & witness signing flow,P3-Low,M,1-2 w
+F-D11-001,D11,Compliance & Risk,UU PDP obligation register,P1-High,S,3-5 d
+F-D11-002,D11,Compliance & Risk,Consent lifecycle manager,P3-Low,M,1-2 w
+F-D11-003,D11,Compliance & Risk,Data-subject access request (DSAR),P2-Medium,XL,6-10 w
+F-D11-004,D11,Compliance & Risk,Data-subject deletion request,P1-High,L,3-5 w
+F-D11-005,D11,Compliance & Risk,Rectification request workflow,P0-Critical,M,1-2 w
+F-D11-006,D11,Compliance & Risk,Processing-activity record (ROPA),P2-Medium,XL,6-10 w
+F-D11-007,D11,Compliance & Risk,DPIA workflow,P2-Medium,L,3-5 w
+F-D11-008,D11,Compliance & Risk,Breach notification workflow (72h),P1-High,M,1-2 w
+F-D11-009,D11,Compliance & Risk,Vendor / processor register,P3-Low,L,3-5 w
+F-D11-010,D11,Compliance & Risk,DPA (perjanjian pemrosesan) tracker,P0-Critical,S,3-5 d
+F-D11-011,D11,Compliance & Risk,Data-retention rule engine,P2-Medium,XL,6-10 w
+F-D11-012,D11,Compliance & Risk,Purge execution with approval,P3-Low,M,1-2 w
+F-D11-013,D11,Compliance & Risk,Protocol retention (25-year) scheduler,P0-Critical,S,3-5 d
+F-D11-014,D11,Compliance & Risk,Conflict-of-interest register,P0-Critical,XL,6-10 w
+F-D11-015,D11,Compliance & Risk,AML/CFT risk scoring,P3-Low,S,3-5 d
+F-D11-016,D11,Compliance & Risk,Sanctions re-screening scheduler,P0-Critical,S,3-5 d
+F-D11-017,D11,Compliance & Risk,Ethics & independence declarations,P1-High,M,1-2 w
+F-D11-018,D11,Compliance & Risk,Gift & hospitality register,P3-Low,XL,6-10 w
+F-D11-019,D11,Compliance & Risk,Whistleblowing intake channel,P2-Medium,L,3-5 w
+F-D11-020,D11,Compliance & Risk,Incident register & triage,P0-Critical,XL,6-10 w
+F-D11-021,D11,Compliance & Risk,Corrective-action (CAPA) tracker,P1-High,XL,6-10 w
+F-D11-022,D11,Compliance & Risk,Regulatory change tracker,P0-Critical,L,3-5 w
+F-D11-023,D11,Compliance & Risk,Compliance training assignments,P3-Low,M,1-2 w
+F-D11-024,D11,Compliance & Risk,Training completion evidence,P3-Low,L,3-5 w
+F-D11-025,D11,Compliance & Risk,Internal audit plan,P2-Medium,L,3-5 w
+F-D11-026,D11,Compliance & Risk,Audit finding tracker,P1-High,M,1-2 w
+F-D11-027,D11,Compliance & Risk,Control library (UUJN/PDP/ITE),P3-Low,XL,6-10 w
+F-D11-028,D11,Compliance & Risk,Control test scheduler,P2-Medium,XL,6-10 w
+F-D11-029,D11,Compliance & Risk,Compliance dashboard,P2-Medium,S,3-5 d
+F-D11-030,D11,Compliance & Risk,Compliance evidence vault,P3-Low,S,3-5 d
+F-D11-031,D11,Compliance & Risk,Regulator inquiry response pack,P2-Medium,S,3-5 d
+F-D11-032,D11,Compliance & Risk,Matter-level compliance checklist,P1-High,L,3-5 w
+F-D11-033,D11,Compliance & Risk,Office compliance scorecard,P2-Medium,M,1-2 w
+F-D11-034,D11,Compliance & Risk,Compliance alert feed,P2-Medium,M,1-2 w
+F-D11-035,D11,Compliance & Risk,Policy library with ack tracking,P3-Low,L,3-5 w
+F-D11-036,D11,Compliance & Risk,Exception / waiver workflow,P2-Medium,M,1-2 w
+F-D11-037,D11,Compliance & Risk,Risk register (enterprise),P3-Low,XL,6-10 w
+F-D11-038,D11,Compliance & Risk,Risk heatmap,P0-Critical,L,3-5 w
+F-D11-039,D11,Compliance & Risk,Compliance audit trail,P2-Medium,M,1-2 w
+F-D11-040,D11,Compliance & Risk,Compliance report exporter,P3-Low,S,3-5 d
+F-D12-001,D12,Notary Office Management,Repertorium (deed daily log),P3-Low,L,3-5 w
+F-D12-002,D12,Notary Office Management,Klapper (alphabetical index),P0-Critical,L,3-5 w
+F-D12-003,D12,Notary Office Management,Protocol book register,P2-Medium,XL,6-10 w
+F-D12-004,D12,Notary Office Management,Protocol custody & handover log,P1-High,S,3-5 d
+F-D12-005,D12,Notary Office Management,Monthly notary report pack,P1-High,L,3-5 w
+F-D12-006,D12,Notary Office Management,MPN supervision response pack,P2-Medium,XL,6-10 w
+F-D12-007,D12,Notary Office Management,Office working-hours & roster,P0-Critical,L,3-5 w
+F-D12-008,D12,Notary Office Management,Notary leave / substitute protocol,P1-High,M,1-2 w
+F-D12-009,D12,Notary Office Management,Staff role matrix (notary office),P1-High,M,1-2 w
+F-D12-010,D12,Notary Office Management,Penghadap appointment scheduler,P2-Medium,S,3-5 d
+F-D12-011,D12,Notary Office Management,Queue & waiting-room board,P2-Medium,S,3-5 d
+F-D12-012,D12,Notary Office Management,Service price list (layanan),P3-Low,M,1-2 w
+F-D12-013,D12,Notary Office Management,Down-payment (uang muka) receipt,P3-Low,XL,6-10 w
+F-D12-014,D12,Notary Office Management,Deed fee quotation,P3-Low,XL,6-10 w
+F-D12-015,D12,Notary Office Management,Office cash book,P3-Low,L,3-5 w
+F-D12-016,D12,Notary Office Management,Office cash advance & IOU tracker,P0-Critical,M,1-2 w
+F-D12-017,D12,Notary Office Management,Office inventory (blanko/meterai),P0-Critical,XL,6-10 w
+F-D12-018,D12,Notary Office Management,Meterai inventory & usage,P1-High,M,1-2 w
+F-D12-019,D12,Notary Office Management,ATK & consumables tracker,P3-Low,L,3-5 w
+F-D12-020,D12,Notary Office Management,Archive room location map,P0-Critical,XL,6-10 w
+F-D12-021,D12,Notary Office Management,Deed storage box tracking,P2-Medium,XL,6-10 w
+F-D12-022,D12,Notary Office Management,Protocol transfer to MPD (retired),P2-Medium,XL,6-10 w
+F-D12-023,D12,Notary Office Management,Client identity re-verification,P0-Critical,XL,6-10 w
+F-D12-024,D12,Notary Office Management,Saksi pool management,P3-Low,XL,6-10 w
+F-D12-025,D12,Notary Office Management,Office bank-partner facility & rate sheet,P0-Critical,L,3-5 w
+F-D12-026,D12,Notary Office Management,Office performance dashboard,P1-High,XL,6-10 w
+F-D12-027,D12,Notary Office Management,Deed volume analytics,P0-Critical,M,1-2 w
+F-D12-028,D12,Notary Office Management,Staff productivity view,P3-Low,M,1-2 w
+F-D12-029,D12,Notary Office Management,Client waiting-time analytics,P2-Medium,S,3-5 d
+F-D12-030,D12,Notary Office Management,Office document checklist,P0-Critical,XL,6-10 w
+F-D12-031,D12,Notary Office Management,Office SOP library,P2-Medium,M,1-2 w
+F-D12-032,D12,Notary Office Management,Office announcement board,P3-Low,S,3-5 d
+F-D12-033,D12,Notary Office Management,Multi-desk task dispatch,P0-Critical,L,3-5 w
+F-D12-034,D12,Notary Office Management,Office audit trail,P2-Medium,XL,6-10 w
+F-D12-035,D12,Notary Office Management,Office backup verification,P0-Critical,L,3-5 w
+F-D12-036,D12,Notary Office Management,Office incident log,P2-Medium,M,1-2 w
+F-D12-037,D12,Notary Office Management,Office visitor log,P0-Critical,L,3-5 w
+F-D12-038,D12,Notary Office Management,Office feedback capture,P3-Low,M,1-2 w
+F-D12-039,D12,Notary Office Management,Office compliance self-check,P1-High,S,3-5 d
+F-D12-040,D12,Notary Office Management,Protocol year-end sealing & handover,P0-Critical,M,1-2 w
+F-D13-001,D13,PPAT & Property Legal,PPAT deed register (akta PPAT),P2-Medium,L,3-5 w
+F-D13-002,D13,PPAT & Property Legal,Land certificate (SHM/HGB) intake,P1-High,M,1-2 w
+F-D13-003,D13,PPAT & Property Legal,Certificate authenticity checklist,P2-Medium,XL,6-10 w
+F-D13-004,D13,PPAT & Property Legal,BPN verification request tracker,P3-Low,L,3-5 w
+F-D13-005,D13,PPAT & Property Legal,AJB drafting (sale & purchase),P0-Critical,XL,6-10 w
+F-D13-006,D13,PPAT & Property Legal,Hibah deed support,P3-Low,S,3-5 d
+F-D13-007,D13,PPAT & Property Legal,Tukar-menukar deed support,P3-Low,S,3-5 d
+F-D13-008,D13,PPAT & Property Legal,APHT (mortgage) drafting,P0-Critical,L,3-5 w
+F-D13-009,D13,PPAT & Property Legal,SKMHT drafting & expiry monitor,P3-Low,XL,6-10 w
+F-D13-010,D13,PPAT & Property Legal,Royalty/lease deed support,P3-Low,M,1-2 w
+F-D13-011,D13,PPAT & Property Legal,Land-split (pemecahan) tracker,P0-Critical,S,3-5 d
+F-D13-012,D13,PPAT & Property Legal,Land-merge (penggabungan) tracker,P0-Critical,M,1-2 w
+F-D13-013,D13,PPAT & Property Legal,Land-history (riwayat tanah) record,P0-Critical,L,3-5 w
+F-D13-014,D13,PPAT & Property Legal,Seller-buyer KYC bundle,P1-High,L,3-5 w
+F-D13-015,D13,PPAT & Property Legal,Marital-property consent check,P2-Medium,M,1-2 w
+F-D13-016,D13,PPAT & Property Legal,Heir consent verification,P2-Medium,S,3-5 d
+F-D13-017,D13,PPAT & Property Legal,Corporate seller board-resolution verification,P1-High,M,1-2 w
+F-D13-018,D13,PPAT & Property Legal,Tax (PPh) computation worksheet,P3-Low,L,3-5 w
+F-D13-019,D13,PPAT & Property Legal,BPHTB computation worksheet,P2-Medium,XL,6-10 w
+F-D13-020,D13,PPAT & Property Legal,PBB status verification,P2-Medium,M,1-2 w
+F-D13-021,D13,PPAT & Property Legal, girik/adat land intake,P2-Medium,L,3-5 w
+F-D13-022,D13,PPAT & Property Legal,Developer bulk-transaction batch,P3-Low,M,1-2 w
+F-D13-023,D13,PPAT & Property Legal,Developer unit (stock) registry,P2-Medium,S,3-5 d
+F-D13-024,D13,PPAT & Property Legal,Unit handover (BAST) tracker,P0-Critical,XL,6-10 w
+F-D13-025,D13,PPAT & Property Legal,KPR bank coordination pack,P0-Critical,XL,6-10 w
+F-D13-026,D13,PPAT & Property Legal,Notary-PPAT handoff checklist,P1-High,S,3-5 d
+F-D13-027,D13,PPAT & Property Legal,BPN queue-number tracker,P3-Low,XL,6-10 w
+F-D13-028,D13,PPAT & Property Legal,Certificate handover receipt,P1-High,M,1-2 w
+F-D13-029,D13,PPAT & Property Legal,PPAT monthly report,P2-Medium,S,3-5 d
+F-D13-030,D13,PPAT & Property Legal,PPAT protocol register,P0-Critical,XL,6-10 w
+F-D13-031,D13,PPAT & Property Legal,Zone (ZNT/NJOP) reference table,P0-Critical,M,1-2 w
+F-D13-032,D13,PPAT & Property Legal,Land-dispute flag & hold,P0-Critical,M,1-2 w
+F-D13-033,D13,PPAT & Property Legal,Boundary & area verification,P2-Medium,M,1-2 w
+F-D13-034,D13,PPAT & Property Legal,Power-to-sell (kuasa menjual) check,P0-Critical,L,3-5 w
+F-D13-035,D13,PPAT & Property Legal,Foreign-ownership guardrail,P0-Critical,S,3-5 d
+F-D13-036,D13,PPAT & Property Legal,PPAT fee worksheet,P3-Low,XL,6-10 w
+F-D13-037,D13,PPAT & Property Legal,PPAT dashboard,P0-Critical,S,3-5 d
+F-D13-038,D13,PPAT & Property Legal,PPAT audit trail,P2-Medium,XL,6-10 w
+F-D13-039,D13,PPAT & Property Legal,Certificate scan vault,P3-Low,L,3-5 w
+F-D13-040,D13,PPAT & Property Legal,BPN response archive,P0-Critical,M,1-2 w
+F-D14-001,D14,Finance & Accounting,Chart of accounts (PSAK-aware),P1-High,XL,6-10 w
+F-D14-002,D14,Finance & Accounting,Journal entry composer,P1-High,S,3-5 d
+F-D14-003,D14,Finance & Accounting,Journal approval workflow,P1-High,L,3-5 w
+F-D14-004,D14,Finance & Accounting,Accounts receivable ledger,P1-High,M,1-2 w
+F-D14-005,D14,Finance & Accounting,Accounts payable ledger,P3-Low,L,3-5 w
+F-D14-006,D14,Finance & Accounting,General ledger viewer,P3-Low,L,3-5 w
+F-D14-007,D14,Finance & Accounting,Trial balance report,P0-Critical,M,1-2 w
+F-D14-008,D14,Finance & Accounting,Profit & loss report,P0-Critical,M,1-2 w
+F-D14-009,D14,Finance & Accounting,Balance-sheet report,P2-Medium,XL,6-10 w
+F-D14-010,D14,Finance & Accounting,Cash-flow report,P2-Medium,L,3-5 w
+F-D14-011,D14,Finance & Accounting,Client trust (escrow) ledger,P1-High,XL,6-10 w
+F-D14-012,D14,Finance & Accounting,Trust receipt & disbursement,P2-Medium,S,3-5 d
+F-D14-013,D14,Finance & Accounting,Trust reconciliation,P2-Medium,S,3-5 d
+F-D14-014,D14,Finance & Accounting,Matter cost allocation,P2-Medium,XL,6-10 w
+F-D14-015,D14,Finance & Accounting,Department cost centers,P3-Low,M,1-2 w
+F-D14-016,D14,Finance & Accounting,Office-level P&L,P2-Medium,XL,6-10 w
+F-D14-017,D14,Finance & Accounting,Budget planner,P3-Low,XL,6-10 w
+F-D14-018,D14,Finance & Accounting,Budget-vs-actual monitor,P0-Critical,M,1-2 w
+F-D14-019,D14,Finance & Accounting,Fixed-asset register,P1-High,M,1-2 w
+F-D14-020,D14,Finance & Accounting,Depreciation scheduler,P3-Low,XL,6-10 w
+F-D14-021,D14,Finance & Accounting,Bank account registry,P1-High,XL,6-10 w
+F-D14-022,D14,Finance & Accounting,Bank reconciliation,P1-High,L,3-5 w
+F-D14-023,D14,Finance & Accounting,Petty-cash ledger,P3-Low,S,3-5 d
+F-D14-024,D14,Finance & Accounting,Tax invoice (faktur pajak) log,P1-High,S,3-5 d
+F-D14-025,D14,Finance & Accounting,Withholding-tax (PPh 23/21) tracker,P1-High,M,1-2 w
+F-D14-026,D14,Finance & Accounting,VAT (PPN) report support,P1-High,M,1-2 w
+F-D14-027,D14,Finance & Accounting,E-faktur data export,P0-Critical,S,3-5 d
+F-D14-028,D14,Finance & Accounting,Payroll interface export,P2-Medium,XL,6-10 w
+F-D14-029,D14,Finance & Accounting,Reimbursement workflow,P0-Critical,M,1-2 w
+F-D14-030,D14,Finance & Accounting,Advance-settlement workflow,P3-Low,XL,6-10 w
+F-D14-031,D14,Finance & Accounting,Inter-office settlement,P3-Low,M,1-2 w
+F-D14-032,D14,Finance & Accounting,Multi-currency support,P1-High,S,3-5 d
+F-D14-033,D14,Finance & Accounting,Exchange-rate table,P3-Low,M,1-2 w
+F-D14-034,D14,Finance & Accounting,Year-end closing checklist,P1-High,L,3-5 w
+F-D14-035,D14,Finance & Accounting,Auditor data pack,P1-High,M,1-2 w
+F-D14-036,D14,Finance & Accounting,Finance dashboard,P1-High,M,1-2 w
+F-D14-037,D14,Finance & Accounting,Finance audit trail,P1-High,XL,6-10 w
+F-D14-038,D14,Finance & Accounting,Segregation-of-duties controls,P1-High,S,3-5 d
+F-D14-039,D14,Finance & Accounting,Finance archive & retention,P1-High,L,3-5 w
+F-D14-040,D14,Finance & Accounting,Anomaly / duplicate-payment flag,P2-Medium,L,3-5 w
+F-D15-001,D15,Billing & Subscription,Fee-schedule library,P3-Low,XL,6-10 w
+F-D15-002,D15,Billing & Subscription,Time-based billing rules,P3-Low,M,1-2 w
+F-D15-003,D15,Billing & Subscription,Fixed-fee billing,P3-Low,S,3-5 d
+F-D15-004,D15,Billing & Subscription,Success-fee billing,P2-Medium,XL,6-10 w
+F-D15-005,D15,Billing & Subscription,Retainer billing,P2-Medium,L,3-5 w
+F-D15-006,D15,Billing & Subscription,Subscription plan catalog,P1-High,L,3-5 w
+F-D15-007,D15,Billing & Subscription,Plan upgrade / downgrade,P1-High,M,1-2 w
+F-D15-008,D15,Billing & Subscription,Proration engine,P1-High,L,3-5 w
+F-D15-009,D15,Billing & Subscription,Invoice composer,P3-Low,XL,6-10 w
+F-D15-010,D15,Billing & Subscription,E-invoice data capture,P0-Critical,XL,6-10 w
+F-D15-011,D15,Billing & Subscription,Invoice approval workflow,P0-Critical,L,3-5 w
+F-D15-012,D15,Billing & Subscription,Invoice delivery (email/portal),P2-Medium,XL,6-10 w
+F-D15-013,D15,Billing & Subscription,Invoice reminder schedule,P0-Critical,M,1-2 w
+F-D15-014,D15,Billing & Subscription,Late-fee & denda policy,P3-Low,M,1-2 w
+F-D15-015,D15,Billing & Subscription,Payment recording (multi-method),P3-Low,M,1-2 w
+F-D15-016,D15,Billing & Subscription,Payment-gateway integration adapter,P1-High,L,3-5 w
+F-D15-017,D15,Billing & Subscription,Virtual-account billing,P3-Low,M,1-2 w
+F-D15-018,D15,Billing & Subscription,QRIS payment support,P3-Low,M,1-2 w
+F-D15-019,D15,Billing & Subscription,Partial-payment handling,P0-Critical,S,3-5 d
+F-D15-020,D15,Billing & Subscription,Overpayment / credit-memo,P0-Critical,XL,6-10 w
+F-D15-021,D15,Billing & Subscription,Refund workflow,P1-High,XL,6-10 w
+F-D15-022,D15,Billing & Subscription,Dunning workflow,P3-Low,M,1-2 w
+F-D15-023,D15,Billing & Subscription,Collection task assignment,P0-Critical,M,1-2 w
+F-D15-024,D15,Billing & Subscription,Billing dispute handling,P3-Low,XL,6-10 w
+F-D15-025,D15,Billing & Subscription,Client billing profile,P2-Medium,M,1-2 w
+F-D15-026,D15,Billing & Subscription,Discount & voucher engine,P1-High,S,3-5 d
+F-D15-027,D15,Billing & Subscription,Tax on invoice (PPN/PPh),P3-Low,XL,6-10 w
+F-D15-028,D15,Billing & Subscription,Invoice cancellation (credit note),P1-High,L,3-5 w
+F-D15-029,D15,Billing & Subscription,Billing dashboard,P1-High,S,3-5 d
+F-D15-030,D15,Billing & Subscription,AR aging report,P1-High,M,1-2 w
+F-D15-031,D15,Billing & Subscription,Revenue recognition hook,P1-High,S,3-5 d
+F-D15-032,D15,Billing & Subscription,Payout to partner (profit share),P1-High,S,3-5 d
+F-D15-033,D15,Billing & Subscription,Office-level revenue split,P0-Critical,L,3-5 w
+F-D15-034,D15,Billing & Subscription,Billing audit trail,P1-High,S,3-5 d
+F-D15-035,D15,Billing & Subscription,Invoice PDF rendering,P0-Critical,M,1-2 w
+F-D15-036,D15,Billing & Subscription,Payment receipt rendering,P2-Medium,XL,6-10 w
+F-D15-037,D15,Billing & Subscription,Subscription renewal scheduler,P3-Low,S,3-5 d
+F-D15-038,D15,Billing & Subscription,Churn / win-back tracker,P2-Medium,L,3-5 w
+F-D15-039,D15,Billing & Subscription,Billing API for integrations,P1-High,S,3-5 d
+F-D15-040,D15,Billing & Subscription,Billing data retention,P2-Medium,M,1-2 w
+F-D16-001,D16,"User, Role & Permission",User provisioning,P2-Medium,M,1-2 w
+F-D16-002,D16,"User, Role & Permission",Bulk user import,P3-Low,L,3-5 w
+F-D16-003,D16,"User, Role & Permission",User deprovisioning,P0-Critical,S,3-5 d
+F-D16-004,D16,"User, Role & Permission",Department & team management,P2-Medium,XL,6-10 w
+F-D16-005,D16,"User, Role & Permission",Job-title & grade model,P0-Critical,S,3-5 d
+F-D16-006,D16,"User, Role & Permission",RBAC role catalog,P2-Medium,XL,6-10 w
+F-D16-007,D16,"User, Role & Permission",Least-privilege role templates,P1-High,L,3-5 w
+F-D16-008,D16,"User, Role & Permission",Permission matrix editor,P2-Medium,M,1-2 w
+F-D16-009,D16,"User, Role & Permission",Data-scope rules (office/matter),P1-High,XL,6-10 w
+F-D16-010,D16,"User, Role & Permission",ABAC policy rules,P3-Low,L,3-5 w
+F-D16-011,D16,"User, Role & Permission",Temporary elevation (break-glass),P3-Low,XL,6-10 w
+F-D16-012,D16,"User, Role & Permission",Delegation rules,P2-Medium,S,3-5 d
+F-D16-013,D16,"User, Role & Permission",API service-account management,P0-Critical,M,1-2 w
+F-D16-014,D16,"User, Role & Permission",SSO (OIDC/SAML) integration,P2-Medium,M,1-2 w
+F-D16-015,D16,"User, Role & Permission",SCIM provisioning adapter,P3-Low,S,3-5 d
+F-D16-016,D16,"User, Role & Permission",Password policy engine,P2-Medium,L,3-5 w
+F-D16-017,D16,"User, Role & Permission",MFA enrollment (TOTP),P3-Low,L,3-5 w
+F-D16-018,D16,"User, Role & Permission",WebAuthn / passkey support,P1-High,XL,6-10 w
+F-D16-019,D16,"User, Role & Permission",Session management console,P0-Critical,M,1-2 w
+F-D16-020,D16,"User, Role & Permission",Concurrent-session control,P0-Critical,M,1-2 w
+F-D16-021,D16,"User, Role & Permission",Login anomaly detection,P3-Low,XL,6-10 w
+F-D16-022,D16,"User, Role & Permission",Account lockout policy,P2-Medium,S,3-5 d
+F-D16-023,D16,"User, Role & Permission",Password-reset workflow,P0-Critical,S,3-5 d
+F-D16-024,D16,"User, Role & Permission",New-hire onboarding checklist,P3-Low,M,1-2 w
+F-D16-025,D16,"User, Role & Permission",Transfer / rotation workflow,P0-Critical,S,3-5 d
+F-D16-026,D16,"User, Role & Permission",Exit clearance workflow,P1-High,M,1-2 w
+F-D16-027,D16,"User, Role & Permission",Access review campaigns,P2-Medium,L,3-5 w
+F-D16-028,D16,"User, Role & Permission",SoD conflict detector,P3-Low,S,3-5 d
+F-D16-029,D16,"User, Role & Permission",Permission-change audit,P2-Medium,L,3-5 w
+F-D16-030,D16,"User, Role & Permission",Role-version history,P1-High,M,1-2 w
+F-D16-031,D16,"User, Role & Permission",Org-chart viewer,P3-Low,L,3-5 w
+F-D16-032,D16,"User, Role & Permission",User activity timeline,P2-Medium,XL,6-10 w
+F-D16-033,D16,"User, Role & Permission",Suspended-user vault,P1-High,M,1-2 w
+F-D16-034,D16,"User, Role & Permission",Guest / external user handling,P1-High,M,1-2 w
+F-D16-035,D16,"User, Role & Permission",External client-user invitation & lifecycle,P3-Low,L,3-5 w
+F-D16-036,D16,"User, Role & Permission",Contractor time-boxed access,P2-Medium,M,1-2 w
+F-D16-037,D16,"User, Role & Permission",Emergency access log,P2-Medium,L,3-5 w
+F-D16-038,D16,"User, Role & Permission",User directory search,P0-Critical,S,3-5 d
+F-D16-039,D16,"User, Role & Permission",License / seat usage tracker,P0-Critical,L,3-5 w
+F-D16-040,D16,"User, Role & Permission",Dormant-account reviewer,P3-Low,L,3-5 w
+F-D17-001,D17,Multi-Office & Tenant,Tenant provisioning,P0-Critical,L,3-5 w
+F-D17-002,D17,Multi-Office & Tenant,Tenant branding (logo/colors),P0-Critical,XL,6-10 w
+F-D17-003,D17,Multi-Office & Tenant,Tenant domain mapping,P3-Low,S,3-5 d
+F-D17-004,D17,Multi-Office & Tenant,Office branch registry,P1-High,XL,6-10 w
+F-D17-005,D17,Multi-Office & Tenant,Office hierarchy,P1-High,S,3-5 d
+F-D17-006,D17,Multi-Office & Tenant,Central vs office data scope,P3-Low,S,3-5 d
+F-D17-007,D17,Multi-Office & Tenant,Inter-office matter referral,P1-High,M,1-2 w
+F-D17-008,D17,Multi-Office & Tenant,Inter-office document sharing,P2-Medium,M,1-2 w
+F-D17-009,D17,Multi-Office & Tenant,Centralized user directory,P1-High,XL,6-10 w
+F-D17-010,D17,Multi-Office & Tenant,Office-local admin role,P0-Critical,L,3-5 w
+F-D17-011,D17,Multi-Office & Tenant,Tenant-wide settings,P0-Critical,S,3-5 d
+F-D17-012,D17,Multi-Office & Tenant,Office working calendar,P1-High,M,1-2 w
+F-D17-013,D17,Multi-Office & Tenant,Regional holiday table,P1-High,L,3-5 w
+F-D17-014,D17,Multi-Office & Tenant,Tenant data-residency option,P0-Critical,L,3-5 w
+F-D17-015,D17,Multi-Office & Tenant,Tenant backup policy,P1-High,L,3-5 w
+F-D17-016,D17,Multi-Office & Tenant,Tenant quota management,P1-High,XL,6-10 w
+F-D17-017,D17,Multi-Office & Tenant,Cross-office reporting,P0-Critical,L,3-5 w
+F-D17-018,D17,Multi-Office & Tenant,Consolidated finance view,P1-High,XL,6-10 w
+F-D17-019,D17,Multi-Office & Tenant,Office performance ranking,P2-Medium,XL,6-10 w
+F-D17-020,D17,Multi-Office & Tenant,Tenant announcement broadcast,P1-High,XL,6-10 w
+F-D17-021,D17,Multi-Office & Tenant,Tenant feature-flag control,P1-High,M,1-2 w
+F-D17-022,D17,Multi-Office & Tenant,Tenant integration registry,P3-Low,XL,6-10 w
+F-D17-023,D17,Multi-Office & Tenant,Office onboarding wizard,P2-Medium,XL,6-10 w
+F-D17-024,D17,Multi-Office & Tenant,Office closure / merge,P3-Low,S,3-5 d
+F-D17-025,D17,Multi-Office & Tenant,Tenant suspension,P0-Critical,L,3-5 w
+F-D17-026,D17,Multi-Office & Tenant,Tenant deletion (with retention),P2-Medium,S,3-5 d
+F-D17-027,D17,Multi-Office & Tenant,Tenant audit trail,P2-Medium,L,3-5 w
+F-D17-028,D17,Multi-Office & Tenant,Office access audit,P2-Medium,S,3-5 d
+F-D17-029,D17,Multi-Office & Tenant,Data-migration between offices,P1-High,XL,6-10 w
+F-D17-030,D17,Multi-Office & Tenant,Tenant SLA profiles,P2-Medium,XL,6-10 w
+F-D17-031,D17,Multi-Office & Tenant,Office capacity planning,P3-Low,M,1-2 w
+F-D17-032,D17,Multi-Office & Tenant,Tenant support channel,P1-High,S,3-5 d
+F-D17-033,D17,Multi-Office & Tenant,Tenant health dashboard,P1-High,M,1-2 w
+F-D17-034,D17,Multi-Office & Tenant,Tenant config export/import,P3-Low,M,1-2 w
+F-D17-035,D17,Multi-Office & Tenant,Tenant API quota & plan assignment,P0-Critical,XL,6-10 w
+F-D17-036,D17,Multi-Office & Tenant,Office document templates,P2-Medium,M,1-2 w
+F-D17-037,D17,Multi-Office & Tenant,Office fee localization,P1-High,S,3-5 d
+F-D17-038,D17,Multi-Office & Tenant,Tenant retention policy,P1-High,M,1-2 w
+F-D17-039,D17,Multi-Office & Tenant,Tenant incident broadcast,P2-Medium,XL,6-10 w
+F-D17-040,D17,Multi-Office & Tenant,Tenant config drift detector,P2-Medium,M,1-2 w
+F-D18-001,D18,Communication & Notification,In-app notification center,P2-Medium,M,1-2 w
+F-D18-002,D18,Communication & Notification,Email notification engine,P0-Critical,L,3-5 w
+F-D18-003,D18,Communication & Notification,SMS notification adapter,P2-Medium,XL,6-10 w
+F-D18-004,D18,Communication & Notification,WhatsApp notification adapter,P2-Medium,XL,6-10 w
+F-D18-005,D18,Communication & Notification,Push notification (mobile),P2-Medium,XL,6-10 w
+F-D18-006,D18,Communication & Notification,Notification preference center,P1-High,S,3-5 d
+F-D18-007,D18,Communication & Notification,Notification templating,P3-Low,S,3-5 d
+F-D18-008,D18,Communication & Notification,Multi-language notification,P2-Medium,L,3-5 w
+F-D18-009,D18,Communication & Notification,Notification scheduling,P0-Critical,M,1-2 w
+F-D18-010,D18,Communication & Notification,Digest (daily/weekly) mode,P3-Low,S,3-5 d
+F-D18-011,D18,Communication & Notification,Matter-event notifications,P0-Critical,L,3-5 w
+F-D18-012,D18,Communication & Notification,Deadline reminder engine,P1-High,XL,6-10 w
+F-D18-013,D18,Communication & Notification,Approval notification routing,P3-Low,M,1-2 w
+F-D18-014,D18,Communication & Notification,E-sign event notifications,P0-Critical,M,1-2 w
+F-D18-015,D18,Communication & Notification,Payment notifications,P2-Medium,L,3-5 w
+F-D18-016,D18,Communication & Notification,Broadcast announcements,P1-High,L,3-5 w
+F-D18-017,D18,Communication & Notification,Targeted audience selector,P2-Medium,S,3-5 d
+F-D18-018,D18,Communication & Notification,Message thread per matter,P2-Medium,M,1-2 w
+F-D18-019,D18,Communication & Notification,Internal chat (office),P2-Medium,S,3-5 d
+F-D18-020,D18,Communication & Notification,Client messaging (portal),P2-Medium,S,3-5 d
+F-D18-021,D18,Communication & Notification,File attachment in messages,P0-Critical,S,3-5 d
+F-D18-022,D18,Communication & Notification,Message read receipts,P0-Critical,XL,6-10 w
+F-D18-023,D18,Communication & Notification,Message retention policy,P2-Medium,L,3-5 w
+F-D18-024,D18,Communication & Notification,Notification delivery tracking,P3-Low,M,1-2 w
+F-D18-025,D18,Communication & Notification,Bounce / failure handling,P0-Critical,L,3-5 w
+F-D18-026,D18,Communication & Notification,Unsubscribe & consent respect,P3-Low,S,3-5 d
+F-D18-027,D18,Communication & Notification,Emergency broadcast,P1-High,L,3-5 w
+F-D18-028,D18,Communication & Notification,Notification audit trail,P1-High,S,3-5 d
+F-D18-029,D18,Communication & Notification,Notification rate limiting,P0-Critical,XL,6-10 w
+F-D18-030,D18,Communication & Notification,Template approval workflow,P0-Critical,L,3-5 w
+F-D18-031,D18,Communication & Notification,Sender identity (domain) config,P1-High,XL,6-10 w
+F-D18-032,D18,Communication & Notification,SMS/WA cost tracking,P3-Low,XL,6-10 w
+F-D18-033,D18,Communication & Notification,Notification analytics,P3-Low,M,1-2 w
+F-D18-034,D18,Communication & Notification,Quiet-hours policy,P0-Critical,S,3-5 d
+F-D18-035,D18,Communication & Notification,Escalation notification chain,P0-Critical,L,3-5 w
+F-D18-036,D18,Communication & Notification,Calendar-invite notifications,P2-Medium,L,3-5 w
+F-D18-037,D18,Communication & Notification,System maintenance notices,P2-Medium,M,1-2 w
+F-D18-038,D18,Communication & Notification,Notification API,P1-High,XL,6-10 w
+F-D18-039,D18,Communication & Notification,Notification archive,P0-Critical,XL,6-10 w
+F-D18-040,D18,Communication & Notification,Notification template A/B testing,P2-Medium,XL,6-10 w
+F-D19-001,D19,Client & Public Portal,Client login (secure),P0-Critical,S,3-5 d
+F-D19-002,D19,Client & Public Portal,Client registration with KYC,P3-Low,L,3-5 w
+F-D19-003,D19,Client & Public Portal,Client dashboard,P2-Medium,XL,6-10 w
+F-D19-004,D19,Client & Public Portal,Matter progress view,P3-Low,XL,6-10 w
+F-D19-005,D19,Client & Public Portal,Document request inbox,P0-Critical,L,3-5 w
+F-D19-006,D19,Client & Public Portal,Secure document upload,P2-Medium,XL,6-10 w
+F-D19-007,D19,Client & Public Portal,Shared-document viewer,P0-Critical,L,3-5 w
+F-D19-008,D19,Client & Public Portal,E-sign signing entry,P3-Low,S,3-5 d
+F-D19-009,D19,Client & Public Portal,Invoice & payment view,P0-Critical,XL,6-10 w
+F-D19-010,D19,Client & Public Portal,Online payment checkout,P1-High,M,1-2 w
+F-D19-011,D19,Client & Public Portal,Appointment booking,P3-Low,XL,6-10 w
+F-D19-012,D19,Client & Public Portal,Appointment reminders,P1-High,L,3-5 w
+F-D19-013,D19,Client & Public Portal,Case-message thread,P3-Low,M,1-2 w
+F-D19-014,D19,Client & Public Portal,Targeted portal announcements,P3-Low,XL,6-10 w
+F-D19-015,D19,Client & Public Portal,FAQ & help center,P2-Medium,S,3-5 d
+F-D19-016,D19,Client & Public Portal,Service catalog & pricing,P1-High,S,3-5 d
+F-D19-017,D19,Client & Public Portal,Quotation request form,P2-Medium,S,3-5 d
+F-D19-018,D19,Client & Public Portal,Lead intake public form,P0-Critical,S,3-5 d
+F-D19-019,D19,Client & Public Portal,Feedback & rating form,P1-High,S,3-5 d
+F-D19-020,D19,Client & Public Portal,Complaint submission,P1-High,S,3-5 d
+F-D19-021,D19,Client & Public Portal,Consent management view,P2-Medium,M,1-2 w
+F-D19-022,D19,Client & Public Portal,Profile & contacts editor,P1-High,XL,6-10 w
+F-D19-023,D19,Client & Public Portal,Company users management,P0-Critical,S,3-5 d
+F-D19-024,D19,Client & Public Portal,Notification preferences,P0-Critical,M,1-2 w
+F-D19-025,D19,Client & Public Portal,Download center (receipts/copies),P2-Medium,XL,6-10 w
+F-D19-026,D19,Client & Public Portal,Request copy of deed extract,P0-Critical,M,1-2 w
+F-D19-027,D19,Client & Public Portal,Track request status,P3-Low,S,3-5 d
+F-D19-028,D19,Client & Public Portal,Multi-language portal (ID/EN),P1-High,S,3-5 d
+F-D19-029,D19,Client & Public Portal,Accessibility (WCAG) support,P2-Medium,M,1-2 w
+F-D19-030,D19,Client & Public Portal,Portal session security,P3-Low,S,3-5 d
+F-D19-031,D19,Client & Public Portal,Portal audit trail,P3-Low,XL,6-10 w
+F-D19-032,D19,Client & Public Portal,Portal announcement targeting,P0-Critical,XL,6-10 w
+F-D19-033,D19,Client & Public Portal,Portal usage analytics,P3-Low,L,3-5 w
+F-D19-034,D19,Client & Public Portal,Portal SLA display,P1-High,M,1-2 w
+F-D19-035,D19,Client & Public Portal,Portal maintenance page,P0-Critical,M,1-2 w
+F-D19-036,D19,Client & Public Portal,Public office directory,P1-High,XL,6-10 w
+F-D19-037,D19,Client & Public Portal,Public lawyer/notary profiles,P3-Low,M,1-2 w
+F-D19-038,D19,Client & Public Portal,Public regulation digest,P2-Medium,XL,6-10 w
+F-D19-039,D19,Client & Public Portal,Portal feedback loop,P2-Medium,L,3-5 w
+F-D19-040,D19,Client & Public Portal,Portal data-retention notice,P1-High,S,3-5 d
+F-D20-001,D20,Reporting & Analytics,Standard report library,P2-Medium,S,3-5 d
+F-D20-002,D20,Reporting & Analytics,Ad-hoc report builder,P2-Medium,XL,6-10 w
+F-D20-003,D20,Reporting & Analytics,Report scheduling (email),P0-Critical,M,1-2 w
+F-D20-004,D20,Reporting & Analytics,Report export (PDF/XLSX/CSV),P3-Low,M,1-2 w
+F-D20-005,D20,Reporting & Analytics,Dashboard designer,P0-Critical,S,3-5 d
+F-D20-006,D20,Reporting & Analytics,Role-based dashboards,P2-Medium,L,3-5 w
+F-D20-007,D20,Reporting & Analytics,Matter KPI dashboard,P2-Medium,L,3-5 w
+F-D20-008,D20,Reporting & Analytics,Financial KPI dashboard,P3-Low,L,3-5 w
+F-D20-009,D20,Reporting & Analytics,Deed-volume period report & export,P0-Critical,XL,6-10 w
+F-D20-010,D20,Reporting & Analytics,OCR accuracy trend & benchmark report,P2-Medium,XL,6-10 w
+F-D20-011,D20,Reporting & Analytics,AI cost & quality executive report,P3-Low,M,1-2 w
+F-D20-012,D20,Reporting & Analytics,Approval bottleneck report,P1-High,M,1-2 w
+F-D20-013,D20,Reporting & Analytics,Deadline compliance report,P0-Critical,L,3-5 w
+F-D20-014,D20,Reporting & Analytics,Client profitability report,P0-Critical,S,3-5 d
+F-D20-015,D20,Reporting & Analytics,Staff utilization report,P3-Low,M,1-2 w
+F-D20-016,D20,Reporting & Analytics,Pipeline & forecast report,P2-Medium,XL,6-10 w
+F-D20-017,D20,Reporting & Analytics,Compliance posture report,P1-High,M,1-2 w
+F-D20-018,D20,Reporting & Analytics,Risk posture period report,P0-Critical,XL,6-10 w
+F-D20-019,D20,Reporting & Analytics,Data-quality scorecard,P2-Medium,XL,6-10 w
+F-D20-020,D20,Reporting & Analytics,Report access control,P3-Low,XL,6-10 w
+F-D20-021,D20,Reporting & Analytics,Report version history,P0-Critical,S,3-5 d
+F-D20-022,D20,Reporting & Analytics,Report annotation,P3-Low,XL,6-10 w
+F-D20-023,D20,Reporting & Analytics,Drill-down navigation,P3-Low,L,3-5 w
+F-D20-024,D20,Reporting & Analytics,Comparative period analysis,P1-High,XL,6-10 w
+F-D20-025,D20,Reporting & Analytics,Office benchmarking,P3-Low,S,3-5 d
+F-D20-026,D20,Reporting & Analytics,Tenant-level rollups,P1-High,XL,6-10 w
+F-D20-027,D20,Reporting & Analytics,Scheduled snapshot archive,P3-Low,XL,6-10 w
+F-D20-028,D20,Reporting & Analytics,Report delivery log,P3-Low,S,3-5 d
+F-D20-029,D20,Reporting & Analytics,Metric dictionary,P3-Low,M,1-2 w
+F-D20-030,D20,Reporting & Analytics,KPI alert thresholds,P3-Low,M,1-2 w
+F-D20-031,D20,Reporting & Analytics,Embedded analytics (portal),P2-Medium,S,3-5 d
+F-D20-032,D20,Reporting & Analytics,Analytics data-mart refresh,P1-High,XL,6-10 w
+F-D20-033,D20,Reporting & Analytics,PII handling in reports,P1-High,S,3-5 d
+F-D20-034,D20,Reporting & Analytics,Report audit trail,P0-Critical,L,3-5 w
+F-D20-035,D20,Reporting & Analytics,Report retention policy,P1-High,XL,6-10 w
+F-D20-036,D20,Reporting & Analytics,Custom SQL (guardrailed) reports,P0-Critical,L,3-5 w
+F-D20-037,D20,Reporting & Analytics,Report performance monitor,P0-Critical,M,1-2 w
+F-D20-038,D20,Reporting & Analytics,Mobile-friendly reports,P2-Medium,S,3-5 d
+F-D20-039,D20,Reporting & Analytics,Executive summary pack,P1-High,S,3-5 d
+F-D20-040,D20,Reporting & Analytics,Board-ready export theme,P2-Medium,M,1-2 w
+F-D21-001,D21,API & Integration,Public REST API (versioned),P2-Medium,S,3-5 d
+F-D21-002,D21,API & Integration,API key management,P0-Critical,M,1-2 w
+F-D21-003,D21,API & Integration,OAuth2 client management,P3-Low,L,3-5 w
+F-D21-004,D21,API & Integration,Rate limiting & quotas,P2-Medium,M,1-2 w
+F-D21-005,D21,API & Integration,API usage metering,P3-Low,S,3-5 d
+F-D21-006,D21,API & Integration,Developer portal & docs,P2-Medium,XL,6-10 w
+F-D21-007,D21,API & Integration,OpenAPI spec publishing,P0-Critical,L,3-5 w
+F-D21-008,D21,API & Integration,Webhook dispatcher,P1-High,XL,6-10 w
+F-D21-009,D21,API & Integration,Inbound webhook receiver,P0-Critical,S,3-5 d
+F-D21-010,D21,API & Integration,Event catalog (domain events),P0-Critical,L,3-5 w
+F-D21-011,D21,API & Integration,Dukcapil connector,P1-High,M,1-2 w
+F-D21-012,D21,API & Integration,Tax (DJP) data adapter,P2-Medium,L,3-5 w
+F-D21-013,D21,API & Integration,BPN integration adapter,P2-Medium,M,1-2 w
+F-D21-014,D21,API & Integration,Bank / VA integration,P3-Low,S,3-5 d
+F-D21-015,D21,API & Integration,Payment-gateway connector certification pack,P0-Critical,S,3-5 d
+F-D21-016,D21,API & Integration,PSrE e-sign adapter,P2-Medium,S,3-5 d
+F-D21-017,D21,API & Integration,SMS gateway adapter,P3-Low,S,3-5 d
+F-D21-018,D21,API & Integration,WhatsApp gateway adapter,P1-High,L,3-5 w
+F-D21-019,D21,API & Integration,Email provider adapter,P3-Low,XL,6-10 w
+F-D21-020,D21,API & Integration,Cloud-storage (S3) connector,P2-Medium,XL,6-10 w
+F-D21-021,D21,API & Integration,SSO/SCIM connectors,P1-High,L,3-5 w
+F-D21-022,D21,API & Integration,Accounting export connector,P0-Critical,M,1-2 w
+F-D21-023,D21,API & Integration,E-faktur export adapter,P2-Medium,L,3-5 w
+F-D21-024,D21,API & Integration,BI export (warehouse) feed,P0-Critical,S,3-5 d
+F-D21-025,D21,API & Integration,Mobile SDK auth endpoints,P2-Medium,S,3-5 d
+F-D21-026,D21,API & Integration,OCR engine plugin API,P1-High,M,1-2 w
+F-D21-027,D21,API & Integration,AI provider plugin API,P3-Low,L,3-5 w
+F-D21-028,D21,API & Integration,Idempotency-key support,P2-Medium,L,3-5 w
+F-D21-029,D21,API & Integration,API sandbox environment,P3-Low,S,3-5 d
+F-D21-030,D21,API & Integration,API changelog & deprecation,P3-Low,S,3-5 d
+F-D21-031,D21,API & Integration,Integration health monitor,P2-Medium,L,3-5 w
+F-D21-032,D21,API & Integration,Retry & DLQ for webhooks,P2-Medium,L,3-5 w
+F-D21-033,D21,API & Integration,API audit trail,P0-Critical,M,1-2 w
+F-D21-034,D21,API & Integration,Partner onboarding workflow,P1-High,S,3-5 d
+F-D21-035,D21,API & Integration,Integration test harness,P1-High,XL,6-10 w
+F-D21-036,D21,API & Integration,API abuse detection,P0-Critical,M,1-2 w
+F-D21-037,D21,API & Integration,Request signing (HMAC),P0-Critical,M,1-2 w
+F-D21-038,D21,API & Integration,Field-level encryption for APIs,P0-Critical,M,1-2 w
+F-D21-039,D21,API & Integration,Tenant-scoped API tokens,P3-Low,XL,6-10 w
+F-D21-040,D21,API & Integration,API dashboard,P1-High,S,3-5 d
+F-D22-001,D22,Security & Data Protection,Password hashing (Argon2id),P1-High,L,3-5 w
+F-D22-002,D22,Security & Data Protection,MFA enforcement policy,P2-Medium,L,3-5 w
+F-D22-003,D22,Security & Data Protection,SSO hardening guide,P2-Medium,M,1-2 w
+F-D22-004,D22,Security & Data Protection,Session timeout & rotation,P0-Critical,S,3-5 d
+F-D22-005,D22,Security & Data Protection,JWT access/refresh design,P0-Critical,L,3-5 w
+F-D22-006,D22,Security & Data Protection,API token vault,P1-High,M,1-2 w
+F-D22-007,D22,Security & Data Protection,Encryption at rest (AES-256),P1-High,M,1-2 w
+F-D22-008,D22,Security & Data Protection,TLS enforcement (1.2+),P0-Critical,S,3-5 d
+F-D22-009,D22,Security & Data Protection,Key-management (KMS/HSM) hooks,P3-Low,XL,6-10 w
+F-D22-010,D22,Security & Data Protection,Secrets rotation scheduler,P0-Critical,S,3-5 d
+F-D22-011,D22,Security & Data Protection,Field-level encryption (NIK/PII),P2-Medium,L,3-5 w
+F-D22-012,D22,Security & Data Protection,PII masking in logs/traces,P0-Critical,XL,6-10 w
+F-D22-013,D22,Security & Data Protection,Backup encryption,P2-Medium,L,3-5 w
+F-D22-014,D22,Security & Data Protection,Secure file-upload pipeline,P2-Medium,S,3-5 d
+F-D22-015,D22,Security & Data Protection,Malware scanning gate,P1-High,L,3-5 w
+F-D22-016,D22,Security & Data Protection,Rate limiting & brute-force shield,P3-Low,L,3-5 w
+F-D22-017,D22,Security & Data Protection,WAF rule baseline,P3-Low,L,3-5 w
+F-D22-018,D22,Security & Data Protection,Security headers baseline,P0-Critical,M,1-2 w
+F-D22-019,D22,Security & Data Protection,CSRF protection,P1-High,XL,6-10 w
+F-D22-020,D22,Security & Data Protection,XSS output-encoding standard,P0-Critical,L,3-5 w
+F-D22-021,D22,Security & Data Protection,SQL-injection guardrails (SQLx),P1-High,S,3-5 d
+F-D22-022,D22,Security & Data Protection,Dependency vulnerability scan,P3-Low,L,3-5 w
+F-D22-023,D22,Security & Data Protection,Container image scan,P0-Critical,M,1-2 w
+F-D22-024,D22,Security & Data Protection,SAST baseline,P3-Low,S,3-5 d
+F-D22-025,D22,Security & Data Protection,DAST baseline,P2-Medium,XL,6-10 w
+F-D22-026,D22,Security & Data Protection,Audit-log integrity (hash chain),P3-Low,S,3-5 d
+F-D22-027,D22,Security & Data Protection,Tamper-evident evidence store,P2-Medium,L,3-5 w
+F-D22-028,D22,Security & Data Protection,Incident response runbooks,P1-High,M,1-2 w
+F-D22-029,D22,Security & Data Protection,Breach containment & forensic preservation runbook,P0-Critical,L,3-5 w
+F-D22-030,D22,Security & Data Protection,Security training tracker,P0-Critical,L,3-5 w
+F-D22-031,D22,Security & Data Protection,Pen-test finding tracker,P2-Medium,XL,6-10 w
+F-D22-032,D22,Security & Data Protection,Threat-model registry (STRIDE),P1-High,L,3-5 w
+F-D22-033,D22,Security & Data Protection,OWASP ASVS mapping,P0-Critical,L,3-5 w
+F-D22-034,D22,Security & Data Protection,Backup-restore security test,P3-Low,XL,6-10 w
+F-D22-035,D22,Security & Data Protection,Data-residency controls,P3-Low,S,3-5 d
+F-D22-036,D22,Security & Data Protection,Secure decommissioning,P2-Medium,L,3-5 w
+F-D22-037,D22,Security & Data Protection,Tenant isolation tests,P1-High,XL,6-10 w
+F-D22-038,D22,Security & Data Protection,Security dashboard,P2-Medium,XL,6-10 w
+F-D22-039,D22,Security & Data Protection,Security audit export,P3-Low,S,3-5 d
+F-D22-040,D22,Security & Data Protection,Security exception register,P1-High,M,1-2 w
+F-D23-001,D23,Search & Discovery,Global search bar,P1-High,M,1-2 w
+F-D23-002,D23,Search & Discovery,Matter search,P0-Critical,S,3-5 d
+F-D23-003,D23,Search & Discovery,Document full-text search,P0-Critical,S,3-5 d
+F-D23-004,D23,Search & Discovery,Deed full-text & faceted discovery,P3-Low,L,3-5 w
+F-D23-005,D23,Search & Discovery,Client search,P1-High,M,1-2 w
+F-D23-006,D23,Search & Discovery,Contact search,P2-Medium,L,3-5 w
+F-D23-007,D23,Search & Discovery,Clause-library search,P1-High,S,3-5 d
+F-D23-008,D23,Search & Discovery,Template search,P0-Critical,S,3-5 d
+F-D23-009,D23,Search & Discovery,Knowledge-base search,P0-Critical,S,3-5 d
+F-D23-010,D23,Search & Discovery,Regulation search,P2-Medium,XL,6-10 w
+F-D23-011,D23,Search & Discovery,Precedent search,P3-Low,S,3-5 d
+F-D23-012,D23,Search & Discovery,Faceted filtering,P3-Low,M,1-2 w
+F-D23-013,D23,Search & Discovery,Saved searches,P3-Low,XL,6-10 w
+F-D23-014,D23,Search & Discovery,Search suggestions (typeahead),P0-Critical,L,3-5 w
+F-D23-015,D23,Search & Discovery,Typo-tolerant matching,P2-Medium,M,1-2 w
+F-D23-016,D23,Search & Discovery,Indonesian stemming analyzer,P3-Low,XL,6-10 w
+F-D23-017,D23,Search & Discovery,Synonym dictionary (legal ID),P0-Critical,M,1-2 w
+F-D23-018,D23,Search & Discovery,Search relevance tuning,P2-Medium,L,3-5 w
+F-D23-019,D23,Search & Discovery,Search result highlighting,P3-Low,XL,6-10 w
+F-D23-020,D23,Search & Discovery,Preview from search results,P2-Medium,L,3-5 w
+F-D23-021,D23,Search & Discovery,Search access-control trimming,P3-Low,M,1-2 w
+F-D23-022,D23,Search & Discovery,Search audit log,P3-Low,S,3-5 d
+F-D23-023,D23,Search & Discovery,Recent & frequent items,P0-Critical,M,1-2 w
+F-D23-024,D23,Search & Discovery,Search analytics,P0-Critical,XL,6-10 w
+F-D23-025,D23,Search & Discovery,Zero-result feedback capture,P2-Medium,XL,6-10 w
+F-D23-026,D23,Search & Discovery,Bulk reindex job,P0-Critical,S,3-5 d
+F-D23-027,D23,Search & Discovery,Index-health monitor,P3-Low,L,3-5 w
+F-D23-028,D23,Search & Discovery,Tantivy index manager,P1-High,S,3-5 d
+F-D23-029,D23,Search & Discovery,Vector (Qdrant) optional index,P3-Low,S,3-5 d
+F-D23-030,D23,Search & Discovery,Hybrid (keyword+vector) ranking,P1-High,M,1-2 w
+F-D23-031,D23,Search & Discovery,Search API endpoint,P3-Low,XL,6-10 w
+F-D23-032,D23,Search & Discovery,Search pagination & sorting,P3-Low,XL,6-10 w
+F-D23-033,D23,Search & Discovery,Search export (controlled),P3-Low,L,3-5 w
+F-D23-034,D23,Search & Discovery,Cross-office scoped search,P3-Low,L,3-5 w
+F-D23-035,D23,Search & Discovery,Archived-content search toggle,P3-Low,M,1-2 w
+F-D23-036,D23,Search & Discovery,OCR-text search,P0-Critical,S,3-5 d
+F-D23-037,D23,Search & Discovery,Metadata-only search mode,P2-Medium,XL,6-10 w
+F-D23-038,D23,Search & Discovery,Search latency SLO monitor,P0-Critical,L,3-5 w
+F-D23-039,D23,Search & Discovery,Search relevance eval harness,P1-High,M,1-2 w
+F-D23-040,D23,Search & Discovery,Search synonym curation workflow,P3-Low,XL,6-10 w
+F-D24-001,D24,Mobile & Field Operations,Dioxus mobile feasibility report,P3-Low,S,3-5 d
+F-D24-002,D24,Mobile & Field Operations,Field task inbox (mobile),P0-Critical,XL,6-10 w
+F-D24-003,D24,Mobile & Field Operations,Offline-first task queue,P1-High,M,1-2 w
+F-D24-004,D24,Mobile & Field Operations,Offline document capture,P3-Low,XL,6-10 w
+F-D24-005,D24,Mobile & Field Operations,ID photo capture guidance,P0-Critical,XL,6-10 w
+F-D24-006,D24,Mobile & Field Operations,On-device image QC (blur/glare),P0-Critical,M,1-2 w
+F-D24-007,D24,Mobile & Field Operations,Deferred upload & retry,P2-Medium,L,3-5 w
+F-D24-008,D24,Mobile & Field Operations,Mobile KYC capture flow,P1-High,XL,6-10 w
+F-D24-009,D24,Mobile & Field Operations,Appointment map & navigation,P1-High,XL,6-10 w
+F-D24-010,D24,Mobile & Field Operations,Visit check-in / check-out,P2-Medium,L,3-5 w
+F-D24-011,D24,Mobile & Field Operations,Geo-tagged evidence photos,P0-Critical,S,3-5 d
+F-D24-012,D24,Mobile & Field Operations,Field expense capture,P2-Medium,L,3-5 w
+F-D24-013,D24,Mobile & Field Operations,Mobile time tracking,P0-Critical,M,1-2 w
+F-D24-014,D24,Mobile & Field Operations,Push task assignments,P0-Critical,L,3-5 w
+F-D24-015,D24,Mobile & Field Operations,Offline approval queue with deferred sync,P3-Low,L,3-5 w
+F-D24-016,D24,Mobile & Field Operations,Mobile e-sign signing,P2-Medium,XL,6-10 w
+F-D24-017,D24,Mobile & Field Operations,Secure mobile document viewer,P3-Low,XL,6-10 w
+F-D24-018,D24,Mobile & Field Operations,Mobile redaction guardrails,P0-Critical,M,1-2 w
+F-D24-019,D24,Mobile & Field Operations,Biometric app unlock,P1-High,XL,6-10 w
+F-D24-020,D24,Mobile & Field Operations,Remote-wipe & lock,P3-Low,M,1-2 w
+F-D24-021,D24,Mobile & Field Operations,MDM policy hooks,P3-Low,L,3-5 w
+F-D24-022,D24,Mobile & Field Operations,Mobile audit trail,P2-Medium,M,1-2 w
+F-D24-023,D24,Mobile & Field Operations,Battery/data-saver mode,P0-Critical,M,1-2 w
+F-D24-024,D24,Mobile & Field Operations,Low-bandwidth sync mode,P2-Medium,S,3-5 d
+F-D24-025,D24,Mobile & Field Operations,Conflict resolution (offline edits),P0-Critical,M,1-2 w
+F-D24-026,D24,Mobile & Field Operations,Mobile crash reporting,P1-High,XL,6-10 w
+F-D24-027,D24,Mobile & Field Operations,Mobile analytics,P3-Low,M,1-2 w
+F-D24-028,D24,Mobile & Field Operations,Field-team location dashboard,P1-High,S,3-5 d
+F-D24-029,D24,Mobile & Field Operations,Mobile release train,P0-Critical,S,3-5 d
+F-D24-030,D24,Mobile & Field Operations,App-version enforcement,P1-High,L,3-5 w
+F-D24-031,D24,Mobile & Field Operations,Mobile accessibility,P1-High,XL,6-10 w
+F-D24-032,D24,Mobile & Field Operations,Mobile language toggle,P3-Low,XL,6-10 w
+F-D24-033,D24,Mobile & Field Operations,Mobile help & offline FAQ,P0-Critical,M,1-2 w
+F-D24-034,D24,Mobile & Field Operations,Field safety check-in,P0-Critical,M,1-2 w
+F-D24-035,D24,Mobile & Field Operations,Mobile notification prefs,P1-High,M,1-2 w
+F-D24-036,D24,Mobile & Field Operations,Mobile storage quota,P0-Critical,M,1-2 w
+F-D24-037,D24,Mobile & Field Operations,Photo-to-PDF bundling,P2-Medium,L,3-5 w
+F-D24-038,D24,Mobile & Field Operations,Field-report generator,P3-Low,XL,6-10 w
+F-D24-039,D24,Mobile & Field Operations,Mobile session security,P2-Medium,M,1-2 w
+F-D24-040,D24,Mobile & Field Operations,Mobile offline map pack,P0-Critical,S,3-5 d
+F-D25-001,D25,Enterprise Administration & Global Expansion,System settings console,P3-Low,S,3-5 d
+F-D25-002,D25,Enterprise Administration & Global Expansion,Tenant onboarding console (admin),P1-High,XL,6-10 w
+F-D25-003,D25,Enterprise Administration & Global Expansion,License & seat manager,P0-Critical,L,3-5 w
+F-D25-004,D25,Enterprise Administration & Global Expansion,Feature-flag console,P3-Low,S,3-5 d
+F-D25-005,D25,Enterprise Administration & Global Expansion,Release channel manager,P1-High,XL,6-10 w
+F-D25-006,D25,Enterprise Administration & Global Expansion,Maintenance-mode control,P1-High,XL,6-10 w
+F-D25-007,D25,Enterprise Administration & Global Expansion,Announcement broadcaster,P0-Critical,M,1-2 w
+F-D25-008,D25,Enterprise Administration & Global Expansion,Global search admin,P2-Medium,S,3-5 d
+F-D25-009,D25,Enterprise Administration & Global Expansion,Background-job monitor,P2-Medium,M,1-2 w
+F-D25-010,D25,Enterprise Administration & Global Expansion,Queue-depth alerting,P2-Medium,XL,6-10 w
+F-D25-011,D25,Enterprise Administration & Global Expansion,Worker scaling policy,P2-Medium,XL,6-10 w
+F-D25-012,D25,Enterprise Administration & Global Expansion,Storage lifecycle admin,P2-Medium,S,3-5 d
+F-D25-013,D25,Enterprise Administration & Global Expansion,Index maintenance console,P3-Low,S,3-5 d
+F-D25-014,D25,Enterprise Administration & Global Expansion,AI provider key vault,P2-Medium,M,1-2 w
+F-D25-015,D25,Enterprise Administration & Global Expansion,OCR engine admin,P2-Medium,XL,6-10 w
+F-D25-016,D25,Enterprise Administration & Global Expansion,Integration registry admin,P1-High,L,3-5 w
+F-D25-017,D25,Enterprise Administration & Global Expansion,Webhook delivery monitor,P2-Medium,S,3-5 d
+F-D25-018,D25,Enterprise Administration & Global Expansion,API rate-plan admin,P2-Medium,XL,6-10 w
+F-D25-019,D25,Enterprise Administration & Global Expansion,Audit-log viewer (global),P2-Medium,M,1-2 w
+F-D25-020,D25,Enterprise Administration & Global Expansion,Retention-policy designer,P0-Critical,M,1-2 w
+F-D25-021,D25,Enterprise Administration & Global Expansion,Legal-hold console,P2-Medium,M,1-2 w
+F-D25-022,D25,Enterprise Administration & Global Expansion,Backup scheduler,P1-High,XL,6-10 w
+F-D25-023,D25,Enterprise Administration & Global Expansion,Restore drill tracker,P0-Critical,L,3-5 w
+F-D25-024,D25,Enterprise Administration & Global Expansion,DR failover runbook,P3-Low,S,3-5 d
+F-D25-025,D25,Enterprise Administration & Global Expansion,Multi-region readiness checklist,P2-Medium,S,3-5 d
+F-D25-026,D25,Enterprise Administration & Global Expansion,Localization (i18n) manager,P3-Low,XL,6-10 w
+F-D25-027,D25,Enterprise Administration & Global Expansion,New-locale onboarding,P2-Medium,XL,6-10 w
+F-D25-028,D25,Enterprise Administration & Global Expansion,Currency & tax-locale pack,P3-Low,M,1-2 w
+F-D25-029,D25,Enterprise Administration & Global Expansion,Regulatory-locale pack,P1-High,M,1-2 w
+F-D25-030,D25,Enterprise Administration & Global Expansion,Time-zone policy manager,P3-Low,S,3-5 d
+F-D25-031,D25,Enterprise Administration & Global Expansion,Data-residency selector,P1-High,S,3-5 d
+F-D25-032,D25,Enterprise Administration & Global Expansion,Cross-border transfer log,P0-Critical,XL,6-10 w
+F-D25-033,D25,Enterprise Administration & Global Expansion,Expansion market assessment,P2-Medium,S,3-5 d
+F-D25-034,D25,Enterprise Administration & Global Expansion,Partner onboarding (new country),P3-Low,M,1-2 w
+F-D25-035,D25,Enterprise Administration & Global Expansion,Global admin dashboard,P2-Medium,XL,6-10 w
+F-D25-036,D25,Enterprise Administration & Global Expansion,Admin audit trail,P0-Critical,L,3-5 w
+F-D25-037,D25,Enterprise Administration & Global Expansion,Config change approval,P1-High,M,1-2 w
+F-D25-038,D25,Enterprise Administration & Global Expansion,System health SLO board,P1-High,S,3-5 d
+F-D25-039,D25,Enterprise Administration & Global Expansion,Capacity planner,P2-Medium,S,3-5 d
+F-D25-040,D25,Enterprise Administration & Global Expansion,Decommissioning workflow,P1-High,XL,6-10 w
