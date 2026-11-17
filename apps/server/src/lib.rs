@@ -1887,152 +1887,666 @@ async fn not_found() -> AppError {
     AppError::NotFound("route".into())
 }
 
-// ---------- public pages (landing + login + app shell) ----------
-const PAGE_CSS: &str = "@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}:root{--paper:#FAF7F1;--ink:#1C1917;--muted:#78716C;--gold:#B45309;--emerald:#0C4A3B;--line:rgba(28,25,23,.1);--card:#FFFFFF}\
-*{box-sizing:border-box}html{scroll-behavior:smooth}\
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;margin:0;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}\
-.serif{font-family:'Fraunces',Georgia,serif}h1,h2{letter-spacing:-.02em}\
-a{color:var(--emerald)}.wrap{max-width:1120px;margin:0 auto;padding:0 24px}\
-.island{position:sticky;top:20px;z-index:20;display:flex;justify-content:space-between;align-items:center;max-width:1120px;margin:20px auto 0;padding:12px 12px 12px 24px;background:rgba(250,247,241,.85);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:999px}\
-.island nav a{margin-left:6px;text-decoration:none;font-size:14px;font-weight:600;color:var(--ink);padding:8px 14px;border-radius:999px;transition:all .5s cubic-bezier(.32,.72,0,1)}\
-.island nav a:hover{background:rgba(28,25,23,.06)}\
-.brand{font-weight:800;letter-spacing:.14em;font-size:13px;text-decoration:none;color:var(--ink)}\
-.pill{display:inline-flex;align-items:center;gap:12px;background:var(--ink);color:#fff;padding:8px 8px 8px 24px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;transition:transform .5s cubic-bezier(.32,.72,0,1)}\
-.pill:hover{transform:translateY(-2px)}.pill:active{transform:scale(.98)}\
-.pill .arr{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.32,.72,0,1)}\
-.pill:hover .arr{transform:translate(2px,-2px) scale(1.06)}\
-.pill.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}\
-.pill.ghost .arr{background:rgba(28,25,23,.07)}\
-.eyebrow{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff}\
-.hero{padding:96px 0 72px}.hero h1{font-size:clamp(44px,7vw,88px);line-height:1.02;margin:24px 0}\
-.hero p.lead{font-size:19px;color:var(--muted);max-width:620px;line-height:1.7}\
-.hero-cta{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap}\
-.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:20px;padding:24px 0 96px}\
-.shell{background:rgba(28,25,23,.045);border:1px solid var(--line);border-radius:28px;padding:10px;transition:transform .7s cubic-bezier(.32,.72,0,1),opacity .7s}\
-.shell:hover{transform:translateY(-4px)}\
-.core{background:var(--card);border-radius:20px;padding:28px;box-shadow:inset 0 1px 1px rgba(255,255,255,.9),0 24px 48px -24px rgba(28,25,23,.18);height:100%}\
-.core .n{font-size:12px;font-weight:800;letter-spacing:.18em;color:var(--gold)}\
-.core h3{font-size:22px;margin:10px 0 8px}.core p{color:var(--muted);font-size:15px;line-height:1.65;margin:0}\
-.s4{grid-column:span 4}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:span 12}\
-.strip{display:flex;gap:40px;flex-wrap:wrap;padding:28px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:8px}\
-.strip b{font-size:30px;display:block}.strip span{color:var(--muted);font-size:13px}\
-footer{padding:48px 0 64px;color:var(--muted);font-size:13px}\
-.authmin{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:32px 16px}\
-.authcard{width:100%;max-width:440px}\
-.authcard .core h2{font-size:30px;margin:12px 0 4px}\
-.tabs{display:flex;gap:8px;margin:18px 0}.tabs button{flex:1;padding:10px;border-radius:999px;border:1px solid var(--line);background:transparent;font-weight:700;cursor:pointer;transition:all .5s cubic-bezier(.32,.72,0,1)}\
-.tabs button.on{background:var(--ink);color:#fff}\
-label.fl{display:block;font-size:13px;font-weight:700;margin:12px 0 2px}\
-input.fi{width:100%;padding:13px 16px;margin:4px 0 6px;border-radius:14px;border:1px solid var(--line);background:var(--paper);font-size:15px;font-family:inherit}\
-input.fi:focus{outline:2px solid var(--emerald);outline-offset:1px}\
-.wfull{width:100%;justify-content:center}\
-.err{color:#B91C1C;font-size:14px;min-height:20px}\
-.dashhead{display:flex;justify-content:space-between;align-items:center;padding:36px 0 8px;flex-wrap:wrap;gap:12px}\
-table.tbl{width:100%;border-collapse:collapse;font-size:15px}\
-table.tbl th{text-align:left;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line)}\
-table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
-.badge{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(12,74,59,.1);color:var(--emerald)}\
-.rv{opacity:0;transform:translateY(28px);filter:blur(6px);transition:opacity .9s cubic-bezier(.32,.72,0,1),transform .9s cubic-bezier(.32,.72,0,1),filter .9s}\
-.rv.in{opacity:1;transform:none;filter:none}\
-@media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
+// ---------- public pages (landing + login + app shell + marketing site) ----------
+// All public HTML is produced through `page_shell` (single head/nav/footer).
+// CSP-safe: no inline <style>, no style=""/onclick attributes, no inline behavior
+// scripts — only Tabler + /static/site.css + /static/site.js references.
+// Dropdowns use native <details> (no JS); the mobile hamburger is a <details>
+// toggle (static assets are intentionally left untouched).
 
-const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>
-<div class="container-xl"><div class="topbar"><div class="logo">⚖️<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur ▾</a><a href="/app">Solusi ▾</a><a href="#harga">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><span class="srch">🔍</span><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis →</a></div></div></div>
-<section class="hero"><div class="container-xl hero-in"><div>
-<span class="badge-soft rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
-<h1 class="rv">Kelola Perkara Hukum Lebih Mudah, <span class="bl">Profesional dan Terpercaya.</span></h1>
-<p class="lead rv">LegalRust adalah platform manajemen hukum modern untuk notaris, firma hukum dan profesional hukum dengan teknologi Rust yang super cepat dan aman.</p>
-<div class="cta-row rv"><a class="a" href="/app">▶&nbsp; Lihat Demo &nbsp;→</a><a class="b" href="/login">Mulai Gratis Sekarang &nbsp;→</a></div>
-<div class="checks rv"><span><i class="tick">✓</i>Gratis Selamanya</span><span><i class="tick">✓</i>Aman &amp; Terpercaya</span><span><i class="tick">✓</i>Support 24/7</span></div>
-</div>
-<div class="mock rv"><div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>LegalRust — pratinjau dasbor (ilustrasi)</span></div>
-<div class="mock-body"><div class="side"><div class="logo2">⚖️ LegalRust</div><div class="mi on">🏠 Dashboard</div><div class="mi">📁 Perkara</div><div class="mi">👥 Klien</div><div class="mi">📄 Dokumen</div><div class="mi">🔍 OCR &amp; Verifikasi</div><div class="mi">✒️ Akta &amp; Kontrak</div><div class="mi">✍️ Tanda Tangan</div><div class="mi">💰 Keuangan</div><div class="mi">📊 Laporan</div><div class="mi">⚙️ Pengaturan</div></div>
-<div class="dmain"><div class="msearch"><span class="box">🔍 Cari perkara, klien, atau dokumen…</span><span class="bell">🔔<span class="n">3</span></span><span class="me"><span class="av">B</span><span><b>Budi Santoso</b><br><small>Notaris</small></span></span></div><div class="dtop"><div><b>Dashboard</b><br><small>Selamat datang, Budi Santoso</small></div><span class="pill">30 Hari Terakhir ▾</span></div>
-<div class="stat4"><div class="stat">Total Perkara<b>128</b><span class="up">↑ 12.5%</span></div><div class="stat">Dokumen Diproses<b>842</b><span class="up">↑ 18.7%</span></div><div class="stat">Klien Aktif<b>256</b><span class="up">↑ 8.2%</span></div><div class="stat">Pendapatan<b>Rp 248 jt</b><span class="up">↑ 14.6%</span></div></div>
-<div class="dgrid"><div class="panel"><b>Tren Perkara</b> <span class="legend">● Tahun Ini &nbsp;○ Tahun Lalu</span><svg viewBox="0 0 400 110" width="100%" height="86"><polygon points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24 400,110 0,110" fill="rgba(37,99,235,.12)"/><polyline points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24" fill="none" stroke="#2563EB" stroke-width="3"/></svg><div class="months"><span>Jan</span><span>Mar</span><span>Mei</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Des</span></div></div>
-<div class="panel"><b>Aktivitas Terbaru</b> <a class="more" href="/app">Lihat Semua →</a><div class="feed"><div>✅ Dokumen Akta Notaris disetujui<br><span class="t">2 menit lalu</span></div><div>📝 Perkara #KR-2026-1047 diperbarui<br><span class="t">5 menit lalu</span></div><div>👤 Klien baru: PT Maju Bersama<br><span class="t">10 menit lalu</span></div></div></div></div>
-</div></div></div>
-</div></div></section>
-<div class="container-xl"><div class="trust rv"><div><b>Dipercaya oleh</b><br>Ribuan Profesional</div><span class="seg">NOTARIS</span><span class="seg">PPAT</span><span class="seg">FIRMA HUKUM</span><span class="seg">KORPORAT</span><span class="seg">ADVOKAT</span></div>
-<section class="feat" id="fitur"><span class="badge-soft tag rv">FITUR UNGGULAN</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga tanda tangan digital, semua terintegrasi dengan sempurna.</p>
-<div class="fgrid">
-<div class="fcard rv"><div class="ic blue">⚡</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara dengan mudah dan efisien. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic purple">📄</div><h3>OCR &amp; Verifikasi Dokumen</h3><p>Scan dan verifikasi dokumen secara otomatis dengan AI. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic green">✒️</div><h3>Tanda Tangan Digital</h3><p>Tandatangani dokumen secara online dan aman (aktivasi PSrE bertahap). <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic orange">⚖️</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dengan template profesional. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic purple">📊</div><h3>Laporan &amp; Analitik</h3><p>Pantau kinerja dan pertumbuhan bisnis Anda. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic green2">🛡️</div><h3>Keamanan Tingkat Tinggi</h3><p>Data Anda terlindungi dengan standar enterprise. <a href="/app">Pelajari →</a></p></div>
-</div></section>
-<section class="cta rv" id="harga"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a class="go" href="/login">Mulai Sekarang &nbsp;→</a></div><ul><li>✓ Gratis selamanya</li><li>✓ Setup mudah dalam 1 menit</li><li>✓ Support profesional</li></ul></section>
-<footer class="site"><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
-<script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js?v=2"></script>
-</body></html>"##;
+const SITE_BASE: &str = "https://legalrust.test";
 
-const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body class="d-flex flex-column">
-<div class="page page-center flex-fill"><div class="container container-tight py-4">
-<div class="text-center mb-4"><a href="/">⚖️ <strong>LegalRust</strong></a><div class="text-muted">Smart Legal Solution</div></div>
-<div class="card card-md"><div class="card-body">
-<h2 class="h2 text-center mb-1">Masuk</h2><p class="text-muted text-center">Sesi JWT + proteksi brute-force 5x percobaan</p>
-<div class="btn-group w-100 mb-3"><button class="btn btn-primary" id="t1">Masuk</button><button class="btn" id="t2">Daftar organisasi</button></div>
-<div id="f_reg" class="hidden"><div class="mb-2"><label class="form-label">Nama organisasi</label><input class="form-control" id="org"></div><div class="mb-2"><label class="form-label">Nama Anda</label><input class="form-control" id="nm"></div></div>
-<div class="mb-2"><label class="form-label">Email</label><input class="form-control" id="email" type="email" autocomplete="username"></div>
-<div class="mb-2"><label class="form-label">Kata sandi <span class="form-label-description"><a href="/faq">Lupa?</a></span></label><input class="form-control" id="pwd" type="password" autocomplete="current-password"></div>
-<div class="text-danger mb-2" id="err"></div>
-<button class="btn btn-primary w-100" id="go">Masuk aplikasi</button>
-<button class="btn btn-ghost-secondary w-100 mt-2" id="demo">Gunakan akun demo</button>
-<details class="mt-3"><summary class="text-muted" style="cursor:pointer">Peran &amp; hak akses</summary>
-<div class="table-responsive mt-2"><table class="table table-sm"><thead><tr><th>Peran</th><th>Hak akses ringkas</th></tr></thead><tbody>
-<tr><td><span class="badge bg-blue-lt">org_owner</span></td><td>Semua (View/Create/Update/Delete/Approve/Reject/Export/Download/Share/Sign/Verify/Assign)</td></tr>
-<tr><td><span class="badge bg-blue-lt">office_admin</span></td><td>Kelola harian + Assign, tanpa Delete/Reject/Sign/Verify</td></tr>
-<tr><td><span class="badge bg-blue-lt">notary / ppat</span></td><td>Akta: Sign, Verify, Approve + kelola, tanpa Delete/Assign</td></tr>
-<tr><td><span class="badge bg-blue-lt">lawyer</span></td><td>Perkara/dokumen + Export/Download/Share</td></tr>
-<tr><td><span class="badge bg-blue-lt">legal_staff / document_officer</span></td><td>Verifikasi dokumen + Download/Share</td></tr>
-<tr><td><span class="badge bg-blue-lt">finance_officer</span></td><td>Keuangan: Approve + Export/Download</td></tr>
-<tr><td><span class="badge bg-blue-lt">auditor / reviewer</span></td><td>Lihat + Export/Download saja</td></tr>
-<tr><td><span class="badge bg-blue-lt">client</span></td><td>Portal klien terbatas</td></tr>
-</tbody></table></div>
-<p class="text-muted" style="font-size:12px">Akun demo: <b>admin@legalrust.test</b> (org_owner, dibuat saat registrasi organisasi).</p></details>
-</div></div><div class="text-center text-muted mt-3">Kembali ke <a href="/">Beranda</a></div></div></div>
-<script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js?v=2"></script>
-</body></html>"##;
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
 
-const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>
-<div class="page"><header class="navbar navbar-expand-md navbar-light sticky-top bg-white border-bottom"><div class="container-xl">
-<a href="/" class="navbar-brand">⚖️ <strong>LegalRust</strong></a>
-<ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li></ul>
-<button class="btn btn-outline-danger btn-sm logout">Keluar</button></div></header>
-<div class="page-wrapper"><div class="container-xl py-4">
-<h2 class="page-title" id="hi">Dasbor</h2><div class="text-danger" id="err"></div>
-<div id="p-ringkas"><div class="row g-2" id="g"></div><div class="card mt-3"><div class="card-header"><h3 class="card-title">Perkara Aktif</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m"></tbody></table></div></div></div>
-<div id="p-dok" class="hidden"><div class="card"><div class="card-header"><h3 class="card-title">Dokumen</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div>
-<div class="card mt-3"><div class="card-body"><h3 class="card-title">Unggah dokumen</h3><input class="form-control mb-2" id="dn" placeholder="nama file, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" id="doup">Unggah</button> <span class="text-danger" id="ue"></span></div></div></div>
-<div id="p-akta" class="hidden"><div class="card"><div class="card-header"><h3 class="card-title">Akta</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div></div>
-<div id="p-keu" class="hidden"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Invoice per perkara</h3></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" id="showinv">Tampilkan</button><div id="il"></div></div></div></div>
-<div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Trust transfer</h3></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" id="dotrf">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div>
-<div class="card mt-3"><div class="card-header"><h3 class="card-title">Rekening trust</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr></thead><tbody id="tl"></tbody></table></div></div></div>
-<div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div>
-</div></div></div>
-<script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js?v=2"></script>
-</body></html>"##;
+fn fmt_idr(minor: i64) -> String {
+    let neg = minor < 0;
+    let mut s = minor.abs().to_string();
+    let mut groups: Vec<String> = Vec::new();
+    while s.len() > 3 {
+        let cut = s.len() - 3;
+        groups.push(s[cut..].to_string());
+        s.truncate(cut);
+    }
+    groups.push(s);
+    groups.reverse();
+    format!("{}Rp {}", if neg { "-" } else { "" }, groups.join("."))
+}
 
-fn page(html: &str) -> impl IntoResponse {
-    (
-        StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
-        html.replacen("CSS", PAGE_CSS, 1),
+fn badge(status: &str) -> String {
+    let cls = match status {
+        "TERSEDIA" => "bg-green-lt",
+        "TERSEDIA TERBATAS" => "bg-yellow-lt",
+        _ => "bg-red-lt",
+    };
+    format!(r#"<span class="badge {cls}">{status}</span>"#)
+}
+
+fn cta_row() -> String {
+    r#"<div class="cta-row"><a class="a" href="/demo">Minta Demo</a><a class="b" href="/login">Mulai Gratis</a></div>"#
+        .to_string()
+}
+
+fn endpoint_table(rows: &[(&str, &str)]) -> String {
+    let mut out = String::from(
+        r#"<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Endpoint</th><th>Keterangan</th></tr></thead><tbody>"#,
+    );
+    for (ep, desc) in rows {
+        out.push_str(&format!(
+            "<tr><td><code>{}</code></td><td>{}</td></tr>",
+            esc(ep),
+            esc(desc)
+        ));
+    }
+    out.push_str("</tbody></table></div>");
+    out
+}
+
+/// Shared shell: full HTML head (Tabler + site.css + meta/OG/canonical +
+/// minimal Organization JSON-LD) + topbar nav + footer.
+fn page_shell(title: &str, desc: &str, path: &str, active: &str, body: &str) -> String {
+    let on = |key: &str| {
+        if key == active {
+            " on"
+        } else {
+            ""
+        }
+    };
+    let nav = format!(
+        r##"<nav class="nav d-none d-md-flex" aria-label="Navigasi utama"><a href="/" class="{o0}">Beranda</a><details class="nav-dd"><summary>Fitur</summary><div class="nav-dd-menu"><a href="/fitur">Semua Fitur</a><a href="/fitur/manajemen-perkara">Manajemen Perkara</a><a href="/fitur/manajemen-dokumen">Manajemen Dokumen</a><a href="/fitur/ocr">OCR</a><a href="/fitur/ai-legal-assistant">AI Legal Assistant</a><a href="/fitur/generasi-akta">Generasi Akta</a><a href="/fitur/tanda-tangan">Tanda Tangan</a></div></details><details class="nav-dd"><summary>Solusi</summary><div class="nav-dd-menu"><a href="/solusi">Semua Solusi</a><a href="/solusi/notaris">Notaris</a><a href="/solusi/ppat">PPAT</a><a href="/solusi/firma-hukum">Firma Hukum</a><a href="/solusi/legal-corporate">Legal Corporate</a></div></details><a href="/harga" class="{o1}">Harga</a><a href="/tentang" class="{o2}">Tentang</a><a href="/artikel" class="{o3}">Artikel</a><a href="/kontak" class="{o4}">Kontak</a></nav><details class="mnav d-md-none"><summary aria-label="Menu navigasi">Menu</summary><nav aria-label="Navigasi seluler"><a href="/">Beranda</a><a href="/fitur">Fitur</a><a href="/solusi">Solusi</a><a href="/harga">Harga</a><a href="/tentang">Tentang</a><a href="/artikel">Artikel</a><a href="/kontak">Kontak</a><a href="/demo">Demo</a><a href="/faq">FAQ</a></nav></details>"##,
+        o0 = on("Beranda"),
+        o1 = on("Harga"),
+        o2 = on("Tentang"),
+        o3 = on("Artikel"),
+        o4 = on("Kontak"),
+    );
+    format!(
+        r#"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust</title><meta name="description" content="{d}"><link rel="canonical" href="{b}{p}"><meta property="og:title" content="{t} — LegalRust"><meta property="og:description" content="{d}"><meta property="og:type" content="website"><meta property="og:url" content="{b}{p}"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"><script type="application/ld+json">{{"@context":"https://schema.org","@type":"Organization","name":"LegalRust","url":"{b}","description":"Platform manajemen hukum untuk notaris, PPAT, firma hukum, dan profesional legal."}}</script></head><body><div class="container-xl"><div class="topbar"><div class="logo">LegalRust<small>Smart Legal Solution</small></div>{n}<div class="topact"><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis</a></div></div></div><main class="container-xl page-main">{body}</main><div class="container-xl"><footer class="site"><span>2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/sitemap.xml">Peta Situs</a> · <a href="/healthz">Status</a></span></footer></div><script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"#,
+        t = esc(title),
+        d = esc(desc),
+        b = SITE_BASE,
+        p = path,
+        n = nav,
+        body = body,
     )
 }
+
+fn html_ok(s: String) -> (StatusCode, [(&'static str, &'static str); 1], String) {
+    (
+        StatusCode::OK,
+        [("content-type", "text/html; charset=utf-8")],
+        s,
+    )
+}
+fn html_status(
+    st: StatusCode,
+    s: String,
+) -> (StatusCode, [(&'static str, &'static str); 1], String) {
+    (st, [("content-type", "text/html; charset=utf-8")], s)
+}
+
+// ----- landing / login / app (share page_shell) -----
 async fn landing() -> impl IntoResponse {
-    page(LANDING_HTML)
+    let body = r#"<section class="hero"><div class="hero-in"><div><span class="badge-soft rv">Solusi LegalTech Terdepan di Indonesia</span><h1 class="rv">Kelola Perkara, Dokumen, dan Akta dalam Satu Platform Aman</h1><p class="lead rv">LegalRust membantu notaris, PPAT, dan firma hukum mengelola perkara, dokumen berversi dengan pin SHA-256, akta dari template dengan alur ber-guard, verifikasi identitas via OCR job plus review manusia, serta keuangan invoice anti-overpay dan trust ledger double-entry.</p><div class="cta-row"><a class="a" href="/app">Lihat Demo</a><a class="b" href="/login">Mulai Gratis Sekarang</a></div><div class="checks rv"><span><i class="tick">v</i>Gratis Selamanya</span><span><i class="tick">v</i>Aman dan Terpercaya</span><span><i class="tick">v</i>Jejak Audit Penuh</span></div></div><div class="mock rv"><div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>LegalRust — pratinjau dasbor (ilustrasi)</span></div><div class="mock-body"><div class="side"><div class="logo2">LegalRust</div><div class="mi on">Dasbor</div><div class="mi">Perkara</div><div class="mi">Dokumen</div><div class="mi">Akta</div><div class="mi">Keuangan</div></div><div class="dmain"><div class="msearch"><span class="box">Cari perkara, klien, atau dokumen</span><span class="me"><span class="av">B</span><span><b>Budi Santoso</b><br><small>Notaris</small></span></span></div><div class="stat4"><div class="stat">Total Perkara<b>128</b><span class="up">+ 12,5%</span></div><div class="stat">Dokumen Diproses<b>842</b><span class="up">+ 18,7%</span></div><div class="stat">Klien Aktif<b>256</b><span class="up">+ 8,2%</span></div><div class="stat">Pendapatan<b>Rp 248 jt</b><span class="up">+ 14,6%</span></div></div></div></div></div></div></section><div class="trust rv"><div><b>Dipercaya oleh</b><br>Ribuan Profesional</div><span class="seg">NOTARIS</span><span class="seg">PPAT</span><span class="seg">FIRMA HUKUM</span><span class="seg">KORPORAT</span><span class="seg">ADVOKAT</span></div><section class="feat" id="fitur"><span class="badge-soft tag rv">FITUR UNGGULAN</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga tanda tangan digital, semua terintegrasi dengan sempurna.</p><div class="fgrid"><div class="fcard rv"><div class="ic blue">P</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara dengan mudah dan efisien. <a href="/fitur/manajemen-perkara">Pelajari</a></p></div><div class="fcard rv"><div class="ic purple">O</div><h3>OCR dan Verifikasi Dokumen</h3><p>Job OCR per tipe dokumen dengan review manusia. <a href="/fitur/ocr">Pelajari</a></p></div><div class="fcard rv"><div class="ic green">T</div><h3>Tanda Tangan Digital</h3><p>Alur akta teraudit; aktivasi PSrE bertahap. <a href="/fitur/tanda-tangan">Pelajari</a></p></div><div class="fcard rv"><div class="ic orange">A</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dengan template profesional. <a href="/fitur/generasi-akta">Pelajari</a></p></div><div class="fcard rv"><div class="ic purple">L</div><h3>Laporan dan Analitik</h3><p>Ekspor CSV perkara dan jejak audit role-gated. <a href="/app">Pelajari</a></p></div><div class="fcard rv"><div class="ic green2">K</div><h3>Keamanan Tingkat Tinggi</h3><p>Argon2, JWT revocable, RBAC per endpoint. <a href="/fitur/manajemen-dokumen">Pelajari</a></p></div></div></section><section class="cta rv"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a class="go" href="/login">Mulai Sekarang</a></div><ul><li>Gratis selamanya</li><li>Setup mudah dalam 1 menit</li><li>Support profesional</li></ul></section>"#;
+    html_ok(page_shell(
+        "Kelola Perkara, Dokumen dan Akta",
+        "Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal.",
+        "/",
+        "Beranda",
+        body,
+    ))
 }
+
 async fn login_page() -> impl IntoResponse {
-    page(LOGIN_HTML)
+    let body = r#"<div class="page page-center"><div class="container container-tight py-4"><div class="text-center mb-4"><a href="/">LegalRust</a><div class="text-muted">Smart Legal Solution</div></div><div class="card card-md"><div class="card-body"><h1 class="h2 text-center mb-1">Masuk</h1><p class="text-muted text-center">Sesi JWT plus proteksi brute-force 5x percobaan</p><div class="btn-group w-100 mb-3"><button class="btn btn-primary" id="t1">Masuk</button><button class="btn" id="t2">Daftar organisasi</button></div><div id="f_reg" class="hidden"><div class="mb-2"><label class="form-label" for="org">Nama organisasi</label><input class="form-control" id="org"></div><div class="mb-2"><label class="form-label" for="nm">Nama Anda</label><input class="form-control" id="nm"></div></div><div class="mb-2"><label class="form-label" for="email">Email</label><input class="form-control" id="email" type="email" autocomplete="username"></div><div class="mb-2"><label class="form-label" for="pwd">Kata sandi</label><input class="form-control" id="pwd" type="password" autocomplete="current-password"></div><div class="text-danger mb-2" id="err"></div><button class="btn btn-primary w-100" id="go">Masuk aplikasi</button><button class="btn btn-ghost-secondary w-100 mt-2" id="demo">Gunakan akun demo</button><details class="mt-3"><summary class="text-muted">Peran dan hak akses</summary><div class="table-responsive mt-2"><table class="table table-sm"><thead><tr><th>Peran</th><th>Hak akses ringkas</th></tr></thead><tbody><tr><td><span class="badge bg-blue-lt">org_owner</span></td><td>Semua hak akses</td></tr><tr><td><span class="badge bg-blue-lt">office_admin</span></td><td>Kelola harian plus Assign</td></tr><tr><td><span class="badge bg-blue-lt">notary / ppat</span></td><td>Akta: Sign, Verify, Approve</td></tr><tr><td><span class="badge bg-blue-lt">lawyer</span></td><td>Perkara dan dokumen</td></tr><tr><td><span class="badge bg-blue-lt">finance_officer</span></td><td>Keuangan: Approve</td></tr><tr><td><span class="badge bg-blue-lt">auditor</span></td><td>Lihat dan ekspor saja</td></tr></tbody></table></div></details></div></div><div class="text-center text-muted mt-3">Kembali ke <a href="/">Beranda</a></div></div></div>"#;
+    html_ok(page_shell(
+        "Masuk",
+        "Masuk ke dasbor LegalRust dengan sesi JWT yang aman.",
+        "/login",
+        "",
+        body,
+    ))
 }
+
 async fn app_page() -> impl IntoResponse {
-    page(APP_HTML)
+    let body = r#"<div class="page"><header class="navbar navbar-expand-md navbar-light bg-white border-bottom"><div class="container-xl"><a href="/" class="navbar-brand">LegalRust</a><ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li></ul><button class="btn btn-outline-danger btn-sm logout">Keluar</button></div></header><div class="page-wrapper"><div class="container-xl py-4"><h1 class="page-title" id="hi">Dasbor</h1><div class="text-danger" id="err"></div><div id="p-ringkas"><div class="row g-2" id="g"></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Perkara Aktif</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m"></tbody></table></div></div></div><div id="p-dok" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Dokumen</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Unggah dokumen</h2><input class="form-control mb-2" id="dn" placeholder="nama berkas, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" id="doup">Unggah</button> <span class="text-danger" id="ue"></span></div></div></div><div id="p-akta" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Akta</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div></div><div id="p-keu" class="hidden"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Invoice per perkara</h2></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" id="showinv">Tampilkan</button><div id="il"></div></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Trust transfer</h2></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" id="dotrf">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Rekening trust</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr></thead><tbody id="tl"></tbody></table></div></div></div><div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div></div></div></div>"#;
+    html_ok(page_shell(
+        "Dasbor",
+        "Dasbor aplikasi LegalRust: ringkasan perkara, dokumen, akta, dan keuangan.",
+        "/app",
+        "",
+        body,
+    ))
+}
+
+// ----- feature pages -----
+fn feature_body(
+    headline: &str,
+    status: &str,
+    intro: &str,
+    rows: &[(&str, &str)],
+    note: &str,
+) -> String {
+    format!(
+        r#"<section class="feat"><span class="badge-soft tag">FITUR</span><h1>{h}</h1><p class="sub">{b} {intro}</p>{cta}</section><section class="card"><div class="card-body"><h2 class="card-title">Endpoint terkait</h2>{tbl}<h2 class="card-title mt-3">Catatan status</h2><p class="text-muted">{note}</p></div></section>"#,
+        h = esc(headline),
+        b = badge(status),
+        intro = esc(intro),
+        cta = cta_row(),
+        tbl = endpoint_table(rows),
+        note = esc(note),
+    )
+}
+
+async fn fitur_index() -> impl IntoResponse {
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">FITUR</span><h1>Fitur Lengkap LegalRust</h1><p class="sub">Enam kemampuan inti dalam satu platform teraudit.</p>{}</section><div class="fgrid"><div class="fcard"><h3>Manajemen Perkara Terintegrasi</h3><p>Klien, perkara, tugas bertransisi aman, notifikasi. <a href="/fitur/manajemen-perkara">Pelajari</a></p></div><div class="fcard"><h3>Manajemen Dokumen Berversi</h3><p>Upload SHA-pin, versi, share kedaluwarsa. <a href="/fitur/manajemen-dokumen">Pelajari</a></p></div><div class="fcard"><h3>OCR dan Verifikasi</h3><p>Job OCR plus review manusia. <a href="/fitur/ocr">Pelajari</a></p></div><div class="fcard"><h3>AI Legal Assistant</h3><p>RAG keyword live; chat provider-gated. <a href="/fitur/ai-legal-assistant">Pelajari</a></p></div><div class="fcard"><h3>Generasi Akta</h3><p>Template berversi plus state machine ber-guard. <a href="/fitur/generasi-akta">Pelajari</a></p></div><div class="fcard"><h3>Tanda Tangan Digital</h3><p>Alur teraudit; PSrE bertahap. <a href="/fitur/tanda-tangan">Pelajari</a></p></div></div>"#,
+        cta_row()
+    );
+    html_ok(page_shell(
+        "Fitur Lengkap",
+        "Enam fitur inti LegalRust: perkara, dokumen, OCR, AI, akta, dan tanda tangan digital.",
+        "/fitur",
+        "",
+        &body,
+    ))
+}
+
+async fn fitur_perkara() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Manajemen Perkara Terintegrasi",
+        "Kelola klien, perkara, dan tugas bertransisi aman dengan notifikasi dan audit trail.",
+        "/fitur/manajemen-perkara",
+        "",
+        &feature_body(
+            "Manajemen Perkara Terintegrasi",
+            "TERSEDIA",
+            "Kelola klien, perkara, dan tugas dengan transisi status yang dijaga dan notifikasi in-app.",
+            &[
+                ("POST /api/v1/clients", "Buat klien individual, korporat, atau pemerintah"),
+                ("POST /api/v1/matters", "Buat perkara dengan nomor otomatis"),
+                ("POST /api/v1/matters/{mid}/tasks", "Tambah tugas ke perkara"),
+                ("POST /api/v1/tasks/{tid}", "Ubah status tugas (transisi ilegal ditolak 409)"),
+                ("GET /api/v1/notifications", "Notifikasi in-app per pengguna"),
+            ],
+            "Live dan tercakup RBAC per endpoint; setiap mutasi tercatat di audit trail.",
+        ),
+    ))
+}
+
+async fn fitur_dokumen() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Manajemen Dokumen Berversi",
+        "Dokumen berversi SHA-pin, tautan share 1-720 jam, dan unduh ber-RBAC.",
+        "/fitur/manajemen-dokumen",
+        "",
+        &feature_body(
+            "Manajemen Dokumen Berversi",
+            "TERSEDIA",
+            "Unggah dokumen yang dipin SHA-256, kelola versi, dan bagikan lewat tautan kedaluwarsa.",
+            &[
+                ("POST /api/v1/documents", "Registrasi metadata dokumen plus hash SHA-256"),
+                ("PUT /api/v1/documents/{id}/content", "Unggah isi (ukuran dan hash harus cocok)"),
+                ("GET /api/v1/documents/{id}/content", "Unduh versi terbaru (butuh permission Download)"),
+                ("POST /api/v1/documents/{id}/shares", "Buat tautan share 1-720 jam"),
+                ("GET /api/v1/reports/matters.csv", "Ekspor CSV perkara"),
+            ],
+            "Live; unduhan dan share dijaga RBAC dan masa berlaku.",
+        ),
+    ))
+}
+
+async fn fitur_ocr() -> impl IntoResponse {
+    html_ok(page_shell(
+        "OCR dan Verifikasi Dokumen",
+        "Job OCR KTP, KK, NPWP, paspor, dan sertifikat dengan skor kepercayaan plus review manusia.",
+        "/fitur/ocr",
+        "",
+        &feature_body(
+            "OCR dan Verifikasi Dokumen",
+            "BUTUH KONFIGURASI",
+            "Antrean job OCR dan review approve/reject live; eksekusi OCR live butuh engine yang dikonfigurasi.",
+            &[
+                ("GET /api/v1/ocr/supported", "Daftar tipe dokumen yang didukung"),
+                ("POST /api/v1/ocr/jobs", "Buat job OCR untuk sebuah dokumen"),
+                ("POST /api/v1/ocr/jobs/{id}/review", "Keputusan approve/reject (butuh permission Verify)"),
+                ("POST /api/v1/ocr/jobs/{id}/process", "Pemrosesan live — 501 tanpa engine OCR"),
+            ],
+            "Jujur: POST /api/v1/ocr/jobs/{id}/process mengembalikan 501 karena libtesseract native dan cloud fallback belum dikonfigurasi. Job tetap antre, tidak ada yang diproses diam-diam.",
+        ),
+    ))
+}
+
+async fn fitur_ai() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Asisten Legal AI",
+        "RAG keyword live plus pencatatan token; generasi chat provider-gated.",
+        "/fitur/ai-legal-assistant",
+        "",
+        &feature_body(
+            "Asisten Legal AI",
+            "BUTUH KONFIGURASI",
+            "Indeks dan pencarian RAG live untuk dokumen teks; chat generatif menunggu provider AI.",
+            &[
+                ("POST /api/v1/rag/index", "Indeks dokumen teks menjadi chunk pencarian"),
+                ("GET /api/v1/rag/search", "Pencarian keyword full-text per organisasi"),
+                ("POST /api/v1/ai/chat", "Chat generatif — 501 tanpa AI provider"),
+                ("GET /api/v1/ai/usage", "Meteran token input/output per organisasi"),
+            ],
+            "Jujur: POST /api/v1/ai/chat mengembalikan 501 hingga provider AI dikonfigurasi; estimasi token tetap dicatat agar biaya transparan.",
+        ),
+    ))
+}
+
+async fn fitur_akta() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Generasi Akta dari Template",
+        "Template berversi, render variabel, dan state machine anti-transisi ilegal.",
+        "/fitur/generasi-akta",
+        "",
+        &feature_body(
+            "Generasi Akta dari Template",
+            "TERSEDIA TERBATAS",
+            "Template berversi dengan substitusi variabel dan alur status ber-guard; e-sign menunggu PSrE.",
+            &[
+                ("POST /api/v1/deed-templates", "Buat template akta berversi"),
+                ("POST /api/v1/deeds/from-template", "Render akta dari template plus variabel"),
+                ("POST /api/v1/deeds/{id}/transition", "Pindah status (ilegal ditolak 409)"),
+                ("POST /api/v1/deeds/{id}/esign", "Tanda tangan elektronik — 501 tanpa PSrE"),
+            ],
+            "Terbatas: seluruh alur draf hingga approval live; langkah signing menunggu provider PSrE dikonfigurasi dan tidak pernah diklaim bekerja.",
+        ),
+    ))
+}
+
+async fn fitur_ttd() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Tanda Tangan Digital",
+        "Alur akta teraudit; tanda tangan elektronik PSrE terencana dan belum aktif.",
+        "/fitur/tanda-tangan",
+        "",
+        &feature_body(
+            "Tanda Tangan Digital",
+            "BUTUH KONFIGURASI",
+            "Persiapan dokumen dan persetujuan live; eksekusi tanda tangan menunggu provider PSrE.",
+            &[
+                ("POST /api/v1/deeds/{id}/transition", "Bawa akta ke status siap-signing"),
+                ("POST /api/v1/deeds/{id}/esign", "Eksekusi e-sign — 501 tanpa provider PSrE"),
+                ("POST /api/v1/webhooks/incoming/{provider}", "Webhook status provider (butuh secret)"),
+            ],
+            "Jujur: tanda tangan digital belum dapat dieksekusi; endpoint mengembalikan 501 hingga PSrE dikonfigurasi. Kami tidak mengklaimnya bekerja.",
+        ),
+    ))
+}
+
+// ----- solusi pages -----
+fn solusi_body(headline: &str, intro: &str, points: &[&str]) -> String {
+    let mut list = String::from("<ul>");
+    for p in points {
+        list.push_str(&format!("<li>{}</li>", esc(p)));
+    }
+    list.push_str("</ul>");
+    format!(
+        r#"<section class="feat"><span class="badge-soft tag">SOLUSI</span><h1>{h}</h1><p class="sub">{i}</p>{c}</section><section class="card"><div class="card-body"><h2 class="card-title">Cara kerja untuk Anda</h2>{l}<p class="text-muted">Tanpa testimoni fiktif dan tanpa angka pengguna: yang kami janjikan adalah alur teraudit di atas endpoint yang benar-benar live.</p></div></section>"#,
+        h = esc(headline),
+        i = esc(intro),
+        c = cta_row(),
+        l = list,
+    )
+}
+
+async fn solusi_index() -> impl IntoResponse {
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">SOLUSI</span><h1>Solusi untuk Setiap Praktik Hukum</h1><p class="sub">Alur yang disesuaikan untuk notaris, PPAT, firma hukum, dan legal corporate.</p>{}</section><div class="fgrid"><div class="fcard"><h3>Notaris</h3><p>Draf akta ke review ke approval dalam satu alur teraudit. <a href="/solusi/notaris">Pelajari</a></p></div><div class="fcard"><h3>PPAT</h3><p>Verifikasi dokumen tanah via OCR plus review. <a href="/solusi/ppat">Pelajari</a></p></div><div class="fcard"><h3>Firma Hukum</h3><p>Perkara, tugas, dan invoice per matter. <a href="/solusi/firma-hukum">Pelajari</a></p></div><div class="fcard"><h3>Legal Corporate</h3><p>Multi-org, peran, dan token API. <a href="/solusi/legal-corporate">Pelajari</a></p></div></div>"#,
+        cta_row()
+    );
+    html_ok(page_shell(
+        "Solusi Praktik Hukum",
+        "Solusi LegalRust untuk notaris, PPAT, firma hukum, dan legal corporate.",
+        "/solusi",
+        "",
+        &body,
+    ))
+}
+
+async fn solusi_notaris() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Software Notaris: Akta Teraudit",
+        "Draf akta ke review ke approval ke signing dalam satu alur teraudit untuk kantor notaris.",
+        "/solusi/notaris",
+        "",
+        &solusi_body(
+            "Software Notaris: Akta Teraudit",
+            "Draf akta ke review ke approval ke signing dalam satu alur teraudit untuk kantor notaris.",
+            &[
+                "Template akta berversi (POST /api/v1/deed-templates) dengan render variabel.",
+                "Transisi status ber-guard: lompatan ilegal ditolak dengan 409.",
+                "E-sign PSrE terencana — status BUTUH KONFIGURASI, tidak diklaim live.",
+                "Audit trail per organisasi untuk setiap mutasi akta.",
+            ],
+        ),
+    ))
+}
+
+async fn solusi_ppat() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Software PPAT: Verifikasi Sertifikat",
+        "Pipeline OCR plus review dokumen tanah sebelum penomoran akta.",
+        "/solusi/ppat",
+        "",
+        &solusi_body(
+            "Software PPAT: Verifikasi Sertifikat",
+            "Pipeline OCR plus review dokumen tanah sebelum penomoran akta.",
+            &[
+                "Job OCR sertifikat dan identitas (POST /api/v1/ocr/jobs) plus daftar tipe (GET /api/v1/ocr/supported).",
+                "Review manusia approve/reject dengan permission Verify.",
+                "Arsip dokumen berversi SHA-pin untuk setiap berkas tanah.",
+                "Eksekusi OCR live BUTUH KONFIGURASI engine.",
+            ],
+        ),
+    ))
+}
+
+async fn solusi_firma() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Manajemen Firma Hukum dan Advokat",
+        "Perkara plus tugas plus invoice per matter plus ekspor CSV pelaporan.",
+        "/solusi/firma-hukum",
+        "",
+        &solusi_body(
+            "Manajemen Firma Hukum dan Advokat",
+            "Perkara plus tugas plus invoice per matter plus ekspor CSV pelaporan.",
+            &[
+                "Perkara dan tugas bertransisi aman (POST /api/v1/matters, POST /api/v1/tasks/{tid}).",
+                "Invoice per matter dengan guard anti-overpay.",
+                "Ekspor CSV (GET /api/v1/reports/matters.csv) untuk pelaporan.",
+                "Berbagi dokumen via tautan kedaluwarsa 1-720 jam.",
+            ],
+        ),
+    ))
+}
+
+async fn solusi_corporate() -> impl IntoResponse {
+    html_ok(page_shell(
+        "Legal Corporate: Multi-Org dan Integrasi",
+        "Multi-organisasi, peran Owner, Admin, dan Auditor, plus token API untuk integrasi internal.",
+        "/solusi/legal-corporate",
+        "",
+        &solusi_body(
+            "Legal Corporate: Multi-Org dan Integrasi",
+            "Multi-organisasi, peran Owner, Admin, dan Auditor, plus token API untuk integrasi internal.",
+            &[
+                "Segregasi data per organisasi dengan RBAC per endpoint.",
+                "Token API revocable (POST /api/v1/auth/tokens) untuk integrasi internal.",
+                "Audit trail role-gated (GET /api/v1/audit) untuk Owner, Admin, dan Auditor.",
+                "Trust ledger double-entry anti-negatif untuk dana klien.",
+            ],
+        ),
+    ))
+}
+
+// ----- harga / tentang / kontak / demo -----
+async fn harga(State(s): State<FullState>) -> impl IntoResponse {
+    let plans = s
+        .stores
+        .mkt
+        .mkt_pricing_list()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|p| p.active)
+        .collect::<Vec<_>>();
+    let inner = if plans.is_empty() {
+        "<p>Paket kami: <strong>Free Trial</strong>, <strong>Professional</strong>, <strong>Business</strong>, dan <strong>Enterprise</strong> dengan struktur bulanan plus tahunan. Harga final ditentukan owner — hubungi tim penjualan untuk penawaran.</p>".to_string()
+    } else {
+        let mut t = String::from(
+            r#"<div class="table-responsive"><table class="table"><thead><tr><th>Paket</th><th>Bulanan</th><th>Tahunan</th><th>Fitur</th></tr></thead><tbody>"#,
+        );
+        for p in &plans {
+            let feats: String = serde_json::from_str::<Vec<String>>(&p.features_json)
+                .map(|v| v.join(", "))
+                .unwrap_or_else(|_| p.features_json.clone());
+            t.push_str(&format!(
+                "<tr><td><strong>{}</strong><br><small class=\"text-muted\">{}</small></td><td>{}</td><td>{}</td><td>{}</td></tr>",
+                esc(&p.name),
+                esc(&p.code),
+                esc(&fmt_idr(p.monthly_minor)),
+                esc(&fmt_idr(p.annual_minor)),
+                esc(&feats),
+            ));
+        }
+        t.push_str("</tbody></table></div>");
+        t
+    };
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">HARGA</span><h1>Harga LegalRust — Trial sampai Enterprise</h1><p class="sub">Empat tier: Free Trial, Professional, Business, Enterprise. Struktur bulanan plus tahunan.</p>{}</section><section class="card"><div class="card-body"><h2 class="card-title">Pilih paket Anda</h2>{}</div></section>"#,
+        cta_row(),
+        inner
+    );
+    html_ok(page_shell(
+        "Harga LegalRust",
+        "Empat tier: Free Trial, Professional, Business, Enterprise. Harga final oleh owner.",
+        "/harga",
+        "Harga",
+        &body,
+    ))
+}
+
+async fn tentang() -> impl IntoResponse {
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">TENTANG</span><h1>Tentang LegalRust</h1><p class="sub">Platform manajemen hukum modern yang dibangun dengan Rust: cepat, aman, dan teraudit.</p>{}</section><section class="card"><div class="card-body"><h2 class="card-title">Status jujur</h2><p>LegalRust berada pada tahap uji internal — bukan production-ready. Setiap halaman fitur mencantumkan badge status yang jujur: TERSEDIA, TERSEDIA TERBATAS, atau BUTUH KONFIGURASI. Integrasi eksternal (OCR live, AI provider, PSrE, payment gateway) ditandai terbuka dan mengembalikan 501 hingga dikonfigurasi.</p><h2 class="card-title">Prinsip keamanan</h2><p>Password Argon2, sesi JWT revocable, lockout brute-force 5x per 5 menit, RBAC per endpoint, header CSP dan HSTS, serta audit trail yang hanya dapat dibaca peran terotorisasi.</p></div></section>"#,
+        cta_row()
+    );
+    html_ok(page_shell(
+        "Tentang LegalRust",
+        "Tentang LegalRust: platform manajemen hukum Rust yang cepat, aman, dan teraudit.",
+        "/tentang",
+        "Tentang",
+        &body,
+    ))
+}
+
+async fn kontak() -> impl IntoResponse {
+    let body = r#"<section class="feat"><span class="badge-soft tag">KONTAK</span><h1>Hubungi Kami</h1><p class="sub">Ceritakan kebutuhan kantor Anda; tim kami akan merespons melalui email.</p></section><section class="card"><div class="card-body"><h2 class="card-title">Formulir kontak</h2><form id="kontak-form" method="post" action="/api/v1/public/contact"><div class="mb-2"><label class="form-label" for="k-nama">Nama</label><input class="form-control" id="k-nama" name="name" required minlength="2"></div><div class="mb-2"><label class="form-label" for="k-email">Email</label><input class="form-control" id="k-email" name="email" type="email" required></div><div class="mb-2"><label class="form-label" for="k-subjek">Subjek</label><input class="form-control" id="k-subjek" name="subject" required minlength="2"></div><div class="mb-2"><label class="form-label" for="k-pesan">Pesan</label><textarea class="form-control" id="k-pesan" name="message" rows="4" required minlength="5"></textarea></div><button class="btn btn-primary" type="submit">Kirim Pesan</button></form></div></section>"#;
+    html_ok(page_shell(
+        "Hubungi Kami",
+        "Hubungi tim LegalRust untuk penawaran, demo, dan pertanyaan produk.",
+        "/kontak",
+        "Kontak",
+        body,
+    ))
+}
+
+async fn demo() -> impl IntoResponse {
+    let body = r#"<section class="feat"><span class="badge-soft tag">DEMO</span><h1>Minta Demo LegalRust</h1><p class="sub">Isi formulir singkat; kami akan menjadwalkan sesi demo untuk tim Anda.</p></section><section class="card"><div class="card-body"><h2 class="card-title">Formulir demo</h2><form id="demo-form" method="post" action="/api/v1/public/demo-requests"><div class="mb-2"><label class="form-label" for="d-nama">Nama</label><input class="form-control" id="d-nama" name="name" required minlength="2"></div><div class="mb-2"><label class="form-label" for="d-email">Email</label><input class="form-control" id="d-email" name="email" type="email" required></div><div class="mb-2"><label class="form-label" for="d-perusahaan">Perusahaan</label><input class="form-control" id="d-perusahaan" name="company"></div><div class="mb-2"><label class="form-label" for="d-waktu">Waktu yang diinginkan</label><input class="form-control" id="d-waktu" name="preferred_at" placeholder="mis. 2026-12-01 10:00"></div><button class="btn btn-primary" type="submit">Minta Demo</button></form></div></section>"#;
+    html_ok(page_shell(
+        "Minta Demo",
+        "Jadwalkan sesi demo LegalRust untuk kantor hukum Anda.",
+        "/demo",
+        "",
+        body,
+    ))
+}
+
+// ----- artikel / faq -----
+async fn artikel_list(State(s): State<FullState>) -> impl IntoResponse {
+    let arts = s
+        .stores
+        .mkt
+        .mkt_article_list(true)
+        .await
+        .unwrap_or_default();
+    let mut items = String::new();
+    for a in &arts {
+        items.push_str(&format!(
+            r#"<div class="fcard"><h3><a href="/artikel/{}">{}</a></h3></div>"#,
+            esc(&a.slug),
+            esc(&a.title),
+        ));
+    }
+    if items.is_empty() {
+        items = "<p class=\"text-muted\">Belum ada artikel yang diterbitkan. Pantau halaman ini untuk panduan praktik hukum.</p>".to_string();
+    }
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">ARTIKEL</span><h1>Artikel dan Panduan</h1><p class="sub">Tulisan praktis seputar praktik hukum digital.</p></section><div class="fgrid">{items}</div>"#,
+        items = items
+    );
+    html_ok(page_shell(
+        "Artikel dan Panduan",
+        "Artikel dan panduan LegalRust seputar praktik hukum digital.",
+        "/artikel",
+        "Artikel",
+        &body,
+    ))
+}
+
+async fn artikel_detail(State(s): State<FullState>, Path(slug): Path<String>) -> impl IntoResponse {
+    let found = s
+        .stores
+        .mkt
+        .mkt_article_get(&slug)
+        .await
+        .ok()
+        .filter(|a| a.published);
+    match found {
+        Some(a) => {
+            let mut paras = String::new();
+            for line in a.body_md.lines() {
+                let t = line.trim().trim_start_matches('#').trim();
+                if !t.is_empty() {
+                    paras.push_str(&format!("<p>{}</p>", esc(t)));
+                }
+            }
+            let body = format!(
+                r#"<section class="feat"><span class="badge-soft tag">ARTIKEL</span><h1>{t}</h1></section><section class="card"><div class="card-body">{p}<p><a href="/artikel">Kembali ke daftar artikel</a></p></div></section>"#,
+                t = esc(&a.title),
+                p = paras,
+            );
+            html_ok(page_shell(
+                &a.title,
+                &format!("Artikel LegalRust: {}", a.title),
+                &format!("/artikel/{}", a.slug),
+                "Artikel",
+                &body,
+            ))
+        }
+        None => html_status(
+            StatusCode::NOT_FOUND,
+            page_shell(
+                "Artikel tidak ditemukan",
+                "Artikel yang Anda cari tidak tersedia.",
+                &format!("/artikel/{slug}"),
+                "Artikel",
+                r#"<section class="feat"><h1>Artikel Tidak Ditemukan</h1><p class="sub">Slug tidak cocok dengan artikel yang diterbitkan. <a href="/artikel">Kembali ke daftar artikel</a></p></section>"#,
+            ),
+        ),
+    }
+}
+
+async fn faq_page(State(s): State<FullState>) -> impl IntoResponse {
+    let faqs = s.stores.mkt.mkt_faq_list().await.unwrap_or_default();
+    let mut items = String::new();
+    for f in &faqs {
+        items.push_str(&format!(
+            "<details><summary>{}</summary><p>{}</p></details>",
+            esc(&f.question),
+            esc(&f.answer),
+        ));
+    }
+    if items.is_empty() {
+        items = "<p class=\"text-muted\">Belum ada FAQ yang diterbitkan.</p>".to_string();
+    }
+    let body = format!(
+        r#"<section class="feat"><span class="badge-soft tag">FAQ</span><h1>Pertanyaan Umum: Fitur, Keamanan, dan Status</h1><p class="sub">Jawaban jujur seputar scope live dan integrasi 501.</p></section><section class="card"><div class="card-body">{items}</div></section>"#,
+        items = items
+    );
+    html_ok(page_shell(
+        "Pertanyaan Umum",
+        "FAQ LegalRust: fitur, keamanan, dan status integrasi 501.",
+        "/faq",
+        "",
+        &body,
+    ))
+}
+
+// ----- legal -----
+async fn privasi() -> impl IntoResponse {
+    let body = r#"<section class="feat"><span class="badge-soft tag">LEGAL</span><h1>Kebijakan Privasi</h1><p class="sub">Terakhir diperbarui: November 2026.</p></section><section class="card"><div class="card-body"><h2 class="card-title">Data yang kami kumpulkan</h2><p>Kami mengumpulkan data akun (nama, email, organisasi), data operasional yang Anda masukkan (klien, perkara, dokumen), serta pesan kontak dan permintaan demo. Data tersegregasi per organisasi dan tidak pernah dicampur antar tenant.</p><h2 class="card-title">Penggunaan dan keamanan</h2><p>Data digunakan untuk mengoperasikan layanan. Password di-hash Argon2, sesi JWT dapat dicabut, dan akses API dijaga RBAC per endpoint. Kami tidak menjual data Anda dan tidak menampilkan klaim produksi yang belum terverifikasi.</p></div></section>"#;
+    html_ok(page_shell(
+        "Kebijakan Privasi",
+        "Kebijakan privasi LegalRust: pengumpulan, penggunaan, dan keamanan data.",
+        "/kebijakan-privasi",
+        "",
+        body,
+    ))
+}
+
+async fn syarat() -> impl IntoResponse {
+    let body = r#"<section class="feat"><span class="badge-soft tag">LEGAL</span><h1>Syarat dan Ketentuan</h1><p class="sub">Terakhir diperbarui: November 2026.</p></section><section class="card"><div class="card-body"><h2 class="card-title">Layanan</h2><p>LegalRust menyediakan platform manajemen hukum dalam tahap uji internal, bukan production-ready. Fitur berlabel BUTUH KONFIGURASI mengembalikan 501 hingga dependensi eksternalnya dikonfigurasi.</p><h2 class="card-title">Tanggung jawab pengguna</h2><p>Anda bertanggung jawab atas akurasi data yang dimasukkan dan atas kepatuhan terhadap peraturan jabatan (notaris, PPAT, advokat) yang berlaku. Tanda tangan elektronik tunduk pada ketersediaan provider PSrE.</p></div></section>"#;
+    html_ok(page_shell(
+        "Syarat dan Ketentuan",
+        "Syarat dan ketentuan penggunaan platform LegalRust.",
+        "/syarat-ketentuan",
+        "",
+        body,
+    ))
+}
+
+// ----- sitemap / robots -----
+const PUBLIC_ROUTES: &[(&str, &str, &str)] = &[
+    ("/", "weekly", "1.0"),
+    ("/fitur", "monthly", "0.8"),
+    ("/fitur/manajemen-perkara", "monthly", "0.8"),
+    ("/fitur/manajemen-dokumen", "monthly", "0.8"),
+    ("/fitur/ocr", "monthly", "0.8"),
+    ("/fitur/ai-legal-assistant", "monthly", "0.8"),
+    ("/fitur/generasi-akta", "monthly", "0.8"),
+    ("/fitur/tanda-tangan", "monthly", "0.8"),
+    ("/solusi", "monthly", "0.8"),
+    ("/solusi/notaris", "monthly", "0.8"),
+    ("/solusi/ppat", "monthly", "0.8"),
+    ("/solusi/firma-hukum", "monthly", "0.8"),
+    ("/solusi/legal-corporate", "monthly", "0.8"),
+    ("/harga", "monthly", "0.9"),
+    ("/tentang", "monthly", "0.6"),
+    ("/kontak", "monthly", "0.6"),
+    ("/demo", "monthly", "0.7"),
+    ("/artikel", "weekly", "0.7"),
+    ("/faq", "monthly", "0.7"),
+    ("/kebijakan-privasi", "yearly", "0.3"),
+    ("/syarat-ketentuan", "yearly", "0.3"),
+    ("/login", "yearly", "0.2"),
+];
+
+async fn sitemap() -> impl IntoResponse {
+    let mut xml = String::from(
+        r#"<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">"#,
+    );
+    for (p, freq, prio) in PUBLIC_ROUTES {
+        xml.push_str(&format!(
+            "<url><loc>{SITE_BASE}{p}</loc><changefreq>{freq}</changefreq><priority>{prio}</priority></url>"
+        ));
+    }
+    xml.push_str("</urlset>");
+    (
+        StatusCode::OK,
+        [("content-type", "text/xml; charset=utf-8")],
+        xml,
+    )
+}
+
+async fn robots() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [("content-type", "text/plain; charset=utf-8")],
+        format!(
+            "User-agent: *\nAllow: /\nDisallow: /app\nDisallow: /api/\nSitemap: {SITE_BASE}/sitemap.xml\n"
+        ),
+    )
 }
 // ---------- end public pages ----------
 
@@ -2087,13 +2601,79 @@ struct ContactReq {
     #[validate(length(min = 5))]
     message: String,
 }
+fn hex_val(c: u8) -> Option<u8> {
+    match c {
+        b'0'..=b'9' => Some(c - b'0'),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        _ => None,
+    }
+}
+fn pct_decode(s: &str) -> String {
+    let b = s.as_bytes();
+    let mut out: Vec<u8> = Vec::with_capacity(b.len());
+    let mut i = 0;
+    while i < b.len() {
+        match b[i] {
+            b'+' => {
+                out.push(b' ');
+                i += 1;
+            }
+            b'%' if i + 2 < b.len() => match (hex_val(b[i + 1]), hex_val(b[i + 2])) {
+                (Some(h), Some(l)) => {
+                    out.push(h << 4 | l);
+                    i += 3;
+                }
+                _ => {
+                    out.push(b'%');
+                    i += 1;
+                }
+            },
+            c => {
+                out.push(c);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+/// Accept JSON (API clients) or `application/x-www-form-urlencoded`
+/// (plain HTML forms on /kontak and /demo — no JS required).
+fn decode_body<T: serde::de::DeserializeOwned>(
+    headers: &HeaderMap,
+    body: &[u8],
+) -> Result<T, AppError> {
+    let ct = headers
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    if ct.contains("json") {
+        serde_json::from_slice(body).map_err(|e| AppError::Validation(e.to_string()))
+    } else {
+        let mut obj = serde_json::Map::new();
+        for pair in String::from_utf8_lossy(body).split('&') {
+            if pair.is_empty() {
+                continue;
+            }
+            let (k, v) = match pair.split_once('=') {
+                Some((k, v)) => (k, v),
+                None => continue,
+            };
+            obj.entry(pct_decode(k))
+                .or_insert(Value::String(pct_decode(v)));
+        }
+        serde_json::from_value(Value::Object(obj)).map_err(|e| AppError::Validation(e.to_string()))
+    }
+}
 async fn public_contact(
     State(s): State<FullState>,
-    Json(b): Json<ContactReq>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
 ) -> Result<Json<Value>, AppError> {
     if !s.stores.limiter.check("mkt:contact") {
         return Err(AppError::RateLimited);
     }
+    let b: ContactReq = decode_body(&headers, &body)?;
     b.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
     let c = s
@@ -2124,11 +2704,13 @@ struct DemoReq {
 }
 async fn public_demo(
     State(s): State<FullState>,
-    Json(b): Json<DemoReq>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
 ) -> Result<Json<Value>, AppError> {
     if !s.stores.limiter.check("mkt:demo") {
         return Err(AppError::RateLimited);
     }
+    let b: DemoReq = decode_body(&headers, &body)?;
     b.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
     let company = b.company.clone().unwrap_or_default();
@@ -2730,6 +3312,29 @@ pub fn build_router(state: FullState) -> Router {
         .route("/", get(landing))
         .route("/login", get(login_page))
         .route("/app", get(app_page))
+        .route("/fitur", get(fitur_index))
+        .route("/fitur/manajemen-perkara", get(fitur_perkara))
+        .route("/fitur/manajemen-dokumen", get(fitur_dokumen))
+        .route("/fitur/ocr", get(fitur_ocr))
+        .route("/fitur/ai-legal-assistant", get(fitur_ai))
+        .route("/fitur/generasi-akta", get(fitur_akta))
+        .route("/fitur/tanda-tangan", get(fitur_ttd))
+        .route("/solusi", get(solusi_index))
+        .route("/solusi/notaris", get(solusi_notaris))
+        .route("/solusi/ppat", get(solusi_ppat))
+        .route("/solusi/firma-hukum", get(solusi_firma))
+        .route("/solusi/legal-corporate", get(solusi_corporate))
+        .route("/harga", get(harga))
+        .route("/tentang", get(tentang))
+        .route("/kontak", get(kontak))
+        .route("/demo", get(demo))
+        .route("/artikel", get(artikel_list))
+        .route("/artikel/{slug}", get(artikel_detail))
+        .route("/faq", get(faq_page))
+        .route("/kebijakan-privasi", get(privasi))
+        .route("/syarat-ketentuan", get(syarat))
+        .route("/sitemap.xml", get(sitemap))
+        .route("/robots.txt", get(robots))
         .route("/static/{*path}", get(static_img))
         .route("/api/v1/version", get(version))
         .route("/api/v1/auth/register", post(register))

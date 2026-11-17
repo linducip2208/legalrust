@@ -132,11 +132,13 @@ impl UserStore for MysqlStores {
         Ok(())
     }
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError> {
-        let r = sqlx::query("SELECT revoked, UNIX_TIMESTAMP(expires_at) AS exp_unix FROM sessions WHERE id=?")
-            .bind(sid)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(db_err)?;
+        let r = sqlx::query(
+            "SELECT revoked, UNIX_TIMESTAMP(expires_at) AS exp_unix FROM sessions WHERE id=?",
+        )
+        .bind(sid)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
         Ok(
             matches!(r, Some(x) if !x.get::<bool, _>("revoked") && x.get::<i64, _>("exp_unix") > chrono::Utc::now().timestamp()),
         )

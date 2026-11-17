@@ -22,3 +22,29 @@ No Wan model exists on host — SDXL stills only. Zero rejections (4/4 approved 
 All non-zero, all visually inspected at full resolution. No Rust code,
 migrations, or other docs touched. Pre-existing files
 (cta-building.png, hero-office.png) untouched.
+
+## Batch 2 — section backgrounds 2026-11-17 (1216x640)
+
+Model for all: `RealVisXL_V5.0_fp16.safetensors` (SDXL photoreal).
+Sampler for all: euler, 28 steps, cfg 5.0, denoise 1.0. Resolution: 1216x640.
+Source files: `D:/ComfyUI/output/legalrust_<name>_00001_.png`.
+WAN 2.1 T2V (`wan2.1_t2v_1.3B_fp16`) verified present in diffusion_models but
+NOT used — user chose PHOTOS ONLY, SDXL stills only. Zero rejections (6/6 approved first try, no retries).
+
+| Filename (apps/server/static/) | Prompt summary | Seed | Model | Resolution | Usage | Status |
+|-------------------------------|----------------|------|-------|------------|-------|--------|
+| meeting-room.png | Modern Indonesian law office meeting room, wooden conference table + leather chairs, floor-to-ceiling daylight windows, bookshelf wall, tropical plants, no people | 53101 | RealVisXL_V5.0_fp16 | 1216x640 | Meeting-room section background | APPROVED |
+| doc-scan.png | Close-up hands scanning blank legal papers beside laptop, document stack, shallow depth | 53102 | RealVisXL_V5.0_fp16 | 1216x640 | Document-scan section background | APPROVED (note: papers/laptop show illegible pseudo-text lines only, no readable words; hands anatomically clean) |
+| library.png | Law firm library wall of books, wooden shelves + ladder, warm lamps, leather armchair, no people | 53103 | RealVisXL_V5.0_fp16 | 1216x640 | Library section background | APPROVED (note: book spines illegible, no readable text) |
+| courthouse.png | Modern Indonesian courthouse exterior daylight, concrete + glass facade with columns and steps, palms, blue sky, no people close-up | 53104 | RealVisXL_V5.0_fp16 | 1216x640 | Courthouse section background | APPROVED (no text signs) |
+| server-room.png | Premium data center corridor, blue glowing server racks both sides, reflective floor, cinematic blue light, no people | 53105 | RealVisXL_V5.0_fp16 | 1216x640 | Server-room section background | APPROVED |
+| signature.png | Close-up luxury fountain pen signing blank paper contract on wooden desk, shallow depth | 53106 | RealVisXL_V5.0_fp16 | 1216x640 | Signature section background | APPROVED (note: illegible pseudo-script lines only, no readable words) |
+
+### Verification batch 2 (PIL + PNG magic)
+
+- meeting-room.png — 965369 bytes, PNG magic OK, 1216x640 RGB, opens OK
+- doc-scan.png — 860120 bytes, PNG magic OK, 1216x640 RGB, opens OK
+- library.png — 1064823 bytes, PNG magic OK, 1216x640 RGB, opens OK
+- courthouse.png — 1156361 bytes, PNG magic OK, 1216x640 RGB, opens OK
+- server-room.png — 1067783 bytes, PNG magic OK, 1216x640 RGB, opens OK
+- signature.png — 829532 bytes, PNG magic OK, 1216x640 RGB, opens OK

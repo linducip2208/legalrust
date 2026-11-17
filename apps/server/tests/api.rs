@@ -1586,3 +1586,272 @@ async fn trust_transfer_json_flow() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::CONFLICT);
 }
+
+// ----- public marketing website (page_shell routes) -----
+async fn page_get(a: &axum::Router, uri: &str) -> (StatusCode, axum::http::HeaderMap, String) {
+    use tower::ServiceExt;
+    let res = a.clone().oneshot(pub_get(uri)).await.unwrap();
+    let st = res.status();
+    let h = res.headers().clone();
+    let t = body_text(res).await;
+    (st, h, t)
+}
+
+#[tokio::test]
+async fn pub_site_core_routes_200_with_headlines() {
+    let a = app();
+    for (uri, needle) in [
+        ("/fitur", "Fitur Lengkap LegalRust"),
+        ("/fitur/manajemen-perkara", "Manajemen Perkara Terintegrasi"),
+        ("/fitur/manajemen-dokumen", "Manajemen Dokumen Berversi"),
+        ("/fitur/ocr", "OCR dan Verifikasi Dokumen"),
+        ("/fitur/ai-legal-assistant", "Asisten Legal AI"),
+        ("/fitur/generasi-akta", "Generasi Akta dari Template"),
+        ("/fitur/tanda-tangan", "Tanda Tangan Digital"),
+        ("/solusi", "Solusi untuk Setiap Praktik Hukum"),
+        ("/solusi/notaris", "Software Notaris"),
+        ("/solusi/ppat", "Software PPAT"),
+        ("/solusi/firma-hukum", "Firma Hukum"),
+        ("/solusi/legal-corporate", "Legal Corporate"),
+        ("/tentang", "Tentang LegalRust"),
+        ("/kontak", "Hubungi Kami"),
+        ("/demo", "Minta Demo"),
+        ("/artikel", "Artikel dan Panduan"),
+        ("/kebijakan-privasi", "Kebijakan Privasi"),
+        ("/syarat-ketentuan", "Syarat dan Ketentuan"),
+    ] {
+        let (st, h, t) = page_get(&a, uri).await;
+        assert_eq!(st, StatusCode::OK, "{uri}");
+        assert_eq!(
+            h.get("content-type").unwrap(),
+            "text/html; charset=utf-8",
+            "{uri}"
+        );
+        assert!(t.contains(needle), "{uri} missing {needle}");
+        assert!(
+            t.contains("https://legalrust.test"),
+            "{uri} missing canonical"
+        );
+        assert!(t.contains("/harga"), "{uri} missing nav");
+    }
+}
+
+#[tokio::test]
+async fn pub_site_fitur_ocr_badge_and_endpoints() {
+    let (st, _, t) = page_get(&app(), "/fitur/ocr").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("BUTUH KONFIGURASI"));
+    assert!(t.contains("/api/v1/ocr/jobs"));
+    assert!(t.contains("501"));
+}
+
+#[tokio::test]
+async fn pub_site_fitur_ai_badge() {
+    let (st, _, t) = page_get(&app(), "/fitur/ai-legal-assistant").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("BUTUH KONFIGURASI"));
+    assert!(t.contains("/api/v1/ai/chat"));
+}
+
+#[tokio::test]
+async fn pub_site_fitur_ttd_badge() {
+    let (st, _, t) = page_get(&app(), "/fitur/tanda-tangan").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("BUTUH KONFIGURASI"));
+    assert!(t.contains("/api/v1/deeds/{id}/esign"));
+}
+
+#[tokio::test]
+async fn pub_site_fitur_akta_limited() {
+    let (st, _, t) = page_get(&app(), "/fitur/generasi-akta").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("TERSEDIA TERBATAS"));
+    assert!(t.contains("/api/v1/deeds/from-template"));
+}
+
+#[tokio::test]
+async fn pub_site_harga_empty_db_fallback() {
+    let (st, _, t) = page_get(&app(), "/harga").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Harga LegalRust"));
+    assert!(t.contains("Free Trial"));
+    assert!(t.contains("Enterprise"));
+}
+
+#[tokio::test]
+async fn pub_site_harga_renders_plans() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "harga@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/pricing",
+            r#"{"code":"pro","name":"Professional","monthly_minor":99000,"annual_minor":990000,"features":["akta","ocr"],"active":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let (st, _, t) = page_get(&a, "/harga").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Professional"));
+    assert!(t.contains("Rp"));
+}
+
+#[tokio::test]
+async fn pub_site_artikel_unknown_404() {
+    let (st, _, t) = page_get(&app(), "/artikel/xxx-unknown").await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+    assert!(t.contains("Tidak Ditemukan"));
+}
+
+#[tokio::test]
+async fn pub_site_artikel_published_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "artpub@x.id").await;
+    for (slug, title, md, pubd) in [
+        ("panduan-web", "Panduan Web", "# Isi web", true),
+        ("draf-web", "Draf Web", "wip", false),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/admin/articles",
+                &format!(
+                    r#"{{"slug":"{slug}","title":"{title}","body_md":"{md}","published":{pubd}}}"#
+                ),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let (st, _, t) = page_get(&a, "/artikel").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Panduan Web"));
+    assert!(!t.contains("Draf Web"));
+    let (st, _, t) = page_get(&a, "/artikel/panduan-web").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Panduan Web"));
+    let (st, _, _) = page_get(&a, "/artikel/draf-web").await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn pub_site_faq_has_details() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "faqweb@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/faqs",
+            r#"{"slug":"web","question":"Apakah data tersegregasi?","answer":"Ya, per organisasi.","sort":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let (st, _, t) = page_get(&a, "/faq").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Pertanyaan Umum"));
+    assert!(t.contains("<details>"));
+    assert!(t.contains("Apakah data tersegregasi?"));
+}
+
+#[tokio::test]
+async fn pub_site_sitemap_has_harga() {
+    let (st, h, t) = page_get(&app(), "/sitemap.xml").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(h
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .contains("text/xml"));
+    assert!(t.contains("/harga"));
+    assert!(t.contains("https://legalrust.test/fitur/ocr"));
+}
+
+#[tokio::test]
+async fn pub_site_robots_disallows_app_and_api() {
+    let (st, _, t) = page_get(&app(), "/robots.txt").await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(t.contains("Disallow: /app"));
+    assert!(t.contains("Disallow: /api/"));
+    assert!(t.contains("Sitemap: https://legalrust.test/sitemap.xml"));
+}
+
+#[tokio::test]
+async fn pub_site_csp_header_on_root() {
+    let (st, h, _) = page_get(&app(), "/").await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(
+        h.get("content-security-policy").unwrap(),
+        "default-src 'self'"
+    );
+    assert!(h.contains_key("x-request-id"));
+}
+
+#[tokio::test]
+async fn pub_site_no_inline_handlers_or_styles() {
+    let a = app();
+    for uri in ["/", "/fitur/ocr", "/kontak", "/faq", "/harga"] {
+        let (st, _, t) = page_get(&a, uri).await;
+        assert_eq!(st, StatusCode::OK, "{uri}");
+        assert!(!t.contains("onclick"), "{uri} has onclick");
+        assert!(!t.contains("style=\""), "{uri} has inline style");
+        assert!(!t.contains("<style"), "{uri} has style tag");
+    }
+}
+
+#[tokio::test]
+async fn pub_site_kontak_form_posts_urlencoded() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/public/contact")
+                .method("POST")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(Body::from(
+                    "name=Budi&email=budi%40x.id&subject=Harga&message=minta+penawaran+paket+notaris",
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["id"].as_i64().unwrap() > 0);
+    let (_, _, t) = page_get(&a, "/kontak").await;
+    assert!(t.contains("id=\"kontak-form\""));
+    assert!(t.contains("action=\"/api/v1/public/contact\""));
+}
+
+#[tokio::test]
+async fn pub_site_demo_form_posts_urlencoded() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/public/demo-requests")
+                .method("POST")
+                .header("content-type", "application/x-www-form-urlencoded")
+                .body(Body::from(
+                    "name=Sari&email=sari%40x.id&company=PT+Maju&preferred_at=2026-12-01",
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let (_, _, t) = page_get(&a, "/demo").await;
+    assert!(t.contains("id=\"demo-form\""));
+    assert!(t.contains("action=\"/api/v1/public/demo-requests\""));
+}

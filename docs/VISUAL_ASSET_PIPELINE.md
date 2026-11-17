@@ -30,8 +30,9 @@ Note: the brief named `CheckpointLoaderSpot`; the installed ComfyUI exposes
 - Checkpoint: `RealVisXL_V5.0_fp16.safetensors` (photoreal SDXL)
 - Other checkpoints present but NOT used: DreamShaperXL_Turbo, Juggernaut-XL v9,
   sd_xl_base_1.0, sdxl_lightning_8step, v1-5-pruned-emaonly
-- Wan video model: **does not exist** on this host — video generation is out of
-  scope; SDXL stills only (recorded honestly per brief).
+- Wan video model: `wan2.1_t2v_1.3B_fp16.safetensors` (+ `wan2.1_fun_inp_1.3B_bf16`)
+  verified present in `GET /models/diffusion_models` 2026-11-17 — but out of scope:
+  user chose PHOTOS ONLY, SDXL stills only, no video rendering.
 
 ## Resolutions
 
