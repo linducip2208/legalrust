@@ -69,6 +69,38 @@
       localStorage.removeItem('lr_token'); location.href = '/login';
     });
   });
+  /* ---- global search: Enter to search, grouped results ---- */
+  function hesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  on('q', 'keydown', async function (ev) {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    var box = document.getElementById('qres');
+    var query = document.getElementById('q').value.trim();
+    if (query.length < 2) { box.textContent = 'Ketik minimal 2 huruf lalu tekan Enter.'; return; }
+    box.textContent = 'Mencari…';
+    try {
+      var r = await fetch('/api/v1/search?q=' + encodeURIComponent(query), { headers: H });
+      if (!r.ok) { box.textContent = 'Pencarian gagal (' + r.status + ').'; return; }
+      var d = await r.json();
+      var cs = d.clients || [], ms = d.matters || [], ds = d.documents || [];
+      if (!cs.length && !ms.length && !ds.length) {
+        box.textContent = 'Tidak ada hasil untuk "' + query + '".';
+        return;
+      }
+      var html = '';
+      function group(title, items, fmt) {
+        html += '<div class="q-group"><strong>' + title + ' (' + items.length + ')</strong>';
+        html += items.length
+          ? '<ul>' + items.map(function (x) { return '<li><a href="/app">' + fmt(x) + '</a></li>'; }).join('') + '</ul>'
+          : '<div class="text-muted">Tidak ada hasil.</div>';
+        html += '</div>';
+      }
+      group('Klien', cs, function (x) { return hesc(x.name); });
+      group('Perkara', ms, function (x) { return hesc(x.number + ' — ' + x.title); });
+      group('Dokumen', ds, function (x) { return hesc(x.name); });
+      box.innerHTML = html;
+    } catch (x) { box.textContent = 'Server tidak terjangkau.'; }
+  });
   (async function () {
     try {
       var me = await j('/api/v1/orgs/me');

@@ -1,0 +1,1025 @@
+== D01 Identity & KYC
+ F-D01-001 | P3-Low | National ID (KTP-el) capture & validation
+ F-D01-002 | P3-Low | Family Card (KK) capture & linking
+ F-D01-003 | P0-Critical | Tax ID (NPWP) verification
+ F-D01-004 | P1-High | Passport capture & MRZ validation
+ F-D01-005 | P2-Medium | Driver license capture
+ F-D01-006 | P0-Critical | Biometric face match (selfie vs ID)
+ F-D01-007 | P0-Critical | Liveness detection (passive)
+ F-D01-008 | P0-Critical | Liveness detection (active challenge)
+ F-D01-009 | P3-Low | NIK checksum & format validation
+ F-D01-010 | P0-Critical | Dukcapil verification integration adapter
+ F-D01-011 | P1-High | Sanctions / watchlist screening
+ F-D01-012 | P3-Low | PEP screening
+ F-D01-013 | P1-High | Adverse media screening
+ F-D01-014 | P0-Critical | Risk-based KYC tiering (CDD/EDD)
+ F-D01-015 | P0-Critical | Document authenticity signals
+ F-D01-016 | P0-Critical | Expiry tracking for identity documents
+ F-D01-017 | P0-Critical | Address verification workflow
+ F-D01-018 | P2-Medium | Beneficial owner identification
+ F-D01-019 | P0-Critical | Corporate representative authority check
+ F-D01-020 | P0-Critical | Power of attorney verification for identity
+ F-D01-021 | P3-Low | Consent capture for data processing (UU PDP)
+ F-D01-022 | P3-Low | Minor / guardian identity handling
+ F-D01-023 | P1-High | Foreigner (KITAS/KITAP) identity handling
+ F-D01-024 | P3-Low | Duplicate identity detection
+ F-D01-025 | P3-Low | Identity confidence scoring
+ F-D01-026 | P2-Medium | Manual review queue for low-confidence KYC
+ F-D01-027 | P1-High | KYC audit trail & evidence pack
+ F-D01-028 | P0-Critical | KYC renewal & re-verification scheduler
+ F-D01-029 | P1-High | Bulk KYC import for corporate clients
+ F-D01-030 | P1-High | KYC API for partner onboarding
+ F-D01-031 | P1-High | NIK masking & display policy
+ F-D01-032 | P2-Medium | Biometric template protection
+ F-D01-033 | P0-Critical | KYC document retention & purge
+ F-D01-034 | P3-Low | Offline KYC capture & deferred sync
+ F-D01-035 | P2-Medium | Field agent KYC mobile capture
+ F-D01-036 | P3-Low | KYC rejection & appeal workflow
+ F-D01-037 | P3-Low | KYC dashboard & SLA tracking
+ F-D01-038 | P0-Critical | KYC data correction workflow
+ F-D01-039 | P3-Low | Identity fraud flagging & case referral
+ F-D01-040 | P1-High | KYC quality sampling & auditor review
+== D02 Client & CRM
+ F-D02-001 | P0-Critical | Client master record (individual)
+ F-D02-002 | P3-Low | Client master record (corporate)
+ F-D02-003 | P0-Critical | Client master record (government/institution)
+ F-D02-004 | P1-High | Lead intake & qualification
+ F-D02-005 | P3-Low | Contact management & roles
+ F-D02-006 | P2-Medium | Client hierarchy (group/subsidiary)
+ F-D02-007 | P1-High | Client segmentation & tagging
+ F-D02-008 | P3-Low | Conflict-of-interest check
+ F-D02-009 | P2-Medium | Client onboarding checklist
+ F-D02-010 | P3-Low | Client offboarding & file closure
+ F-D02-011 | P2-Medium | Client communication timeline
+ F-D02-012 | P0-Critical | Meeting & visit log
+ F-D02-013 | P0-Critical | Quotation & engagement proposal
+ F-D02-014 | P0-Critical | Engagement letter management
+ F-D02-015 | P3-Low | Client fee arrangement profiles
+ F-D02-016 | P2-Medium | Client document request tracker
+ F-D02-017 | P0-Critical | Client portal invitation management
+ F-D02-018 | P1-High | Client satisfaction survey
+ F-D02-019 | P3-Low | Client referral tracking
+ F-D02-020 | P2-Medium | Client lifetime value view
+ F-D02-021 | P1-High | Pipeline & opportunity tracking
+ F-D02-022 | P0-Critical | Marketing campaign tracking
+ F-D02-023 | P1-High | Event & seminar management
+ F-D02-024 | P2-Medium | Lost-client / win-back workflow
+ F-D02-025 | P3-Low | Client data merge & dedupe
+ F-D02-026 | P2-Medium | Client data correction request
+ F-D02-027 | P2-Medium | Client consent & preference center
+ F-D02-028 | P2-Medium | Corporate client employee roster
+ F-D02-029 | P2-Medium | Client risk profile
+ F-D02-030 | P3-Low | VIP / priority client flagging
+ F-D02-031 | P3-Low | Client credit limit & exposure
+ F-D02-032 | P3-Low | Client birthday / key-date reminders
+ F-D02-033 | P3-Low | Client feedback & complaint handling
+ F-D02-034 | P3-Low | Multi-contact notification routing
+ F-D02-035 | P1-High | Client search (360 view)
+ F-D02-036 | P0-Critical | Client export (controlled)
+ F-D02-037 | P1-High | CRM dashboard per partner
+ F-D02-038 | P3-Low | CRM audit trail
+ F-D02-039 | P3-Low | Data retention for prospects
+ F-D02-040 | P2-Medium | Client document expiry monitoring
+== D03 Project & Case Management
+ F-D03-001 | P3-Low | Matter / project creation wizard
+ F-D03-002 | P0-Critical | Matter numbering scheme
+ F-D03-003 | P2-Medium | Matter classification & practice area
+ F-D03-004 | P1-High | Matter stage pipeline
+ F-D03-005 | P0-Critical | Task breakdown & assignment
+ F-D03-006 | P3-Low | Task dependencies
+ F-D03-007 | P0-Critical | Milestone tracking
+ F-D03-008 | P2-Medium | Deadline & SLA engine
+ F-D03-009 | P3-Low | Court / agency deadline calculator
+ F-D03-010 | P3-Low | Calendar integration (matter deadlines)
+ F-D03-011 | P2-Medium | Kanban matter board
+ F-D03-012 | P1-High | Gantt timeline view
+ F-D03-013 | P0-Critical | Time entry (manual)
+ F-D03-014 | P2-Medium | Timer-based time capture
+ F-D03-015 | P0-Critical | Timesheet approval
+ F-D03-016 | P0-Critical | Matter budget vs actual
+ F-D03-017 | P2-Medium | Cost advance (panjar) tracking
+ F-D03-018 | P2-Medium | Expense attachment to matter
+ F-D03-019 | P1-High | Matter team & staffing
+ F-D03-020 | P1-High | Workload & capacity view
+ F-D03-021 | P0-Critical | Matter priority & escalation
+ F-D03-022 | P1-High | Sub-matter / workstream grouping
+ F-D03-023 | P0-Critical | Related-matter linking
+ F-D03-024 | P1-High | Matter templates library
+ F-D03-025 | P1-High | Recurring matter scheduler
+ F-D03-026 | P1-High | Matter notes & activity feed
+ F-D03-027 | P0-Critical | Internal memo on matter
+ F-D03-028 | P1-High | Matter hold / suspension
+ F-D03-029 | P3-Low | Matter reopen workflow
+ F-D03-030 | P2-Medium | Matter closure checklist
+ F-D03-031 | P2-Medium | Post-matter review & lessons learned
+ F-D03-032 | P3-Low | Matter profitability report
+ F-D03-033 | P1-High | Client matter statement
+ F-D03-034 | P2-Medium | Matter access control
+ F-D03-035 | P2-Medium | Matter audit history
+ F-D03-036 | P2-Medium | Bulk matter import
+ F-D03-037 | P3-Low | Matter archive & retrieval
+ F-D03-038 | P3-Low | Matter dashboard (firm-wide)
+ F-D03-039 | P1-High | Matter SLA breach alerts
+ F-D03-040 | P2-Medium | Matter inbox triage & auto-assignment
+== D04 Document Management
+ F-D04-001 | P1-High | Document upload (multi-file)
+ F-D04-002 | P1-High | Folder hierarchy per matter
+ F-D04-003 | P2-Medium | Document versioning (major/minor)
+ F-D04-004 | P2-Medium | Check-in / check-out locking
+ F-D04-005 | P1-High | Document metadata schema
+ F-D04-006 | P2-Medium | Custom metadata fields
+ F-D04-007 | P2-Medium | Document retention schedule
+ F-D04-008 | P1-High | Document legal-hold application & release
+ F-D04-009 | P3-Low | Document archiving
+ F-D04-010 | P2-Medium | Secure document deletion
+ F-D04-011 | P0-Critical | Bulk download (matter bundle)
+ F-D04-012 | P0-Critical | Document preview (PDF/Office/image)
+ F-D04-013 | P3-Low | Full-text content indexing
+ F-D04-014 | P2-Medium | Document thumbnail generation
+ F-D04-015 | P2-Medium | Duplicate document detection
+ F-D04-016 | P1-High | Virus / malware scan on upload
+ F-D04-017 | P2-Medium | Document access link (internal)
+ F-D04-018 | P3-Low | Document watermarking
+ F-D04-019 | P0-Critical | Document stamping (received/controlled)
+ F-D04-020 | P3-Low | Redaction tools
+ F-D04-021 | P2-Medium | Comparison (doc-to-doc diff)
+ F-D04-022 | P1-High | Document approval routing
+ F-D04-023 | P3-Low | Document expiry alerts
+ F-D04-024 | P0-Critical | Template-based document creation
+ F-D04-025 | P1-High | Scanned-document ingestion
+ F-D04-026 | P2-Medium | Email-to-matter filing
+ F-D04-027 | P3-Low | Document favorites & recent list
+ F-D04-028 | P0-Critical | Document activity history
+ F-D04-029 | P1-High | Storage quota per tenant/office
+ F-D04-030 | P1-High | S3/MinIO object lifecycle policy
+ F-D04-031 | P2-Medium | Trash / recycle bin with restore
+ F-D04-032 | P0-Critical | Document export manifest
+ F-D04-033 | P2-Medium | Document integrity hash (SHA-256)
+ F-D04-034 | P0-Critical | Offline document cache
+ F-D04-035 | P1-High | Large-file chunked upload
+ F-D04-036 | P0-Critical | Document OCR queue trigger
+ F-D04-037 | P2-Medium | Document tagging
+ F-D04-038 | P2-Medium | Document dashboard
+ F-D04-039 | P2-Medium | Document audit trail
+ F-D04-040 | P0-Critical | Protocol (notary) document segregation
+== D05 OCR & Document Intelligence
+ F-D05-001 | P0-Critical | KTP OCR extraction pipeline
+ F-D05-002 | P3-Low | KK OCR extraction pipeline
+ F-D05-003 | P1-High | NPWP OCR extraction pipeline
+ F-D05-004 | P1-High | Passport OCR (MRZ + visual zone)
+ F-D05-005 | P2-Medium | Property certificate (SHM/SHGB) OCR
+ F-D05-006 | P3-Low | Deed (akta) OCR with structure parsing
+ F-D05-007 | P3-Low | Contract OCR with clause segmentation
+ F-D05-008 | P1-High | General PDF OCR (native + scanned)
+ F-D05-009 | P3-Low | Multi-page document orchestration
+ F-D05-010 | P0-Critical | Table extraction & cell reconstruction
+ F-D05-011 | P2-Medium | Layout detection (headers/footers/columns)
+ F-D05-012 | P0-Critical | Document classification model
+ F-D05-013 | P1-High | Image enhancement pre-processing
+ F-D05-014 | P2-Medium | Deskew & orientation correction
+ F-D05-015 | P2-Medium | Denoising & binarization
+ F-D05-016 | P0-Critical | Perspective correction (mobile photos)
+ F-D05-017 | P0-Critical | Blur & glare detection gate
+ F-D05-018 | P2-Medium | Duplicate scan detection
+ F-D05-019 | P0-Critical | Confidence scoring per field
+ F-D05-020 | P1-High | Field-level validation rules (ID) 
+ F-D05-021 | P1-High | Human-in-the-loop review UI
+ F-D05-022 | P0-Critical | Reviewer correction capture & learning log
+ F-D05-023 | P3-Low | OCR result versioning
+ F-D05-024 | P0-Critical | Secure archival of source images
+ F-D05-025 | P3-Low | Batch OCR job scheduler
+ F-D05-026 | P3-Low | OCR cost & usage metering
+ F-D05-027 | P0-Critical | OCR engine router (multi-engine)
+ F-D05-028 | P2-Medium | Engine benchmark harness (CER/WER)
+ F-D05-029 | P1-High | Indonesian document test corpus registry
+ F-D05-030 | P3-Low | Handwriting flag & routing
+ F-D05-031 | P1-High | Stamp & signature region detection
+ F-D05-032 | P0-Critical | QR / barcode decode on documents
+ F-D05-033 | P1-High | Language detection (ID/EN)
+ F-D05-034 | P2-Medium | NIK/KK cross-field consistency check
+ F-D05-035 | P2-Medium | Expiry-date extraction & validation
+ F-D05-036 | P0-Critical | Low-quality image rejection with guidance
+ F-D05-037 | P1-High | OCR audit trail
+ F-D05-038 | P2-Medium | OCR artifact PII redaction (images/results)
+ F-D05-039 | P0-Critical | OCR retry & dead-letter queue
+ F-D05-040 | P2-Medium | OCR accuracy dashboard
+== D06 Deed Generation
+ F-D06-001 | P3-Low | Deed template library (notarial)
+ F-D06-002 | P3-Low | Clause library with versioning
+ F-D06-003 | P1-High | Deed drafting wizard
+ F-D06-004 | P0-Critical | Party (penghadap) data binding
+ F-D06-005 | P1-High | Witness (saksi) management
+ F-D06-006 | P3-Low | Deed numbering (repertorium)
+ F-D06-007 | P0-Critical | Minuta vs salinan vs kutipan tracking
+ F-D06-008 | P0-Critical | Deed reading (pembacaan) minutes
+ F-D06-009 | P0-Critical | Deed signing ceremony checklist
+ F-D06-010 | P0-Critical | Fingerprint capture log
+ F-D06-011 | P2-Medium | Deed amendment (renvoi) handling
+ F-D06-012 | P2-Medium | Deed attachment (lampiran) manager
+ F-D06-013 | P2-Medium | Bilingual deed support (ID/EN)
+ F-D06-014 | P1-High | Deed schema validation
+ F-D06-015 | P1-High | Mandatory-field completeness gate
+ F-D06-016 | P2-Medium | Legal citation insertion
+ F-D06-017 | P1-High | Deed comparison (draft vs minuta)
+ F-D06-018 | P0-Critical | Deed approval before signing
+ F-D06-019 | P3-Low | Deed PDF rendering (print-ready)
+ F-D06-020 | P3-Low | Deed XML/structured archive
+ F-D06-021 | P3-Low | Deed registration to external log
+ F-D06-022 | P2-Medium | Deed search by number/party/date
+ F-D06-023 | P1-High | Deed confidentiality classification
+ F-D06-024 | P3-Low | Deed correction (akta perbaikan)
+ F-D06-025 | P0-Critical | Deed cancellation workflow
+ F-D06-026 | P0-Critical | Deed copy issuance log
+ F-D06-027 | P3-Low | Deed excerpt issuance
+ F-D06-028 | P1-High | Deed legalization log
+ F-D06-029 | P2-Medium | Deed delivery receipt
+ F-D06-030 | P3-Low | Deed storage location tracking
+ F-D06-031 | P0-Critical | Deed protocol-box transfer scheduler
+ F-D06-032 | P1-High | Deed template access control
+ F-D06-033 | P3-Low | Deed variable audit (who changed what)
+ F-D06-034 | P3-Low | Deed multi-party signature order
+ F-D06-035 | P0-Critical | Deed fee computation hook
+ F-D06-036 | P3-Low | Deed dashboard (monthly volume)
+ F-D06-037 | P3-Low | Deed audit trail
+ F-D06-038 | P0-Critical | Deed export for supervision
+ F-D06-039 | P3-Low | Deed disaster-recovery copy
+ F-D06-040 | P3-Low | Deed print & binding manifest
+== D07 AI Legal Assistant
+ F-D07-001 | P2-Medium | Conversational legal Q&A (ID)
+ F-D07-002 | P2-Medium | Matter-grounded Q&A (RAG)
+ F-D07-003 | P3-Low | Document summarization
+ F-D07-004 | P2-Medium | Contract clause extraction
+ F-D07-005 | P0-Critical | Risk clause flagging
+ F-D07-006 | P1-High | Obligation & deadline extraction
+ F-D07-007 | P3-Low | Document comparison (AI diff narrative)
+ F-D07-008 | P0-Critical | Citation & source tracking
+ F-D07-009 | P0-Critical | Legal knowledge base ingestion
+ F-D07-010 | P3-Low | Knowledge base versioning
+ F-D07-011 | P3-Low | Prompt template library
+ F-D07-012 | P0-Critical | Prompt versioning & rollback
+ F-D07-013 | P0-Critical | Model router (cost/quality/latency)
+ F-D07-014 | P1-High | Token usage metering
+ F-D07-015 | P2-Medium | Per-matter AI cost allocation
+ F-D07-016 | P0-Critical | AI confidence & disclaimer banner
+ F-D07-017 | P3-Low | Human approval gate for AI drafts
+ F-D07-018 | P2-Medium | AI-assisted deed clause drafting
+ F-D07-019 | P0-Critical | AI-assisted engagement letter drafting
+ F-D07-020 | P1-High | AI-assisted email drafting
+ F-D07-021 | P2-Medium | Meeting-notes summarization
+ F-D07-022 | P1-High | Regulation change digest
+ F-D07-023 | P0-Critical | Case-law research helper
+ F-D07-024 | P3-Low | Precedent retrieval
+ F-D07-025 | P3-Low | Jurisdiction guardrail (ID-first)
+ F-D07-026 | P1-High | Hallucination mitigation controls
+ F-D07-027 | P1-High | Prompt-injection protection
+ F-D07-028 | P3-Low | PII redaction before model call
+ F-D07-029 | P0-Critical | Local-model execution path
+ F-D07-030 | P3-Low | Model evaluation harness
+ F-D07-031 | P3-Low | Feedback (thumbs up/down + correction)
+ F-D07-032 | P2-Medium | AI audit trail (prompt/response/model)
+ F-D07-033 | P0-Critical | AI data retention policy
+ F-D07-034 | P3-Low | Blocked-topic policy (validity certification)
+ F-D07-035 | P3-Low | Multi-language response (ID/EN)
+ F-D07-036 | P3-Low | Voice-to-text inquiry capture
+ F-D07-037 | P1-High | AI workspace (side panel)
+ F-D07-038 | P1-High | AI spend & model-mix analytics
+ F-D07-039 | P2-Medium | AI incident & correction log
+ F-D07-040 | P1-High | AI red-team prompt test suite
+== D08 Workflow Automation
+ F-D08-001 | P1-High | Visual workflow designer
+ F-D08-002 | P0-Critical | Workflow template gallery
+ F-D08-003 | P2-Medium | Sequential approval chains
+ F-D08-004 | P1-High | Parallel approval branches
+ F-D08-005 | P3-Low | Conditional routing rules
+ F-D08-006 | P1-High | SLA timers & escalation
+ F-D08-007 | P1-High | Reminder & nudge automation
+ F-D08-008 | P2-Medium | Task auto-creation from events
+ F-D08-009 | P1-High | Document-driven triggers
+ F-D08-010 | P3-Low | Status-driven triggers
+ F-D08-011 | P0-Critical | Scheduled (cron) triggers
+ F-D08-012 | P2-Medium | Webhook triggers (inbound)
+ F-D08-013 | P3-Low | Outbound webhook actions
+ F-D08-014 | P3-Low | Email action nodes
+ F-D08-015 | P2-Medium | Notification action nodes
+ F-D08-016 | P2-Medium | Assignment & load-balance node
+ F-D08-017 | P0-Critical | Form-collection step
+ F-D08-018 | P2-Medium | E-signature step connector
+ F-D08-019 | P0-Critical | Payment-collection step
+ F-D08-020 | P1-High | OCR step connector
+ F-D08-021 | P2-Medium | AI step connector
+ F-D08-022 | P2-Medium | Human-review step
+ F-D08-023 | P2-Medium | Sub-workflow (reusable) calls
+ F-D08-024 | P1-High | Workflow versioning
+ F-D08-025 | P0-Critical | Workflow simulation / dry-run
+ F-D08-026 | P0-Critical | Workflow instance dashboard
+ F-D08-027 | P0-Critical | Stuck-instance detection
+ F-D08-028 | P0-Critical | Retry with backoff policy
+ F-D08-029 | P2-Medium | Idempotency keys for steps
+ F-D08-030 | P3-Low | Compensation / rollback actions
+ F-D08-031 | P2-Medium | Event log per instance
+ F-D08-032 | P3-Low | Bulk workflow starter (CSV)
+ F-D08-033 | P0-Critical | Workflow permissions
+ F-D08-034 | P3-Low | Workflow audit trail
+ F-D08-035 | P1-High | Workflow KPI (cycle time)
+ F-D08-036 | P2-Medium | Workflow export/import
+ F-D08-037 | P2-Medium | Workflow deprecation
+ F-D08-038 | P2-Medium | NATS event backbone binding
+ F-D08-039 | P2-Medium | Worker pool autoscaling hooks
+ F-D08-040 | P2-Medium | Workflow error inbox
+== D09 Approval Management
+ F-D09-001 | P3-Low | Approval request composer
+ F-D09-002 | P2-Medium | Multi-level approval matrix
+ F-D09-003 | P3-Low | Delegation of authority
+ F-D09-004 | P0-Critical | Out-of-office delegation
+ F-D09-005 | P0-Critical | Approval SLA & escalation
+ F-D09-006 | P2-Medium | Mobile approval inbox
+ F-D09-007 | P2-Medium | Bulk approval (controlled)
+ F-D09-008 | P1-High | Approval with comments
+ F-D09-009 | P0-Critical | Conditional approval
+ F-D09-010 | P2-Medium | Rework / return-to-drafter
+ F-D09-011 | P0-Critical | Approval attachment review
+ F-D09-012 | P1-High | Amount-threshold routing
+ F-D09-013 | P3-Low | Matter-risk routing
+ F-D09-014 | P2-Medium | Quorum approval (M-of-N)
+ F-D09-015 | P0-Critical | Sequential vs parallel policy
+ F-D09-016 | P1-High | Approval audit pack
+ F-D09-017 | P0-Critical | Approval dashboard
+ F-D09-018 | P0-Critical | Overdue approval alerts
+ F-D09-019 | P0-Critical | Approval calendar view
+ F-D09-020 | P3-Low | Substitute approver rules
+ F-D09-021 | P3-Low | Approval policy versioning
+ F-D09-022 | P2-Medium | Emergency / fast-track approval
+ F-D09-023 | P0-Critical | Approval freeze during audit
+ F-D09-024 | P1-High | Approval evidence (who/when/why)
+ F-D09-025 | P1-High | Approval revocation
+ F-D09-026 | P1-High | Post-approval amendment workflow
+ F-D09-027 | P1-High | Approval analytics (bottlenecks)
+ F-D09-028 | P1-High | Approval digest & escalation preferences
+ F-D09-029 | P3-Low | E-signature binding on approval
+ F-D09-030 | P3-Low | Approval API for integrations
+ F-D09-031 | P3-Low | Approval archive & retrieval
+ F-D09-032 | P0-Critical | Approval role mapping
+ F-D09-033 | P0-Critical | Approval conflict detection
+ F-D09-034 | P0-Critical | Approval simulation
+ F-D09-035 | P1-High | Approval export (auditor)
+ F-D09-036 | P2-Medium | Approval integrity hash
+ F-D09-037 | P1-High | Approval replay protection
+ F-D09-038 | P0-Critical | Approval comment redaction
+ F-D09-039 | P1-High | Approval read-receipt
+ F-D09-040 | P3-Low | Approval quorum override with dual control
+== D10 Electronic Signature
+ F-D10-001 | P3-Low | PSrE provider adapter (certified)
+ F-D10-002 | P3-Low | Uncertified e-sign path (low-risk)
+ F-D10-003 | P3-Low | Signature order orchestration
+ F-D10-004 | P1-High | Sequential signing
+ F-D10-005 | P2-Medium | Parallel signing
+ F-D10-006 | P2-Medium | Signer identity binding (KYC)
+ F-D10-007 | P1-High | Signer OTP challenge
+ F-D10-008 | P3-Low | Signer consent capture
+ F-D10-009 | P3-Low | Document hash sealing (pre-sign)
+ F-D10-010 | P0-Critical | Long-term validation (LTV) artifacts
+ F-D10-011 | P0-Critical | Timestamp authority (TSA) binding
+ F-D10-012 | P2-Medium | Signature appearance placement
+ F-D10-013 | P1-High | Initials on every page option
+ F-D10-014 | P1-High | Bulk signing session
+ F-D10-015 | P3-Low | Signing link via secure URL
+ F-D10-016 | P1-High | Signing reminder schedule
+ F-D10-017 | P3-Low | Signer decline handling
+ F-D10-018 | P0-Critical | Signer reassignment
+ F-D10-019 | P2-Medium | Document preview before signing
+ F-D10-020 | P0-Critical | Post-sign tamper evidence
+ F-D10-021 | P1-High | Signed-document vault
+ F-D10-022 | P3-Low | Signature verification page
+ F-D10-023 | P0-Critical | Verification QR code
+ F-D10-024 | P2-Medium | Revocation / invalidation log
+ F-D10-025 | P0-Critical | Provider failover routing
+ F-D10-026 | P0-Critical | E-sign cost tracking
+ F-D10-027 | P3-Low | E-sign regulatory guardrail (akta exclusion)
+ F-D10-028 | P2-Medium | Notarial act exclusion warning
+ F-D10-029 | P3-Low | Signing ceremony log
+ F-D10-030 | P3-Low | Signer accessibility support
+ F-D10-031 | P1-High | E-sign webhook callbacks
+ F-D10-032 | P1-High | E-sign audit trail
+ F-D10-033 | P2-Medium | E-sign retention policy
+ F-D10-034 | P2-Medium | Provider credential vault
+ F-D10-035 | P2-Medium | E-sign dashboard
+ F-D10-036 | P0-Critical | Sandbox vs production provider mode
+ F-D10-037 | P0-Critical | Signature font/hand-drawn capture
+ F-D10-038 | P2-Medium | Signer device & IP logging
+ F-D10-039 | P1-High | Multi-document signing bundle
+ F-D10-040 | P3-Low | Co-signer & witness signing flow
+== D11 Compliance & Risk
+ F-D11-001 | P1-High | UU PDP obligation register
+ F-D11-002 | P3-Low | Consent lifecycle manager
+ F-D11-003 | P2-Medium | Data-subject access request (DSAR)
+ F-D11-004 | P1-High | Data-subject deletion request
+ F-D11-005 | P0-Critical | Rectification request workflow
+ F-D11-006 | P2-Medium | Processing-activity record (ROPA)
+ F-D11-007 | P2-Medium | DPIA workflow
+ F-D11-008 | P1-High | Breach notification workflow (72h)
+ F-D11-009 | P3-Low | Vendor / processor register
+ F-D11-010 | P0-Critical | DPA (perjanjian pemrosesan) tracker
+ F-D11-011 | P2-Medium | Data-retention rule engine
+ F-D11-012 | P3-Low | Purge execution with approval
+ F-D11-013 | P0-Critical | Protocol retention (25-year) scheduler
+ F-D11-014 | P0-Critical | Conflict-of-interest register
+ F-D11-015 | P3-Low | AML/CFT risk scoring
+ F-D11-016 | P0-Critical | Sanctions re-screening scheduler
+ F-D11-017 | P1-High | Ethics & independence declarations
+ F-D11-018 | P3-Low | Gift & hospitality register
+ F-D11-019 | P2-Medium | Whistleblowing intake channel
+ F-D11-020 | P0-Critical | Incident register & triage
+ F-D11-021 | P1-High | Corrective-action (CAPA) tracker
+ F-D11-022 | P0-Critical | Regulatory change tracker
+ F-D11-023 | P3-Low | Compliance training assignments
+ F-D11-024 | P3-Low | Training completion evidence
+ F-D11-025 | P2-Medium | Internal audit plan
+ F-D11-026 | P1-High | Audit finding tracker
+ F-D11-027 | P3-Low | Control library (UUJN/PDP/ITE)
+ F-D11-028 | P2-Medium | Control test scheduler
+ F-D11-029 | P2-Medium | Compliance dashboard
+ F-D11-030 | P3-Low | Compliance evidence vault
+ F-D11-031 | P2-Medium | Regulator inquiry response pack
+ F-D11-032 | P1-High | Matter-level compliance checklist
+ F-D11-033 | P2-Medium | Office compliance scorecard
+ F-D11-034 | P2-Medium | Compliance alert feed
+ F-D11-035 | P3-Low | Policy library with ack tracking
+ F-D11-036 | P2-Medium | Exception / waiver workflow
+ F-D11-037 | P3-Low | Risk register (enterprise)
+ F-D11-038 | P0-Critical | Risk heatmap
+ F-D11-039 | P2-Medium | Compliance audit trail
+ F-D11-040 | P3-Low | Compliance report exporter
+== D12 Notary Office Management
+ F-D12-001 | P3-Low | Repertorium (deed daily log)
+ F-D12-002 | P0-Critical | Klapper (alphabetical index)
+ F-D12-003 | P2-Medium | Protocol book register
+ F-D12-004 | P1-High | Protocol custody & handover log
+ F-D12-005 | P1-High | Monthly notary report pack
+ F-D12-006 | P2-Medium | MPN supervision response pack
+ F-D12-007 | P0-Critical | Office working-hours & roster
+ F-D12-008 | P1-High | Notary leave / substitute protocol
+ F-D12-009 | P1-High | Staff role matrix (notary office)
+ F-D12-010 | P2-Medium | Penghadap appointment scheduler
+ F-D12-011 | P2-Medium | Queue & waiting-room board
+ F-D12-012 | P3-Low | Service price list (layanan)
+ F-D12-013 | P3-Low | Down-payment (uang muka) receipt
+ F-D12-014 | P3-Low | Deed fee quotation
+ F-D12-015 | P3-Low | Office cash book
+ F-D12-016 | P0-Critical | Office cash advance & IOU tracker
+ F-D12-017 | P0-Critical | Office inventory (blanko/meterai)
+ F-D12-018 | P1-High | Meterai inventory & usage
+ F-D12-019 | P3-Low | ATK & consumables tracker
+ F-D12-020 | P0-Critical | Archive room location map
+ F-D12-021 | P2-Medium | Deed storage box tracking
+ F-D12-022 | P2-Medium | Protocol transfer to MPD (retired)
+ F-D12-023 | P0-Critical | Client identity re-verification
+ F-D12-024 | P3-Low | Saksi pool management
+ F-D12-025 | P0-Critical | Office bank-partner facility & rate sheet
+ F-D12-026 | P1-High | Office performance dashboard
+ F-D12-027 | P0-Critical | Deed volume analytics
+ F-D12-028 | P3-Low | Staff productivity view
+ F-D12-029 | P2-Medium | Client waiting-time analytics
+ F-D12-030 | P0-Critical | Office document checklist
+ F-D12-031 | P2-Medium | Office SOP library
+ F-D12-032 | P3-Low | Office announcement board
+ F-D12-033 | P0-Critical | Multi-desk task dispatch
+ F-D12-034 | P2-Medium | Office audit trail
+ F-D12-035 | P0-Critical | Office backup verification
+ F-D12-036 | P2-Medium | Office incident log
+ F-D12-037 | P0-Critical | Office visitor log
+ F-D12-038 | P3-Low | Office feedback capture
+ F-D12-039 | P1-High | Office compliance self-check
+ F-D12-040 | P0-Critical | Protocol year-end sealing & handover
+== D13 PPAT & Property Legal
+ F-D13-001 | P2-Medium | PPAT deed register (akta PPAT)
+ F-D13-002 | P1-High | Land certificate (SHM/HGB) intake
+ F-D13-003 | P2-Medium | Certificate authenticity checklist
+ F-D13-004 | P3-Low | BPN verification request tracker
+ F-D13-005 | P0-Critical | AJB drafting (sale & purchase)
+ F-D13-006 | P3-Low | Hibah deed support
+ F-D13-007 | P3-Low | Tukar-menukar deed support
+ F-D13-008 | P0-Critical | APHT (mortgage) drafting
+ F-D13-009 | P3-Low | SKMHT drafting & expiry monitor
+ F-D13-010 | P3-Low | Royalty/lease deed support
+ F-D13-011 | P0-Critical | Land-split (pemecahan) tracker
+ F-D13-012 | P0-Critical | Land-merge (penggabungan) tracker
+ F-D13-013 | P0-Critical | Land-history (riwayat tanah) record
+ F-D13-014 | P1-High | Seller-buyer KYC bundle
+ F-D13-015 | P2-Medium | Marital-property consent check
+ F-D13-016 | P2-Medium | Heir consent verification
+ F-D13-017 | P1-High | Corporate seller board-resolution verification
+ F-D13-018 | P3-Low | Tax (PPh) computation worksheet
+ F-D13-019 | P2-Medium | BPHTB computation worksheet
+ F-D13-020 | P2-Medium | PBB status verification
+ F-D13-021 | P2-Medium |  girik/adat land intake
+ F-D13-022 | P3-Low | Developer bulk-transaction batch
+ F-D13-023 | P2-Medium | Developer unit (stock) registry
+ F-D13-024 | P0-Critical | Unit handover (BAST) tracker
+ F-D13-025 | P0-Critical | KPR bank coordination pack
+ F-D13-026 | P1-High | Notary-PPAT handoff checklist
+ F-D13-027 | P3-Low | BPN queue-number tracker
+ F-D13-028 | P1-High | Certificate handover receipt
+ F-D13-029 | P2-Medium | PPAT monthly report
+ F-D13-030 | P0-Critical | PPAT protocol register
+ F-D13-031 | P0-Critical | Zone (ZNT/NJOP) reference table
+ F-D13-032 | P0-Critical | Land-dispute flag & hold
+ F-D13-033 | P2-Medium | Boundary & area verification
+ F-D13-034 | P0-Critical | Power-to-sell (kuasa menjual) check
+ F-D13-035 | P0-Critical | Foreign-ownership guardrail
+ F-D13-036 | P3-Low | PPAT fee worksheet
+ F-D13-037 | P0-Critical | PPAT dashboard
+ F-D13-038 | P2-Medium | PPAT audit trail
+ F-D13-039 | P3-Low | Certificate scan vault
+ F-D13-040 | P0-Critical | BPN response archive
+== D14 Finance & Accounting
+ F-D14-001 | P1-High | Chart of accounts (PSAK-aware)
+ F-D14-002 | P1-High | Journal entry composer
+ F-D14-003 | P1-High | Journal approval workflow
+ F-D14-004 | P1-High | Accounts receivable ledger
+ F-D14-005 | P3-Low | Accounts payable ledger
+ F-D14-006 | P3-Low | General ledger viewer
+ F-D14-007 | P0-Critical | Trial balance report
+ F-D14-008 | P0-Critical | Profit & loss report
+ F-D14-009 | P2-Medium | Balance-sheet report
+ F-D14-010 | P2-Medium | Cash-flow report
+ F-D14-011 | P1-High | Client trust (escrow) ledger
+ F-D14-012 | P2-Medium | Trust receipt & disbursement
+ F-D14-013 | P2-Medium | Trust reconciliation
+ F-D14-014 | P2-Medium | Matter cost allocation
+ F-D14-015 | P3-Low | Department cost centers
+ F-D14-016 | P2-Medium | Office-level P&L
+ F-D14-017 | P3-Low | Budget planner
+ F-D14-018 | P0-Critical | Budget-vs-actual monitor
+ F-D14-019 | P1-High | Fixed-asset register
+ F-D14-020 | P3-Low | Depreciation scheduler
+ F-D14-021 | P1-High | Bank account registry
+ F-D14-022 | P1-High | Bank reconciliation
+ F-D14-023 | P3-Low | Petty-cash ledger
+ F-D14-024 | P1-High | Tax invoice (faktur pajak) log
+ F-D14-025 | P1-High | Withholding-tax (PPh 23/21) tracker
+ F-D14-026 | P1-High | VAT (PPN) report support
+ F-D14-027 | P0-Critical | E-faktur data export
+ F-D14-028 | P2-Medium | Payroll interface export
+ F-D14-029 | P0-Critical | Reimbursement workflow
+ F-D14-030 | P3-Low | Advance-settlement workflow
+ F-D14-031 | P3-Low | Inter-office settlement
+ F-D14-032 | P1-High | Multi-currency support
+ F-D14-033 | P3-Low | Exchange-rate table
+ F-D14-034 | P1-High | Year-end closing checklist
+ F-D14-035 | P1-High | Auditor data pack
+ F-D14-036 | P1-High | Finance dashboard
+ F-D14-037 | P1-High | Finance audit trail
+ F-D14-038 | P1-High | Segregation-of-duties controls
+ F-D14-039 | P1-High | Finance archive & retention
+ F-D14-040 | P2-Medium | Anomaly / duplicate-payment flag
+== D15 Billing & Subscription
+ F-D15-001 | P3-Low | Fee-schedule library
+ F-D15-002 | P3-Low | Time-based billing rules
+ F-D15-003 | P3-Low | Fixed-fee billing
+ F-D15-004 | P2-Medium | Success-fee billing
+ F-D15-005 | P2-Medium | Retainer billing
+ F-D15-006 | P1-High | Subscription plan catalog
+ F-D15-007 | P1-High | Plan upgrade / downgrade
+ F-D15-008 | P1-High | Proration engine
+ F-D15-009 | P3-Low | Invoice composer
+ F-D15-010 | P0-Critical | E-invoice data capture
+ F-D15-011 | P0-Critical | Invoice approval workflow
+ F-D15-012 | P2-Medium | Invoice delivery (email/portal)
+ F-D15-013 | P0-Critical | Invoice reminder schedule
+ F-D15-014 | P3-Low | Late-fee & denda policy
+ F-D15-015 | P3-Low | Payment recording (multi-method)
+ F-D15-016 | P1-High | Payment-gateway integration adapter
+ F-D15-017 | P3-Low | Virtual-account billing
+ F-D15-018 | P3-Low | QRIS payment support
+ F-D15-019 | P0-Critical | Partial-payment handling
+ F-D15-020 | P0-Critical | Overpayment / credit-memo
+ F-D15-021 | P1-High | Refund workflow
+ F-D15-022 | P3-Low | Dunning workflow
+ F-D15-023 | P0-Critical | Collection task assignment
+ F-D15-024 | P3-Low | Billing dispute handling
+ F-D15-025 | P2-Medium | Client billing profile
+ F-D15-026 | P1-High | Discount & voucher engine
+ F-D15-027 | P3-Low | Tax on invoice (PPN/PPh)
+ F-D15-028 | P1-High | Invoice cancellation (credit note)
+ F-D15-029 | P1-High | Billing dashboard
+ F-D15-030 | P1-High | AR aging report
+ F-D15-031 | P1-High | Revenue recognition hook
+ F-D15-032 | P1-High | Payout to partner (profit share)
+ F-D15-033 | P0-Critical | Office-level revenue split
+ F-D15-034 | P1-High | Billing audit trail
+ F-D15-035 | P0-Critical | Invoice PDF rendering
+ F-D15-036 | P2-Medium | Payment receipt rendering
+ F-D15-037 | P3-Low | Subscription renewal scheduler
+ F-D15-038 | P2-Medium | Churn / win-back tracker
+ F-D15-039 | P1-High | Billing API for integrations
+ F-D15-040 | P2-Medium | Billing data retention
+== D16 User, Role & Permission
+ F-D16-001 | P2-Medium | User provisioning
+ F-D16-002 | P3-Low | Bulk user import
+ F-D16-003 | P0-Critical | User deprovisioning
+ F-D16-004 | P2-Medium | Department & team management
+ F-D16-005 | P0-Critical | Job-title & grade model
+ F-D16-006 | P2-Medium | RBAC role catalog
+ F-D16-007 | P1-High | Least-privilege role templates
+ F-D16-008 | P2-Medium | Permission matrix editor
+ F-D16-009 | P1-High | Data-scope rules (office/matter)
+ F-D16-010 | P3-Low | ABAC policy rules
+ F-D16-011 | P3-Low | Temporary elevation (break-glass)
+ F-D16-012 | P2-Medium | Delegation rules
+ F-D16-013 | P0-Critical | API service-account management
+ F-D16-014 | P2-Medium | SSO (OIDC/SAML) integration
+ F-D16-015 | P3-Low | SCIM provisioning adapter
+ F-D16-016 | P2-Medium | Password policy engine
+ F-D16-017 | P3-Low | MFA enrollment (TOTP)
+ F-D16-018 | P1-High | WebAuthn / passkey support
+ F-D16-019 | P0-Critical | Session management console
+ F-D16-020 | P0-Critical | Concurrent-session control
+ F-D16-021 | P3-Low | Login anomaly detection
+ F-D16-022 | P2-Medium | Account lockout policy
+ F-D16-023 | P0-Critical | Password-reset workflow
+ F-D16-024 | P3-Low | New-hire onboarding checklist
+ F-D16-025 | P0-Critical | Transfer / rotation workflow
+ F-D16-026 | P1-High | Exit clearance workflow
+ F-D16-027 | P2-Medium | Access review campaigns
+ F-D16-028 | P3-Low | SoD conflict detector
+ F-D16-029 | P2-Medium | Permission-change audit
+ F-D16-030 | P1-High | Role-version history
+ F-D16-031 | P3-Low | Org-chart viewer
+ F-D16-032 | P2-Medium | User activity timeline
+ F-D16-033 | P1-High | Suspended-user vault
+ F-D16-034 | P1-High | Guest / external user handling
+ F-D16-035 | P3-Low | External client-user invitation & lifecycle
+ F-D16-036 | P2-Medium | Contractor time-boxed access
+ F-D16-037 | P2-Medium | Emergency access log
+ F-D16-038 | P0-Critical | User directory search
+ F-D16-039 | P0-Critical | License / seat usage tracker
+ F-D16-040 | P3-Low | Dormant-account reviewer
+== D17 Multi-Office & Tenant
+ F-D17-001 | P0-Critical | Tenant provisioning
+ F-D17-002 | P0-Critical | Tenant branding (logo/colors)
+ F-D17-003 | P3-Low | Tenant domain mapping
+ F-D17-004 | P1-High | Office branch registry
+ F-D17-005 | P1-High | Office hierarchy
+ F-D17-006 | P3-Low | Central vs office data scope
+ F-D17-007 | P1-High | Inter-office matter referral
+ F-D17-008 | P2-Medium | Inter-office document sharing
+ F-D17-009 | P1-High | Centralized user directory
+ F-D17-010 | P0-Critical | Office-local admin role
+ F-D17-011 | P0-Critical | Tenant-wide settings
+ F-D17-012 | P1-High | Office working calendar
+ F-D17-013 | P1-High | Regional holiday table
+ F-D17-014 | P0-Critical | Tenant data-residency option
+ F-D17-015 | P1-High | Tenant backup policy
+ F-D17-016 | P1-High | Tenant quota management
+ F-D17-017 | P0-Critical | Cross-office reporting
+ F-D17-018 | P1-High | Consolidated finance view
+ F-D17-019 | P2-Medium | Office performance ranking
+ F-D17-020 | P1-High | Tenant announcement broadcast
+ F-D17-021 | P1-High | Tenant feature-flag control
+ F-D17-022 | P3-Low | Tenant integration registry
+ F-D17-023 | P2-Medium | Office onboarding wizard
+ F-D17-024 | P3-Low | Office closure / merge
+ F-D17-025 | P0-Critical | Tenant suspension
+ F-D17-026 | P2-Medium | Tenant deletion (with retention)
+ F-D17-027 | P2-Medium | Tenant audit trail
+ F-D17-028 | P2-Medium | Office access audit
+ F-D17-029 | P1-High | Data-migration between offices
+ F-D17-030 | P2-Medium | Tenant SLA profiles
+ F-D17-031 | P3-Low | Office capacity planning
+ F-D17-032 | P1-High | Tenant support channel
+ F-D17-033 | P1-High | Tenant health dashboard
+ F-D17-034 | P3-Low | Tenant config export/import
+ F-D17-035 | P0-Critical | Tenant API quota & plan assignment
+ F-D17-036 | P2-Medium | Office document templates
+ F-D17-037 | P1-High | Office fee localization
+ F-D17-038 | P1-High | Tenant retention policy
+ F-D17-039 | P2-Medium | Tenant incident broadcast
+ F-D17-040 | P2-Medium | Tenant config drift detector
+== D18 Communication & Notification
+ F-D18-001 | P2-Medium | In-app notification center
+ F-D18-002 | P0-Critical | Email notification engine
+ F-D18-003 | P2-Medium | SMS notification adapter
+ F-D18-004 | P2-Medium | WhatsApp notification adapter
+ F-D18-005 | P2-Medium | Push notification (mobile)
+ F-D18-006 | P1-High | Notification preference center
+ F-D18-007 | P3-Low | Notification templating
+ F-D18-008 | P2-Medium | Multi-language notification
+ F-D18-009 | P0-Critical | Notification scheduling
+ F-D18-010 | P3-Low | Digest (daily/weekly) mode
+ F-D18-011 | P0-Critical | Matter-event notifications
+ F-D18-012 | P1-High | Deadline reminder engine
+ F-D18-013 | P3-Low | Approval notification routing
+ F-D18-014 | P0-Critical | E-sign event notifications
+ F-D18-015 | P2-Medium | Payment notifications
+ F-D18-016 | P1-High | Broadcast announcements
+ F-D18-017 | P2-Medium | Targeted audience selector
+ F-D18-018 | P2-Medium | Message thread per matter
+ F-D18-019 | P2-Medium | Internal chat (office)
+ F-D18-020 | P2-Medium | Client messaging (portal)
+ F-D18-021 | P0-Critical | File attachment in messages
+ F-D18-022 | P0-Critical | Message read receipts
+ F-D18-023 | P2-Medium | Message retention policy
+ F-D18-024 | P3-Low | Notification delivery tracking
+ F-D18-025 | P0-Critical | Bounce / failure handling
+ F-D18-026 | P3-Low | Unsubscribe & consent respect
+ F-D18-027 | P1-High | Emergency broadcast
+ F-D18-028 | P1-High | Notification audit trail
+ F-D18-029 | P0-Critical | Notification rate limiting
+ F-D18-030 | P0-Critical | Template approval workflow
+ F-D18-031 | P1-High | Sender identity (domain) config
+ F-D18-032 | P3-Low | SMS/WA cost tracking
+ F-D18-033 | P3-Low | Notification analytics
+ F-D18-034 | P0-Critical | Quiet-hours policy
+ F-D18-035 | P0-Critical | Escalation notification chain
+ F-D18-036 | P2-Medium | Calendar-invite notifications
+ F-D18-037 | P2-Medium | System maintenance notices
+ F-D18-038 | P1-High | Notification API
+ F-D18-039 | P0-Critical | Notification archive
+ F-D18-040 | P2-Medium | Notification template A/B testing
+== D19 Client & Public Portal
+ F-D19-001 | P0-Critical | Client login (secure)
+ F-D19-002 | P3-Low | Client registration with KYC
+ F-D19-003 | P2-Medium | Client dashboard
+ F-D19-004 | P3-Low | Matter progress view
+ F-D19-005 | P0-Critical | Document request inbox
+ F-D19-006 | P2-Medium | Secure document upload
+ F-D19-007 | P0-Critical | Shared-document viewer
+ F-D19-008 | P3-Low | E-sign signing entry
+ F-D19-009 | P0-Critical | Invoice & payment view
+ F-D19-010 | P1-High | Online payment checkout
+ F-D19-011 | P3-Low | Appointment booking
+ F-D19-012 | P1-High | Appointment reminders
+ F-D19-013 | P3-Low | Case-message thread
+ F-D19-014 | P3-Low | Targeted portal announcements
+ F-D19-015 | P2-Medium | FAQ & help center
+ F-D19-016 | P1-High | Service catalog & pricing
+ F-D19-017 | P2-Medium | Quotation request form
+ F-D19-018 | P0-Critical | Lead intake public form
+ F-D19-019 | P1-High | Feedback & rating form
+ F-D19-020 | P1-High | Complaint submission
+ F-D19-021 | P2-Medium | Consent management view
+ F-D19-022 | P1-High | Profile & contacts editor
+ F-D19-023 | P0-Critical | Company users management
+ F-D19-024 | P0-Critical | Notification preferences
+ F-D19-025 | P2-Medium | Download center (receipts/copies)
+ F-D19-026 | P0-Critical | Request copy of deed extract
+ F-D19-027 | P3-Low | Track request status
+ F-D19-028 | P1-High | Multi-language portal (ID/EN)
+ F-D19-029 | P2-Medium | Accessibility (WCAG) support
+ F-D19-030 | P3-Low | Portal session security
+ F-D19-031 | P3-Low | Portal audit trail
+ F-D19-032 | P0-Critical | Portal announcement targeting
+ F-D19-033 | P3-Low | Portal usage analytics
+ F-D19-034 | P1-High | Portal SLA display
+ F-D19-035 | P0-Critical | Portal maintenance page
+ F-D19-036 | P1-High | Public office directory
+ F-D19-037 | P3-Low | Public lawyer/notary profiles
+ F-D19-038 | P2-Medium | Public regulation digest
+ F-D19-039 | P2-Medium | Portal feedback loop
+ F-D19-040 | P1-High | Portal data-retention notice
+== D20 Reporting & Analytics
+ F-D20-001 | P2-Medium | Standard report library
+ F-D20-002 | P2-Medium | Ad-hoc report builder
+ F-D20-003 | P0-Critical | Report scheduling (email)
+ F-D20-004 | P3-Low | Report export (PDF/XLSX/CSV)
+ F-D20-005 | P0-Critical | Dashboard designer
+ F-D20-006 | P2-Medium | Role-based dashboards
+ F-D20-007 | P2-Medium | Matter KPI dashboard
+ F-D20-008 | P3-Low | Financial KPI dashboard
+ F-D20-009 | P0-Critical | Deed-volume period report & export
+ F-D20-010 | P2-Medium | OCR accuracy trend & benchmark report
+ F-D20-011 | P3-Low | AI cost & quality executive report
+ F-D20-012 | P1-High | Approval bottleneck report
+ F-D20-013 | P0-Critical | Deadline compliance report
+ F-D20-014 | P0-Critical | Client profitability report
+ F-D20-015 | P3-Low | Staff utilization report
+ F-D20-016 | P2-Medium | Pipeline & forecast report
+ F-D20-017 | P1-High | Compliance posture report
+ F-D20-018 | P0-Critical | Risk posture period report
+ F-D20-019 | P2-Medium | Data-quality scorecard
+ F-D20-020 | P3-Low | Report access control
+ F-D20-021 | P0-Critical | Report version history
+ F-D20-022 | P3-Low | Report annotation
+ F-D20-023 | P3-Low | Drill-down navigation
+ F-D20-024 | P1-High | Comparative period analysis
+ F-D20-025 | P3-Low | Office benchmarking
+ F-D20-026 | P1-High | Tenant-level rollups
+ F-D20-027 | P3-Low | Scheduled snapshot archive
+ F-D20-028 | P3-Low | Report delivery log
+ F-D20-029 | P3-Low | Metric dictionary
+ F-D20-030 | P3-Low | KPI alert thresholds
+ F-D20-031 | P2-Medium | Embedded analytics (portal)
+ F-D20-032 | P1-High | Analytics data-mart refresh
+ F-D20-033 | P1-High | PII handling in reports
+ F-D20-034 | P0-Critical | Report audit trail
+ F-D20-035 | P1-High | Report retention policy
+ F-D20-036 | P0-Critical | Custom SQL (guardrailed) reports
+ F-D20-037 | P0-Critical | Report performance monitor
+ F-D20-038 | P2-Medium | Mobile-friendly reports
+ F-D20-039 | P1-High | Executive summary pack
+ F-D20-040 | P2-Medium | Board-ready export theme
+== D21 API & Integration
+ F-D21-001 | P2-Medium | Public REST API (versioned)
+ F-D21-002 | P0-Critical | API key management
+ F-D21-003 | P3-Low | OAuth2 client management
+ F-D21-004 | P2-Medium | Rate limiting & quotas
+ F-D21-005 | P3-Low | API usage metering
+ F-D21-006 | P2-Medium | Developer portal & docs
+ F-D21-007 | P0-Critical | OpenAPI spec publishing
+ F-D21-008 | P1-High | Webhook dispatcher
+ F-D21-009 | P0-Critical | Inbound webhook receiver
+ F-D21-010 | P0-Critical | Event catalog (domain events)
+ F-D21-011 | P1-High | Dukcapil connector
+ F-D21-012 | P2-Medium | Tax (DJP) data adapter
+ F-D21-013 | P2-Medium | BPN integration adapter
+ F-D21-014 | P3-Low | Bank / VA integration
+ F-D21-015 | P0-Critical | Payment-gateway connector certification pack
+ F-D21-016 | P2-Medium | PSrE e-sign adapter
+ F-D21-017 | P3-Low | SMS gateway adapter
+ F-D21-018 | P1-High | WhatsApp gateway adapter
+ F-D21-019 | P3-Low | Email provider adapter
+ F-D21-020 | P2-Medium | Cloud-storage (S3) connector
+ F-D21-021 | P1-High | SSO/SCIM connectors
+ F-D21-022 | P0-Critical | Accounting export connector
+ F-D21-023 | P2-Medium | E-faktur export adapter
+ F-D21-024 | P0-Critical | BI export (warehouse) feed
+ F-D21-025 | P2-Medium | Mobile SDK auth endpoints
+ F-D21-026 | P1-High | OCR engine plugin API
+ F-D21-027 | P3-Low | AI provider plugin API
+ F-D21-028 | P2-Medium | Idempotency-key support
+ F-D21-029 | P3-Low | API sandbox environment
+ F-D21-030 | P3-Low | API changelog & deprecation
+ F-D21-031 | P2-Medium | Integration health monitor
+ F-D21-032 | P2-Medium | Retry & DLQ for webhooks
+ F-D21-033 | P0-Critical | API audit trail
+ F-D21-034 | P1-High | Partner onboarding workflow
+ F-D21-035 | P1-High | Integration test harness
+ F-D21-036 | P0-Critical | API abuse detection
+ F-D21-037 | P0-Critical | Request signing (HMAC)
+ F-D21-038 | P0-Critical | Field-level encryption for APIs
+ F-D21-039 | P3-Low | Tenant-scoped API tokens
+ F-D21-040 | P1-High | API dashboard
+== D22 Security & Data Protection
+ F-D22-001 | P1-High | Password hashing (Argon2id)
+ F-D22-002 | P2-Medium | MFA enforcement policy
+ F-D22-003 | P2-Medium | SSO hardening guide
+ F-D22-004 | P0-Critical | Session timeout & rotation
+ F-D22-005 | P0-Critical | JWT access/refresh design
+ F-D22-006 | P1-High | API token vault
+ F-D22-007 | P1-High | Encryption at rest (AES-256)
+ F-D22-008 | P0-Critical | TLS enforcement (1.2+)
+ F-D22-009 | P3-Low | Key-management (KMS/HSM) hooks
+ F-D22-010 | P0-Critical | Secrets rotation scheduler
+ F-D22-011 | P2-Medium | Field-level encryption (NIK/PII)
+ F-D22-012 | P0-Critical | PII masking in logs/traces
+ F-D22-013 | P2-Medium | Backup encryption
+ F-D22-014 | P2-Medium | Secure file-upload pipeline
+ F-D22-015 | P1-High | Malware scanning gate
+ F-D22-016 | P3-Low | Rate limiting & brute-force shield
+ F-D22-017 | P3-Low | WAF rule baseline
+ F-D22-018 | P0-Critical | Security headers baseline
+ F-D22-019 | P1-High | CSRF protection
+ F-D22-020 | P0-Critical | XSS output-encoding standard
+ F-D22-021 | P1-High | SQL-injection guardrails (SQLx)
+ F-D22-022 | P3-Low | Dependency vulnerability scan
+ F-D22-023 | P0-Critical | Container image scan
+ F-D22-024 | P3-Low | SAST baseline
+ F-D22-025 | P2-Medium | DAST baseline
+ F-D22-026 | P3-Low | Audit-log integrity (hash chain)
+ F-D22-027 | P2-Medium | Tamper-evident evidence store
+ F-D22-028 | P1-High | Incident response runbooks
+ F-D22-029 | P0-Critical | Breach containment & forensic preservation runbook
+ F-D22-030 | P0-Critical | Security training tracker
+ F-D22-031 | P2-Medium | Pen-test finding tracker
+ F-D22-032 | P1-High | Threat-model registry (STRIDE)
+ F-D22-033 | P0-Critical | OWASP ASVS mapping
+ F-D22-034 | P3-Low | Backup-restore security test
+ F-D22-035 | P3-Low | Data-residency controls
+ F-D22-036 | P2-Medium | Secure decommissioning
+ F-D22-037 | P1-High | Tenant isolation tests
+ F-D22-038 | P2-Medium | Security dashboard
+ F-D22-039 | P3-Low | Security audit export
+ F-D22-040 | P1-High | Security exception register
+== D23 Search & Discovery
+ F-D23-001 | P1-High | Global search bar
+ F-D23-002 | P0-Critical | Matter search
+ F-D23-003 | P0-Critical | Document full-text search
+ F-D23-004 | P3-Low | Deed full-text & faceted discovery
+ F-D23-005 | P1-High | Client search
+ F-D23-006 | P2-Medium | Contact search
+ F-D23-007 | P1-High | Clause-library search
+ F-D23-008 | P0-Critical | Template search
+ F-D23-009 | P0-Critical | Knowledge-base search
+ F-D23-010 | P2-Medium | Regulation search
+ F-D23-011 | P3-Low | Precedent search
+ F-D23-012 | P3-Low | Faceted filtering
+ F-D23-013 | P3-Low | Saved searches
+ F-D23-014 | P0-Critical | Search suggestions (typeahead)
+ F-D23-015 | P2-Medium | Typo-tolerant matching
+ F-D23-016 | P3-Low | Indonesian stemming analyzer
+ F-D23-017 | P0-Critical | Synonym dictionary (legal ID)
+ F-D23-018 | P2-Medium | Search relevance tuning
+ F-D23-019 | P3-Low | Search result highlighting
+ F-D23-020 | P2-Medium | Preview from search results
+ F-D23-021 | P3-Low | Search access-control trimming
+ F-D23-022 | P3-Low | Search audit log
+ F-D23-023 | P0-Critical | Recent & frequent items
+ F-D23-024 | P0-Critical | Search analytics
+ F-D23-025 | P2-Medium | Zero-result feedback capture
+ F-D23-026 | P0-Critical | Bulk reindex job
+ F-D23-027 | P3-Low | Index-health monitor
+ F-D23-028 | P1-High | Tantivy index manager
+ F-D23-029 | P3-Low | Vector (Qdrant) optional index
+ F-D23-030 | P1-High | Hybrid (keyword+vector) ranking
+ F-D23-031 | P3-Low | Search API endpoint
+ F-D23-032 | P3-Low | Search pagination & sorting
+ F-D23-033 | P3-Low | Search export (controlled)
+ F-D23-034 | P3-Low | Cross-office scoped search
+ F-D23-035 | P3-Low | Archived-content search toggle
+ F-D23-036 | P0-Critical | OCR-text search
+ F-D23-037 | P2-Medium | Metadata-only search mode
+ F-D23-038 | P0-Critical | Search latency SLO monitor
+ F-D23-039 | P1-High | Search relevance eval harness
+ F-D23-040 | P3-Low | Search synonym curation workflow
+== D24 Mobile & Field Operations
+ F-D24-001 | P3-Low | Dioxus mobile feasibility report
+ F-D24-002 | P0-Critical | Field task inbox (mobile)
+ F-D24-003 | P1-High | Offline-first task queue
+ F-D24-004 | P3-Low | Offline document capture
+ F-D24-005 | P0-Critical | ID photo capture guidance
+ F-D24-006 | P0-Critical | On-device image QC (blur/glare)
+ F-D24-007 | P2-Medium | Deferred upload & retry
+ F-D24-008 | P1-High | Mobile KYC capture flow
+ F-D24-009 | P1-High | Appointment map & navigation
+ F-D24-010 | P2-Medium | Visit check-in / check-out
+ F-D24-011 | P0-Critical | Geo-tagged evidence photos
+ F-D24-012 | P2-Medium | Field expense capture
+ F-D24-013 | P0-Critical | Mobile time tracking
+ F-D24-014 | P0-Critical | Push task assignments
+ F-D24-015 | P3-Low | Offline approval queue with deferred sync
+ F-D24-016 | P2-Medium | Mobile e-sign signing
+ F-D24-017 | P3-Low | Secure mobile document viewer
+ F-D24-018 | P0-Critical | Mobile redaction guardrails
+ F-D24-019 | P1-High | Biometric app unlock
+ F-D24-020 | P3-Low | Remote-wipe & lock
+ F-D24-021 | P3-Low | MDM policy hooks
+ F-D24-022 | P2-Medium | Mobile audit trail
+ F-D24-023 | P0-Critical | Battery/data-saver mode
+ F-D24-024 | P2-Medium | Low-bandwidth sync mode
+ F-D24-025 | P0-Critical | Conflict resolution (offline edits)
+ F-D24-026 | P1-High | Mobile crash reporting
+ F-D24-027 | P3-Low | Mobile analytics
+ F-D24-028 | P1-High | Field-team location dashboard
+ F-D24-029 | P0-Critical | Mobile release train
+ F-D24-030 | P1-High | App-version enforcement
+ F-D24-031 | P1-High | Mobile accessibility
+ F-D24-032 | P3-Low | Mobile language toggle
+ F-D24-033 | P0-Critical | Mobile help & offline FAQ
+ F-D24-034 | P0-Critical | Field safety check-in
+ F-D24-035 | P1-High | Mobile notification prefs
+ F-D24-036 | P0-Critical | Mobile storage quota
+ F-D24-037 | P2-Medium | Photo-to-PDF bundling
+ F-D24-038 | P3-Low | Field-report generator
+ F-D24-039 | P2-Medium | Mobile session security
+ F-D24-040 | P0-Critical | Mobile offline map pack
+== D25 Enterprise Administration & Global Expansion
+ F-D25-001 | P3-Low | System settings console
+ F-D25-002 | P1-High | Tenant onboarding console (admin)
+ F-D25-003 | P0-Critical | License & seat manager
+ F-D25-004 | P3-Low | Feature-flag console
+ F-D25-005 | P1-High | Release channel manager
+ F-D25-006 | P1-High | Maintenance-mode control
+ F-D25-007 | P0-Critical | Announcement broadcaster
+ F-D25-008 | P2-Medium | Global search admin
+ F-D25-009 | P2-Medium | Background-job monitor
+ F-D25-010 | P2-Medium | Queue-depth alerting
+ F-D25-011 | P2-Medium | Worker scaling policy
+ F-D25-012 | P2-Medium | Storage lifecycle admin
+ F-D25-013 | P3-Low | Index maintenance console
+ F-D25-014 | P2-Medium | AI provider key vault
+ F-D25-015 | P2-Medium | OCR engine admin
+ F-D25-016 | P1-High | Integration registry admin
+ F-D25-017 | P2-Medium | Webhook delivery monitor
+ F-D25-018 | P2-Medium | API rate-plan admin
+ F-D25-019 | P2-Medium | Audit-log viewer (global)
+ F-D25-020 | P0-Critical | Retention-policy designer
+ F-D25-021 | P2-Medium | Legal-hold console
+ F-D25-022 | P1-High | Backup scheduler
+ F-D25-023 | P0-Critical | Restore drill tracker
+ F-D25-024 | P3-Low | DR failover runbook
+ F-D25-025 | P2-Medium | Multi-region readiness checklist
+ F-D25-026 | P3-Low | Localization (i18n) manager
+ F-D25-027 | P2-Medium | New-locale onboarding
+ F-D25-028 | P3-Low | Currency & tax-locale pack
+ F-D25-029 | P1-High | Regulatory-locale pack
+ F-D25-030 | P3-Low | Time-zone policy manager
+ F-D25-031 | P1-High | Data-residency selector
+ F-D25-032 | P0-Critical | Cross-border transfer log
+ F-D25-033 | P2-Medium | Expansion market assessment
+ F-D25-034 | P3-Low | Partner onboarding (new country)
+ F-D25-035 | P2-Medium | Global admin dashboard
+ F-D25-036 | P0-Critical | Admin audit trail
+ F-D25-037 | P1-High | Config change approval
+ F-D25-038 | P1-High | System health SLO board
+ F-D25-039 | P2-Medium | Capacity planner
+ F-D25-040 | P1-High | Decommissioning workflow

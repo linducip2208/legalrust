@@ -1855,3 +1855,247 @@ async fn pub_site_demo_form_posts_urlencoded() {
     assert!(t.contains("id=\"demo-form\""));
     assert!(t.contains("action=\"/api/v1/public/demo-requests\""));
 }
+
+#[tokio::test]
+async fn landing_has_all_section_anchors() {
+    let (_, _, t) = page_get(&app(), "/").await;
+    for id in [
+        "hero",
+        "dasbor",
+        "kepercayaan",
+        "fitur",
+        "perkara",
+        "dokumen",
+        "ocr",
+        "akta",
+        "keuangan",
+        "keamanan",
+        "pelaporan",
+        "alur",
+        "solusi",
+        "status",
+        "faq",
+        "cta",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing section #{id}");
+    }
+}
+
+#[tokio::test]
+async fn landing_has_4_status_labels() {
+    let (_, _, t) = page_get(&app(), "/").await;
+    for s in ["TERSEDIA", "TERSEDIA TERBATAS", "BUTUH KONFIGURASI"] {
+        assert!(t.contains(s), "missing badge {s}");
+    }
+    for s in [
+        "AVAILABLE",
+        "LIMITED",
+        "CONFIGURATION_REQUIRED",
+        "COMING NEXT",
+    ] {
+        assert!(t.contains(s), "missing legend {s}");
+    }
+}
+
+#[tokio::test]
+async fn landing_has_6_images_with_alt() {
+    let (_, _, t) = page_get(&app(), "/").await;
+    let imgs = t.matches("<img").count();
+    let alts = t.matches("alt=\"").count();
+    assert!(imgs >= 6, "only {imgs} images");
+    assert!(alts >= imgs, "images without alt");
+    for src in [
+        "/static/hero-office.png",
+        "/static/office-interior.png",
+        "/static/doc-scan.png",
+        "/static/ocr-scan.png",
+        "/static/signature.png",
+        "/static/courthouse.png",
+        "/static/security.png",
+        "/static/ai-assist.png",
+    ] {
+        assert!(t.contains(src), "missing image {src}");
+    }
+    assert!(
+        t.contains("fetchpriority=\"high\""),
+        "hero LCP not prioritized"
+    );
+    assert!(t.contains("loading=\"lazy\""), "no lazy images");
+}
+
+#[tokio::test]
+async fn landing_faq_details_and_roadmap() {
+    let (_, _, t) = page_get(&app(), "/").await;
+    assert!(t.contains("id=\"faq\""));
+    assert!(t.contains("<details>"), "no faq accordions");
+    assert!(t.contains("/faq"), "no /faq link");
+    assert!(t.contains("28/32"), "no honest 28/32 status");
+    assert!(t.contains("counsel"), "no counsel roadmap item");
+    assert!(
+        t.contains("production-ready"),
+        "no production-ready disclaimer"
+    );
+    assert!(t.contains("501"), "no honest 501 note");
+}
+
+async fn mk_search_client(app: &axum::Router, tok: &str, name: &str) -> i64 {
+    use tower::ServiceExt;
+    let res = app
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            &format!(r#"{{"display_name":"{name}","kind":"individual"}}"#),
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    body_json(res).await["id"].as_i64().unwrap()
+}
+
+async fn mk_search_doc(app: &axum::Router, tok: &str, name: &str) -> i64 {
+    use tower::ServiceExt;
+    let content = b"search fixture bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = app
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"{name}","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    body_json(res).await["id"].as_i64().unwrap()
+}
+
+#[tokio::test]
+async fn search_requires_auth_401() {
+    use tower::ServiceExt;
+    let res = app()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/search?q=abcd")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn search_rejects_short_query_422() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "search422@x.id").await;
+    for uri in ["/api/v1/search?q=x", "/api/v1/search"] {
+        let res = a.clone().oneshot(get(uri, &tok)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+    }
+}
+
+#[tokio::test]
+async fn search_empty_result_shape() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "searchempty@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=zzz-no-such-thing", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["clients"].as_array().unwrap().len(), 0);
+    assert_eq!(j["matters"].as_array().unwrap().len(), 0);
+    assert_eq!(j["documents"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn search_finds_clients_matters_docs() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "searchhit@x.id").await;
+    let cid = mk_search_client(&a, &tok, "Zxqsearch Client").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            r#"{"title":"Zxqsearch Akta Tanah"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let did = mk_search_doc(&a, &tok, "zxqsearch-kontrak.txt").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=zxqsearch", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let cs = j["clients"].as_array().unwrap();
+    let ms = j["matters"].as_array().unwrap();
+    let ds = j["documents"].as_array().unwrap();
+    assert!(cs.iter().any(|c| c["id"].as_i64() == Some(cid)));
+    assert!(cs
+        .iter()
+        .any(|c| c["name"].as_str() == Some("Zxqsearch Client")));
+    assert!(ms.iter().any(|m| m["id"].as_i64() == Some(mid)));
+    assert!(ds.iter().any(|d| d["id"].as_i64() == Some(did)));
+    // case-insensitive + oversized limit clamps instead of erroring
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=ZXQSEARCH&limit=200", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await["clients"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
+
+#[tokio::test]
+async fn search_isolates_tenants() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok_a = reg(&a, "searchisoA@x.id").await;
+    let tok_b = reg(&a, "searchisoB@x.id").await;
+    let cid = mk_search_client(&a, &tok_a, "Zzqiso Private Client").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=zzqiso", &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["clients"].as_array().unwrap().is_empty());
+    assert!(j["matters"].as_array().unwrap().is_empty());
+    assert!(j["documents"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=zzqiso", &tok_a))
+        .await
+        .unwrap();
+    let j = body_json(res).await;
+    assert!(j["clients"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["id"].as_i64() == Some(cid)));
+}
+
+#[tokio::test]
+async fn app_page_has_search_box() {
+    let (_, _, t) = page_get(&app(), "/app").await;
+    assert!(t.contains("id=\"q\""), "missing search input");
+    assert!(t.contains("id=\"qres\""), "missing results dropdown");
+}
