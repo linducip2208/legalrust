@@ -2390,3 +2390,323 @@ async fn mkt_app_page_csp_safe_and_js_wires_marketing() {
     }
     assert!(!js.contains("onclick"), "inline handler in site.js");
 }
+
+#[tokio::test]
+async fn dash_app_has_sidebar_nav_groups() {
+    let (_, _, t) = page_get(&app(), "/app").await;
+    assert!(t.contains("id=\"sidebar\""), "missing sidebar");
+    for s in [
+        "Dashboard",
+        "Verifikasi Identitas",
+        "KTP / KK / NPWP",
+        "Review KYC",
+        "Klien",
+        "Kontak",
+        "Organisasi",
+        "Daftar Perkara",
+        "Tugas",
+        "Proyek",
+        "Kalender",
+        "Pustaka Dokumen",
+        "Versi",
+        "Berbagi",
+        "Ekstraksi",
+        "Template Akta",
+        "Proses Akta",
+        "PPAT",
+        "Persetujuan",
+        "Tanda Tangan",
+    ] {
+        assert!(t.contains(s), "missing sidebar item {s}");
+    }
+    for id in ["p-ringkas", "p-klien", "p-dok", "p-ocr", "p-akta", "p-keu", "p-mkt"] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing section #{id}");
+    }
+    assert!(t.contains("id=\"orgsel\""), "missing org switcher");
+    assert!(t.contains("id=\"bell\""), "missing bell");
+    assert!(t.contains("id=\"avatar\""), "missing avatar");
+    assert!(t.contains("id=\"orgname\""), "missing org name");
+}
+
+#[tokio::test]
+async fn dash_app_has_kpi_labels_and_panels() {
+    let (_, _, t) = page_get(&app(), "/app").await;
+    for s in [
+        "Klien Aktif",
+        "Perkara Berjalan",
+        "Tugas Terbuka",
+        "Dokumen",
+        "OCR Menunggu Review",
+        "Akta Dalam Proses",
+        "Invoice Outstanding",
+        "Saldo Trust",
+        "live",
+    ] {
+        assert!(t.contains(s), "missing KPI {s}");
+    }
+    for id in [
+        "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "funnel", "chart", "cal",
+        "al-q", "ae-q", "dl5", "ocr-recent", "fin-sum", "m-all", "cl", "task-matter",
+        "task-list", "ocr-jobs", "ocr-detail", "fin-sum",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing #{id}");
+    }
+    for id in [
+        "qa-client",
+        "qa-matter",
+        "qa-upload",
+        "qa-ocr",
+        "qa-deed",
+        "qa-invoice",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing quick action #{id}");
+    }
+    for id in [
+        "cli-name", "cli-kind", "cli-btn", "mat-title", "mat-client", "mat-btn",
+        "task-title", "task-btn", "ocr-doc", "ocr-type", "ocr-btn", "deed-tpl",
+        "deed-matter", "deed-number", "deed-type", "deed-btn", "tpl-name",
+        "tpl-body", "tpl-btn", "invm-matter", "invm-total", "invm-btn", "sh-doc",
+        "sh-btn",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
+    }
+}
+
+#[tokio::test]
+async fn dash_flow_client_create() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashcli@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"PT Dash","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["id"].as_i64().unwrap() > 0);
+    assert_eq!(j["display_name"].as_str().unwrap(), "PT Dash");
+}
+
+#[tokio::test]
+async fn dash_flow_matter_create() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashmat@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Klien Dash","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"Perkara Dash","client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["id"].as_i64().unwrap() > 0);
+    assert!(j["number"].as_str().unwrap().starts_with("M-"));
+}
+
+#[tokio::test]
+async fn dash_flow_task_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashtask@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Siapkan berkas"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/tasks"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // open -> done is illegal
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/tasks/{tid}"), r#"{"status":"done"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // open -> in_progress -> done is legal
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}"),
+            r#"{"status":"in_progress"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/tasks/{tid}"), r#"{"status":"done"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "done");
+}
+
+#[tokio::test]
+async fn dash_flow_ocr_job_create() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashocr@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"NIK 12345";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"ktp.png","mime":"image/png","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ocr/jobs",
+            &format!(r#"{{"document_id":{did},"doc_type":"ktp"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let jid = body_json(res).await["id"].as_i64().unwrap();
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "queued");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/jobs", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|j| j["id"].as_i64() == Some(jid)));
+}
+
+#[tokio::test]
+async fn dash_flow_deed_from_template() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashdeed@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-templates",
+            r#"{"name":"AJB Dash","body":"Pada hari ini {{hari}}."}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a.clone().oneshot(post("/api/v1/deeds/from-template", &format!(r#"{{"template_id":{tid},"matter_id":{mid},"number":"D-DASH-1","deed_type":"ajb","variables":{{"hari":"Senin"}}}}"#), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    assert_eq!(body_json(res).await["state"].as_str().unwrap(), "draft");
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/deeds/{did}/transition"),
+            r#"{"to":"collection"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn dash_flow_invoice_create() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashinv@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":2500000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/invoices/{iid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["total"].as_i64().unwrap(), 2500000);
+    assert_eq!(j["balance"].as_i64().unwrap(), 2500000);
+}
+
+#[tokio::test]
+async fn dash_search_still_green() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dashsearch@x.id").await;
+    let cid = mk_search_client(&a, &tok, "Dashsearch Client").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            r#"{"title":"Dashsearch Perkara"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let did = mk_search_doc(&a, &tok, "dashsearch-doc.txt").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=dashsearch", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["clients"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["id"].as_i64() == Some(cid)));
+    assert!(j["matters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["id"].as_i64() == Some(mid)));
+    assert!(j["documents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["id"].as_i64() == Some(did)));
+}
