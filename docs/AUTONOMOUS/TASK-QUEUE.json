@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "updated": "2026-11-18",
+  "tasks": [
+    { "id": "QA-W5", "title": "QA visual wave-5 + LANDING-QA docs", "status": "IN_PROGRESS", "owner": "agent:ses_e15953882", "depends": [] },
+    { "id": "WAN-HERO", "title": "Animasi WAN hero ringan + poster", "status": "IN_PROGRESS", "owner": "agent:ses_e159ccf19", "depends": [] },
+    { "id": "F-SEARCH", "title": "Global search API + wiring /app", "status": "TODO", "owner": null, "depends": [] },
+    { "id": "F-AUDIT", "title": "Audit repo formal (INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP)", "status": "TODO", "owner": null, "depends": [] },
+    { "id": "F-REGISTRY", "title": "Klasifikasi 1000 fitur (FEATURE-REGISTRY.json + matrix)", "status": "TODO", "owner": null, "depends": ["F-AUDIT"] },
+    { "id": "F-MKTADMIN", "title": "Marketing admin UI di /app", "status": "TODO", "owner": null, "depends": [] },
+    { "id": "F-REAUDIT", "title": "Wave 7 re-audit 1000 fitur", "status": "TODO", "owner": null, "depends": ["F-REGISTRY"] },
+    { "id": "B-OCR", "title": "OCR engine live", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "native lib / cloud creds" },
+    { "id": "B-AI", "title": "AI provider activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "API credentials" },
+    { "id": "B-ESIGN", "title": "PSrE e-sign activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "PSrE credentials" },
+    { "id": "B-PAY", "title": "Payment gateway activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "gateway credentials" },
+    { "id": "B-COUNSEL", "title": "Counsel sign-off + prod deploy", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "human/infra" }
+  ]
+}
