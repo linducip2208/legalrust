@@ -2,10 +2,10 @@
   "version": 1,
   "updated": "2026-11-18",
   "tasks": [
-    { "id": "QA-W5", "title": "QA visual wave-5 + LANDING-QA docs", "status": "IN_PROGRESS", "owner": "agent:ses_e15953882", "depends": [] },
+    { "id": "QA-W5", "title": "QA visual wave-5 + LANDING-QA docs", "status": "DONE", "owner": "agent:ses_e15953882", "depends": [] },
     { "id": "WAN-HERO", "title": "Animasi WAN hero ringan + poster", "status": "IN_PROGRESS", "owner": "agent:ses_e159ccf19", "depends": [] },
-    { "id": "F-SEARCH", "title": "Global search API + wiring /app", "status": "TODO", "owner": null, "depends": [] },
-    { "id": "F-AUDIT", "title": "Audit repo formal (INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP)", "status": "TODO", "owner": null, "depends": [] },
+    { "id": "F-SEARCH", "title": "Global search API + wiring /app", "status": "DONE", "owner": "agent:ses_e158901e2", "depends": [] },
+    { "id": "F-AUDIT", "title": "Audit repo formal (INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP)", "status": "DONE", "owner": "agent:ses_e15890203", "depends": [] },
     { "id": "F-REGISTRY", "title": "Klasifikasi 1000 fitur (FEATURE-REGISTRY.json + matrix)", "status": "TODO", "owner": null, "depends": ["F-AUDIT"] },
     { "id": "F-MKTADMIN", "title": "Marketing admin UI di /app", "status": "TODO", "owner": null, "depends": [] },
     { "id": "F-REAUDIT", "title": "Wave 7 re-audit 1000 fitur", "status": "TODO", "owner": null, "depends": ["F-REGISTRY"] },
