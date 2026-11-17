@@ -1383,6 +1383,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "legalrust-mobile"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "legalrust-notification"
 version = "0.1.0"
 dependencies = [

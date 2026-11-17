@@ -1,0 +1,18 @@
+[package]
+name = "legalrust-mobile"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "legalrust_mobile"
+path = "src/lib.rs"
+
+[[bin]]
+name = "legalrust-mobile"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
