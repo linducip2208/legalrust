@@ -17,6 +17,8 @@ pub enum AppError {
     Validation(String),
     #[error("conflict: {0}")]
     Conflict(String),
+    #[error("rate limited")]
+    RateLimited,
     #[error("external dependency blocked: {0}")]
     BlockedExternal(String),
     #[error("internal error")]
@@ -30,6 +32,7 @@ impl AppError {
             AppError::Forbidden => "FORBIDDEN",
             AppError::Validation(_) => "VALIDATION",
             AppError::Conflict(_) => "CONFLICT",
+            AppError::RateLimited => "RATE_LIMITED",
             AppError::BlockedExternal(_) => "EXTERNAL_BLOCKED",
             AppError::Internal(_) => "INTERNAL",
         }
@@ -41,6 +44,7 @@ impl AppError {
             AppError::Forbidden => StatusCode::FORBIDDEN,
             AppError::Validation(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::Conflict(_) => StatusCode::CONFLICT,
+            AppError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             AppError::BlockedExternal(_) => StatusCode::NOT_IMPLEMENTED,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }

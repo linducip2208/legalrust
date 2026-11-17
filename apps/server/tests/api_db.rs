@@ -8,17 +8,19 @@ async fn live_mysql_register_and_matter() {
     let pool = legalrust_database::connect(&url).await.expect("connect");
     legalrust_database::migrate(&pool).await.expect("migrate");
     let m = std::sync::Arc::new(legalrust_database::mysql::MysqlStores::new(pool.clone()));
+    let o = std::sync::Arc::new(legalrust_database::ops_mysql::MysqlOps::new(pool.clone()));
     let state = legalrust_server::FullState {
         version: "test",
         pool: Some(pool),
-        stores: legalrust_server::Stores {
-            users: m.clone(),
-            core: m,
-            objects: std::sync::Arc::new(legalrust_storage::LocalStore::new(
+        stores: legalrust_server::Stores::new(
+            m.clone(),
+            m,
+            o,
+            std::sync::Arc::new(legalrust_storage::LocalStore::new(
                 std::env::temp_dir().join("lr-db-test"),
             )),
-            jwt_secret: b"ci-secret".to_vec(),
-        },
+            b"ci-secret".to_vec(),
+        ),
     };
     let app = legalrust_server::build_router(state);
     let email = format!("ci{}@x.id", uuid::Uuid::new_v4());

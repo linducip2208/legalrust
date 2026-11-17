@@ -1,6 +1,9 @@
 pub mod entities;
 pub mod memory;
 pub mod mysql;
+pub mod ops;
+pub mod ops_memory;
+pub mod ops_mysql;
 pub mod store;
 pub use entities::*;
 pub use store::{
@@ -27,3 +30,6 @@ pub enum DbError {
     #[error("migrate failed: {0}")]
     Migrate(String),
 }
+pub use ops::{
+    DeedRow, InvoiceRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow, RagHit, TemplateRow,
+};

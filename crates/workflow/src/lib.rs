@@ -26,6 +26,37 @@ const FLOW: &[(DeedState, DeedState)] = &[
     (DeedState::Registration, DeedState::Completion),
     (DeedState::Completion, DeedState::Archive),
 ];
+impl DeedState {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            DeedState::Draft => "draft",
+            DeedState::Collection => "collection",
+            DeedState::Verification => "verification",
+            DeedState::LegalReview => "legal_review",
+            DeedState::Revision => "revision",
+            DeedState::Approval => "approval",
+            DeedState::Signing => "signing",
+            DeedState::Registration => "registration",
+            DeedState::Completion => "completion",
+            DeedState::Archive => "archive",
+        }
+    }
+    pub fn parse(s: &str) -> Option<DeedState> {
+        Some(match s {
+            "draft" => DeedState::Draft,
+            "collection" => DeedState::Collection,
+            "verification" => DeedState::Verification,
+            "legal_review" => DeedState::LegalReview,
+            "revision" => DeedState::Revision,
+            "approval" => DeedState::Approval,
+            "signing" => DeedState::Signing,
+            "registration" => DeedState::Registration,
+            "completion" => DeedState::Completion,
+            "archive" => DeedState::Archive,
+            _ => return None,
+        })
+    }
+}
 pub fn transition(from: DeedState, to: DeedState) -> Result<DeedState, TransitionError> {
     if FLOW.contains(&(from, to)) {
         Ok(to)

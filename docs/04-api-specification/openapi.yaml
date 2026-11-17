@@ -5,4 +5,32 @@ paths:
   /healthz: { get: { responses: { '200': { description: ok } } } }
   /readyz: { get: { responses: { '200': { description: ready }, '501': { description: dependency blocked } } } }
   /api/v1/version: { get: { responses: { '200': { description: version } } } }
-  /api/v1/auth/login: { post: { responses: { '422': { description: validation }, '501': { description: user store offline in scaffold } } } }
+  /api/v1/auth/register: { post: { responses: { '200': { description: org+owner created }, '422': { description: validation }, '429': { description: rate limited } } } }
+  /api/v1/auth/login: { post: { responses: { '200': { description: session }, '401': { description: unauthorized }, '422': { description: validation }, '429': { description: rate limited }, '501': { description: jwt not configured } } } }
+  /api/v1/auth/logout: { post: { responses: { '200': { description: revoked }, '401': { description: unauthorized } } } }
+  /api/v1/orgs/me: { get: { responses: { '200': { description: identity }, '401': { description: unauthorized } } } }
+  /api/v1/clients: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/matters: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/matters/{mid}/tasks: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/tasks/{tid}: { post: { responses: { '200': { description: status set }, '409': { description: illegal transition } } } }
+  /api/v1/documents: { post: { responses: { '200': { description: metadata ticket } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/documents/{id}: { get: { responses: { '200': { description: detail+versions } } } }
+  /api/v1/documents/{id}/content: { put: { responses: { '200': { description: version stored }, '422': { description: sha/size mismatch } } }, get: { responses: { '200': { description: bytes } } } }
+  /api/v1/ocr/jobs: { post: { responses: { '200': { description: queued } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/ocr/jobs/{id}: { get: { responses: { '200': { description: job+fields } } } }
+  /api/v1/ocr/jobs/{id}/review: { post: { responses: { '200': { description: reviewed }, '501': { description: n/a } } } }
+  /api/v1/ocr/jobs/{id}/process: { post: { responses: { '501': { description: no engine available } } } }
+  /api/v1/deed-templates: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/deed-templates/{id}: { put: { responses: { '200': { description: version bumped } } } }
+  /api/v1/deeds/from-template: { post: { responses: { '200': { description: draft created }, '404': { description: template/matter missing } } } }
+  /api/v1/deeds: { get: { responses: { '200': { description: list } } } }
+  /api/v1/deeds/{id}/transition: { post: { responses: { '200': { description: state set }, '409': { description: illegal transition } } } }
+  /api/v1/ai/chat: { post: { responses: { '501': { description: no provider; estimate returned } } } }
+  /api/v1/ai/usage: { get: { responses: { '200': { description: token sums } } } }
+  /api/v1/rag/index: { post: { responses: { '200': { description: chunks stored }, '422': { description: binary/empty unsupported } } } }
+  /api/v1/rag/search: { get: { responses: { '200': { description: keyword hits (vector search pending) } } } }
+  /api/v1/matters/{mid}/invoices: { post: { responses: { '200': { description: issued } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/invoices/{id}: { get: { responses: { '200': { description: invoice+payments+balance } } } }
+  /api/v1/invoices/{id}/payments: { post: { responses: { '200': { description: recorded }, '409': { description: overpayment } } } }
+  /api/v1/webhooks/incoming/{provider}: { post: { responses: { '202': { description: accepted }, '401': { description: bad signature }, '501': { description: secret not configured } } } }
+  /api/v1/integrations: { get: { responses: { '200': { description: provider list, no secrets } } } }

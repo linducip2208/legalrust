@@ -15,7 +15,7 @@ path = "src/main.rs"
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tower = { version = "0.5", features = ["util"] }
-tower-http = { version = "0.7", features = ["trace", "cors", "request-id", "limit"] }
+tower-http = { version = "0.7", features = ["trace", "cors", "request-id", "limit", "set-header"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
@@ -29,6 +29,9 @@ legalrust-database = { path = "../../crates/database" }
 legalrust-auth = { path = "../../crates/auth" }
 legalrust-domain = { path = "../../crates/domain" }
 legalrust-authorization = { path = "../../crates/authorization" }
+legalrust-workflow = { path = "../../crates/workflow" }
+legalrust-rag = { path = "../../crates/rag" }
+legalrust-integrations = { path = "../../crates/integrations" }
 legalrust-document = { path = "../../crates/document" }
 legalrust-storage = { path = "../../crates/storage" }
 legalrust-audit = { path = "../../crates/audit" }
@@ -36,3 +39,4 @@ legalrust-audit = { path = "../../crates/audit" }
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 uuid = { version = "1", features = ["v4"] }
+

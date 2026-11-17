@@ -1,9 +1,8 @@
 # MASTER PROGRESS (computed from repo, not invented)
-- Phase 0 repo audit: IMPLEMENTED. - Phase 1 product design: IMPLEMENTED.
-- Phase 2 database design: IMPLEMENTED (logical + 0001-0004; live-run pending CI/local MySQL).
-- Phase 3 foundation: IMPLEMENTED + TESTED (fmt/clippy/tests green).
-- Phase 4 auth: IMPLEMENTED + TESTED on memory store (register/login/logout/sessions/JWT/RBAC middleware); live-MySQL test wired as ignored test + CI job.
-- Phase 5 design system: PLANNED (SSR shell only).
-- Phase 6 core legal ops: PARTIAL (clients/matters/tasks/documents+content+versions API + sha-pinning + transitions, tested on memory store).
-- Phases 7-15: traits/adapters specified; HTTP wiring NOT_STARTED.
-Feature states: 1000 specs PLANNED; implemented slice = auth + core ops (see TEST-RESULTS).
+- Phases 0-3: IMPLEMENTED + TESTED. - Phase 4 auth: IMPLEMENTED + TESTED (memory; live-DB via CI job).
+- Phase 5: PLANNED (SSR shell only). - Phase 6: IMPLEMENTED + TESTED (clients/matters/tasks/documents+content).
+- Phase 7 OCR: PARTIAL (jobs/review API tested; engine execution BLOCKED). - Phase 8 deeds: IMPLEMENTED + TESTED (templates/render/transition guards).
+- Phase 9 AI: PARTIAL (accounting+RAG-baseline tested; provider BLOCKED). - Phase 10 finance: IMPLEMENTED + TESTED (invoices/payments/overpay guard).
+- Phase 11 hardening: PARTIAL (headers/rate-limit/RBAC; lockout+WAF backlog). - Phase 12 integrations: PARTIAL (webhook verify tested; provider creds BLOCKED).
+- Phase 13 QA: 31 tests green, fmt+clippy clean. - Phase 14: deploy manifests + backup script done; live deploy pending.
+- Phase 15: acceptance 21/31 = 68/100, NOT production-ready. No production claim made.

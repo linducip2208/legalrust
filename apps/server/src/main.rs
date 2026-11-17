@@ -29,28 +29,36 @@ async fn main() -> anyhow::Result<()> {
             None
         }
     };
-    let (users, core): (
+    let (users, core, ops): (
         Arc<dyn legalrust_database::UserStore>,
         Arc<dyn legalrust_database::CoreStore>,
+        Arc<dyn legalrust_database::OpsStore>,
     ) = match &pool {
         Some(p) => {
             let m = Arc::new(legalrust_database::mysql::MysqlStores::new(p.clone()));
-            (m.clone(), m)
+            let o = Arc::new(legalrust_database::ops_mysql::MysqlOps::new(p.clone()));
+            (m.clone(), m, o)
         }
         None => {
             let m = Arc::new(legalrust_database::memory::MemoryStores::default());
-            (m.clone(), m)
+            let o = Arc::new(legalrust_database::ops_memory::MemoryOps::default());
+            (m.clone(), m, o)
         }
     };
+    let mut stores = Stores::new(
+        users,
+        core,
+        ops,
+        Arc::new(LocalStore::new(std::path::PathBuf::from("./var/objects"))),
+        secret,
+    );
+    stores.integration_secret = std::env::var("INTEGRATION_SECRET")
+        .unwrap_or_default()
+        .into_bytes();
     let state = FullState {
         version: "0.1.0",
         pool,
-        stores: Stores {
-            users,
-            core,
-            objects: Arc::new(LocalStore::new(std::path::PathBuf::from("./var/objects"))),
-            jwt_secret: secret,
-        },
+        stores,
     };
     let app = legalrust_server::build_router(state);
     let listener = TcpListener::bind(("0.0.0.0", config.port)).await?;
