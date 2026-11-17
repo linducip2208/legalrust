@@ -1,0 +1,6 @@
+services:
+  mysql: { image: "mysql:8.4", environment: { MYSQL_ROOT_PASSWORD: legalrust, MYSQL_DATABASE: legalrust }, ports: ["3306:3306"], volumes: ["mysql-data:/var/lib/mysql"] }
+  redis: { image: "redis:7-alpine", ports: ["6379:6379"] }
+  minio: { image: "minio/minio:latest", command: server /data, environment: { MINIO_ROOT_USER: legalrust, MINIO_ROOT_PASSWORD: legalrust123 }, ports: ["9000:9000"] }
+  nats: { image: "nats:2-alpine", ports: ["4222:4222"] }
+volumes: { mysql-data: {} }

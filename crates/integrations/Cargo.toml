@@ -1,0 +1,14 @@
+[package]
+name = "legalrust-integrations"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = "0.4"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+legalrust-application = { path = "../application" }

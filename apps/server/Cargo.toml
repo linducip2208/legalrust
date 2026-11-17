@@ -1,0 +1,31 @@
+[package]
+name = "legalrust-server"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "legalrust_server"
+path = "src/lib.rs"
+
+[[bin]]
+name = "legalrust-server"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.7", features = ["trace", "cors", "request-id"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+validator = { version = "0.20", features = ["derive"] }
+tracing = "0.1"
+sqlx = { version = "0.9", features = ["runtime-tokio", "mysql"] }
+legalrust-application = { path = "../../crates/application" }
+legalrust-infrastructure = { path = "../../crates/infrastructure" }
+legalrust-database = { path = "../../crates/database" }
+legalrust-auth = { path = "../../crates/auth" }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

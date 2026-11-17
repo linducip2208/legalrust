@@ -1,0 +1,8 @@
+openapi: 3.0.3
+info: { title: LEGALRUST API, version: 0.1.0 }
+servers: [{ url: /api/v1 }]
+paths:
+  /healthz: { get: { responses: { '200': { description: ok } } } }
+  /readyz: { get: { responses: { '200': { description: ready }, '501': { description: dependency blocked } } } }
+  /api/v1/version: { get: { responses: { '200': { description: version } } } }
+  /api/v1/auth/login: { post: { responses: { '422': { description: validation }, '501': { description: user store offline in scaffold } } } }

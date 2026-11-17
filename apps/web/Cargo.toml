@@ -1,0 +1,11 @@
+[package]
+name = "legalrust-web"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "legalrust_web"
+path = "src/lib.rs"
+
+[dependencies]
+leptos = { version = "0.8", features = ["ssr"] }

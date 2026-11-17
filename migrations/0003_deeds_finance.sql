@@ -1,0 +1,38 @@
+-- 0003 deeds + finance
+CREATE TABLE deeds (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  org_id CHAR(36) NOT NULL, matter_id BIGINT UNSIGNED NOT NULL,
+  number VARCHAR(60) NOT NULL, deed_type VARCHAR(60) NOT NULL, state VARCHAR(40) NOT NULL DEFAULT 'draft',
+  row_version BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_deeds_org_number (org_id, number),
+  CONSTRAINT fk_deeds_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_deeds_matter FOREIGN KEY (matter_id) REFERENCES matters (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE deed_parties (
+  deed_id BIGINT UNSIGNED NOT NULL, client_id BIGINT UNSIGNED NOT NULL, role VARCHAR(40) NOT NULL,
+  PRIMARY KEY (deed_id, client_id, role),
+  CONSTRAINT fk_dp_deed FOREIGN KEY (deed_id) REFERENCES deeds (id) ON DELETE CASCADE,
+  CONSTRAINT fk_dp_client FOREIGN KEY (client_id) REFERENCES clients (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE invoices (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  org_id CHAR(36) NOT NULL, matter_id BIGINT UNSIGNED NOT NULL,
+  number VARCHAR(60) NOT NULL, total_minor BIGINT NOT NULL DEFAULT 0, currency CHAR(3) NOT NULL DEFAULT 'IDR',
+  status VARCHAR(40) NOT NULL DEFAULT 'draft',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_invoices_org_number (org_id, number),
+  CONSTRAINT fk_inv_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_inv_matter FOREIGN KEY (matter_id) REFERENCES matters (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE payments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  invoice_id BIGINT UNSIGNED NOT NULL, amount_minor BIGINT NOT NULL,
+  method VARCHAR(40) NOT NULL, status VARCHAR(40) NOT NULL DEFAULT 'recorded',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pay_invoice FOREIGN KEY (invoice_id) REFERENCES invoices (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
