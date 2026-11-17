@@ -266,3 +266,8 @@ footer.site{flex-direction:column;gap:6px}
 /* ---- CRM panels (additive): reuse card/table/form controls, no new layout ---- */
 #crm-meet-list .crm-mdel,#crm-tag-list .crm-tdel,#crm-ct-list .crm-tdet{white-space:nowrap}
 #crm-meet-notes{resize:vertical}
+/* ---- app UI batch: audit/jobs/exports (class + id selectors only, no inline styles) ---- */
+.card-header .btn{flex:none}
+#rep-matters,#keu-csv,#job-btn,#audit-reload{white-space:nowrap}
+#audit-note{font-size:12.5px}
+#q:focus{border-color:#1D5BD8;box-shadow:0 0 0 3px rgba(29,91,216,.15)}

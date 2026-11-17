@@ -3283,3 +3283,284 @@ async fn crm_app_contains_crm_ids() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+// ----- app UI batch: audit viewer, jobs queue, CSV exports, bell, palette -----
+fn lawyer_token_from(owner_tok: &str) -> String {
+    // Re-issue the same live session with a lawyer-only role set.
+    // assign_role() only appends, so forging via the known dev secret is the
+    // only way to exercise the audit 403 path in-process.
+    let secret = b"test-secret-0123456789-0123456789ab";
+    let c: legalrust_auth::Claims =
+        legalrust_auth::validate_token(secret, owner_tok).expect("decode owner token");
+    legalrust_auth::issue_token(
+        secret,
+        &legalrust_auth::Claims {
+            sub: c.sub,
+            org: c.org,
+            roles: vec!["lawyer".into()],
+            sid: c.sid,
+            exp: c.exp,
+        },
+    )
+    .expect("reissue lawyer token")
+}
+
+#[tokio::test]
+async fn uib_app_has_audit_jobs_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for id in [
+        "p-audit",
+        "p-jobs",
+        "audit-entity",
+        "audit-rows",
+        "audit-reload",
+        "audit-msg",
+        "audit-note",
+        "job-rows",
+        "job-kind",
+        "job-btn",
+        "job-msg",
+        "rep-matters",
+        "rep-msg",
+        "keu-csv",
+        "keu-msg",
+        "bell",
+        "bell-n",
+        "bell-list",
+    ] {
+        assert!(t.contains(&format!("id=\"{id}\"")), "/app missing #{id}");
+    }
+    assert!(t.contains("data-tab=\"audit\""), "missing audit tab link");
+    assert!(t.contains("data-tab=\"jobs\""), "missing jobs tab link");
+    assert!(t.contains(">Audit<"), "missing Audit nav label");
+    assert!(t.contains(">Jobs<"), "missing Jobs nav label");
+    assert!(
+        t.contains("Operasional"),
+        "missing Operasional sidebar group"
+    );
+    assert!(t.contains("Jejak Audit"), "missing audit section title");
+    assert!(t.contains("Antrean Jobs"), "missing jobs section title");
+    assert!(t.contains("Ekspor Laporan"), "missing export card");
+    assert!(!t.contains("onclick"), "inline handler in /app");
+    assert!(!t.contains("style=\""), "inline style in /app");
+    assert!(!t.contains("<style"), "style tag in /app");
+}
+
+#[tokio::test]
+async fn uib_site_js_wires_batch_widgets() {
+    let (_, _, js) = page_get(&app(), "/static/site.js").await;
+    for needle in [
+        "audit",
+        "jobs",
+        "loadAudit",
+        "loadJobs",
+        "audit-rows",
+        "job-rows",
+        "audit-entity",
+        "job-kind",
+        "rep-matters",
+        "keu-csv",
+        "/api/v1/audit",
+        "/api/v1/jobs",
+        "/api/v1/reports/matters.csv",
+        "/api/v1/reports/matters-csv",
+        "ctrlKey",
+    ] {
+        assert!(js.contains(needle), "site.js missing {needle}");
+    }
+    assert!(!js.contains("onclick"), "inline handler in site.js");
+}
+
+#[tokio::test]
+async fn uib_audit_200_shape_admin() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uibaudit@x.id").await;
+    let _ = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=matter", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let arr = v.as_array().unwrap();
+    assert!(!arr.is_empty(), "expected audit rows after matter create");
+    let first = &arr[0];
+    for key in ["id", "actor", "action", "entity", "created"] {
+        assert!(first.get(key).is_some(), "audit row missing {key}");
+    }
+}
+
+#[tokio::test]
+async fn uib_audit_401_without_token() {
+    use tower::ServiceExt;
+    let res = app()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/audit")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_audit_403_for_lawyer_role() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uiblaw@x.id").await;
+    let lawyer = lawyer_token_from(&tok);
+    // forged token still rides the live session
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit", &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // owner token keeps access
+    let res = a.clone().oneshot(get("/api/v1/audit", &tok)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn uib_jobs_enqueue_list_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uibjobs@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/jobs",
+            r#"{"kind":"notify.digest"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["id"].as_i64().unwrap() > 0);
+    assert_eq!(j["status"].as_str().unwrap(), "queued");
+    let res = a.clone().oneshot(get("/api/v1/jobs", &tok)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let arr = body_json(res).await;
+    let arr = arr.as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0]["kind"].as_str().unwrap(), "notify.digest");
+    assert_eq!(arr[0]["status"].as_str().unwrap(), "queued");
+    assert!(arr[0].get("attempts").is_some(), "job missing attempts");
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/jobs")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_csv_exports_content_type() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uibcsv@x.id").await;
+    let _ = mk_matter(&a, &tok).await;
+    for uri in ["/api/v1/reports/matters.csv", "/api/v1/reports/matters-csv"] {
+        let res = a.clone().oneshot(get(uri, &tok)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{uri}");
+        let ctype = res
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert!(ctype.contains("text/csv"), "{uri} content-type was {ctype}");
+        let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
+        let text = String::from_utf8(bytes.to_vec()).unwrap();
+        assert_eq!(text.lines().next().unwrap(), "id,number,title,status");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ctype = res
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(ctype.contains("text/csv"), "clients.csv type was {ctype}");
+}
+
+#[tokio::test]
+async fn uib_notifications_bell_shape() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uibbell@x.id").await;
+    let _ = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let arr = body_json(res).await;
+    let arr = arr.as_array().unwrap();
+    assert_eq!(arr.len(), 1, "matter create must notify");
+    let n = &arr[0];
+    for key in ["id", "kind", "title", "read"] {
+        assert!(n.get(key).is_some(), "notification missing {key}");
+    }
+    assert_eq!(n["read"].as_bool(), Some(false));
+    let unread = arr.iter().filter(|x| x["read"] == false).count();
+    assert_eq!(unread, 1);
+    let nid = n["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/notifications/{nid}/read"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications", &tok))
+        .await
+        .unwrap();
+    let arr2 = body_json(res).await;
+    assert_eq!(arr2.as_array().unwrap()[0]["read"].as_bool(), Some(true));
+}
+
+#[tokio::test]
+async fn uib_trust_has_no_csv_endpoint() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "uibtrust@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/trust/accounts.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}

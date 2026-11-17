@@ -522,6 +522,99 @@ mod crm_tests {
     }
 }
 
+// ---- Task due dates ----
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DueDateError {
+    InvalidFormat,
+}
+
+impl std::fmt::Display for DueDateError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DueDateError::InvalidFormat => {
+                write!(f, "due date must be YYYY-MM-DD HH:MM:SS or YYYY-MM-DD")
+            }
+        }
+    }
+}
+
+impl std::error::Error for DueDateError {}
+
+/// Validated task deadline. `parse` accepts a full DB datetime
+/// (`YYYY-MM-DD HH:MM:SS`) or a bare date (`YYYY-MM-DD`, midnight).
+/// Empty/blank input is `Ok(None)` so clearing a due date needs no sentinel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct DueDate(pub chrono::NaiveDateTime);
+
+impl DueDate {
+    pub fn parse(raw: &str) -> Result<Option<DueDate>, DueDateError> {
+        let s = raw.trim();
+        if s.is_empty() {
+            return Ok(None);
+        }
+        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S") {
+            return Ok(Some(DueDate(dt)));
+        }
+        if let Ok(d) = chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+            if let Some(midnight) = d.and_hms_opt(0, 0, 0) {
+                return Ok(Some(DueDate(midnight)));
+            }
+        }
+        Err(DueDateError::InvalidFormat)
+    }
+
+    pub fn as_naive(self) -> chrono::NaiveDateTime {
+        self.0
+    }
+
+    /// Canonical DB string form (`YYYY-MM-DD HH:MM:SS`).
+    pub fn format_db(self) -> String {
+        self.0.format("%Y-%m-%d %H:%M:%S").to_string()
+    }
+}
+
+#[cfg(test)]
+mod due_date_tests {
+    use super::*;
+
+    #[test]
+    fn datetime_format_parses() {
+        let got = DueDate::parse("2026-12-01 09:30:00").unwrap().unwrap();
+        assert_eq!(got.format_db(), "2026-12-01 09:30:00");
+    }
+
+    #[test]
+    fn date_only_parses_as_midnight() {
+        let got = DueDate::parse("2026-12-01").unwrap().unwrap();
+        assert_eq!(got.format_db(), "2026-12-01 00:00:00");
+    }
+
+    #[test]
+    fn garbage_is_invalid_format() {
+        for bad in [
+            "tomorrow",
+            "2026-13-40 99:99:99",
+            "18/11/2026 10:00",
+            "2026-11-18T10:00:00",
+        ] {
+            assert_eq!(DueDate::parse(bad), Err(DueDateError::InvalidFormat));
+        }
+    }
+
+    #[test]
+    fn empty_means_no_due_date() {
+        assert_eq!(DueDate::parse(""), Ok(None));
+        assert_eq!(DueDate::parse("   "), Ok(None));
+    }
+
+    #[test]
+    fn surrounding_whitespace_is_trimmed() {
+        let got = DueDate::parse("  2026-12-01 09:30:00  ").unwrap().unwrap();
+        assert_eq!(got.format_db(), "2026-12-01 09:30:00");
+    }
+}
+
 #[cfg(test)]
 mod trust_tests {
     use super::*;

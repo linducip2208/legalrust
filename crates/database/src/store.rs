@@ -50,6 +50,51 @@ pub struct TaskRow {
     pub matter_id: i64,
     pub title: String,
     pub status: String,
+    pub due: Option<String>,
+}
+#[derive(Debug, Clone)]
+pub struct SavedSearchRow {
+    pub id: i64,
+    pub org_id: String,
+    pub user_id: String,
+    pub name: String,
+    pub query: String,
+}
+
+/// Shared guard for `CoreStore::task_set_due`: accepts DB-format datetimes
+/// (`YYYY-MM-DD HH:MM:SS`) only, so the memory and MySQL backends stay
+/// consistent. `None` clears the due date.
+pub fn check_due_format(due: Option<&str>) -> Result<Option<String>, StoreError> {
+    match due {
+        None => Ok(None),
+        Some(s) => chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+            .map(|_| Some(s.to_string()))
+            .map_err(|_| StoreError::Conflict("due must be YYYY-MM-DD HH:MM:SS".into())),
+    }
+}
+
+/// Shared guard for `CoreStore::saved_search_create`: trims and enforces the
+/// `saved_searches` column widths so both backends reject the same inputs.
+pub fn check_saved_search(name: &str, query: &str) -> Result<(String, String), StoreError> {
+    let name = name.trim();
+    let query = query.trim();
+    if name.is_empty() {
+        return Err(StoreError::Conflict("name required".into()));
+    }
+    if name.chars().count() > 128 {
+        return Err(StoreError::Conflict(
+            "name must be at most 128 chars".into(),
+        ));
+    }
+    if query.is_empty() {
+        return Err(StoreError::Conflict("query required".into()));
+    }
+    if query.chars().count() > 512 {
+        return Err(StoreError::Conflict(
+            "query must be at most 512 chars".into(),
+        ));
+    }
+    Ok((name.to_string(), query.to_string()))
 }
 #[async_trait::async_trait]
 pub trait UserStore: Send + Sync {
@@ -128,4 +173,24 @@ pub trait CoreStore: Send + Sync {
         key: &str,
         sha: &str,
     ) -> Result<DocVersionRow, StoreError>;
+    async fn task_set_due(
+        &self,
+        org: &str,
+        id: i64,
+        due: Option<&str>,
+    ) -> Result<TaskRow, StoreError>;
+    async fn task_due_list(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError>;
+    async fn saved_search_create(
+        &self,
+        org: &str,
+        user: &str,
+        name: &str,
+        query: &str,
+    ) -> Result<SavedSearchRow, StoreError>;
+    async fn saved_search_list(
+        &self,
+        org: &str,
+        user: &str,
+    ) -> Result<Vec<SavedSearchRow>, StoreError>;
+    async fn saved_search_delete(&self, org: &str, user: &str, id: i64) -> Result<(), StoreError>;
 }

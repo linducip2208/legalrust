@@ -7,7 +7,8 @@ pub mod ops_mysql;
 pub mod store;
 pub use entities::*;
 pub use store::{
-    CoreStore, DocRow, DocVersionRow, MatterRow, StoreError, TaskRow, UserRow, UserStore,
+    CoreStore, DocRow, DocVersionRow, MatterRow, SavedSearchRow, StoreError, TaskRow, UserRow,
+    UserStore,
 };
 pub async fn connect(url: &str) -> Result<sqlx::MySqlPool, DbError> {
     sqlx::mysql::MySqlPoolOptions::new()

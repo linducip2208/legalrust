@@ -257,6 +257,30 @@ impl UserStore for MysqlStores {
         Ok(r.map(|x| (x.get::<String, _>("id"), x.get::<String, _>("org_id"))))
     }
 }
+fn task_row(x: &sqlx::mysql::MySqlRow) -> Result<TaskRow, StoreError> {
+    Ok(TaskRow {
+        id: x
+            .try_get::<u64, _>("id")
+            .map(|v| v as i64)
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        org_id: x
+            .try_get::<String, _>("org_id")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        matter_id: x
+            .try_get::<u64, _>("matter_id")
+            .map(|v| v as i64)
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        title: x
+            .try_get::<String, _>("title")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        status: x
+            .try_get::<String, _>("status")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        due: x
+            .try_get::<Option<String>, _>("due_at")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+    })
+}
 #[async_trait::async_trait]
 impl CoreStore for MysqlStores {
     async fn create_client(
@@ -363,20 +387,12 @@ impl CoreStore for MysqlStores {
             matter_id: matter,
             title: title.into(),
             status: "open".into(),
+            due: None,
         })
     }
     async fn list_tasks(&self, org: &str, matter: i64) -> Result<Vec<TaskRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status FROM tasks WHERE org_id=? AND matter_id=? ORDER BY id").bind(org).bind(matter as u64).fetch_all(&self.pool).await.map_err(db_err)?;
-        Ok(rows
-            .into_iter()
-            .map(|x| TaskRow {
-                id: x.get::<u64, _>("id") as i64,
-                org_id: x.get::<String, _>("org_id"),
-                matter_id: x.get::<u64, _>("matter_id") as i64,
-                title: x.get::<String, _>("title"),
-                status: x.get::<String, _>("status"),
-            })
-            .collect())
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE org_id=? AND matter_id=? ORDER BY id").bind(org).bind(matter as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(task_row).collect()
     }
     async fn set_task_status(
         &self,
@@ -417,6 +433,7 @@ impl CoreStore for MysqlStores {
             matter_id: 0,
             title: String::new(),
             status: status.into(),
+            due: None,
         })
     }
     async fn create_doc(
@@ -509,5 +526,116 @@ impl CoreStore for MysqlStores {
             object_key: key.into(),
             sha: sha.into(),
         })
+    }
+    async fn task_set_due(
+        &self,
+        org: &str,
+        id: i64,
+        due: Option<&str>,
+    ) -> Result<TaskRow, StoreError> {
+        let clean = check_due_format(due)?;
+        // Re-parse is infallible: `check_due_format` already validated it.
+        let ts: Option<chrono::NaiveDateTime> = match clean {
+            None => None,
+            Some(s) => Some(
+                chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S")
+                    .map_err(|e| StoreError::Db(e.to_string()))?,
+            ),
+        };
+        let n = sqlx::query("UPDATE tasks SET due_at=? WHERE id=? AND org_id=?")
+            .bind(ts)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        let x = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE id=?").bind(id as u64).fetch_one(&self.pool).await.map_err(db_err)?;
+        task_row(&x)
+    }
+    async fn task_due_list(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError> {
+        let lim = limit.max(0) as u64;
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE org_id=? AND due_at IS NOT NULL ORDER BY due_at ASC LIMIT ?").bind(org).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(task_row).collect()
+    }
+    async fn saved_search_create(
+        &self,
+        org: &str,
+        user: &str,
+        name: &str,
+        query: &str,
+    ) -> Result<SavedSearchRow, StoreError> {
+        let (name, query) = check_saved_search(name, query)?;
+        // `query` is backticked: it is a reserved word in MySQL.
+        let r = sqlx::query(
+            "INSERT INTO saved_searches (org_id, user_id, name, `query`) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(user)
+        .bind(&name)
+        .bind(&query)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(SavedSearchRow {
+            id: r.last_insert_id() as i64,
+            org_id: org.into(),
+            user_id: user.into(),
+            name,
+            query,
+        })
+    }
+    async fn saved_search_list(
+        &self,
+        org: &str,
+        user: &str,
+    ) -> Result<Vec<SavedSearchRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, user_id, name, `query` FROM saved_searches WHERE org_id=? AND user_id=? ORDER BY id",
+        )
+        .bind(org)
+        .bind(user)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        rows.iter()
+            .map(|x| {
+                Ok(SavedSearchRow {
+                    id: x
+                        .try_get::<u64, _>("id")
+                        .map(|v| v as i64)
+                        .map_err(|e| StoreError::Db(e.to_string()))?,
+                    org_id: x
+                        .try_get::<String, _>("org_id")
+                        .map_err(|e| StoreError::Db(e.to_string()))?,
+                    user_id: x
+                        .try_get::<String, _>("user_id")
+                        .map_err(|e| StoreError::Db(e.to_string()))?,
+                    name: x
+                        .try_get::<String, _>("name")
+                        .map_err(|e| StoreError::Db(e.to_string()))?,
+                    query: x
+                        .try_get::<String, _>("query")
+                        .map_err(|e| StoreError::Db(e.to_string()))?,
+                })
+            })
+            .collect()
+    }
+    async fn saved_search_delete(&self, org: &str, user: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM saved_searches WHERE id=? AND org_id=? AND user_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .bind(user)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
     }
 }
