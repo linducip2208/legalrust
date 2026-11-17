@@ -1,6 +1,5 @@
 # DAILY LOG
-## 2026-11-17
-- Phase 0 audit done. Workspace scaffolded: 16 crates + 3 apps + 3 migrations + CI + compose.
-- Auth core (Argon2/JWT/recovery), RBAC map, storage/OCR/AI/RAG/workflow/notify/report/webhook modules with unit tests.
-- Server: health/version/ready/login-501 + request-id + CORS + tracing. Web: SSR shell + render test.
-- Pending: cargo test run, clippy, commit + push.
+## 2026-11-17 (2)
+- Phase 4: UserStore/CoreStore traits + memory + MySQL impls; auth service (register/login/logout/sessions/JWT-sid); RBAC extractor + authorize(); login rate-limit noted as backlog.
+- Phase 6 slice: clients/matters/tasks/documents/content endpoints; sha-pinned uploads; task transition guard; audit on register/matter.
+- Migration 0004 (matter.client_id nullable). Full-flow API test green on memory store; live-MySQL ignored test + CI job added.

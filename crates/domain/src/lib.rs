@@ -34,6 +34,23 @@ impl Role {
             Reviewer,
         ]
     }
+    pub fn parse(s: &str) -> Option<Role> {
+        Some(match s {
+            "super_admin" => Role::SuperAdmin,
+            "org_owner" => Role::OrgOwner,
+            "office_admin" => Role::OfficeAdmin,
+            "notary" => Role::Notary,
+            "ppat" => Role::Ppat,
+            "lawyer" => Role::Lawyer,
+            "legal_staff" => Role::LegalStaff,
+            "document_officer" => Role::DocumentOfficer,
+            "finance_officer" => Role::FinanceOfficer,
+            "auditor" => Role::Auditor,
+            "client" => Role::Client,
+            "reviewer" => Role::Reviewer,
+            _ => return None,
+        })
+    }
     pub fn as_str(self) -> &'static str {
         match self {
             Role::SuperAdmin => "super_admin",

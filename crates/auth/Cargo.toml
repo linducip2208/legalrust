@@ -5,11 +5,17 @@ edition = "2021"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-uuid = "1"
-chrono = "0.4"
 hex = "0.4"
 argon2 = "0.5"
 rand_core = { version = "0.6", features = ["getrandom"] }
 jsonwebtoken = "9"
+chrono = "0.4"
 thiserror = "2"
+anyhow = "1"
+uuid = "1"
+legalrust-database = { path = "../database" }
+legalrust-application = { path = "../application" }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+

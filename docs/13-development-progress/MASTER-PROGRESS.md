@@ -1,8 +1,9 @@
 # MASTER PROGRESS (computed from repo, not invented)
-- Phase 0 repo audit: IMPLEMENTED (toolchain 1.99 stable, single-commit baseline inspected).
-- Phase 1 product design: IMPLEMENTED (PRD + 1000 features + rules, pre-existing docs).
-- Phase 2 database design: IN_PROGRESS (logical done; 0001-0003 migrated in code, live-DB test blocked).
-- Phase 3 foundation: IMPLEMENTED (workspace, config, logging, CI, error envelope).
-- Phase 4 auth: IN_PROGRESS (hash/JWT/RBAC core + tests; DB-backed login BLOCKED pending live MySQL).
-- Phase 5 design system: PLANNED (SSR shell only). Phases 6-15: NOT_STARTED except specified cores (DMS metadata, workflow state machine, OCR/AI traits).
-Feature states: 1000 specs PLANNED; implemented surface = foundation slice (see TEST-RESULTS).
+- Phase 0 repo audit: IMPLEMENTED. - Phase 1 product design: IMPLEMENTED.
+- Phase 2 database design: IMPLEMENTED (logical + 0001-0004; live-run pending CI/local MySQL).
+- Phase 3 foundation: IMPLEMENTED + TESTED (fmt/clippy/tests green).
+- Phase 4 auth: IMPLEMENTED + TESTED on memory store (register/login/logout/sessions/JWT/RBAC middleware); live-MySQL test wired as ignored test + CI job.
+- Phase 5 design system: PLANNED (SSR shell only).
+- Phase 6 core legal ops: PARTIAL (clients/matters/tasks/documents+content+versions API + sha-pinning + transitions, tested on memory store).
+- Phases 7-15: traits/adapters specified; HTTP wiring NOT_STARTED.
+Feature states: 1000 specs PLANNED; implemented slice = auth + core ops (see TEST-RESULTS).

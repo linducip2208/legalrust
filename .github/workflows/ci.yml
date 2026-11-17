@@ -21,3 +21,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo install sqlx-cli --no-default-features --features mysql --locked
       - run: sqlx database create --database-url mysql://root:legalrust@127.0.0.1:3306/legalrust_test && sqlx migrate run --source migrations --database-url mysql://root:legalrust@127.0.0.1:3306/legalrust_test
+  live-db:
+    runs-on: ubuntu-latest
+    services:
+      mysql: { image: "mysql:8.4", env: { MYSQL_ROOT_PASSWORD: legalrust, MYSQL_DATABASE: legalrust_test }, ports: ["3306:3306"], options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=5 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: DATABASE_URL=mysql://root:legalrust@127.0.0.1:3306/legalrust_test cargo test -p legalrust-server --test api_db -- --ignored

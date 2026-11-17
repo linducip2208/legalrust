@@ -1,5 +1,8 @@
 use legalrust_database as db;
-use legalrust_infrastructure::{init_tracing, AppState, Config};
+use legalrust_infrastructure::{init_tracing, Config};
+use legalrust_server::{FullState, Stores};
+use legalrust_storage::LocalStore;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
@@ -7,8 +10,9 @@ use tokio::net::TcpListener;
 async fn main() -> anyhow::Result<()> {
     init_tracing();
     let config = Config::from_env();
-    if !config.jwt_secret_set {
-        tracing::warn!("JWT_SECRET is not set; auth tokens are disabled until configured");
+    let secret = std::env::var("JWT_SECRET").unwrap_or_default().into_bytes();
+    if secret.is_empty() {
+        tracing::warn!("JWT_SECRET is not set; auth endpoints return 501 until configured");
     }
     let pool = match tokio::time::timeout(Duration::from_secs(3), db::connect(&config.database_url))
         .await
@@ -21,13 +25,32 @@ async fn main() -> anyhow::Result<()> {
             Some(p)
         }
         _ => {
-            tracing::warn!("database unreachable; serving without live pool (see /readyz)");
+            tracing::warn!("database unreachable; ephemeral dev store active (non-production)");
             None
         }
     };
-    let state = AppState {
+    let (users, core): (
+        Arc<dyn legalrust_database::UserStore>,
+        Arc<dyn legalrust_database::CoreStore>,
+    ) = match &pool {
+        Some(p) => {
+            let m = Arc::new(legalrust_database::mysql::MysqlStores::new(p.clone()));
+            (m.clone(), m)
+        }
+        None => {
+            let m = Arc::new(legalrust_database::memory::MemoryStores::default());
+            (m.clone(), m)
+        }
+    };
+    let state = FullState {
         version: "0.1.0",
         pool,
+        stores: Stores {
+            users,
+            core,
+            objects: Arc::new(LocalStore::new(std::path::PathBuf::from("./var/objects"))),
+            jwt_secret: secret,
+        },
     };
     let app = legalrust_server::build_router(state);
     let listener = TcpListener::bind(("0.0.0.0", config.port)).await?;
