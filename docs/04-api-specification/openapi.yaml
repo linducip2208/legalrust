@@ -2,51 +2,105 @@ openapi: 3.0.3
 info: { title: LEGALRUST API, version: 0.1.0 }
 servers: [{ url: /api/v1 }]
 paths:
-  /healthz: { get: { responses: { '200': { description: ok } } } }
-  /readyz: { get: { responses: { '200': { description: ready }, '501': { description: dependency blocked } } } }
-  /api/v1/version: { get: { responses: { '200': { description: version } } } }
-  /api/v1/auth/register: { post: { responses: { '200': { description: org+owner created }, '422': { description: validation }, '429': { description: rate limited } } } }
-  /api/v1/auth/login: { post: { responses: { '200': { description: session }, '401': { description: unauthorized }, '422': { description: validation }, '429': { description: rate limited }, '501': { description: jwt not configured } } } }
-  /api/v1/auth/logout: { post: { responses: { '200': { description: revoked }, '401': { description: unauthorized } } } }
-  /api/v1/orgs/me: { get: { responses: { '200': { description: identity }, '401': { description: unauthorized } } } }
-  /api/v1/clients: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/matters: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/matters/{mid}/tasks: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/tasks/{tid}: { post: { responses: { '200': { description: status set }, '409': { description: illegal transition } } } }
-  /api/v1/documents: { post: { responses: { '200': { description: metadata ticket } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/documents/{id}: { get: { responses: { '200': { description: detail+versions } } } }
-  /api/v1/documents/{id}/content: { put: { responses: { '200': { description: version stored }, '422': { description: sha/size mismatch } } }, get: { responses: { '200': { description: bytes } } } }
-  /api/v1/ocr/jobs: { post: { responses: { '200': { description: queued } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/ocr/jobs/{id}: { get: { responses: { '200': { description: job+fields } } } }
-  /api/v1/ocr/jobs/{id}/review: { post: { responses: { '200': { description: reviewed }, '501': { description: n/a } } } }
-  /api/v1/ocr/jobs/{id}/process: { post: { responses: { '501': { description: no engine available } } } }
-  /api/v1/deed-templates: { post: { responses: { '200': { description: created } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/deed-templates/{id}: { put: { responses: { '200': { description: version bumped } } } }
-  /api/v1/deeds/from-template: { post: { responses: { '200': { description: draft created }, '404': { description: template/matter missing } } } }
-  /api/v1/deeds: { get: { responses: { '200': { description: list } } } }
-  /api/v1/deeds/{id}/transition: { post: { responses: { '200': { description: state set }, '409': { description: illegal transition } } } }
-  /api/v1/ai/chat: { post: { responses: { '501': { description: no provider; estimate returned } } } }
-  /api/v1/ai/usage: { get: { responses: { '200': { description: token sums } } } }
-  /api/v1/rag/index: { post: { responses: { '200': { description: chunks stored }, '422': { description: binary/empty unsupported } } } }
-  /api/v1/rag/search: { get: { responses: { '200': { description: keyword hits (vector search pending) } } } }
-  /api/v1/matters/{mid}/invoices: { post: { responses: { '200': { description: issued } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/invoices/{id}: { get: { responses: { '200': { description: invoice+payments+balance } } } }
-  /api/v1/invoices/{id}/payments: { post: { responses: { '200': { description: recorded }, '409': { description: overpayment } } } }
-  /api/v1/webhooks/incoming/{provider}: { post: { responses: { '202': { description: accepted }, '401': { description: bad signature }, '501': { description: secret not configured } } } }
-  /api/v1/integrations: { get: { responses: { '200': { description: provider list, no secrets } } } }
-  /api/v1/auth/tokens: { post: { responses: { '200': { description: plaintext shown once } } }, get: { responses: { '200': { description: list without secrets } } } }
-  /api/v1/auth/tokens/{id}: { delete: { responses: { '200': { description: revoked } } } }
-  /api/v1/auth/password: { post: { responses: { '200': { description: changed } } } }
-  /api/v1/users/{uid}/roles: { post: { responses: { '200': { description: assigned } } } }
-  /api/v1/notifications: { get: { responses: { '200': { description: own inbox } } } }
-  /api/v1/documents/{id}/shares: { post: { responses: { '200': { description: share token+url } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/shares/{id}: { delete: { responses: { '200': { description: revoked } } } }
-  /api/v1/shared/{token}: { get: { responses: { '200': { description: public metadata, expiry-checked } } } }
-  /api/v1/reports/matters.csv: { get: { responses: { '200': { description: csv export } } } }
-  /api/v1/audit: { get: { responses: { '200': { description: auditor/owner role-gated log } } } }
-  /api/v1/jobs: { post: { responses: { '200': { description: enqueued } } }, get: { responses: { '200': { description: list } } } }
-  /api/v1/trust/accounts: { post: { responses: { '200': { description: escrow account } } }, get: { responses: { '200': { description: list with balances } } } }
-  /api/v1/trust/accounts/{id}: { get: { responses: { '200': { description: account+entries } } } }
-  /api/v1/trust/accounts/{id}/entries: { post: { responses: { '200': { description: posted }, '409': { description: insufficient balance } } } }
-  /api/v1/trust/transfer: { post: { responses: { '200': { description: double-entry legs } } } }
-  /api/v1/events: { get: { responses: { '200': { description: text/event-stream, opens with hello } } } }
+  /healthz: { get: { responses: { '200': { description: "ok" } } } }
+  /readyz: { get: { responses: { '200': { description: "ready" }, '501': { description: "dependency blocked" } } } }
+  /: { get: { responses: { '200': { description: "landing html" } } } }
+  /login: { get: { responses: { '200': { description: "login html" } } } }
+  /app: { get: { responses: { '200': { description: "app shell html" } } } }
+  /fitur: { get: { responses: { '200': { description: "fitur index html" } } } }
+  /fitur/manajemen-perkara: { get: { responses: { '200': { description: "html" } } } }
+  /fitur/manajemen-dokumen: { get: { responses: { '200': { description: "html" } } } }
+  /fitur/ocr: { get: { responses: { '200': { description: "html, 501 noted on process" } } } }
+  /fitur/ai-legal-assistant: { get: { responses: { '200': { description: "html" } } } }
+  /fitur/generasi-akta: { get: { responses: { '200': { description: "html" } } } }
+  /fitur/tanda-tangan: { get: { responses: { '200': { description: "html, esign 501" } } } }
+  /solusi: { get: { responses: { '200': { description: "solusi index html" } } } }
+  /solusi/notaris: { get: { responses: { '200': { description: "html" } } } }
+  /solusi/ppat: { get: { responses: { '200': { description: "html" } } } }
+  /solusi/firma-hukum: { get: { responses: { '200': { description: "html" } } } }
+  /solusi/legal-corporate: { get: { responses: { '200': { description: "html" } } } }
+  /harga: { get: { responses: { '200': { description: "pricing html" } } } }
+  /tentang: { get: { responses: { '200': { description: "about html" } } } }
+  /kontak: { get: { responses: { '200': { description: "contact form html" } } } }
+  /demo: { get: { responses: { '200': { description: "demo form html" } } } }
+  /artikel: { get: { responses: { '200': { description: "article list html" } } } }
+  /artikel/{slug}: { get: { responses: { '200': { description: "article html" }, '404': { description: "not found" } } } }
+  /faq: { get: { responses: { '200': { description: "faq html" } } } }
+  /kebijakan-privasi: { get: { responses: { '200': { description: "privacy html" } } } }
+  /syarat-ketentuan: { get: { responses: { '200': { description: "terms html" } } } }
+  /sitemap.xml: { get: { responses: { '200': { description: "sitemap xml" } } } }
+  /robots.txt: { get: { responses: { '200': { description: "robots txt" } } } }
+  "/static/{*path}": { get: { responses: { '200': { description: "static asset" }, '404': { description: "unknown extension or missing" } } } }
+  /api/v1/version: { get: { responses: { '200': { description: "version" } } } }
+  /api/v1/auth/register: { post: { responses: { '200': { description: "org+owner created" }, '422': { description: "validation" }, '429': { description: "rate limited" } } } }
+  /api/v1/auth/login: { post: { responses: { '200': { description: "session" }, '401': { description: "unauthorized" }, '422': { description: "validation" }, '429': { description: "rate limited, 5x lockout per 5min" }, '501': { description: "jwt not configured" } } } }
+  /api/v1/auth/logout: { post: { responses: { '200': { description: "revoked" }, '401': { description: "unauthorized" } } } }
+  /api/v1/orgs/me: { get: { responses: { '200': { description: "identity" }, '401': { description: "unauthorized" } } } }
+  /api/v1/clients: { post: { responses: { '200': { description: "created" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/matters: { post: { responses: { '200': { description: "created" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/matters/{mid}/tasks: { post: { responses: { '200': { description: "created" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/tasks/{tid}: { post: { responses: { '200': { description: "status set" }, '409': { description: "illegal transition" } } } }
+  /api/v1/documents: { post: { responses: { '200': { description: "metadata ticket" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/documents/{id}: { get: { responses: { '200': { description: "detail+versions" } } } }
+  /api/v1/documents/{id}/content: { put: { responses: { '200': { description: "version stored" }, '422': { description: "sha/size mismatch" } } }, get: { responses: { '200': { description: "bytes" } } } }
+  /api/v1/ocr/jobs: { post: { responses: { '200': { description: "queued" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/ocr/jobs/{id}: { get: { responses: { '200': { description: "job+fields" } } } }
+  /api/v1/ocr/jobs/{id}/review: { post: { responses: { '200': { description: "reviewed" }, '501': { description: "n/a" } } } }
+  /api/v1/ocr/jobs/{id}/process: { post: { responses: { '501': { description: "no engine available, job stays queued" } } } }
+  /api/v1/ocr/supported: { get: { responses: { '200': { description: "doc type list" } } } }
+  /api/v1/deed-templates: { post: { responses: { '200': { description: "created" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/deed-templates/{id}: { put: { responses: { '200': { description: "version bumped" } } } }
+  /api/v1/deeds/from-template: { post: { responses: { '200': { description: "draft created" }, '404': { description: "template/matter missing" } } } }
+  /api/v1/deeds: { get: { responses: { '200': { description: "list" } } } }
+  /api/v1/deeds/{id}: { get: { responses: { '200': { description: "detail" }, '404': { description: "not found" } } } }
+  /api/v1/deeds/{id}/esign: { post: { responses: { '501': { description: "PSrE provider not configured" } } } }
+  /api/v1/deeds/{id}/transition: { post: { responses: { '200': { description: "state set" }, '409': { description: "illegal transition" } } } }
+  /api/v1/ai/chat: { post: { responses: { '501': { description: "no provider, estimate logged, zero output" } } } }
+  /api/v1/ai/usage: { get: { responses: { '200': { description: "token sums" } } } }
+  /api/v1/rag/index: { post: { responses: { '200': { description: "chunks stored" }, '422': { description: "binary/empty unsupported" } } } }
+  /api/v1/rag/search: { get: { responses: { '200': { description: "keyword hits, vector search pending" } } } }
+  /api/v1/search: { get: { responses: { '200': { description: "clients+matters+documents hits" }, '422': { description: "q min 2 chars" } } } }
+  /api/v1/matters/{mid}/invoices: { post: { responses: { '200': { description: "issued" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/invoices/{id}: { get: { responses: { '200': { description: "invoice+payments+balance" } } } }
+  /api/v1/invoices/{id}/payments: { post: { responses: { '200': { description: "recorded" }, '409': { description: "overpayment" } } } }
+  /api/v1/invoices/{id}/pay-gateway: { post: { responses: { '501': { description: "billing gateway not configured" } } } }
+  /api/v1/reports/matters-csv: { get: { responses: { '200': { description: "csv export" } } } }
+  /api/v1/reports/matters.csv: { get: { responses: { '200': { description: "csv export, dot alias" } } } }
+  /api/v1/webhooks/incoming/{provider}: { post: { responses: { '202': { description: "accepted" }, '401': { description: "bad signature" }, '501': { description: "secret not configured" } } } }
+  /api/v1/integrations: { get: { responses: { '200': { description: "provider list, no secrets" } } } }
+  /api/v1/auth/tokens: { post: { responses: { '200': { description: "plaintext shown once" } } }, get: { responses: { '200': { description: "list without secrets" } } } }
+  /api/v1/auth/tokens/{id}: { delete: { responses: { '200': { description: "revoked" } } } }
+  /api/v1/auth/password: { post: { responses: { '200': { description: "changed" }, '403': { description: "api-token forbidden" }, '401': { description: "bad current password" } } } }
+  /api/v1/users/{uid}/roles: { post: { responses: { '200': { description: "assigned, Assign perm" }, '403': { description: "forbidden" } } } }
+  /api/v1/notifications: { get: { responses: { '200': { description: "own inbox" } } } }
+  /api/v1/notifications/{id}/read: { post: { responses: { '200': { description: "marked read" } } } }
+  /api/v1/documents/{id}/shares: { post: { responses: { '200': { description: "share token+url, Share perm, 1-720h" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/shares/{id}: { delete: { responses: { '200': { description: "revoked" } } } }
+  /api/v1/shared/{token}: { get: { responses: { '200': { description: "public metadata, expiry-checked" }, '404': { description: "expired/revoked" } } } }
+  /api/v1/shared/{token}/content: { get: { responses: { '200': { description: "public bytes, expiry-checked" }, '404': { description: "expired/revoked" } } } }
+  /api/v1/audit: { get: { responses: { '200': { description: "auditor/owner role-gated log" }, '403': { description: "forbidden" } } } }
+  /api/v1/jobs: { post: { responses: { '200': { description: "enqueued" } } }, get: { responses: { '200': { description: "list" } } } }
+  /api/v1/trust/accounts: { post: { responses: { '200': { description: "escrow account" } } }, get: { responses: { '200': { description: "list with balances" } } } }
+  /api/v1/trust/accounts/{id}: { get: { responses: { '200': { description: "account+entries" } } } }
+  /api/v1/trust/accounts/{id}/entries: { post: { responses: { '200': { description: "posted" }, '409': { description: "insufficient balance" } } } }
+  /api/v1/trust/transfer: { post: { responses: { '200': { description: "double-entry legs" } } } }
+  /api/v1/events: { get: { responses: { '200': { description: "text/event-stream, opens with hello" } } } }
+  /api/v1/public/contact: { post: { responses: { '200': { description: "contact+lead ids, rate-limited" }, '422': { description: "validation" }, '429': { description: "rate limited" } } } }
+  /api/v1/public/demo-requests: { post: { responses: { '200': { description: "demo+lead ids, rate-limited" }, '422': { description: "validation" }, '429': { description: "rate limited" } } } }
+  /api/v1/public/sales-inquiries: { post: { responses: { '200': { description: "lead id+status, rate-limited" }, '422': { description: "validation" }, '429': { description: "rate limited" } } } }
+  /api/v1/public/newsletter/subscribe: { post: { responses: { '200': { description: "subscribed, rate-limited" }, '422': { description: "validation" }, '429': { description: "rate limited" } } } }
+  /api/v1/public/pricing: { get: { responses: { '200': { description: "active plans" } } } }
+  /api/v1/public/features: { get: { responses: { '200': { description: "static feature flags" } } } }
+  /api/v1/public/articles: { get: { responses: { '200': { description: "published list, ?published=0 exposes drafts" } } } }
+  /api/v1/public/articles/{slug}: { get: { responses: { '200': { description: "published article" }, '404': { description: "unpublished/missing" } } } }
+  /api/v1/public/faqs: { get: { responses: { '200': { description: "faq list" } } } }
+  /api/v1/admin/leads: { get: { responses: { '200': { description: "Approve-gated list" }, '403': { description: "forbidden" } } }, post: { responses: { '200': { description: "Approve-gated create" }, '403': { description: "forbidden" } } } }
+  /api/v1/admin/leads/{id}: { get: { responses: { '200': { description: "Approve-gated detail" }, '404': { description: "out of scope" } } }, put: { responses: { '200': { description: "Approve-gated status set" } } }, delete: { responses: { '200': { description: "soft delete, status lost + note" } } } }
+  /api/v1/admin/leads/{id}/notes: { post: { responses: { '200': { description: "Approve-gated note added" } } } }
+  /api/v1/admin/leads/{id}/assign: { post: { responses: { '200': { description: "Approve-gated assignee set" } } } }
+  /api/v1/admin/leads/{id}/follow-ups: { post: { responses: { '200': { description: "Approve-gated follow-up added" } } }, get: { responses: { '200': { description: "Approve-gated follow-up list" } } } }
+  /api/v1/admin/contacts: { get: { responses: { '200': { description: "Approve-gated contact list" } } } }
+  /api/v1/admin/demo-requests: { get: { responses: { '200': { description: "Approve-gated demo list" } } } }
+  /api/v1/admin/pricing: { post: { responses: { '200': { description: "Approve-gated plan upsert" } } } }
+  /api/v1/admin/faqs: { post: { responses: { '200': { description: "Approve-gated faq upsert" } } } }
+  /api/v1/admin/articles: { post: { responses: { '200': { description: "Approve-gated article upsert" } } } }

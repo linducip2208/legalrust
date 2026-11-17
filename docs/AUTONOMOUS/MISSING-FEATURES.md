@@ -1,0 +1,910 @@
+# FITUR BELUM TAMPIL (dari FEATURE-REGISTRY.json)
+
+## D01 D01 (34 belum tampil)
+- [F-D01-005] Driver license capture -- NOT_STARTED
+- [F-D01-006] Biometric face match (selfie vs ID) -- CONFIGURATION_REQUIRED
+- [F-D01-007] Liveness detection (passive) -- CONFIGURATION_REQUIRED
+- [F-D01-008] Liveness detection (active challenge) -- CONFIGURATION_REQUIRED
+- [F-D01-009] NIK checksum & format validation -- NOT_STARTED
+- [F-D01-010] Dukcapil verification integration adapter -- CONFIGURATION_REQUIRED
+- [F-D01-011] Sanctions / watchlist screening -- CONFIGURATION_REQUIRED
+- [F-D01-012] PEP screening -- CONFIGURATION_REQUIRED
+- [F-D01-013] Adverse media screening -- CONFIGURATION_REQUIRED
+- [F-D01-014] Risk-based KYC tiering (CDD/EDD) -- PLANNED
+- [F-D01-015] Document authenticity signals -- PLANNED
+- [F-D01-016] Expiry tracking for identity documents -- PLANNED
+- [F-D01-017] Address verification workflow -- PLANNED
+- [F-D01-018] Beneficial owner identification -- NOT_STARTED
+- [F-D01-019] Corporate representative authority check -- PLANNED
+- [F-D01-020] Power of attorney verification for identity -- PLANNED
+- [F-D01-021] Consent capture for data processing (UU PDP) -- NOT_STARTED
+- [F-D01-022] Minor / guardian identity handling -- NOT_STARTED
+- [F-D01-023] Foreigner (KITAS/KITAP) identity handling -- PLANNED
+- [F-D01-024] Duplicate identity detection -- NOT_STARTED
+- [F-D01-025] Identity confidence scoring -- CONFIGURATION_REQUIRED
+- [F-D01-028] KYC renewal & re-verification scheduler -- PLANNED
+- [F-D01-029] Bulk KYC import for corporate clients -- PLANNED
+- [F-D01-030] KYC API for partner onboarding -- PLANNED
+- [F-D01-031] NIK masking & display policy -- PLANNED
+- [F-D01-032] Biometric template protection -- CONFIGURATION_REQUIRED
+- [F-D01-033] KYC document retention & purge -- PLANNED
+- [F-D01-034] Offline KYC capture & deferred sync -- NOT_STARTED
+- [F-D01-035] Field agent KYC mobile capture -- NOT_STARTED
+- [F-D01-036] KYC rejection & appeal workflow -- NOT_STARTED
+- [F-D01-037] KYC dashboard & SLA tracking -- NOT_STARTED
+- [F-D01-038] KYC data correction workflow -- PLANNED
+- [F-D01-039] Identity fraud flagging & case referral -- NOT_STARTED
+- [F-D01-040] KYC quality sampling & auditor review -- PLANNED
+
+## D02 D02 (34 belum tampil)
+- [F-D02-006] Client hierarchy (group/subsidiary) -- NOT_STARTED
+- [F-D02-007] Client segmentation & tagging -- PLANNED
+- [F-D02-008] Conflict-of-interest check -- CONFIGURATION_REQUIRED
+- [F-D02-009] Client onboarding checklist -- NOT_STARTED
+- [F-D02-010] Client offboarding & file closure -- NOT_STARTED
+- [F-D02-011] Client communication timeline -- NOT_STARTED
+- [F-D02-012] Meeting & visit log -- PLANNED
+- [F-D02-013] Quotation & engagement proposal -- PLANNED
+- [F-D02-014] Engagement letter management -- PLANNED
+- [F-D02-015] Client fee arrangement profiles -- NOT_STARTED
+- [F-D02-016] Client document request tracker -- NOT_STARTED
+- [F-D02-017] Client portal invitation management -- PLANNED
+- [F-D02-018] Client satisfaction survey -- PLANNED
+- [F-D02-019] Client referral tracking -- NOT_STARTED
+- [F-D02-020] Client lifetime value view -- NOT_STARTED
+- [F-D02-021] Pipeline & opportunity tracking -- PLANNED
+- [F-D02-022] Marketing campaign tracking -- PLANNED
+- [F-D02-023] Event & seminar management -- PLANNED
+- [F-D02-024] Lost-client / win-back workflow -- NOT_STARTED
+- [F-D02-025] Client data merge & dedupe -- NOT_STARTED
+- [F-D02-026] Client data correction request -- NOT_STARTED
+- [F-D02-027] Client consent & preference center -- NOT_STARTED
+- [F-D02-028] Corporate client employee roster -- NOT_STARTED
+- [F-D02-029] Client risk profile -- NOT_STARTED
+- [F-D02-030] VIP / priority client flagging -- NOT_STARTED
+- [F-D02-031] Client credit limit & exposure -- NOT_STARTED
+- [F-D02-032] Client birthday / key-date reminders -- NOT_STARTED
+- [F-D02-033] Client feedback & complaint handling -- NOT_STARTED
+- [F-D02-034] Multi-contact notification routing -- NOT_STARTED
+- [F-D02-036] Client export (controlled) -- PLANNED
+- [F-D02-037] CRM dashboard per partner -- PLANNED
+- [F-D02-038] CRM audit trail -- NOT_STARTED
+- [F-D02-039] Data retention for prospects -- NOT_STARTED
+- [F-D02-040] Client document expiry monitoring -- NOT_STARTED
+
+## D03 D03 (31 belum tampil)
+- [F-D03-003] Matter classification & practice area -- NOT_STARTED
+- [F-D03-006] Task dependencies -- NOT_STARTED
+- [F-D03-007] Milestone tracking -- PLANNED
+- [F-D03-008] Deadline & SLA engine -- NOT_STARTED
+- [F-D03-009] Court / agency deadline calculator -- NOT_STARTED
+- [F-D03-010] Calendar integration (matter deadlines) -- NOT_STARTED
+- [F-D03-011] Kanban matter board -- NOT_STARTED
+- [F-D03-012] Gantt timeline view -- PLANNED
+- [F-D03-013] Time entry (manual) -- PLANNED
+- [F-D03-014] Timer-based time capture -- NOT_STARTED
+- [F-D03-015] Timesheet approval -- PLANNED
+- [F-D03-016] Matter budget vs actual -- PLANNED
+- [F-D03-017] Cost advance (panjar) tracking -- NOT_STARTED
+- [F-D03-018] Expense attachment to matter -- NOT_STARTED
+- [F-D03-019] Matter team & staffing -- PLANNED
+- [F-D03-020] Workload & capacity view -- PLANNED
+- [F-D03-022] Sub-matter / workstream grouping -- PLANNED
+- [F-D03-023] Related-matter linking -- PLANNED
+- [F-D03-024] Matter templates library -- PLANNED
+- [F-D03-025] Recurring matter scheduler -- PLANNED
+- [F-D03-027] Internal memo on matter -- PLANNED
+- [F-D03-028] Matter hold / suspension -- PLANNED
+- [F-D03-029] Matter reopen workflow -- NOT_STARTED
+- [F-D03-030] Matter closure checklist -- NOT_STARTED
+- [F-D03-031] Post-matter review & lessons learned -- CONFIGURATION_REQUIRED
+- [F-D03-032] Matter profitability report -- NOT_STARTED
+- [F-D03-036] Bulk matter import -- NOT_STARTED
+- [F-D03-037] Matter archive & retrieval -- NOT_STARTED
+- [F-D03-038] Matter dashboard (firm-wide) -- NOT_STARTED
+- [F-D03-039] Matter SLA breach alerts -- PLANNED
+- [F-D03-040] Matter inbox triage & auto-assignment -- NOT_STARTED
+
+## D04 D04 (26 belum tampil)
+- [F-D04-004] Check-in / check-out locking -- NOT_STARTED
+- [F-D04-005] Document metadata schema -- PLANNED
+- [F-D04-006] Custom metadata fields -- NOT_STARTED
+- [F-D04-007] Document retention schedule -- NOT_STARTED
+- [F-D04-008] Document legal-hold application & release -- PLANNED
+- [F-D04-009] Document archiving -- NOT_STARTED
+- [F-D04-010] Secure document deletion -- NOT_STARTED
+- [F-D04-011] Bulk download (matter bundle) -- PLANNED
+- [F-D04-014] Document thumbnail generation -- NOT_STARTED
+- [F-D04-016] Virus / malware scan on upload -- CONFIGURATION_REQUIRED
+- [F-D04-018] Document watermarking -- NOT_STARTED
+- [F-D04-019] Document stamping (received/controlled) -- PLANNED
+- [F-D04-020] Redaction tools -- NOT_STARTED
+- [F-D04-021] Comparison (doc-to-doc diff) -- NOT_STARTED
+- [F-D04-022] Document approval routing -- PLANNED
+- [F-D04-023] Document expiry alerts -- NOT_STARTED
+- [F-D04-026] Email-to-matter filing -- NOT_STARTED
+- [F-D04-027] Document favorites & recent list -- NOT_STARTED
+- [F-D04-029] Storage quota per tenant/office -- PLANNED
+- [F-D04-030] S3/MinIO object lifecycle policy -- CONFIGURATION_REQUIRED
+- [F-D04-031] Trash / recycle bin with restore -- NOT_STARTED
+- [F-D04-034] Offline document cache -- PLANNED
+- [F-D04-035] Large-file chunked upload -- PLANNED
+- [F-D04-037] Document tagging -- NOT_STARTED
+- [F-D04-038] Document dashboard -- NOT_STARTED
+- [F-D04-040] Protocol (notary) document segregation -- PLANNED
+
+## D05 D05 (34 belum tampil)
+- [F-D05-001] KTP OCR extraction pipeline -- PLANNED
+- [F-D05-002] KK OCR extraction pipeline -- NOT_STARTED
+- [F-D05-003] NPWP OCR extraction pipeline -- PLANNED
+- [F-D05-004] Passport OCR (MRZ + visual zone) -- CONFIGURATION_REQUIRED
+- [F-D05-005] Property certificate (SHM/SHGB) OCR -- CONFIGURATION_REQUIRED
+- [F-D05-006] Deed (akta) OCR with structure parsing -- CONFIGURATION_REQUIRED
+- [F-D05-007] Contract OCR with clause segmentation -- CONFIGURATION_REQUIRED
+- [F-D05-008] General PDF OCR (native + scanned) -- CONFIGURATION_REQUIRED
+- [F-D05-009] Multi-page document orchestration -- CONFIGURATION_REQUIRED
+- [F-D05-010] Table extraction & cell reconstruction -- CONFIGURATION_REQUIRED
+- [F-D05-011] Layout detection (headers/footers/columns) -- CONFIGURATION_REQUIRED
+- [F-D05-012] Document classification model -- CONFIGURATION_REQUIRED
+- [F-D05-013] Image enhancement pre-processing -- CONFIGURATION_REQUIRED
+- [F-D05-014] Deskew & orientation correction -- CONFIGURATION_REQUIRED
+- [F-D05-015] Denoising & binarization -- CONFIGURATION_REQUIRED
+- [F-D05-016] Perspective correction (mobile photos) -- CONFIGURATION_REQUIRED
+- [F-D05-017] Blur & glare detection gate -- CONFIGURATION_REQUIRED
+- [F-D05-018] Duplicate scan detection -- NOT_STARTED
+- [F-D05-019] Confidence scoring per field -- CONFIGURATION_REQUIRED
+- [F-D05-020] Field-level validation rules (ID)  -- PLANNED
+- [F-D05-023] OCR result versioning -- NOT_STARTED
+- [F-D05-025] Batch OCR job scheduler -- NOT_STARTED
+- [F-D05-027] OCR engine router (multi-engine) -- CONFIGURATION_REQUIRED
+- [F-D05-028] Engine benchmark harness (CER/WER) -- CONFIGURATION_REQUIRED
+- [F-D05-029] Indonesian document test corpus registry -- PLANNED
+- [F-D05-030] Handwriting flag & routing -- CONFIGURATION_REQUIRED
+- [F-D05-031] Stamp & signature region detection -- CONFIGURATION_REQUIRED
+- [F-D05-032] QR / barcode decode on documents -- CONFIGURATION_REQUIRED
+- [F-D05-033] Language detection (ID/EN) -- CONFIGURATION_REQUIRED
+- [F-D05-034] NIK/KK cross-field consistency check -- CONFIGURATION_REQUIRED
+- [F-D05-035] Expiry-date extraction & validation -- CONFIGURATION_REQUIRED
+- [F-D05-036] Low-quality image rejection with guidance -- CONFIGURATION_REQUIRED
+- [F-D05-038] OCR artifact PII redaction (images/results) -- CONFIGURATION_REQUIRED
+- [F-D05-040] OCR accuracy dashboard -- NOT_STARTED
+
+## D06 D06 (28 belum tampil)
+- [F-D06-002] Clause library with versioning -- NOT_STARTED
+- [F-D06-005] Witness (saksi) management -- PLANNED
+- [F-D06-008] Deed reading (pembacaan) minutes -- PLANNED
+- [F-D06-009] Deed signing ceremony checklist -- PLANNED
+- [F-D06-010] Fingerprint capture log -- CONFIGURATION_REQUIRED
+- [F-D06-011] Deed amendment (renvoi) handling -- NOT_STARTED
+- [F-D06-012] Deed attachment (lampiran) manager -- NOT_STARTED
+- [F-D06-013] Bilingual deed support (ID/EN) -- NOT_STARTED
+- [F-D06-014] Deed schema validation -- PLANNED
+- [F-D06-015] Mandatory-field completeness gate -- PLANNED
+- [F-D06-016] Legal citation insertion -- NOT_STARTED
+- [F-D06-017] Deed comparison (draft vs minuta) -- PLANNED
+- [F-D06-019] Deed PDF rendering (print-ready) -- NOT_STARTED
+- [F-D06-020] Deed XML/structured archive -- NOT_STARTED
+- [F-D06-021] Deed registration to external log -- NOT_STARTED
+- [F-D06-023] Deed confidentiality classification -- PLANNED
+- [F-D06-024] Deed correction (akta perbaikan) -- NOT_STARTED
+- [F-D06-026] Deed copy issuance log -- PLANNED
+- [F-D06-027] Deed excerpt issuance -- NOT_STARTED
+- [F-D06-028] Deed legalization log -- PLANNED
+- [F-D06-029] Deed delivery receipt -- NOT_STARTED
+- [F-D06-030] Deed storage location tracking -- NOT_STARTED
+- [F-D06-031] Deed protocol-box transfer scheduler -- PLANNED
+- [F-D06-034] Deed multi-party signature order -- CONFIGURATION_REQUIRED
+- [F-D06-035] Deed fee computation hook -- PLANNED
+- [F-D06-036] Deed dashboard (monthly volume) -- NOT_STARTED
+- [F-D06-039] Deed disaster-recovery copy -- NOT_STARTED
+- [F-D06-040] Deed print & binding manifest -- NOT_STARTED
+
+## D07 D07 (38 belum tampil)
+- [F-D07-001] Conversational legal Q&A (ID) -- CONFIGURATION_REQUIRED
+- [F-D07-002] Matter-grounded Q&A (RAG) -- CONFIGURATION_REQUIRED
+- [F-D07-003] Document summarization -- CONFIGURATION_REQUIRED
+- [F-D07-004] Contract clause extraction -- CONFIGURATION_REQUIRED
+- [F-D07-005] Risk clause flagging -- CONFIGURATION_REQUIRED
+- [F-D07-006] Obligation & deadline extraction -- CONFIGURATION_REQUIRED
+- [F-D07-007] Document comparison (AI diff narrative) -- CONFIGURATION_REQUIRED
+- [F-D07-008] Citation & source tracking -- CONFIGURATION_REQUIRED
+- [F-D07-009] Legal knowledge base ingestion -- CONFIGURATION_REQUIRED
+- [F-D07-010] Knowledge base versioning -- NOT_STARTED
+- [F-D07-011] Prompt template library -- CONFIGURATION_REQUIRED
+- [F-D07-012] Prompt versioning & rollback -- CONFIGURATION_REQUIRED
+- [F-D07-013] Model router (cost/quality/latency) -- CONFIGURATION_REQUIRED
+- [F-D07-015] Per-matter AI cost allocation -- NOT_STARTED
+- [F-D07-016] AI confidence & disclaimer banner -- PLANNED
+- [F-D07-017] Human approval gate for AI drafts -- NOT_STARTED
+- [F-D07-018] AI-assisted deed clause drafting -- CONFIGURATION_REQUIRED
+- [F-D07-019] AI-assisted engagement letter drafting -- CONFIGURATION_REQUIRED
+- [F-D07-020] AI-assisted email drafting -- CONFIGURATION_REQUIRED
+- [F-D07-021] Meeting-notes summarization -- CONFIGURATION_REQUIRED
+- [F-D07-022] Regulation change digest -- CONFIGURATION_REQUIRED
+- [F-D07-023] Case-law research helper -- CONFIGURATION_REQUIRED
+- [F-D07-024] Precedent retrieval -- CONFIGURATION_REQUIRED
+- [F-D07-025] Jurisdiction guardrail (ID-first) -- CONFIGURATION_REQUIRED
+- [F-D07-026] Hallucination mitigation controls -- CONFIGURATION_REQUIRED
+- [F-D07-027] Prompt-injection protection -- CONFIGURATION_REQUIRED
+- [F-D07-028] PII redaction before model call -- CONFIGURATION_REQUIRED
+- [F-D07-029] Local-model execution path -- CONFIGURATION_REQUIRED
+- [F-D07-030] Model evaluation harness -- CONFIGURATION_REQUIRED
+- [F-D07-031] Feedback (thumbs up/down + correction) -- NOT_STARTED
+- [F-D07-033] AI data retention policy -- PLANNED
+- [F-D07-034] Blocked-topic policy (validity certification) -- NOT_STARTED
+- [F-D07-035] Multi-language response (ID/EN) -- CONFIGURATION_REQUIRED
+- [F-D07-036] Voice-to-text inquiry capture -- CONFIGURATION_REQUIRED
+- [F-D07-037] AI workspace (side panel) -- PLANNED
+- [F-D07-038] AI spend & model-mix analytics -- PLANNED
+- [F-D07-039] AI incident & correction log -- NOT_STARTED
+- [F-D07-040] AI red-team prompt test suite -- CONFIGURATION_REQUIRED
+
+## D08 D08 (37 belum tampil)
+- [F-D08-001] Visual workflow designer -- CONFIGURATION_REQUIRED
+- [F-D08-002] Workflow template gallery -- PLANNED
+- [F-D08-003] Sequential approval chains -- NOT_STARTED
+- [F-D08-004] Parallel approval branches -- PLANNED
+- [F-D08-005] Conditional routing rules -- NOT_STARTED
+- [F-D08-006] SLA timers & escalation -- PLANNED
+- [F-D08-007] Reminder & nudge automation -- PLANNED
+- [F-D08-008] Task auto-creation from events -- NOT_STARTED
+- [F-D08-009] Document-driven triggers -- PLANNED
+- [F-D08-010] Status-driven triggers -- NOT_STARTED
+- [F-D08-011] Scheduled (cron) triggers -- PLANNED
+- [F-D08-013] Outbound webhook actions -- NOT_STARTED
+- [F-D08-014] Email action nodes -- NOT_STARTED
+- [F-D08-016] Assignment & load-balance node -- NOT_STARTED
+- [F-D08-017] Form-collection step -- PLANNED
+- [F-D08-018] E-signature step connector -- CONFIGURATION_REQUIRED
+- [F-D08-020] OCR step connector -- CONFIGURATION_REQUIRED
+- [F-D08-021] AI step connector -- CONFIGURATION_REQUIRED
+- [F-D08-022] Human-review step -- NOT_STARTED
+- [F-D08-023] Sub-workflow (reusable) calls -- NOT_STARTED
+- [F-D08-024] Workflow versioning -- PLANNED
+- [F-D08-025] Workflow simulation / dry-run -- PLANNED
+- [F-D08-026] Workflow instance dashboard -- PLANNED
+- [F-D08-027] Stuck-instance detection -- PLANNED
+- [F-D08-028] Retry with backoff policy -- PLANNED
+- [F-D08-029] Idempotency keys for steps -- NOT_STARTED
+- [F-D08-030] Compensation / rollback actions -- NOT_STARTED
+- [F-D08-031] Event log per instance -- NOT_STARTED
+- [F-D08-032] Bulk workflow starter (CSV) -- NOT_STARTED
+- [F-D08-033] Workflow permissions -- PLANNED
+- [F-D08-034] Workflow audit trail -- NOT_STARTED
+- [F-D08-035] Workflow KPI (cycle time) -- PLANNED
+- [F-D08-036] Workflow export/import -- NOT_STARTED
+- [F-D08-037] Workflow deprecation -- NOT_STARTED
+- [F-D08-038] NATS event backbone binding -- NOT_STARTED
+- [F-D08-039] Worker pool autoscaling hooks -- NOT_STARTED
+- [F-D08-040] Workflow error inbox -- NOT_STARTED
+
+## D09 D09 (40 belum tampil)
+- [F-D09-001] Approval request composer -- NOT_STARTED
+- [F-D09-002] Multi-level approval matrix -- NOT_STARTED
+- [F-D09-003] Delegation of authority -- NOT_STARTED
+- [F-D09-004] Out-of-office delegation -- PLANNED
+- [F-D09-005] Approval SLA & escalation -- PLANNED
+- [F-D09-006] Mobile approval inbox -- NOT_STARTED
+- [F-D09-007] Bulk approval (controlled) -- NOT_STARTED
+- [F-D09-008] Approval with comments -- PLANNED
+- [F-D09-009] Conditional approval -- PLANNED
+- [F-D09-010] Rework / return-to-drafter -- NOT_STARTED
+- [F-D09-011] Approval attachment review -- PLANNED
+- [F-D09-012] Amount-threshold routing -- PLANNED
+- [F-D09-013] Matter-risk routing -- NOT_STARTED
+- [F-D09-014] Quorum approval (M-of-N) -- NOT_STARTED
+- [F-D09-015] Sequential vs parallel policy -- PLANNED
+- [F-D09-016] Approval audit pack -- PLANNED
+- [F-D09-017] Approval dashboard -- PLANNED
+- [F-D09-018] Overdue approval alerts -- PLANNED
+- [F-D09-019] Approval calendar view -- PLANNED
+- [F-D09-020] Substitute approver rules -- NOT_STARTED
+- [F-D09-021] Approval policy versioning -- NOT_STARTED
+- [F-D09-022] Emergency / fast-track approval -- NOT_STARTED
+- [F-D09-023] Approval freeze during audit -- PLANNED
+- [F-D09-024] Approval evidence (who/when/why) -- PLANNED
+- [F-D09-025] Approval revocation -- PLANNED
+- [F-D09-026] Post-approval amendment workflow -- PLANNED
+- [F-D09-027] Approval analytics (bottlenecks) -- PLANNED
+- [F-D09-028] Approval digest & escalation preferences -- PLANNED
+- [F-D09-029] E-signature binding on approval -- CONFIGURATION_REQUIRED
+- [F-D09-030] Approval API for integrations -- NOT_STARTED
+- [F-D09-031] Approval archive & retrieval -- NOT_STARTED
+- [F-D09-032] Approval role mapping -- PLANNED
+- [F-D09-033] Approval conflict detection -- PLANNED
+- [F-D09-034] Approval simulation -- PLANNED
+- [F-D09-035] Approval export (auditor) -- PLANNED
+- [F-D09-036] Approval integrity hash -- NOT_STARTED
+- [F-D09-037] Approval replay protection -- PLANNED
+- [F-D09-038] Approval comment redaction -- PLANNED
+- [F-D09-039] Approval read-receipt -- PLANNED
+- [F-D09-040] Approval quorum override with dual control -- NOT_STARTED
+
+## D10 D10 (38 belum tampil)
+- [F-D10-001] PSrE provider adapter (certified) -- CONFIGURATION_REQUIRED
+- [F-D10-002] Uncertified e-sign path (low-risk) -- CONFIGURATION_REQUIRED
+- [F-D10-003] Signature order orchestration -- CONFIGURATION_REQUIRED
+- [F-D10-004] Sequential signing -- PLANNED
+- [F-D10-005] Parallel signing -- NOT_STARTED
+- [F-D10-006] Signer identity binding (KYC) -- CONFIGURATION_REQUIRED
+- [F-D10-007] Signer OTP challenge -- CONFIGURATION_REQUIRED
+- [F-D10-008] Signer consent capture -- CONFIGURATION_REQUIRED
+- [F-D10-010] Long-term validation (LTV) artifacts -- CONFIGURATION_REQUIRED
+- [F-D10-011] Timestamp authority (TSA) binding -- CONFIGURATION_REQUIRED
+- [F-D10-012] Signature appearance placement -- NOT_STARTED
+- [F-D10-013] Initials on every page option -- PLANNED
+- [F-D10-014] Bulk signing session -- CONFIGURATION_REQUIRED
+- [F-D10-015] Signing link via secure URL -- CONFIGURATION_REQUIRED
+- [F-D10-016] Signing reminder schedule -- CONFIGURATION_REQUIRED
+- [F-D10-017] Signer decline handling -- CONFIGURATION_REQUIRED
+- [F-D10-018] Signer reassignment -- CONFIGURATION_REQUIRED
+- [F-D10-020] Post-sign tamper evidence -- CONFIGURATION_REQUIRED
+- [F-D10-021] Signed-document vault -- PLANNED
+- [F-D10-022] Signature verification page -- NOT_STARTED
+- [F-D10-023] Verification QR code -- CONFIGURATION_REQUIRED
+- [F-D10-024] Revocation / invalidation log -- NOT_STARTED
+- [F-D10-025] Provider failover routing -- CONFIGURATION_REQUIRED
+- [F-D10-026] E-sign cost tracking -- CONFIGURATION_REQUIRED
+- [F-D10-027] E-sign regulatory guardrail (akta exclusion) -- CONFIGURATION_REQUIRED
+- [F-D10-028] Notarial act exclusion warning -- NOT_STARTED
+- [F-D10-029] Signing ceremony log -- NOT_STARTED
+- [F-D10-030] Signer accessibility support -- NOT_STARTED
+- [F-D10-031] E-sign webhook callbacks -- CONFIGURATION_REQUIRED
+- [F-D10-032] E-sign audit trail -- CONFIGURATION_REQUIRED
+- [F-D10-033] E-sign retention policy -- CONFIGURATION_REQUIRED
+- [F-D10-034] Provider credential vault -- NOT_STARTED
+- [F-D10-035] E-sign dashboard -- CONFIGURATION_REQUIRED
+- [F-D10-036] Sandbox vs production provider mode -- CONFIGURATION_REQUIRED
+- [F-D10-037] Signature font/hand-drawn capture -- CONFIGURATION_REQUIRED
+- [F-D10-038] Signer device & IP logging -- CONFIGURATION_REQUIRED
+- [F-D10-039] Multi-document signing bundle -- CONFIGURATION_REQUIRED
+- [F-D10-040] Co-signer & witness signing flow -- CONFIGURATION_REQUIRED
+
+## D11 D11 (39 belum tampil)
+- [F-D11-001] UU PDP obligation register -- PLANNED
+- [F-D11-002] Consent lifecycle manager -- NOT_STARTED
+- [F-D11-003] Data-subject access request (DSAR) -- NOT_STARTED
+- [F-D11-004] Data-subject deletion request -- PLANNED
+- [F-D11-005] Rectification request workflow -- PLANNED
+- [F-D11-006] Processing-activity record (ROPA) -- NOT_STARTED
+- [F-D11-007] DPIA workflow -- NOT_STARTED
+- [F-D11-008] Breach notification workflow (72h) -- PLANNED
+- [F-D11-009] Vendor / processor register -- CONFIGURATION_REQUIRED
+- [F-D11-010] DPA (perjanjian pemrosesan) tracker -- PLANNED
+- [F-D11-011] Data-retention rule engine -- NOT_STARTED
+- [F-D11-012] Purge execution with approval -- NOT_STARTED
+- [F-D11-013] Protocol retention (25-year) scheduler -- PLANNED
+- [F-D11-014] Conflict-of-interest register -- CONFIGURATION_REQUIRED
+- [F-D11-015] AML/CFT risk scoring -- NOT_STARTED
+- [F-D11-016] Sanctions re-screening scheduler -- CONFIGURATION_REQUIRED
+- [F-D11-017] Ethics & independence declarations -- PLANNED
+- [F-D11-018] Gift & hospitality register -- NOT_STARTED
+- [F-D11-019] Whistleblowing intake channel -- NOT_STARTED
+- [F-D11-020] Incident register & triage -- PLANNED
+- [F-D11-021] Corrective-action (CAPA) tracker -- PLANNED
+- [F-D11-022] Regulatory change tracker -- PLANNED
+- [F-D11-023] Compliance training assignments -- NOT_STARTED
+- [F-D11-024] Training completion evidence -- NOT_STARTED
+- [F-D11-025] Internal audit plan -- NOT_STARTED
+- [F-D11-026] Audit finding tracker -- PLANNED
+- [F-D11-027] Control library (UUJN/PDP/ITE) -- NOT_STARTED
+- [F-D11-028] Control test scheduler -- NOT_STARTED
+- [F-D11-029] Compliance dashboard -- NOT_STARTED
+- [F-D11-030] Compliance evidence vault -- NOT_STARTED
+- [F-D11-031] Regulator inquiry response pack -- NOT_STARTED
+- [F-D11-032] Matter-level compliance checklist -- PLANNED
+- [F-D11-033] Office compliance scorecard -- NOT_STARTED
+- [F-D11-034] Compliance alert feed -- NOT_STARTED
+- [F-D11-035] Policy library with ack tracking -- NOT_STARTED
+- [F-D11-036] Exception / waiver workflow -- NOT_STARTED
+- [F-D11-037] Risk register (enterprise) -- NOT_STARTED
+- [F-D11-038] Risk heatmap -- PLANNED
+- [F-D11-040] Compliance report exporter -- NOT_STARTED
+
+## D12 D12 (37 belum tampil)
+- [F-D12-001] Repertorium (deed daily log) -- NOT_STARTED
+- [F-D12-002] Klapper (alphabetical index) -- PLANNED
+- [F-D12-003] Protocol book register -- NOT_STARTED
+- [F-D12-004] Protocol custody & handover log -- PLANNED
+- [F-D12-007] Office working-hours & roster -- PLANNED
+- [F-D12-008] Notary leave / substitute protocol -- PLANNED
+- [F-D12-009] Staff role matrix (notary office) -- PLANNED
+- [F-D12-010] Penghadap appointment scheduler -- NOT_STARTED
+- [F-D12-011] Queue & waiting-room board -- NOT_STARTED
+- [F-D12-012] Service price list (layanan) -- NOT_STARTED
+- [F-D12-013] Down-payment (uang muka) receipt -- NOT_STARTED
+- [F-D12-014] Deed fee quotation -- NOT_STARTED
+- [F-D12-015] Office cash book -- NOT_STARTED
+- [F-D12-016] Office cash advance & IOU tracker -- PLANNED
+- [F-D12-017] Office inventory (blanko/meterai) -- PLANNED
+- [F-D12-018] Meterai inventory & usage -- PLANNED
+- [F-D12-019] ATK & consumables tracker -- NOT_STARTED
+- [F-D12-020] Archive room location map -- PLANNED
+- [F-D12-021] Deed storage box tracking -- NOT_STARTED
+- [F-D12-022] Protocol transfer to MPD (retired) -- NOT_STARTED
+- [F-D12-023] Client identity re-verification -- PLANNED
+- [F-D12-024] Saksi pool management -- NOT_STARTED
+- [F-D12-025] Office bank-partner facility & rate sheet -- PLANNED
+- [F-D12-026] Office performance dashboard -- PLANNED
+- [F-D12-027] Deed volume analytics -- PLANNED
+- [F-D12-028] Staff productivity view -- NOT_STARTED
+- [F-D12-029] Client waiting-time analytics -- NOT_STARTED
+- [F-D12-030] Office document checklist -- PLANNED
+- [F-D12-031] Office SOP library -- NOT_STARTED
+- [F-D12-032] Office announcement board -- NOT_STARTED
+- [F-D12-033] Multi-desk task dispatch -- PLANNED
+- [F-D12-035] Office backup verification -- PLANNED
+- [F-D12-036] Office incident log -- NOT_STARTED
+- [F-D12-037] Office visitor log -- PLANNED
+- [F-D12-038] Office feedback capture -- NOT_STARTED
+- [F-D12-039] Office compliance self-check -- PLANNED
+- [F-D12-040] Protocol year-end sealing & handover -- PLANNED
+
+## D13 D13 (37 belum tampil)
+- [F-D13-001] PPAT deed register (akta PPAT) -- NOT_STARTED
+- [F-D13-003] Certificate authenticity checklist -- NOT_STARTED
+- [F-D13-004] BPN verification request tracker -- CONFIGURATION_REQUIRED
+- [F-D13-005] AJB drafting (sale & purchase) -- PLANNED
+- [F-D13-006] Hibah deed support -- NOT_STARTED
+- [F-D13-007] Tukar-menukar deed support -- NOT_STARTED
+- [F-D13-008] APHT (mortgage) drafting -- PLANNED
+- [F-D13-009] SKMHT drafting & expiry monitor -- NOT_STARTED
+- [F-D13-010] Royalty/lease deed support -- NOT_STARTED
+- [F-D13-011] Land-split (pemecahan) tracker -- PLANNED
+- [F-D13-012] Land-merge (penggabungan) tracker -- PLANNED
+- [F-D13-013] Land-history (riwayat tanah) record -- PLANNED
+- [F-D13-014] Seller-buyer KYC bundle -- PLANNED
+- [F-D13-015] Marital-property consent check -- NOT_STARTED
+- [F-D13-016] Heir consent verification -- NOT_STARTED
+- [F-D13-017] Corporate seller board-resolution verification -- PLANNED
+- [F-D13-018] Tax (PPh) computation worksheet -- NOT_STARTED
+- [F-D13-019] BPHTB computation worksheet -- NOT_STARTED
+- [F-D13-020] PBB status verification -- NOT_STARTED
+- [F-D13-021]  girik/adat land intake -- NOT_STARTED
+- [F-D13-022] Developer bulk-transaction batch -- NOT_STARTED
+- [F-D13-023] Developer unit (stock) registry -- NOT_STARTED
+- [F-D13-024] Unit handover (BAST) tracker -- PLANNED
+- [F-D13-025] KPR bank coordination pack -- PLANNED
+- [F-D13-026] Notary-PPAT handoff checklist -- PLANNED
+- [F-D13-027] BPN queue-number tracker -- CONFIGURATION_REQUIRED
+- [F-D13-028] Certificate handover receipt -- PLANNED
+- [F-D13-029] PPAT monthly report -- NOT_STARTED
+- [F-D13-030] PPAT protocol register -- PLANNED
+- [F-D13-031] Zone (ZNT/NJOP) reference table -- PLANNED
+- [F-D13-032] Land-dispute flag & hold -- PLANNED
+- [F-D13-033] Boundary & area verification -- NOT_STARTED
+- [F-D13-034] Power-to-sell (kuasa menjual) check -- PLANNED
+- [F-D13-035] Foreign-ownership guardrail -- PLANNED
+- [F-D13-036] PPAT fee worksheet -- NOT_STARTED
+- [F-D13-037] PPAT dashboard -- PLANNED
+- [F-D13-040] BPN response archive -- CONFIGURATION_REQUIRED
+
+## D14 D14 (36 belum tampil)
+- [F-D14-001] Chart of accounts (PSAK-aware) -- PLANNED
+- [F-D14-002] Journal entry composer -- PLANNED
+- [F-D14-003] Journal approval workflow -- PLANNED
+- [F-D14-004] Accounts receivable ledger -- PLANNED
+- [F-D14-005] Accounts payable ledger -- NOT_STARTED
+- [F-D14-006] General ledger viewer -- NOT_STARTED
+- [F-D14-007] Trial balance report -- PLANNED
+- [F-D14-008] Profit & loss report -- PLANNED
+- [F-D14-009] Balance-sheet report -- NOT_STARTED
+- [F-D14-010] Cash-flow report -- NOT_STARTED
+- [F-D14-013] Trust reconciliation -- NOT_STARTED
+- [F-D14-014] Matter cost allocation -- NOT_STARTED
+- [F-D14-015] Department cost centers -- NOT_STARTED
+- [F-D14-016] Office-level P&L -- NOT_STARTED
+- [F-D14-017] Budget planner -- NOT_STARTED
+- [F-D14-018] Budget-vs-actual monitor -- PLANNED
+- [F-D14-019] Fixed-asset register -- PLANNED
+- [F-D14-020] Depreciation scheduler -- NOT_STARTED
+- [F-D14-021] Bank account registry -- PLANNED
+- [F-D14-022] Bank reconciliation -- PLANNED
+- [F-D14-023] Petty-cash ledger -- NOT_STARTED
+- [F-D14-024] Tax invoice (faktur pajak) log -- CONFIGURATION_REQUIRED
+- [F-D14-025] Withholding-tax (PPh 23/21) tracker -- PLANNED
+- [F-D14-026] VAT (PPN) report support -- PLANNED
+- [F-D14-027] E-faktur data export -- CONFIGURATION_REQUIRED
+- [F-D14-028] Payroll interface export -- NOT_STARTED
+- [F-D14-029] Reimbursement workflow -- PLANNED
+- [F-D14-030] Advance-settlement workflow -- NOT_STARTED
+- [F-D14-031] Inter-office settlement -- NOT_STARTED
+- [F-D14-032] Multi-currency support -- PLANNED
+- [F-D14-033] Exchange-rate table -- NOT_STARTED
+- [F-D14-034] Year-end closing checklist -- PLANNED
+- [F-D14-035] Auditor data pack -- PLANNED
+- [F-D14-036] Finance dashboard -- PLANNED
+- [F-D14-039] Finance archive & retention -- PLANNED
+- [F-D14-040] Anomaly / duplicate-payment flag -- NOT_STARTED
+
+## D15 D15 (35 belum tampil)
+- [F-D15-001] Fee-schedule library -- NOT_STARTED
+- [F-D15-002] Time-based billing rules -- NOT_STARTED
+- [F-D15-003] Fixed-fee billing -- NOT_STARTED
+- [F-D15-004] Success-fee billing -- NOT_STARTED
+- [F-D15-005] Retainer billing -- NOT_STARTED
+- [F-D15-006] Subscription plan catalog -- PLANNED
+- [F-D15-007] Plan upgrade / downgrade -- PLANNED
+- [F-D15-008] Proration engine -- PLANNED
+- [F-D15-010] E-invoice data capture -- PLANNED
+- [F-D15-011] Invoice approval workflow -- PLANNED
+- [F-D15-012] Invoice delivery (email/portal) -- NOT_STARTED
+- [F-D15-013] Invoice reminder schedule -- PLANNED
+- [F-D15-014] Late-fee & denda policy -- NOT_STARTED
+- [F-D15-016] Payment-gateway integration adapter -- CONFIGURATION_REQUIRED
+- [F-D15-017] Virtual-account billing -- CONFIGURATION_REQUIRED
+- [F-D15-018] QRIS payment support -- CONFIGURATION_REQUIRED
+- [F-D15-021] Refund workflow -- PLANNED
+- [F-D15-022] Dunning workflow -- NOT_STARTED
+- [F-D15-023] Collection task assignment -- PLANNED
+- [F-D15-024] Billing dispute handling -- NOT_STARTED
+- [F-D15-025] Client billing profile -- NOT_STARTED
+- [F-D15-026] Discount & voucher engine -- PLANNED
+- [F-D15-027] Tax on invoice (PPN/PPh) -- NOT_STARTED
+- [F-D15-028] Invoice cancellation (credit note) -- PLANNED
+- [F-D15-029] Billing dashboard -- PLANNED
+- [F-D15-030] AR aging report -- PLANNED
+- [F-D15-031] Revenue recognition hook -- PLANNED
+- [F-D15-032] Payout to partner (profit share) -- PLANNED
+- [F-D15-033] Office-level revenue split -- PLANNED
+- [F-D15-035] Invoice PDF rendering -- PLANNED
+- [F-D15-036] Payment receipt rendering -- NOT_STARTED
+- [F-D15-037] Subscription renewal scheduler -- NOT_STARTED
+- [F-D15-038] Churn / win-back tracker -- NOT_STARTED
+- [F-D15-039] Billing API for integrations -- PLANNED
+- [F-D15-040] Billing data retention -- NOT_STARTED
+
+## D16 D16 (31 belum tampil)
+- [F-D16-002] Bulk user import -- NOT_STARTED
+- [F-D16-003] User deprovisioning -- PLANNED
+- [F-D16-004] Department & team management -- NOT_STARTED
+- [F-D16-005] Job-title & grade model -- PLANNED
+- [F-D16-008] Permission matrix editor -- NOT_STARTED
+- [F-D16-010] ABAC policy rules -- NOT_STARTED
+- [F-D16-011] Temporary elevation (break-glass) -- NOT_STARTED
+- [F-D16-012] Delegation rules -- NOT_STARTED
+- [F-D16-014] SSO (OIDC/SAML) integration -- CONFIGURATION_REQUIRED
+- [F-D16-015] SCIM provisioning adapter -- CONFIGURATION_REQUIRED
+- [F-D16-016] Password policy engine -- NOT_STARTED
+- [F-D16-017] MFA enrollment (TOTP) -- CONFIGURATION_REQUIRED
+- [F-D16-018] WebAuthn / passkey support -- CONFIGURATION_REQUIRED
+- [F-D16-020] Concurrent-session control -- PLANNED
+- [F-D16-021] Login anomaly detection -- NOT_STARTED
+- [F-D16-024] New-hire onboarding checklist -- NOT_STARTED
+- [F-D16-025] Transfer / rotation workflow -- PLANNED
+- [F-D16-026] Exit clearance workflow -- PLANNED
+- [F-D16-027] Access review campaigns -- NOT_STARTED
+- [F-D16-028] SoD conflict detector -- NOT_STARTED
+- [F-D16-030] Role-version history -- PLANNED
+- [F-D16-031] Org-chart viewer -- NOT_STARTED
+- [F-D16-032] User activity timeline -- NOT_STARTED
+- [F-D16-033] Suspended-user vault -- PLANNED
+- [F-D16-034] Guest / external user handling -- PLANNED
+- [F-D16-035] External client-user invitation & lifecycle -- NOT_STARTED
+- [F-D16-036] Contractor time-boxed access -- NOT_STARTED
+- [F-D16-037] Emergency access log -- NOT_STARTED
+- [F-D16-038] User directory search -- PLANNED
+- [F-D16-039] License / seat usage tracker -- PLANNED
+- [F-D16-040] Dormant-account reviewer -- NOT_STARTED
+
+## D17 D17 (36 belum tampil)
+- [F-D17-002] Tenant branding (logo/colors) -- PLANNED
+- [F-D17-003] Tenant domain mapping -- NOT_STARTED
+- [F-D17-004] Office branch registry -- PLANNED
+- [F-D17-005] Office hierarchy -- PLANNED
+- [F-D17-006] Central vs office data scope -- NOT_STARTED
+- [F-D17-007] Inter-office matter referral -- PLANNED
+- [F-D17-008] Inter-office document sharing -- NOT_STARTED
+- [F-D17-009] Centralized user directory -- PLANNED
+- [F-D17-011] Tenant-wide settings -- PLANNED
+- [F-D17-012] Office working calendar -- PLANNED
+- [F-D17-013] Regional holiday table -- PLANNED
+- [F-D17-014] Tenant data-residency option -- PLANNED
+- [F-D17-015] Tenant backup policy -- PLANNED
+- [F-D17-016] Tenant quota management -- PLANNED
+- [F-D17-017] Cross-office reporting -- PLANNED
+- [F-D17-018] Consolidated finance view -- PLANNED
+- [F-D17-019] Office performance ranking -- NOT_STARTED
+- [F-D17-020] Tenant announcement broadcast -- PLANNED
+- [F-D17-021] Tenant feature-flag control -- PLANNED
+- [F-D17-023] Office onboarding wizard -- NOT_STARTED
+- [F-D17-024] Office closure / merge -- NOT_STARTED
+- [F-D17-025] Tenant suspension -- PLANNED
+- [F-D17-026] Tenant deletion (with retention) -- NOT_STARTED
+- [F-D17-028] Office access audit -- NOT_STARTED
+- [F-D17-029] Data-migration between offices -- PLANNED
+- [F-D17-030] Tenant SLA profiles -- NOT_STARTED
+- [F-D17-031] Office capacity planning -- NOT_STARTED
+- [F-D17-032] Tenant support channel -- PLANNED
+- [F-D17-033] Tenant health dashboard -- PLANNED
+- [F-D17-034] Tenant config export/import -- NOT_STARTED
+- [F-D17-035] Tenant API quota & plan assignment -- PLANNED
+- [F-D17-036] Office document templates -- NOT_STARTED
+- [F-D17-037] Office fee localization -- PLANNED
+- [F-D17-038] Tenant retention policy -- PLANNED
+- [F-D17-039] Tenant incident broadcast -- NOT_STARTED
+- [F-D17-040] Tenant config drift detector -- NOT_STARTED
+
+## D18 D18 (34 belum tampil)
+- [F-D18-002] Email notification engine -- CONFIGURATION_REQUIRED
+- [F-D18-003] SMS notification adapter -- CONFIGURATION_REQUIRED
+- [F-D18-004] WhatsApp notification adapter -- CONFIGURATION_REQUIRED
+- [F-D18-005] Push notification (mobile) -- CONFIGURATION_REQUIRED
+- [F-D18-006] Notification preference center -- PLANNED
+- [F-D18-007] Notification templating -- NOT_STARTED
+- [F-D18-008] Multi-language notification -- NOT_STARTED
+- [F-D18-009] Notification scheduling -- PLANNED
+- [F-D18-010] Digest (daily/weekly) mode -- NOT_STARTED
+- [F-D18-012] Deadline reminder engine -- PLANNED
+- [F-D18-013] Approval notification routing -- NOT_STARTED
+- [F-D18-014] E-sign event notifications -- CONFIGURATION_REQUIRED
+- [F-D18-015] Payment notifications -- NOT_STARTED
+- [F-D18-016] Broadcast announcements -- PLANNED
+- [F-D18-017] Targeted audience selector -- NOT_STARTED
+- [F-D18-018] Message thread per matter -- NOT_STARTED
+- [F-D18-019] Internal chat (office) -- NOT_STARTED
+- [F-D18-020] Client messaging (portal) -- NOT_STARTED
+- [F-D18-021] File attachment in messages -- PLANNED
+- [F-D18-022] Message read receipts -- PLANNED
+- [F-D18-023] Message retention policy -- NOT_STARTED
+- [F-D18-024] Notification delivery tracking -- NOT_STARTED
+- [F-D18-025] Bounce / failure handling -- PLANNED
+- [F-D18-027] Emergency broadcast -- PLANNED
+- [F-D18-030] Template approval workflow -- PLANNED
+- [F-D18-031] Sender identity (domain) config -- CONFIGURATION_REQUIRED
+- [F-D18-032] SMS/WA cost tracking -- CONFIGURATION_REQUIRED
+- [F-D18-033] Notification analytics -- NOT_STARTED
+- [F-D18-034] Quiet-hours policy -- PLANNED
+- [F-D18-035] Escalation notification chain -- PLANNED
+- [F-D18-036] Calendar-invite notifications -- NOT_STARTED
+- [F-D18-037] System maintenance notices -- NOT_STARTED
+- [F-D18-039] Notification archive -- PLANNED
+- [F-D18-040] Notification template A/B testing -- NOT_STARTED
+
+## D19 D19 (31 belum tampil)
+- [F-D19-001] Client login (secure) -- PLANNED
+- [F-D19-002] Client registration with KYC -- CONFIGURATION_REQUIRED
+- [F-D19-003] Client dashboard -- NOT_STARTED
+- [F-D19-004] Matter progress view -- NOT_STARTED
+- [F-D19-005] Document request inbox -- PLANNED
+- [F-D19-006] Secure document upload -- NOT_STARTED
+- [F-D19-008] E-sign signing entry -- CONFIGURATION_REQUIRED
+- [F-D19-010] Online payment checkout -- CONFIGURATION_REQUIRED
+- [F-D19-011] Appointment booking -- NOT_STARTED
+- [F-D19-012] Appointment reminders -- PLANNED
+- [F-D19-013] Case-message thread -- NOT_STARTED
+- [F-D19-014] Targeted portal announcements -- NOT_STARTED
+- [F-D19-021] Consent management view -- NOT_STARTED
+- [F-D19-022] Profile & contacts editor -- PLANNED
+- [F-D19-023] Company users management -- PLANNED
+- [F-D19-024] Notification preferences -- PLANNED
+- [F-D19-026] Request copy of deed extract -- PLANNED
+- [F-D19-027] Track request status -- NOT_STARTED
+- [F-D19-028] Multi-language portal (ID/EN) -- PLANNED
+- [F-D19-029] Accessibility (WCAG) support -- NOT_STARTED
+- [F-D19-030] Portal session security -- NOT_STARTED
+- [F-D19-031] Portal audit trail -- NOT_STARTED
+- [F-D19-032] Portal announcement targeting -- PLANNED
+- [F-D19-033] Portal usage analytics -- NOT_STARTED
+- [F-D19-034] Portal SLA display -- PLANNED
+- [F-D19-035] Portal maintenance page -- PLANNED
+- [F-D19-036] Public office directory -- PLANNED
+- [F-D19-037] Public lawyer/notary profiles -- NOT_STARTED
+- [F-D19-038] Public regulation digest -- NOT_STARTED
+- [F-D19-039] Portal feedback loop -- NOT_STARTED
+- [F-D19-040] Portal data-retention notice -- PLANNED
+
+## D20 D20 (36 belum tampil)
+- [F-D20-002] Ad-hoc report builder -- NOT_STARTED
+- [F-D20-003] Report scheduling (email) -- PLANNED
+- [F-D20-005] Dashboard designer -- CONFIGURATION_REQUIRED
+- [F-D20-006] Role-based dashboards -- NOT_STARTED
+- [F-D20-007] Matter KPI dashboard -- NOT_STARTED
+- [F-D20-008] Financial KPI dashboard -- NOT_STARTED
+- [F-D20-009] Deed-volume period report & export -- PLANNED
+- [F-D20-010] OCR accuracy trend & benchmark report -- NOT_STARTED
+- [F-D20-011] AI cost & quality executive report -- NOT_STARTED
+- [F-D20-012] Approval bottleneck report -- PLANNED
+- [F-D20-013] Deadline compliance report -- PLANNED
+- [F-D20-014] Client profitability report -- PLANNED
+- [F-D20-015] Staff utilization report -- NOT_STARTED
+- [F-D20-016] Pipeline & forecast report -- NOT_STARTED
+- [F-D20-017] Compliance posture report -- PLANNED
+- [F-D20-018] Risk posture period report -- PLANNED
+- [F-D20-019] Data-quality scorecard -- NOT_STARTED
+- [F-D20-021] Report version history -- PLANNED
+- [F-D20-022] Report annotation -- NOT_STARTED
+- [F-D20-023] Drill-down navigation -- NOT_STARTED
+- [F-D20-024] Comparative period analysis -- PLANNED
+- [F-D20-025] Office benchmarking -- NOT_STARTED
+- [F-D20-026] Tenant-level rollups -- PLANNED
+- [F-D20-027] Scheduled snapshot archive -- NOT_STARTED
+- [F-D20-028] Report delivery log -- NOT_STARTED
+- [F-D20-029] Metric dictionary -- NOT_STARTED
+- [F-D20-030] KPI alert thresholds -- NOT_STARTED
+- [F-D20-031] Embedded analytics (portal) -- NOT_STARTED
+- [F-D20-032] Analytics data-mart refresh -- PLANNED
+- [F-D20-033] PII handling in reports -- PLANNED
+- [F-D20-035] Report retention policy -- PLANNED
+- [F-D20-036] Custom SQL (guardrailed) reports -- PLANNED
+- [F-D20-037] Report performance monitor -- PLANNED
+- [F-D20-038] Mobile-friendly reports -- NOT_STARTED
+- [F-D20-039] Executive summary pack -- PLANNED
+- [F-D20-040] Board-ready export theme -- NOT_STARTED
+
+## D21 D21 (31 belum tampil)
+- [F-D21-003] OAuth2 client management -- CONFIGURATION_REQUIRED
+- [F-D21-004] Rate limiting & quotas -- NOT_STARTED
+- [F-D21-006] Developer portal & docs -- NOT_STARTED
+- [F-D21-007] OpenAPI spec publishing -- PLANNED
+- [F-D21-008] Webhook dispatcher -- PLANNED
+- [F-D21-011] Dukcapil connector -- CONFIGURATION_REQUIRED
+- [F-D21-012] Tax (DJP) data adapter -- CONFIGURATION_REQUIRED
+- [F-D21-013] BPN integration adapter -- CONFIGURATION_REQUIRED
+- [F-D21-014] Bank / VA integration -- CONFIGURATION_REQUIRED
+- [F-D21-015] Payment-gateway connector certification pack -- CONFIGURATION_REQUIRED
+- [F-D21-016] PSrE e-sign adapter -- CONFIGURATION_REQUIRED
+- [F-D21-017] SMS gateway adapter -- CONFIGURATION_REQUIRED
+- [F-D21-018] WhatsApp gateway adapter -- CONFIGURATION_REQUIRED
+- [F-D21-019] Email provider adapter -- CONFIGURATION_REQUIRED
+- [F-D21-020] Cloud-storage (S3) connector -- CONFIGURATION_REQUIRED
+- [F-D21-021] SSO/SCIM connectors -- CONFIGURATION_REQUIRED
+- [F-D21-022] Accounting export connector -- CONFIGURATION_REQUIRED
+- [F-D21-023] E-faktur export adapter -- CONFIGURATION_REQUIRED
+- [F-D21-024] BI export (warehouse) feed -- PLANNED
+- [F-D21-025] Mobile SDK auth endpoints -- CONFIGURATION_REQUIRED
+- [F-D21-026] OCR engine plugin API -- CONFIGURATION_REQUIRED
+- [F-D21-027] AI provider plugin API -- CONFIGURATION_REQUIRED
+- [F-D21-028] Idempotency-key support -- NOT_STARTED
+- [F-D21-029] API sandbox environment -- NOT_STARTED
+- [F-D21-030] API changelog & deprecation -- NOT_STARTED
+- [F-D21-032] Retry & DLQ for webhooks -- NOT_STARTED
+- [F-D21-034] Partner onboarding workflow -- PLANNED
+- [F-D21-035] Integration test harness -- PLANNED
+- [F-D21-037] Request signing (HMAC) -- PLANNED
+- [F-D21-038] Field-level encryption for APIs -- PLANNED
+- [F-D21-040] API dashboard -- PLANNED
+
+## D22 D22 (30 belum tampil)
+- [F-D22-002] MFA enforcement policy -- CONFIGURATION_REQUIRED
+- [F-D22-003] SSO hardening guide -- NOT_STARTED
+- [F-D22-007] Encryption at rest (AES-256) -- PLANNED
+- [F-D22-009] Key-management (KMS/HSM) hooks -- CONFIGURATION_REQUIRED
+- [F-D22-010] Secrets rotation scheduler -- PLANNED
+- [F-D22-011] Field-level encryption (NIK/PII) -- NOT_STARTED
+- [F-D22-012] PII masking in logs/traces -- PLANNED
+- [F-D22-013] Backup encryption -- NOT_STARTED
+- [F-D22-015] Malware scanning gate -- CONFIGURATION_REQUIRED
+- [F-D22-017] WAF rule baseline -- NOT_STARTED
+- [F-D22-019] CSRF protection -- PLANNED
+- [F-D22-022] Dependency vulnerability scan -- NOT_STARTED
+- [F-D22-023] Container image scan -- PLANNED
+- [F-D22-024] SAST baseline -- NOT_STARTED
+- [F-D22-025] DAST baseline -- NOT_STARTED
+- [F-D22-026] Audit-log integrity (hash chain) -- NOT_STARTED
+- [F-D22-027] Tamper-evident evidence store -- NOT_STARTED
+- [F-D22-028] Incident response runbooks -- PLANNED
+- [F-D22-029] Breach containment & forensic preservation runbook -- PLANNED
+- [F-D22-030] Security training tracker -- PLANNED
+- [F-D22-031] Pen-test finding tracker -- NOT_STARTED
+- [F-D22-032] Threat-model registry (STRIDE) -- PLANNED
+- [F-D22-033] OWASP ASVS mapping -- PLANNED
+- [F-D22-034] Backup-restore security test -- NOT_STARTED
+- [F-D22-035] Data-residency controls -- NOT_STARTED
+- [F-D22-036] Secure decommissioning -- NOT_STARTED
+- [F-D22-037] Tenant isolation tests -- PLANNED
+- [F-D22-038] Security dashboard -- NOT_STARTED
+- [F-D22-039] Security audit export -- NOT_STARTED
+- [F-D22-040] Security exception register -- PLANNED
+
+## D23 D23 (31 belum tampil)
+- [F-D23-004] Deed full-text & faceted discovery -- NOT_STARTED
+- [F-D23-007] Clause-library search -- PLANNED
+- [F-D23-009] Knowledge-base search -- CONFIGURATION_REQUIRED
+- [F-D23-010] Regulation search -- NOT_STARTED
+- [F-D23-011] Precedent search -- CONFIGURATION_REQUIRED
+- [F-D23-012] Faceted filtering -- NOT_STARTED
+- [F-D23-013] Saved searches -- NOT_STARTED
+- [F-D23-014] Search suggestions (typeahead) -- PLANNED
+- [F-D23-015] Typo-tolerant matching -- NOT_STARTED
+- [F-D23-016] Indonesian stemming analyzer -- CONFIGURATION_REQUIRED
+- [F-D23-017] Synonym dictionary (legal ID) -- CONFIGURATION_REQUIRED
+- [F-D23-018] Search relevance tuning -- NOT_STARTED
+- [F-D23-019] Search result highlighting -- NOT_STARTED
+- [F-D23-020] Preview from search results -- NOT_STARTED
+- [F-D23-022] Search audit log -- NOT_STARTED
+- [F-D23-023] Recent & frequent items -- PLANNED
+- [F-D23-024] Search analytics -- PLANNED
+- [F-D23-025] Zero-result feedback capture -- NOT_STARTED
+- [F-D23-026] Bulk reindex job -- PLANNED
+- [F-D23-027] Index-health monitor -- NOT_STARTED
+- [F-D23-028] Tantivy index manager -- CONFIGURATION_REQUIRED
+- [F-D23-029] Vector (Qdrant) optional index -- CONFIGURATION_REQUIRED
+- [F-D23-030] Hybrid (keyword+vector) ranking -- CONFIGURATION_REQUIRED
+- [F-D23-032] Search pagination & sorting -- NOT_STARTED
+- [F-D23-033] Search export (controlled) -- NOT_STARTED
+- [F-D23-034] Cross-office scoped search -- NOT_STARTED
+- [F-D23-035] Archived-content search toggle -- NOT_STARTED
+- [F-D23-036] OCR-text search -- CONFIGURATION_REQUIRED
+- [F-D23-038] Search latency SLO monitor -- PLANNED
+- [F-D23-039] Search relevance eval harness -- PLANNED
+- [F-D23-040] Search synonym curation workflow -- NOT_STARTED
+
+## D24 D24 (40 belum tampil)
+- [F-D24-001] Dioxus mobile feasibility report -- NOT_STARTED
+- [F-D24-002] Field task inbox (mobile) -- PLANNED
+- [F-D24-003] Offline-first task queue -- PLANNED
+- [F-D24-004] Offline document capture -- NOT_STARTED
+- [F-D24-005] ID photo capture guidance -- PLANNED
+- [F-D24-006] On-device image QC (blur/glare) -- PLANNED
+- [F-D24-007] Deferred upload & retry -- NOT_STARTED
+- [F-D24-008] Mobile KYC capture flow -- PLANNED
+- [F-D24-009] Appointment map & navigation -- PLANNED
+- [F-D24-010] Visit check-in / check-out -- NOT_STARTED
+- [F-D24-011] Geo-tagged evidence photos -- PLANNED
+- [F-D24-012] Field expense capture -- NOT_STARTED
+- [F-D24-013] Mobile time tracking -- PLANNED
+- [F-D24-014] Push task assignments -- PLANNED
+- [F-D24-015] Offline approval queue with deferred sync -- NOT_STARTED
+- [F-D24-016] Mobile e-sign signing -- CONFIGURATION_REQUIRED
+- [F-D24-017] Secure mobile document viewer -- NOT_STARTED
+- [F-D24-018] Mobile redaction guardrails -- PLANNED
+- [F-D24-019] Biometric app unlock -- CONFIGURATION_REQUIRED
+- [F-D24-020] Remote-wipe & lock -- NOT_STARTED
+- [F-D24-021] MDM policy hooks -- NOT_STARTED
+- [F-D24-022] Mobile audit trail -- NOT_STARTED
+- [F-D24-023] Battery/data-saver mode -- PLANNED
+- [F-D24-024] Low-bandwidth sync mode -- NOT_STARTED
+- [F-D24-025] Conflict resolution (offline edits) -- PLANNED
+- [F-D24-026] Mobile crash reporting -- PLANNED
+- [F-D24-027] Mobile analytics -- NOT_STARTED
+- [F-D24-028] Field-team location dashboard -- PLANNED
+- [F-D24-029] Mobile release train -- PLANNED
+- [F-D24-030] App-version enforcement -- PLANNED
+- [F-D24-031] Mobile accessibility -- PLANNED
+- [F-D24-032] Mobile language toggle -- NOT_STARTED
+- [F-D24-033] Mobile help & offline FAQ -- PLANNED
+- [F-D24-034] Field safety check-in -- PLANNED
+- [F-D24-035] Mobile notification prefs -- PLANNED
+- [F-D24-036] Mobile storage quota -- PLANNED
+- [F-D24-037] Photo-to-PDF bundling -- NOT_STARTED
+- [F-D24-038] Field-report generator -- NOT_STARTED
+- [F-D24-039] Mobile session security -- NOT_STARTED
+- [F-D24-040] Mobile offline map pack -- PLANNED
+
+## D25 D25 (35 belum tampil)
+- [F-D25-001] System settings console -- NOT_STARTED
+- [F-D25-002] Tenant onboarding console (admin) -- PLANNED
+- [F-D25-003] License & seat manager -- PLANNED
+- [F-D25-004] Feature-flag console -- NOT_STARTED
+- [F-D25-005] Release channel manager -- PLANNED
+- [F-D25-006] Maintenance-mode control -- PLANNED
+- [F-D25-007] Announcement broadcaster -- PLANNED
+- [F-D25-008] Global search admin -- NOT_STARTED
+- [F-D25-010] Queue-depth alerting -- NOT_STARTED
+- [F-D25-011] Worker scaling policy -- NOT_STARTED
+- [F-D25-012] Storage lifecycle admin -- NOT_STARTED
+- [F-D25-013] Index maintenance console -- NOT_STARTED
+- [F-D25-014] AI provider key vault -- CONFIGURATION_REQUIRED
+- [F-D25-015] OCR engine admin -- CONFIGURATION_REQUIRED
+- [F-D25-017] Webhook delivery monitor -- NOT_STARTED
+- [F-D25-018] API rate-plan admin -- NOT_STARTED
+- [F-D25-020] Retention-policy designer -- CONFIGURATION_REQUIRED
+- [F-D25-021] Legal-hold console -- NOT_STARTED
+- [F-D25-022] Backup scheduler -- PLANNED
+- [F-D25-023] Restore drill tracker -- PLANNED
+- [F-D25-024] DR failover runbook -- NOT_STARTED
+- [F-D25-025] Multi-region readiness checklist -- NOT_STARTED
+- [F-D25-026] Localization (i18n) manager -- NOT_STARTED
+- [F-D25-027] New-locale onboarding -- NOT_STARTED
+- [F-D25-028] Currency & tax-locale pack -- NOT_STARTED
+- [F-D25-029] Regulatory-locale pack -- PLANNED
+- [F-D25-030] Time-zone policy manager -- NOT_STARTED
+- [F-D25-031] Data-residency selector -- PLANNED
+- [F-D25-032] Cross-border transfer log -- PLANNED
+- [F-D25-033] Expansion market assessment -- NOT_STARTED
+- [F-D25-034] Partner onboarding (new country) -- NOT_STARTED
+- [F-D25-035] Global admin dashboard -- NOT_STARTED
+- [F-D25-037] Config change approval -- PLANNED
+- [F-D25-039] Capacity planner -- NOT_STARTED
+- [F-D25-040] Decommissioning workflow -- PLANNED

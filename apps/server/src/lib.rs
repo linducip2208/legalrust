@@ -1313,6 +1313,35 @@ async fn matters_csv(
     Ok((StatusCode::OK, h, csv))
 }
 
+async fn clients_csv(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .core
+        .list_clients(&u.claims.org)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    let mut csv = String::from("id,display_name,kind\n");
+    for c in &v {
+        csv.push_str(&format!(
+            "{},{},{}\n",
+            c.id,
+            csv_field(&c.display_name),
+            csv_field(&c.kind)
+        ));
+    }
+    let mut h = HeaderMap::new();
+    h.insert(
+        "content-type",
+        HeaderValue::from_static("text/csv; charset=utf-8"),
+    );
+    Ok((StatusCode::OK, h, csv))
+}
+
 async fn webhook_in(
     State(s): State<FullState>,
     headers: HeaderMap,
@@ -3492,6 +3521,7 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/invoices/{id}/payments", post(pay_add))
         .route("/api/v1/invoices/{id}/pay-gateway", post(pay_gateway))
         .route("/api/v1/reports/matters-csv", get(matters_csv))
+        .route("/api/v1/clients.csv", get(clients_csv))
         .route("/api/v1/webhooks/incoming/{provider}", post(webhook_in))
         .route("/api/v1/integrations", get(integrations))
         .route("/api/v1/auth/tokens", post(token_create).get(token_list))
