@@ -75,3 +75,7 @@
 - Marketing admin API (23 routes) + 10 tests; workspace **197 passed, 0 failed**.
 - Fix TIMESTAMP decode panic (DATE_FORMAT/UNIX_TIMESTAMP); /orgs/me 200.
 - Mobile overflow fixed + verified; server logging ke logs/autonomous/.
+
+## 2026-11-18 — marketing admin UI + Wave 6 verify (main)
+- Tab Marketing ke-5 di /app: pipeline leads (filter/advance/assign/notes), demo, kontak, newsletter, pricing toggle, FAQ add, articles publish, CSV export — semua via /api/v1/admin/*, 401 → /login.
+- Workspace **203 passed, 0 failed** (server API 65). F-MKTADMIN DONE.
