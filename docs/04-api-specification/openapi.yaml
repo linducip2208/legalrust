@@ -34,3 +34,19 @@ paths:
   /api/v1/invoices/{id}/payments: { post: { responses: { '200': { description: recorded }, '409': { description: overpayment } } } }
   /api/v1/webhooks/incoming/{provider}: { post: { responses: { '202': { description: accepted }, '401': { description: bad signature }, '501': { description: secret not configured } } } }
   /api/v1/integrations: { get: { responses: { '200': { description: provider list, no secrets } } } }
+  /api/v1/auth/tokens: { post: { responses: { '200': { description: plaintext shown once } } }, get: { responses: { '200': { description: list without secrets } } } }
+  /api/v1/auth/tokens/{id}: { delete: { responses: { '200': { description: revoked } } } }
+  /api/v1/auth/password: { post: { responses: { '200': { description: changed } } } }
+  /api/v1/users/{uid}/roles: { post: { responses: { '200': { description: assigned } } } }
+  /api/v1/notifications: { get: { responses: { '200': { description: own inbox } } } }
+  /api/v1/documents/{id}/shares: { post: { responses: { '200': { description: share token+url } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/shares/{id}: { delete: { responses: { '200': { description: revoked } } } }
+  /api/v1/shared/{token}: { get: { responses: { '200': { description: public metadata, expiry-checked } } } }
+  /api/v1/reports/matters.csv: { get: { responses: { '200': { description: csv export } } } }
+  /api/v1/audit: { get: { responses: { '200': { description: auditor/owner role-gated log } } } }
+  /api/v1/jobs: { post: { responses: { '200': { description: enqueued } } }, get: { responses: { '200': { description: list } } } }
+  /api/v1/trust/accounts: { post: { responses: { '200': { description: escrow account } } }, get: { responses: { '200': { description: list with balances } } } }
+  /api/v1/trust/accounts/{id}: { get: { responses: { '200': { description: account+entries } } } }
+  /api/v1/trust/accounts/{id}/entries: { post: { responses: { '200': { description: posted }, '409': { description: insufficient balance } } } }
+  /api/v1/trust/transfer: { post: { responses: { '200': { description: double-entry legs } } } }
+  /api/v1/events: { get: { responses: { '200': { description: text/event-stream, opens with hello } } } }

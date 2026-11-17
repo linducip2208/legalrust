@@ -63,6 +63,39 @@ impl ObjectStore for S3Store {
         ))
     }
 }
+/// Build a deterministic object key for a document blob (pure).
+///
+/// Shape: `orgs/<org>/docs/<doc_id>/<file>`, with path separators and
+/// `..` collapsed to `_` so keys stay flat and traversal-safe.
+pub fn key_for_doc(org: &str, doc_id: &str, filename: &str) -> String {
+    fn clean(s: &str) -> String {
+        let mut out: String = s
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        while out.contains("__") {
+            out = out.replace("__", "_");
+        }
+        let t = out.trim_matches(|c| c == '_' || c == '.');
+        if t.is_empty() {
+            "unnamed".into()
+        } else {
+            t.into()
+        }
+    }
+    format!(
+        "orgs/{}/docs/{}/{}",
+        clean(org),
+        clean(doc_id),
+        clean(filename)
+    )
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,5 +108,12 @@ mod tests {
         s.delete("a/b").await.unwrap();
         assert!(s.get("a/b").await.is_err());
         tokio::fs::remove_dir_all(&dir).await.ok();
+    }
+    #[test]
+    fn key_for_doc_is_scoped() {
+        assert_eq!(
+            super::key_for_doc("org 1", "doc/2", "akta.pdf"),
+            "orgs/org_1/docs/doc_2/akta.pdf"
+        );
     }
 }

@@ -11,6 +11,8 @@ struct Inner {
     tasks: HashMap<i64, TaskRow>,
     docs: HashMap<i64, DocRow>,
     versions: HashMap<i64, Vec<DocVersionRow>>,
+    roles: HashMap<String, Vec<String>>,
+    tokens: HashMap<String, (String, String, String)>,
     seq: i64,
     org_seq: u64,
 }
@@ -46,6 +48,7 @@ impl UserStore for MemoryStores {
                 status: "active".into(),
             },
         );
+        m.roles.insert(uid.clone(), vec!["org_owner".into()]);
         Ok((org, uid))
     }
     async fn find_by_email(&self, email: &str) -> Result<Option<UserRow>, StoreError> {
@@ -80,6 +83,78 @@ impl UserStore for MemoryStores {
             }
             None => Err(StoreError::NotFound),
         }
+    }
+    async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError> {
+        Ok(self.inner.lock().unwrap().users.get(id).cloned())
+    }
+    async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .users
+            .get_mut(id)
+            .map(|u| u.pw_hash = hash.into())
+            .ok_or(StoreError::NotFound)
+    }
+    async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .roles
+            .get(id)
+            .cloned()
+            .unwrap_or_default())
+    }
+    async fn assign_role(&self, _org: &str, user_id: &str, role: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.users.contains_key(user_id) {
+            return Err(StoreError::NotFound);
+        }
+        m.roles.entry(user_id.into()).or_default().push(role.into());
+        Ok(())
+    }
+    async fn create_token(
+        &self,
+        user_id: &str,
+        name: &str,
+        hash: &str,
+    ) -> Result<String, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.users.contains_key(user_id) {
+            return Err(StoreError::NotFound);
+        }
+        let id = uuid::Uuid::new_v4().to_string();
+        m.tokens
+            .insert(hash.into(), (id.clone(), user_id.into(), name.into()));
+        Ok(id)
+    }
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .tokens
+            .iter()
+            .filter(|(_, (_, u, _))| u == user_id)
+            .map(|(_, (id, _, n))| (id.clone(), n.clone()))
+            .collect())
+    }
+    async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let k = m
+            .tokens
+            .iter()
+            .find(|(_, (i, u, _))| i == id && u == user_id)
+            .map(|(k, _)| k.clone())
+            .ok_or(StoreError::NotFound)?;
+        m.tokens.remove(&k);
+        Ok(())
+    }
+    async fn token_owner(&self, hash: &str) -> Result<Option<(String, String)>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        let hit = m.tokens.get(hash).map(|(_, u, _)| u.clone());
+        Ok(hit.and_then(|u| m.users.get(&u).map(|x| (u.clone(), x.org_id.clone()))))
     }
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError> {
         let now = chrono::Utc::now().naive_utc();

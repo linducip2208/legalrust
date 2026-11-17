@@ -47,13 +47,29 @@ impl UserStore for MysqlStores {
         .execute(&mut *tx)
         .await
         .map_err(db_err)?;
-        sqlx::query("INSERT INTO roles (org_id, name) VALUES (?,?)")
+        for rn in [
+            "super_admin",
+            "org_owner",
+            "office_admin",
+            "notary",
+            "ppat",
+            "lawyer",
+            "legal_staff",
+            "document_officer",
+            "finance_officer",
+            "auditor",
+            "client",
+            "reviewer",
+        ] {
+            sqlx::query("INSERT INTO roles (org_id, name) VALUES (?,?)")
+                .bind(&org)
+                .bind(rn)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        let rid: u64 = sqlx::query("SELECT id FROM roles WHERE org_id=? AND name='org_owner'")
             .bind(&org)
-            .bind("org_owner")
-            .execute(&mut *tx)
-            .await
-            .map_err(db_err)?;
-        let rid: u64 = sqlx::query("SELECT LAST_INSERT_ID() AS id")
             .fetch_one(&mut *tx)
             .await
             .map_err(db_err)?
@@ -124,6 +140,119 @@ impl UserStore for MysqlStores {
         Ok(
             matches!(r, Some(x) if !x.get::<bool, _>("revoked") && x.get::<chrono::NaiveDateTime, _>("expires_at") > chrono::Utc::now().naive_utc()),
         )
+    }
+    async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError> {
+        let r = sqlx::query(
+            "SELECT id, org_id, email, password_hash, full_name, status FROM users WHERE id=?",
+        )
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.map(|x| UserRow {
+            id: x.get::<String, _>("id"),
+            org_id: x.get::<String, _>("org_id"),
+            email: x.get::<String, _>("email"),
+            name: x.get::<String, _>("full_name"),
+            pw_hash: x.get::<String, _>("password_hash"),
+            status: x.get::<String, _>("status"),
+        }))
+    }
+    async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE users SET password_hash=? WHERE id=?")
+            .bind(hash)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id=r.id WHERE ur.user_id=?",
+        )
+        .bind(id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| x.get::<String, _>("name"))
+            .collect())
+    }
+    async fn assign_role(&self, org: &str, user_id: &str, role: &str) -> Result<(), StoreError> {
+        let r = sqlx::query("SELECT id FROM roles WHERE org_id=? AND name=?")
+            .bind(org)
+            .bind(role)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .ok_or_else(|| StoreError::Conflict("unknown role".into()))?;
+        let rid: u64 = r.try_get("id").map_err(|e| StoreError::Db(e.to_string()))?;
+        sqlx::query("INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?,?)")
+            .bind(user_id)
+            .bind(rid)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn create_token(
+        &self,
+        user_id: &str,
+        name: &str,
+        hash: &str,
+    ) -> Result<String, StoreError> {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query("INSERT INTO api_tokens (id, user_id, name, token_hash) VALUES (?,?,?,?)")
+            .bind(&id)
+            .bind(user_id)
+            .bind(name)
+            .bind(hash)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(id)
+    }
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, name FROM api_tokens WHERE user_id=? AND revoked=0 ORDER BY created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| (x.get::<String, _>("id"), x.get::<String, _>("name")))
+            .collect())
+    }
+    async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE api_tokens SET revoked=1 WHERE id=? AND user_id=?")
+            .bind(id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn token_owner(&self, hash: &str) -> Result<Option<(String, String)>, StoreError> {
+        let r = sqlx::query(
+            "SELECT u.id, u.org_id FROM api_tokens t JOIN users u ON u.id=t.user_id WHERE t.token_hash=? AND t.revoked=0 AND (t.expires_at IS NULL OR t.expires_at > NOW())",
+        )
+        .bind(hash)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.map(|x| (x.get::<String, _>("id"), x.get::<String, _>("org_id"))))
     }
 }
 #[async_trait::async_trait]

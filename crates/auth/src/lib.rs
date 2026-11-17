@@ -109,12 +109,13 @@ pub async fn register(
         .create_session(&uid, exp_dt)
         .await
         .map_err(map_store)?;
+    let roles = store.user_roles(&uid).await.map_err(map_store)?;
     let token = issue_token(
         secret,
         &Claims {
             sub: uid.clone(),
             org: org_id.clone(),
-            roles: vec!["org_owner".into()],
+            roles,
             sid: sid.clone(),
             exp,
         },
@@ -148,12 +149,13 @@ pub async fn login(
         .create_session(&u.id, exp_dt)
         .await
         .map_err(map_store)?;
+    let roles = store.user_roles(&u.id).await.map_err(map_store)?;
     let token = issue_token(
         secret,
         &Claims {
             sub: u.id.clone(),
             org: u.org_id.clone(),
-            roles: vec!["org_owner".into()],
+            roles,
             sid: sid.clone(),
             exp,
         },
@@ -165,6 +167,79 @@ pub async fn login(
         token,
         session_id: sid,
     })
+}
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
+
+/// In-memory brute-force guard keyed by IP (or any caller-chosen key).
+#[derive(Debug)]
+pub struct LoginGuard {
+    max_attempts: u32,
+    window: Duration,
+    lock_for: Duration,
+    failures: HashMap<String, Vec<Instant>>,
+    locked_until: HashMap<String, Instant>,
+}
+
+impl Default for LoginGuard {
+    fn default() -> Self {
+        Self::new(5, 300, 900)
+    }
+}
+
+impl LoginGuard {
+    pub fn new(max_attempts: u32, window_secs: u64, lock_secs: u64) -> Self {
+        Self {
+            max_attempts: max_attempts.max(1),
+            window: Duration::from_secs(window_secs),
+            lock_for: Duration::from_secs(lock_secs),
+            failures: HashMap::new(),
+            locked_until: HashMap::new(),
+        }
+    }
+
+    fn prune(&mut self, key: &str, now: Instant) {
+        if let Some(v) = self.failures.get_mut(key) {
+            v.retain(|t| now.duration_since(*t) < self.window);
+        }
+    }
+
+    /// Record a failure for `key`. Returns `true` when the key is (now) locked.
+    pub fn register_failure(&mut self, key: &str) -> bool {
+        let now = Instant::now();
+        if self.is_locked(key) {
+            return true;
+        }
+        self.prune(key, now);
+        let entry = self.failures.entry(key.to_string()).or_default();
+        entry.push(now);
+        if entry.len() as u32 >= self.max_attempts {
+            self.locked_until
+                .insert(key.to_string(), now + self.lock_for);
+            return true;
+        }
+        false
+    }
+
+    /// Returns `true` while the key remains locked. Expired locks are evicted.
+    pub fn is_locked(&mut self, key: &str) -> bool {
+        let now = Instant::now();
+        match self.locked_until.get(key).copied() {
+            Some(until) if now < until => true,
+            Some(_) => {
+                self.locked_until.remove(key);
+                self.failures.remove(key);
+                false
+            }
+            None => false,
+        }
+    }
+
+    /// Clear failures and any lock for `key`.
+    pub fn reset(&mut self, key: &str) {
+        self.failures.remove(key);
+        self.locked_until.remove(key);
+    }
 }
 #[cfg(test)]
 mod tests {
@@ -203,5 +278,30 @@ mod tests {
         assert!(register(&s, b"", "Acme", "b@x.id", "Bud", "password1")
             .await
             .is_err());
+    }
+    #[test]
+    fn guard_locks_after_max_attempts() {
+        let mut g = LoginGuard::new(3, 300, 900);
+        assert!(!g.register_failure("1.1.1.1"));
+        assert!(!g.register_failure("1.1.1.1"));
+        assert!(g.register_failure("1.1.1.1"));
+        assert!(g.is_locked("1.1.1.1"));
+        assert!(!g.is_locked("2.2.2.2"));
+    }
+    #[test]
+    fn guard_unlocks_after_lock_expiry() {
+        let mut g = LoginGuard::new(1, 300, 0);
+        assert!(g.register_failure("9.9.9.9"));
+        assert!(!g.is_locked("9.9.9.9"));
+    }
+    #[test]
+    fn guard_reset_clears_lock() {
+        let mut g = LoginGuard::new(2, 300, 900);
+        assert!(!g.register_failure("3.3.3.3"));
+        assert!(g.register_failure("3.3.3.3"));
+        assert!(g.is_locked("3.3.3.3"));
+        g.reset("3.3.3.3");
+        assert!(!g.is_locked("3.3.3.3"));
+        assert!(!g.register_failure("3.3.3.3"));
     }
 }

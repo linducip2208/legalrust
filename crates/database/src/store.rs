@@ -68,6 +68,19 @@ pub trait UserStore: Send + Sync {
     ) -> Result<String, StoreError>;
     async fn revoke_session(&self, sid: &str) -> Result<(), StoreError>;
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError>;
+    async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError>;
+    async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError>;
+    async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError>;
+    async fn assign_role(&self, org: &str, user_id: &str, role: &str) -> Result<(), StoreError>;
+    async fn create_token(
+        &self,
+        user_id: &str,
+        name: &str,
+        hash: &str,
+    ) -> Result<String, StoreError>;
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError>;
+    async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError>;
+    async fn token_owner(&self, hash: &str) -> Result<Option<(String, String)>, StoreError>;
 }
 #[async_trait::async_trait]
 pub trait CoreStore: Send + Sync {

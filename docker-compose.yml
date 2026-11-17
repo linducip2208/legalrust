@@ -1,6 +1,31 @@
 services:
-  mysql: { image: "mysql:8.4", environment: { MYSQL_ROOT_PASSWORD: legalrust, MYSQL_DATABASE: legalrust }, ports: ["3306:3306"], volumes: ["mysql-data:/var/lib/mysql"] }
-  redis: { image: "redis:7-alpine", ports: ["6379:6379"] }
-  minio: { image: "minio/minio:latest", command: server /data, environment: { MINIO_ROOT_USER: legalrust, MINIO_ROOT_PASSWORD: legalrust123 }, ports: ["9000:9000"] }
-  nats: { image: "nats:2-alpine", ports: ["4222:4222"] }
+  mysql:
+    image: "mysql:8.4"
+    environment:
+      MYSQL_ROOT_PASSWORD: legalrust
+      MYSQL_DATABASE: legalrust
+    ports: ["3306:3306"]
+    volumes: ["mysql-data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+  redis:
+    image: "redis:7-alpine"
+    ports: ["6379:6379"]
+  minio:
+    image: "minio/minio:latest"
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: legalrust
+      MINIO_ROOT_PASSWORD: legalrust123
+    ports: ["9000:9000"]
+  nats:
+    image: "nats:2-alpine"
+    ports: ["4222:4222"]
+  # NOTE: backups run out-of-band via scripts/backup.sh (cron/systemd timer),
+  # not as a long-lived compose service. See scripts/backup.sh + docs/16-disaster-recovery/DR-RUNBOOK.md.
+  # Example one-shot backup: `docker compose run --rm -e DB_PASSWORD=... -e S3_ENDPOINT=... backup` (define service when needed).
 volumes: { mysql-data: {} }

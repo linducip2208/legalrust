@@ -477,3 +477,515 @@ async fn webhook_verify_and_rate_limit() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::TOO_MANY_REQUESTS);
 }
+
+async fn mk_deed(app: &axum::Router, tok: &str) -> i64 {
+    use tower::ServiceExt;
+    let mid = mk_matter(app, tok).await;
+    let res = app
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-templates",
+            r#"{"name":"AJB","body":"Pada hari ini {{hari}}."}"#,
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = app.clone().oneshot(post("/api/v1/deeds/from-template", &format!(r#"{{"template_id":{tid},"matter_id":{mid},"number":"D-9","deed_type":"ajb","variables":{{"hari":"Senin"}}}}"#), Some(tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    body_json(res).await["id"].as_i64().unwrap()
+}
+
+#[tokio::test]
+async fn esign_stub_returns_501() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "esign@x.id").await;
+    let did = mk_deed(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/deeds/{did}/esign"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
+    let j = body_json(res).await;
+    assert_eq!(j["error"]["code"].as_str().unwrap(), "EXTERNAL_BLOCKED");
+    assert!(j["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("PSrE provider not configured"));
+}
+
+#[tokio::test]
+async fn deed_detail_returns_200() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "deedget@x.id").await;
+    let did = mk_deed(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/deeds/{did}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["id"].as_i64().unwrap(), did);
+    assert_eq!(j["number"].as_str().unwrap(), "D-9");
+    assert_eq!(j["state"].as_str().unwrap(), "draft");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/deeds/999999", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn pay_gateway_stub_returns_501() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "paygw@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":500000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/pay-gateway"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
+    let j = body_json(res).await;
+    assert!(j["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("billing gateway not configured"));
+}
+
+#[tokio::test]
+async fn matters_csv_export_returns_csv() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "csv@x.id").await;
+    let _ = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/matters-csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ctype = res
+        .headers()
+        .get("content-type")
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(ctype.contains("text/csv"), "content-type was {ctype}");
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(bytes.to_vec()).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(lines.next().unwrap(), "id,number,title,status");
+    let first = lines.next().expect("one matter row");
+    assert!(first.contains("M-"), "row was {first}");
+    assert!(first.contains("M1"), "row was {first}");
+}
+
+#[tokio::test]
+async fn login_lockout_after_5_bad_attempts() {
+    use tower::ServiceExt;
+    let a = app();
+    let email = "locked@x.id";
+    let _ = reg(&a, email).await;
+    let mut statuses = Vec::new();
+    for _ in 0..6 {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/auth/login",
+                &format!(r#"{{"email":"{email}","password":"wrongpass1"}}"#),
+                None,
+            ))
+            .await
+            .unwrap();
+        statuses.push(res.status());
+    }
+    assert_eq!(statuses[0], StatusCode::UNAUTHORIZED);
+    assert_eq!(statuses[3], StatusCode::UNAUTHORIZED);
+    assert_eq!(statuses[4], StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(statuses[5], StatusCode::TOO_MANY_REQUESTS);
+}
+
+#[tokio::test]
+async fn security_headers_present() {
+    use tower::ServiceExt;
+    let res = app()
+        .oneshot(
+            Request::builder()
+                .uri("/healthz")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let h = res.headers();
+    assert_eq!(
+        h.get("content-security-policy").unwrap(),
+        "default-src 'self'"
+    );
+    assert!(h.contains_key("strict-transport-security"));
+    assert!(h.contains_key("x-request-id"));
+    assert_eq!(h.get("x-content-type-options").unwrap(), "nosniff");
+}
+
+#[tokio::test]
+async fn ocr_supported_lists_doc_types() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "supported@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/supported", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let arr = j.as_array().unwrap();
+    assert!(arr.iter().any(|v| v.as_str() == Some("ktp")));
+    assert!(arr.iter().any(|v| v.as_str() == Some("general")));
+    // unauthenticated access is rejected (auth required)
+    let res = a
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/ocr/supported")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn unknown_route_is_404() {
+    use tower::ServiceExt;
+    let res = app()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/nope-missing")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn tokens_password_roles_notifications() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sec@x.id").await;
+    // api token
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/auth/tokens", r#"{"name":"ci"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let plain = j["token"].as_str().unwrap().to_string();
+    let tid = j["id"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &plain))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // revoke -> dead
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/auth/tokens/{tid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &plain))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // password change
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/password",
+            r#"{"current_password":"password1","new_password":"password2"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"sec@x.id","password":"password2"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // roles: assign lawyer to self (org_owner assigning)
+    let me = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let uid = me["user_id"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{uid}/roles"),
+            r#"{"role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r == "lawyer"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{uid}/roles"),
+            r#"{"role":"nope"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // notifications from matter creation
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications", &tok))
+        .await
+        .unwrap();
+    let notifs = body_json(res).await;
+    assert!(notifs.as_array().unwrap().is_empty());
+    let _ = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications", &tok))
+        .await
+        .unwrap();
+    let notifs = body_json(res).await;
+    assert_eq!(notifs.as_array().unwrap().len(), 1);
+    let nid = notifs[0]["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/notifications/{nid}/read"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn shares_reports_audit_jobs_trust_sse() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ops@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // document + share link
+    let content = b"public report content for sharing";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"r.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let req = Request::builder()
+        .uri(format!("/api/v1/documents/{did}/content"))
+        .method("PUT")
+        .header(
+            "authorization",
+            format!("Bearer {tok}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::from(content.to_vec()))
+        .unwrap();
+    assert_eq!(
+        a.clone().oneshot(req).await.unwrap().status(),
+        StatusCode::OK
+    );
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/shares"),
+            r#"{"hours":24}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let share_tok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // public access without auth
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/shared/{share_tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/shared/{share_tok}/content"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert_eq!(&body[..], content);
+    // reports + audit
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/matters.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=matter", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+    // jobs
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/jobs",
+            r#"{"kind":"notify.digest"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a.clone().oneshot(get("/api/v1/jobs", &tok)).await.unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // trust ledger
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Trust Client","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/accounts",
+            &format!(r#"{{"client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"credit","amount_minor":1000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"debit","amount_minor":400000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"debit","amount_minor":700000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/trust/accounts/{aid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["balance"].as_i64().unwrap(), 600000);
+    // SSE first event
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/events", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["content-type"], "text/event-stream");
+}

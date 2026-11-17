@@ -12,8 +12,11 @@ spec:
           image: legalrust-server:0.1.0
           ports: [{ containerPort: 8080 }]
           envFrom: [{ secretRef: { name: legalrust-env } }]
-          readinessProbe: { httpGet: { path: /readyz, port: 8080 }, periodSeconds: 15 }
-          livenessProbe: { httpGet: { path: /healthz, port: 8080 }, periodSeconds: 30 }
+          readinessProbe: { httpGet: { path: /readyz, port: 8080 }, periodSeconds: 15, timeoutSeconds: 5, successThreshold: 1, failureThreshold: 3, initialDelaySeconds: 10 }
+          livenessProbe: { httpGet: { path: /healthz, port: 8080 }, periodSeconds: 30, timeoutSeconds: 5, successThreshold: 1, failureThreshold: 3, initialDelaySeconds: 20 }
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 1Gi }
 ---
 apiVersion: v1
 kind: Service

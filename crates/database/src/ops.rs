@@ -49,10 +49,64 @@ pub struct PaymentRow {
     pub method: String,
 }
 #[derive(Debug, Clone)]
+pub struct TrustAccountRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub currency: String,
+    pub balance: i64,
+}
+#[derive(Debug, Clone)]
+pub struct TrustEntryRow {
+    pub id: i64,
+    pub org: String,
+    pub account_id: i64,
+    pub matter_id: Option<i64>,
+    pub kind: String,
+    pub amount: i64,
+    pub ref_type: String,
+    pub ref_id: i64,
+    pub created_by: String,
+}
+#[derive(Debug, Clone)]
 pub struct RagHit {
     pub doc_id: i64,
     pub idx: i64,
     pub text: String,
+}
+#[derive(Debug, Clone)]
+pub struct NotifRow {
+    pub id: i64,
+    pub kind: String,
+    pub title: String,
+    pub read: bool,
+}
+#[derive(Debug, Clone)]
+pub struct ShareRow {
+    pub id: i64,
+    pub org: String,
+    pub doc: i64,
+    pub token: String,
+    pub expires: String,
+    pub revoked: bool,
+}
+#[derive(Debug, Clone)]
+pub struct JobRow {
+    pub id: i64,
+    pub org: String,
+    pub kind: String,
+    pub payload: String,
+    pub status: String,
+    pub attempts: i64,
+}
+#[derive(Debug, Clone)]
+pub struct AuditRow {
+    pub id: i64,
+    pub actor: Option<String>,
+    pub action: String,
+    pub entity: String,
+    pub entity_id: i64,
+    pub created: String,
 }
 #[async_trait::async_trait]
 pub trait OpsStore: Send + Sync {
@@ -118,4 +172,78 @@ pub trait OpsStore: Send + Sync {
         amount: i64,
         method: &str,
     ) -> Result<PaymentRow, StoreError>;
+    async fn notify(
+        &self,
+        org: &str,
+        user: &str,
+        kind: &str,
+        title: &str,
+        body: Option<&str>,
+    ) -> Result<i64, StoreError>;
+    async fn notify_list(&self, user: &str) -> Result<Vec<NotifRow>, StoreError>;
+    async fn notify_read(&self, user: &str, id: i64) -> Result<(), StoreError>;
+    async fn share_create(
+        &self,
+        org: &str,
+        doc: i64,
+        token: &str,
+        hours: i64,
+    ) -> Result<i64, StoreError>;
+    async fn share_list(&self, org: &str, doc: i64) -> Result<Vec<ShareRow>, StoreError>;
+    async fn share_get(&self, token: &str) -> Result<Option<ShareRow>, StoreError>;
+    async fn share_revoke(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn job_enqueue(&self, org: &str, kind: &str, payload: &str) -> Result<i64, StoreError>;
+    async fn job_list(&self, org: &str) -> Result<Vec<JobRow>, StoreError>;
+    async fn job_claim(&self) -> Result<Option<JobRow>, StoreError>;
+    async fn job_done(&self, id: i64, ok: bool, note: &str) -> Result<(), StoreError>;
+    async fn audit_list(
+        &self,
+        org: &str,
+        entity: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<AuditRow>, StoreError>;
+    async fn audit_add(
+        &self,
+        tenant: &str,
+        actor: Option<&str>,
+        action: &str,
+        entity: &str,
+        entity_id: i64,
+    ) -> Result<(), StoreError>;
+    async fn trust_create_account(
+        &self,
+        org: &str,
+        client_id: i64,
+        currency: &str,
+    ) -> Result<TrustAccountRow, StoreError>;
+    async fn trust_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(TrustAccountRow, Vec<TrustEntryRow>), StoreError>;
+    async fn trust_list(&self, org: &str) -> Result<Vec<TrustAccountRow>, StoreError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn trust_post(
+        &self,
+        org: &str,
+        account: i64,
+        matter: Option<i64>,
+        kind: &str,
+        amount: i64,
+        ref_type: &str,
+        ref_id: i64,
+        created_by: &str,
+    ) -> Result<TrustEntryRow, StoreError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn trust_transfer(
+        &self,
+        org: &str,
+        from: i64,
+        to: i64,
+        amount: i64,
+        matter: Option<i64>,
+        ref_type: &str,
+        ref_id: i64,
+        created_by: &str,
+    ) -> Result<(TrustEntryRow, TrustEntryRow), StoreError>;
 }

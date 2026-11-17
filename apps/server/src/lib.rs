@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, Query, State},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
     response::IntoResponse,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use legalrust_application::{ApiResponse, AppError};
@@ -30,6 +30,10 @@ use validator::Validate;
 
 const REQUEST_ID_HEADER: &str = "x-request-id";
 const MAX_UPLOAD: u64 = 50 * 1024 * 1024;
+
+// Auth brute-force guard: max failed logins per email inside a fixed window.
+const LOGIN_MAX_ATTEMPTS: u32 = 5;
+const LOGIN_LOCK_WINDOW: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Clone)]
 pub struct RateLimiter {
@@ -68,6 +72,9 @@ pub struct Stores {
     pub integration_secret: Vec<u8>,
     pub integrations: Vec<String>,
     pub limiter: RateLimiter,
+    pub events: tokio::sync::broadcast::Sender<String>,
+    /// Failed-login counter keyed by normalized email: (attempts, window_start).
+    pub login_failures: Arc<std::sync::Mutex<HashMap<String, (u32, Instant)>>>,
 }
 impl Stores {
     pub fn new(
@@ -77,6 +84,7 @@ impl Stores {
         objects: Arc<dyn ObjectStore>,
         jwt_secret: Vec<u8>,
     ) -> Self {
+        let (events, _) = tokio::sync::broadcast::channel(64);
         Self {
             users,
             core,
@@ -86,8 +94,26 @@ impl Stores {
             integration_secret: Vec::new(),
             integrations: vec!["dukcapil".into(), "bpn".into(), "psre".into()],
             limiter: RateLimiter::new(20),
+            events,
+            login_failures: Arc::new(std::sync::Mutex::new(HashMap::new())),
         }
     }
+}
+fn login_locked(stores: &Stores, email: &str) -> bool {
+    match stores.login_failures.lock().unwrap().get(email) {
+        Some((n, t)) => *n >= LOGIN_MAX_ATTEMPTS && t.elapsed() < LOGIN_LOCK_WINDOW,
+        None => false,
+    }
+}
+fn login_note_failure(stores: &Stores, email: &str) -> u32 {
+    let mut m = stores.login_failures.lock().unwrap();
+    let now = Instant::now();
+    let e = m.entry(email.to_string()).or_insert((0, now));
+    if now.duration_since(e.1) >= LOGIN_LOCK_WINDOW {
+        *e = (0, now);
+    }
+    e.0 += 1;
+    e.0
 }
 #[derive(Clone)]
 pub struct FullState {
@@ -106,18 +132,45 @@ async fn auth_user(headers: &HeaderMap, state: &FullState) -> Result<AuthUser, A
         .to_str()
         .map_err(|_| AppError::Unauthorized)?;
     let tok = v.strip_prefix("Bearer ").ok_or(AppError::Unauthorized)?;
-    let claims = legalrust_auth::validate_token(&state.stores.jwt_secret, tok)
-        .map_err(|_| AppError::Unauthorized)?;
-    if !state
-        .stores
-        .users
-        .session_live(&claims.sid)
-        .await
-        .unwrap_or(false)
-    {
-        return Err(AppError::Unauthorized);
+    match legalrust_auth::validate_token(&state.stores.jwt_secret, tok) {
+        Ok(claims) => {
+            if !state
+                .stores
+                .users
+                .session_live(&claims.sid)
+                .await
+                .unwrap_or(false)
+            {
+                return Err(AppError::Unauthorized);
+            }
+            Ok(AuthUser { claims })
+        }
+        Err(_) => {
+            let h = legalrust_document::sha256_hex(tok.as_bytes());
+            let (uid, org) = state
+                .stores
+                .users
+                .token_owner(&h)
+                .await
+                .map_err(|_| AppError::Unauthorized)?
+                .ok_or(AppError::Unauthorized)?;
+            let roles = state
+                .stores
+                .users
+                .user_roles(&uid)
+                .await
+                .map_err(|_| AppError::Unauthorized)?;
+            Ok(AuthUser {
+                claims: Claims {
+                    sub: uid,
+                    org,
+                    roles,
+                    sid: "api-token".into(),
+                    exp: usize::MAX,
+                },
+            })
+        }
     }
-    Ok(AuthUser { claims })
 }
 fn authorize(user: &AuthUser, perm: Permission) -> Result<(), AppError> {
     if user
@@ -132,9 +185,20 @@ fn authorize(user: &AuthUser, perm: Permission) -> Result<(), AppError> {
         Err(AppError::Forbidden)
     }
 }
-async fn audit(pool: &Option<sqlx::MySqlPool>, e: AuditEvent) {
+async fn audit(pool: &Option<sqlx::MySqlPool>, stores: &Stores, e: AuditEvent) {
     if let Some(p) = pool {
         let _ = legalrust_audit::record(p, &e).await;
+    } else {
+        let _ = stores
+            .ops
+            .audit_add(
+                &e.tenant_id,
+                e.actor_id.as_deref(),
+                &e.action,
+                &e.entity,
+                e.entity_id,
+            )
+            .await;
     }
 }
 
@@ -176,6 +240,7 @@ async fn register(
     .await?;
     audit(
         &s.pool,
+        &s.stores,
         AuditEvent {
             tenant_id: r.org_id.clone(),
             actor_id: Some(r.user_id.clone()),
@@ -199,16 +264,31 @@ async fn login(
     }
     b.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
-    let r: Session = legalrust_auth::login(
+    let email = b.email.trim().to_lowercase();
+    if login_locked(&s.stores, &email) {
+        return Err(AppError::RateLimited);
+    }
+    match legalrust_auth::login(
         s.stores.users.as_ref(),
         &s.stores.jwt_secret,
         &b.email,
         &b.password,
     )
-    .await?;
-    Ok(Json(
-        json!({"user_id": r.user_id, "org_id": r.org_id, "token": r.token}),
-    ))
+    .await
+    {
+        Ok(r) => {
+            s.stores.login_failures.lock().unwrap().remove(&email);
+            Ok(Json(
+                json!({"user_id": r.user_id, "org_id": r.org_id, "token": r.token}),
+            ))
+        }
+        Err(e) => {
+            if login_note_failure(&s.stores, &email) >= LOGIN_MAX_ATTEMPTS {
+                return Err(AppError::RateLimited);
+            }
+            Err(e)
+        }
+    }
 }
 async fn logout(State(s): State<FullState>, headers: HeaderMap) -> Result<Json<Value>, AppError> {
     let u = auth_user(&headers, &s).await?;
@@ -292,8 +372,17 @@ async fn create_matter(
         .create_matter(&u.claims.org, b.client_id, &number, &b.title)
         .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    notify_user(
+        &s,
+        &u.claims.org,
+        &u.claims.sub,
+        "matter",
+        &format!("Matter created: {}", m.number),
+    )
+    .await;
     audit(
         &s.pool,
+        &s.stores,
         AuditEvent {
             tenant_id: u.claims.org.clone(),
             actor_id: Some(u.claims.sub.clone()),
@@ -656,15 +745,38 @@ async fn ocr_process(
 ) -> Result<Json<Value>, AppError> {
     let u = auth_user(&headers, &s).await?;
     authorize(&u, Permission::Create)?;
-    let _ = s
+    let (job, _) = s
         .stores
         .ops
         .ocr_get(&u.claims.org, id)
         .await
         .map_err(map_store)?;
-    Err(AppError::BlockedExternal(
-        "no OCR engine available: native libtesseract missing, cloud fallback unconfigured".into(),
-    ))
+    // Estimate input size for honest logging (job stays queued; nothing processed).
+    let est_bytes: u64 = s
+        .stores
+        .core
+        .get_doc(&u.claims.org, job.doc)
+        .await
+        .map(|(d, _)| d.size)
+        .unwrap_or(0);
+    tracing::warn!(
+        job_id = id,
+        doc_type = %job.doc_type,
+        est_bytes,
+        "ocr process blocked: no OCR engine configured, job left queued"
+    );
+    Err(AppError::BlockedExternal(format!(
+        "ocr engine unavailable (job {id}, type {}, ~{est_bytes} bytes not processed); native libtesseract missing, cloud fallback unconfigured",
+        job.doc_type
+    )))
+}
+async fn ocr_supported(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    Ok(Json(json!(DOC_TYPES)))
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -829,6 +941,38 @@ async fn deed_transition(
         .map_err(map_store)?;
     Ok(Json(json!({"id": d.id, "state": d.state})))
 }
+async fn deed_get(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let d = s
+        .stores
+        .ops
+        .deed_list(&u.claims.org)
+        .await
+        .map_err(map_store)?
+        .into_iter()
+        .find(|d| d.id == id)
+        .ok_or_else(|| AppError::NotFound("deed".into()))?;
+    Ok(Json(
+        json!({"id": d.id, "matter_id": d.matter_id, "number": d.number, "deed_type": d.deed_type, "state": d.state}),
+    ))
+}
+async fn deed_esign(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Approve)?;
+    let _ = id;
+    Err(AppError::BlockedExternal(
+        "PSrE provider not configured".into(),
+    ))
+}
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
 struct ChatMsg {
@@ -986,6 +1130,14 @@ async fn inv_create(
         )
         .await
         .map_err(map_store)?;
+    notify_user(
+        &s,
+        &u.claims.org,
+        &u.claims.sub,
+        "invoice",
+        &format!("Invoice issued: {}", v.number),
+    )
+    .await;
     Ok(Json(json!({"id": v.id, "number": v.number})))
 }
 async fn inv_list(
@@ -1048,6 +1200,54 @@ async fn pay_add(
         .map_err(map_store)?;
     Ok(Json(json!({"id": p.id, "amount": p.amount})))
 }
+async fn pay_gateway(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    let _ = id;
+    Err(AppError::BlockedExternal(
+        "billing gateway not configured".into(),
+    ))
+}
+fn csv_field(v: &str) -> String {
+    if v.contains(',') || v.contains('"') || v.contains('\n') || v.contains('\r') {
+        format!("\"{}\"", v.replace('"', "\"\""))
+    } else {
+        v.to_string()
+    }
+}
+async fn matters_csv(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .core
+        .list_matters(&u.claims.org)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    let mut csv = String::from("id,number,title,status\n");
+    for m in &v {
+        csv.push_str(&format!(
+            "{},{},{},{}\n",
+            m.id,
+            csv_field(&m.number),
+            csv_field(&m.title),
+            csv_field(&m.status)
+        ));
+    }
+    let mut h = HeaderMap::new();
+    h.insert(
+        "content-type",
+        HeaderValue::from_static("text/csv; charset=utf-8"),
+    );
+    Ok((StatusCode::OK, h, csv))
+}
 
 async fn webhook_in(
     State(s): State<FullState>,
@@ -1074,6 +1274,7 @@ async fn webhook_in(
         .map_err(|_| AppError::Unauthorized)?;
     audit(
         &s.pool,
+        &s.stores,
         AuditEvent {
             tenant_id: "ext".into(),
             actor_id: None,
@@ -1101,6 +1302,552 @@ async fn integrations(
         .collect::<Vec<_>>())))
 }
 // ---------- end Phase 7-12 handlers ----------
+
+// ---------- Phase 11/12 final handlers ----------
+async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &str) {
+    let _ = s.stores.ops.notify(org, user, kind, title, None).await;
+    let _ = s.stores.events.send(format!("notify:{kind}"));
+}
+
+#[derive(Debug, Deserialize, Validate)]
+struct TokenReq {
+    #[validate(length(min = 2))]
+    name: String,
+}
+async fn token_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<TokenReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let raw = format!("lr_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
+    let hash = legalrust_document::sha256_hex(raw.as_bytes());
+    let id = s
+        .stores
+        .users
+        .create_token(&u.claims.sub, &b.name, &hash)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"id": id, "token": raw})))
+}
+async fn token_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    let v = s
+        .stores
+        .users
+        .list_tokens(&u.claims.sub)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|(id, n)| json!({"id": id, "name": n}))
+        .collect::<Vec<_>>())))
+}
+async fn token_revoke(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    s.stores
+        .users
+        .revoke_token(&u.claims.sub, &id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"revoked": true})))
+}
+
+#[derive(Debug, Deserialize, Validate)]
+struct PasswordReq {
+    #[validate(length(min = 8))]
+    current_password: String,
+    #[validate(length(min = 8))]
+    new_password: String,
+}
+async fn password_change(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<PasswordReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    if u.claims.sid == "api-token" {
+        return Err(AppError::Forbidden);
+    }
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let row = s
+        .stores
+        .users
+        .get_user(&u.claims.sub)
+        .await
+        .map_err(map_store)?
+        .ok_or(AppError::Unauthorized)?;
+    legalrust_auth::verify_password(&row.pw_hash, &b.current_password)
+        .map_err(|_| AppError::Unauthorized)?;
+    let hash = legalrust_auth::hash_password(&b.new_password)
+        .map_err(|_| AppError::Internal(anyhow::anyhow!("hash")))?;
+    s.stores
+        .users
+        .set_password(&u.claims.sub, &hash)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"changed": true})))
+}
+
+#[derive(Debug, Deserialize)]
+struct RoleReq {
+    role: String,
+}
+async fn user_assign_role(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(uid): Path<String>,
+    Json(b): Json<RoleReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Assign)?;
+    let role = legalrust_domain::Role::parse(&b.role)
+        .ok_or_else(|| AppError::Validation("role".into()))?;
+    s.stores
+        .users
+        .get_user(&uid)
+        .await
+        .map_err(map_store)?
+        .ok_or_else(|| AppError::NotFound("user".into()))?;
+    s.stores
+        .users
+        .assign_role(&u.claims.org, &uid, role.as_str())
+        .await
+        .map_err(map_store)?;
+    let roles = s.stores.users.user_roles(&uid).await.map_err(map_store)?;
+    Ok(Json(json!({"user_id": uid, "roles": roles})))
+}
+
+async fn notify_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    let v = s
+        .stores
+        .ops
+        .notify_list(&u.claims.sub)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|n| json!({"id": n.id, "kind": n.kind, "title": n.title, "read": n.read}))
+        .collect::<Vec<_>>())))
+}
+async fn notify_read(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    s.stores
+        .ops
+        .notify_read(&u.claims.sub, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"read": true})))
+}
+
+#[derive(Debug, Deserialize)]
+struct ShareReq {
+    hours: Option<i64>,
+}
+async fn share_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<ShareReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Share)?;
+    s.stores
+        .core
+        .get_doc(&u.claims.org, id)
+        .await
+        .map_err(|_| AppError::NotFound("document".into()))?;
+    let hours = b.hours.unwrap_or(72).clamp(1, 720);
+    let token = uuid::Uuid::new_v4().to_string();
+    s.stores
+        .ops
+        .share_create(&u.claims.org, id, &token, hours)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(
+        json!({"token": token, "url": format!("/api/v1/shared/{token}")}),
+    ))
+}
+async fn share_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .ops
+        .share_list(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|x| json!({"id": x.id, "token": x.token, "expires": x.expires, "revoked": x.revoked}))
+        .collect::<Vec<_>>())))
+}
+async fn share_revoke(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Share)?;
+    s.stores
+        .ops
+        .share_revoke(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"revoked": true})))
+}
+fn share_valid(expires: &str) -> bool {
+    for fmt in [
+        "%Y-%m-%d %H:%M:%S%.f",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%dT%H:%M:%S",
+    ] {
+        if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(expires, fmt) {
+            return dt > chrono::Utc::now().naive_utc();
+        }
+    }
+    if let Ok(epoch) = expires.parse::<i64>() {
+        return epoch > chrono::Utc::now().timestamp();
+    }
+    false
+}
+async fn shared_get(
+    State(s): State<FullState>,
+    Path(token): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    let sh = s
+        .stores
+        .ops
+        .share_get(&token)
+        .await
+        .map_err(map_store)?
+        .ok_or_else(|| AppError::NotFound("share".into()))?;
+    if sh.revoked || !share_valid(&sh.expires) {
+        return Err(AppError::NotFound("share".into()));
+    }
+    let (d, vs) = s
+        .stores
+        .core
+        .get_doc(&sh.org, sh.doc)
+        .await
+        .map_err(|_| AppError::NotFound("document".into()))?;
+    Ok(Json(
+        json!({"name": d.name, "mime": d.mime, "size": d.size, "versions": vs.len()}),
+    ))
+}
+async fn shared_content(
+    State(s): State<FullState>,
+    Path(token): Path<String>,
+) -> Result<impl IntoResponse, AppError> {
+    let sh = s
+        .stores
+        .ops
+        .share_get(&token)
+        .await
+        .map_err(map_store)?
+        .ok_or_else(|| AppError::NotFound("share".into()))?;
+    if sh.revoked || !share_valid(&sh.expires) {
+        return Err(AppError::NotFound("share".into()));
+    }
+    let (d, vs) = s
+        .stores
+        .core
+        .get_doc(&sh.org, sh.doc)
+        .await
+        .map_err(|_| AppError::NotFound("document".into()))?;
+    let v = vs
+        .last()
+        .ok_or_else(|| AppError::NotFound("content".into()))?;
+    let bytes = s.stores.objects.get(&v.object_key).await?;
+    let mut h = HeaderMap::new();
+    h.insert(
+        "content-type",
+        d.mime
+            .parse()
+            .unwrap_or(HeaderValue::from_static("application/octet-stream")),
+    );
+    Ok((StatusCode::OK, h, bytes))
+}
+
+async fn report_matters(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Export)?;
+    let v = s
+        .stores
+        .core
+        .list_matters(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    let mut rows = vec![vec![
+        "id".into(),
+        "number".into(),
+        "title".into(),
+        "status".into(),
+    ]];
+    for m in v {
+        rows.push(vec![m.id.to_string(), m.number, m.title, m.status]);
+    }
+    Ok((
+        [("content-type", "text/csv")],
+        legalrust_reporting::to_csv(&rows),
+    ))
+}
+
+#[derive(Debug, Deserialize)]
+struct AuditQ {
+    entity: Option<String>,
+    limit: Option<i64>,
+}
+async fn audit_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<AuditQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    let allowed = u
+        .claims
+        .roles
+        .iter()
+        .filter_map(|r| legalrust_domain::Role::parse(r))
+        .any(|r| {
+            matches!(
+                r,
+                legalrust_domain::Role::SuperAdmin
+                    | legalrust_domain::Role::OrgOwner
+                    | legalrust_domain::Role::OfficeAdmin
+                    | legalrust_domain::Role::Auditor
+            )
+        });
+    if !allowed {
+        return Err(AppError::Forbidden);
+    }
+    let v = s
+        .stores
+        .ops
+        .audit_list(
+            &u.claims.org,
+            q.entity.as_deref(),
+            q.limit.unwrap_or(100).clamp(1, 500),
+        )
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v.iter().map(|a| json!({"id": a.id, "actor": a.actor, "action": a.action, "entity": a.entity, "entity_id": a.entity_id, "created": a.created})).collect::<Vec<_>>())))
+}
+
+#[derive(Debug, Deserialize)]
+struct JobReq {
+    kind: String,
+    payload: Option<String>,
+}
+async fn job_enqueue(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<JobReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    if b.kind.trim().is_empty() {
+        return Err(AppError::Validation("kind".into()));
+    }
+    let id = s
+        .stores
+        .ops
+        .job_enqueue(&u.claims.org, &b.kind, b.payload.as_deref().unwrap_or("{}"))
+        .await
+        .map_err(map_store)?;
+    let _ = s.stores.events.send(format!("job.enqueued:{id}"));
+    Ok(Json(json!({"id": id, "status": "queued"})))
+}
+async fn job_list(State(s): State<FullState>, headers: HeaderMap) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .ops
+        .job_list(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|j| json!({"id": j.id, "kind": j.kind, "status": j.status, "attempts": j.attempts}))
+        .collect::<Vec<_>>())))
+}
+
+#[derive(Debug, Deserialize, Validate)]
+struct TrustAcctReq {
+    client_id: i64,
+    currency: Option<String>,
+}
+async fn trust_acct_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<TrustAcctReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    let a = s
+        .stores
+        .ops
+        .trust_create_account(
+            &u.claims.org,
+            b.client_id,
+            b.currency.as_deref().unwrap_or("IDR"),
+        )
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"id": a.id, "balance": a.balance})))
+}
+async fn trust_acct_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .ops
+        .trust_list(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|a| json!({"id": a.id, "client_id": a.client_id, "balance": a.balance}))
+        .collect::<Vec<_>>())))
+}
+async fn trust_acct_get(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let (a, es) = s
+        .stores
+        .ops
+        .trust_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(
+        json!({"id": a.id, "balance": a.balance, "entries": es.iter().map(|e| json!({"id": e.id, "kind": e.kind, "amount": e.amount})).collect::<Vec<_>>()}),
+    ))
+}
+#[derive(Debug, Deserialize, Validate)]
+struct TrustEntryReq {
+    matter_id: Option<i64>,
+    kind: String,
+    #[validate(range(min = 1))]
+    amount_minor: i64,
+}
+async fn trust_entry_add(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<TrustEntryReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    if !["debit", "credit"].contains(&b.kind.as_str()) {
+        return Err(AppError::Validation("kind".into()));
+    }
+    let e = s
+        .stores
+        .ops
+        .trust_post(
+            &u.claims.org,
+            id,
+            b.matter_id,
+            &b.kind,
+            b.amount_minor,
+            "manual",
+            id,
+            &u.claims.sub,
+        )
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"id": e.id, "amount": e.amount})))
+}
+#[derive(Debug, Deserialize, Validate)]
+struct TrustTransferReq {
+    from: i64,
+    to: i64,
+    matter_id: Option<i64>,
+    #[validate(range(min = 1))]
+    amount_minor: i64,
+}
+async fn trust_transfer(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<TrustTransferReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let (a, x) = s
+        .stores
+        .ops
+        .trust_transfer(
+            &u.claims.org,
+            b.from,
+            b.to,
+            b.amount_minor,
+            b.matter_id,
+            "transfer",
+            b.from,
+            &u.claims.sub,
+        )
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"out": a.id, "in": x.id})))
+}
+
+async fn sse_events(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<
+    axum::response::Sse<
+        impl tokio_stream::Stream<Item = Result<axum::response::sse::Event, std::convert::Infallible>>,
+    >,
+    AppError,
+> {
+    use axum::response::sse::{Event, KeepAlive, Sse};
+    use tokio_stream::{wrappers::BroadcastStream, StreamExt};
+    let _u = auth_user(&headers, &s).await?;
+    let rx = s.stores.events.subscribe();
+    let live = BroadcastStream::new(rx)
+        .filter_map(|r| r.ok())
+        .map(|msg| Ok(Event::default().data(msg)));
+    let seeded = tokio_stream::iter(vec![Ok(Event::default().data("hello"))]).chain(live);
+    Ok(Sse::new(seeded).keep_alive(KeepAlive::default()))
+}
+// ---------- end Phase 11/12 final handlers ----------
 
 async fn not_found() -> AppError {
     AppError::NotFound("route".into())
@@ -1133,10 +1880,13 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/ocr/jobs/{id}", get(ocr_get))
         .route("/api/v1/ocr/jobs/{id}/review", post(ocr_review))
         .route("/api/v1/ocr/jobs/{id}/process", post(ocr_process))
+        .route("/api/v1/ocr/supported", get(ocr_supported))
         .route("/api/v1/deed-templates", post(tpl_create).get(tpl_list))
         .route("/api/v1/deed-templates/{id}", put(tpl_update))
         .route("/api/v1/deeds/from-template", post(deed_from_template))
         .route("/api/v1/deeds", get(deed_list))
+        .route("/api/v1/deeds/{id}", get(deed_get))
+        .route("/api/v1/deeds/{id}/esign", post(deed_esign))
         .route("/api/v1/deeds/{id}/transition", post(deed_transition))
         .route("/api/v1/ai/chat", post(ai_chat))
         .route("/api/v1/ai/usage", get(ai_usage))
@@ -1148,14 +1898,40 @@ pub fn build_router(state: FullState) -> Router {
         )
         .route("/api/v1/invoices/{id}", get(inv_get))
         .route("/api/v1/invoices/{id}/payments", post(pay_add))
+        .route("/api/v1/invoices/{id}/pay-gateway", post(pay_gateway))
+        .route("/api/v1/reports/matters-csv", get(matters_csv))
         .route("/api/v1/webhooks/incoming/{provider}", post(webhook_in))
         .route("/api/v1/integrations", get(integrations))
+        .route("/api/v1/auth/tokens", post(token_create).get(token_list))
+        .route("/api/v1/auth/tokens/{id}", delete(token_revoke))
+        .route("/api/v1/auth/password", post(password_change))
+        .route("/api/v1/users/{uid}/roles", post(user_assign_role))
+        .route("/api/v1/notifications", get(notify_list))
+        .route("/api/v1/notifications/{id}/read", post(notify_read))
+        .route(
+            "/api/v1/documents/{id}/shares",
+            post(share_create).get(share_list),
+        )
+        .route("/api/v1/shares/{id}", delete(share_revoke))
+        .route("/api/v1/shared/{token}", get(shared_get))
+        .route("/api/v1/shared/{token}/content", get(shared_content))
+        .route("/api/v1/reports/matters.csv", get(report_matters))
+        .route("/api/v1/audit", get(audit_list))
+        .route("/api/v1/jobs", post(job_enqueue).get(job_list))
+        .route(
+            "/api/v1/trust/accounts",
+            post(trust_acct_create).get(trust_acct_list),
+        )
+        .route("/api/v1/trust/accounts/{id}", get(trust_acct_get))
+        .route("/api/v1/trust/accounts/{id}/entries", post(trust_entry_add))
+        .route("/api/v1/trust/transfer", post(trust_transfer))
+        .route("/api/v1/events", get(sse_events))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(
             (MAX_UPLOAD + 1024 * 1024) as usize,
         ))
-        .layer(SetRequestIdLayer::new(request_id.clone(), MakeRequestUuid))
-        .layer(PropagateRequestIdLayer::new(request_id))
+        .layer(PropagateRequestIdLayer::new(request_id.clone()))
+        .layer(SetRequestIdLayer::new(request_id, MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
         .layer(SetResponseHeaderLayer::if_not_present(
@@ -1169,6 +1945,14 @@ pub fn build_router(state: FullState) -> Router {
         .layer(SetResponseHeaderLayer::if_not_present(
             HeaderName::from_static("referrer-policy"),
             HeaderValue::from_static("strict-origin-when-cross-origin"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("content-security-policy"),
+            HeaderValue::from_static("default-src 'self'"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("strict-transport-security"),
+            HeaderValue::from_static("max-age=63072000; includeSubDomains"),
         ))
         .with_state(state)
 }

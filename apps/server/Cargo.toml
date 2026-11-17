@@ -14,6 +14,8 @@ path = "src/main.rs"
 [dependencies]
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+chrono = { version = "0.4" }
 tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.7", features = ["trace", "cors", "request-id", "limit", "set-header"] }
 serde = { version = "1", features = ["derive"] }
@@ -32,6 +34,7 @@ legalrust-authorization = { path = "../../crates/authorization" }
 legalrust-workflow = { path = "../../crates/workflow" }
 legalrust-rag = { path = "../../crates/rag" }
 legalrust-integrations = { path = "../../crates/integrations" }
+legalrust-reporting = { path = "../../crates/reporting" }
 legalrust-document = { path = "../../crates/document" }
 legalrust-storage = { path = "../../crates/storage" }
 legalrust-audit = { path = "../../crates/audit" }

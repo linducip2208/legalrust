@@ -28,6 +28,10 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     hex::encode(Sha256::digest(bytes))
 }
+/// Public view of the server-enforced upload allowlist (pure).
+pub fn mime_allowlist() -> &'static [&'static str] {
+    ALLOWED_MIME
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,5 +44,9 @@ mod tests {
     #[test]
     fn checksum_stable() {
         assert_eq!(sha256_hex(b"akta").len(), 64);
+    }
+    #[test]
+    fn allowlist_contains_pdf() {
+        assert!(mime_allowlist().contains(&"application/pdf"));
     }
 }

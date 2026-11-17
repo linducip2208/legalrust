@@ -19,12 +19,20 @@ pub enum AppError {
     Conflict(String),
     #[error("rate limited")]
     RateLimited,
+    #[error("locked: {0}")]
+    Locked(String),
     #[error("external dependency blocked: {0}")]
     BlockedExternal(String),
     #[error("internal error")]
     Internal(#[from] anyhow::Error),
 }
 impl AppError {
+    pub fn too_many_requests() -> Self {
+        Self::RateLimited
+    }
+    pub fn locked(msg: impl Into<String>) -> Self {
+        Self::Locked(msg.into())
+    }
     pub fn code(&self) -> &'static str {
         match self {
             AppError::NotFound(_) => "NOT_FOUND",
@@ -33,6 +41,7 @@ impl AppError {
             AppError::Validation(_) => "VALIDATION",
             AppError::Conflict(_) => "CONFLICT",
             AppError::RateLimited => "RATE_LIMITED",
+            AppError::Locked(_) => "LOCKED",
             AppError::BlockedExternal(_) => "EXTERNAL_BLOCKED",
             AppError::Internal(_) => "INTERNAL",
         }
@@ -45,6 +54,7 @@ impl AppError {
             AppError::Validation(_) => StatusCode::UNPROCESSABLE_ENTITY,
             AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            AppError::Locked(_) => StatusCode::LOCKED,
             AppError::BlockedExternal(_) => StatusCode::NOT_IMPLEMENTED,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -98,6 +108,12 @@ mod tests {
     #[test]
     fn error_codes_map_to_status() {
         assert_eq!(AppError::Unauthorized.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            AppError::too_many_requests().status(),
+            StatusCode::TOO_MANY_REQUESTS
+        );
+        assert_eq!(AppError::locked("x").status(), StatusCode::LOCKED);
+        assert_eq!(AppError::locked("x").code(), "LOCKED");
         assert_eq!(
             AppError::BlockedExternal("x".into()).status(),
             StatusCode::NOT_IMPLEMENTED

@@ -18,6 +18,64 @@ fn db_err(e: sqlx::Error) -> StoreError {
     }
     StoreError::Db(e.to_string())
 }
+/// 9-arg helper mirrors the `OpsStore::trust_post`/`trust_transfer` signatures so both
+/// legs of a transfer share one guarded insert path; grouping would churn the trait.
+#[allow(clippy::too_many_arguments)]
+async fn post_entry(
+    tx: &mut sqlx::Transaction<'_, sqlx::MySql>,
+    org: &str,
+    account: i64,
+    matter: Option<i64>,
+    kind: &str,
+    amount: i64,
+    ref_type: &str,
+    ref_id: i64,
+    created_by: &str,
+) -> Result<TrustEntryRow, StoreError> {
+    if amount <= 0 {
+        return Err(StoreError::Conflict("amount must be positive".into()));
+    }
+    if !["debit", "credit"].contains(&kind) {
+        return Err(StoreError::Conflict("bad kind".into()));
+    }
+    let cur: i64 =
+        sqlx::query("SELECT balance FROM trust_accounts WHERE id=? AND org_id=? FOR UPDATE")
+            .bind(account as u64)
+            .bind(org)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(db_err)?
+            .ok_or(StoreError::NotFound)?
+            .try_get("balance")
+            .map_err(|e| StoreError::Db(e.to_string()))?;
+    let next = if kind == "debit" {
+        cur - amount
+    } else {
+        cur + amount
+    };
+    if next < 0 {
+        return Err(StoreError::Conflict("insufficient trust balance".into()));
+    }
+    let r = sqlx::query("INSERT INTO trust_entries (org_id, account_id, matter_id, kind, amount_minor, ref_type, ref_id, created_by) VALUES (?,?,?,?,?,?,?,?)").bind(org).bind(account as u64).bind(matter.map(|v| v as u64)).bind(kind).bind(amount).bind(ref_type).bind(ref_id as u64).bind(created_by).execute(&mut **tx).await.map_err(db_err)?;
+    sqlx::query("UPDATE trust_accounts SET balance=? WHERE id=?")
+        .bind(next)
+        .bind(account as u64)
+        .execute(&mut **tx)
+        .await
+        .map_err(db_err)?;
+    Ok(TrustEntryRow {
+        id: r.last_insert_id() as i64,
+        org: org.into(),
+        account_id: account,
+        matter_id: matter,
+        kind: kind.into(),
+        amount,
+        ref_type: ref_type.into(),
+        ref_id,
+        created_by: created_by.into(),
+    })
+}
+
 #[async_trait::async_trait]
 impl OpsStore for MysqlOps {
     async fn ocr_create(&self, org: &str, doc: i64, doc_type: &str) -> Result<i64, StoreError> {
@@ -456,5 +514,309 @@ impl OpsStore for MysqlOps {
             amount,
             method: method.into(),
         })
+    }
+
+    async fn notify(
+        &self,
+        org: &str,
+        user: &str,
+        kind: &str,
+        title: &str,
+        body: Option<&str>,
+    ) -> Result<i64, StoreError> {
+        let _ = org;
+        let r = sqlx::query(
+            "INSERT INTO notifications (org_id, user_id, kind, title, body) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(user)
+        .bind(kind)
+        .bind(title)
+        .bind(body)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn notify_list(&self, user: &str) -> Result<Vec<NotifRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, kind, title, read_at FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100").bind(user).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| NotifRow {
+                id: x.get::<u64, _>("id") as i64,
+                kind: x.get::<String, _>("kind"),
+                title: x.get::<String, _>("title"),
+                read: x
+                    .get::<Option<chrono::NaiveDateTime>, _>("read_at")
+                    .is_some(),
+            })
+            .collect())
+    }
+    async fn notify_read(&self, user: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE notifications SET read_at=NOW() WHERE id=? AND user_id=?")
+            .bind(id as u64)
+            .bind(user)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn share_create(
+        &self,
+        org: &str,
+        doc: i64,
+        token: &str,
+        hours: i64,
+    ) -> Result<i64, StoreError> {
+        let r = sqlx::query("INSERT INTO document_shares (org_id, document_id, token, expires_at) VALUES (?,?,?,DATE_ADD(NOW(), INTERVAL ? HOUR))").bind(org).bind(doc as u64).bind(token).bind(hours).execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn share_list(&self, org: &str, doc: i64) -> Result<Vec<ShareRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, document_id, token, expires_at, revoked FROM document_shares WHERE org_id=? AND document_id=? ORDER BY id DESC").bind(org).bind(doc as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ShareRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                doc: x.get::<u64, _>("document_id") as i64,
+                token: x.get::<String, _>("token"),
+                expires: x.get::<chrono::NaiveDateTime, _>("expires_at").to_string(),
+                revoked: x.get::<bool, _>("revoked"),
+            })
+            .collect())
+    }
+    async fn share_get(&self, token: &str) -> Result<Option<ShareRow>, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, document_id, token, expires_at, revoked FROM document_shares WHERE token=?").bind(token).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(x.map(|x| ShareRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            doc: x.get::<u64, _>("document_id") as i64,
+            token: x.get::<String, _>("token"),
+            expires: x.get::<chrono::NaiveDateTime, _>("expires_at").to_string(),
+            revoked: x.get::<bool, _>("revoked"),
+        }))
+    }
+    async fn share_revoke(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE document_shares SET revoked=1 WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn job_enqueue(&self, org: &str, kind: &str, payload: &str) -> Result<i64, StoreError> {
+        let r = sqlx::query("INSERT INTO jobs (org_id, kind, payload) VALUES (?,?,?)")
+            .bind(org)
+            .bind(kind)
+            .bind(payload)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn job_list(&self, org: &str) -> Result<Vec<JobRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, kind, payload, status, attempts FROM jobs WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| JobRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                kind: x.get::<String, _>("kind"),
+                payload: x.get::<Option<String>, _>("payload").unwrap_or_default(),
+                status: x.get::<String, _>("status"),
+                attempts: x.get::<i32, _>("attempts") as i64,
+            })
+            .collect())
+    }
+    async fn job_claim(&self) -> Result<Option<JobRow>, StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let x = sqlx::query("SELECT id, org_id, kind, payload, status, attempts FROM jobs WHERE status='queued' AND (run_at IS NULL OR run_at <= NOW()) ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED").fetch_optional(&mut *tx).await.map_err(db_err)?;
+        match x {
+            None => Ok(None),
+            Some(r) => {
+                let id: u64 = r.get("id");
+                sqlx::query("UPDATE jobs SET status='running', attempts=attempts+1 WHERE id=?")
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_err)?;
+                tx.commit().await.map_err(db_err)?;
+                Ok(Some(JobRow {
+                    id: id as i64,
+                    org: r.get::<String, _>("org_id"),
+                    kind: r.get::<String, _>("kind"),
+                    payload: r.get::<Option<String>, _>("payload").unwrap_or_default(),
+                    status: "running".into(),
+                    attempts: r.get::<i32, _>("attempts") as i64 + 1,
+                }))
+            }
+        }
+    }
+    async fn job_done(&self, id: i64, ok: bool, note: &str) -> Result<(), StoreError> {
+        sqlx::query("UPDATE jobs SET status=?, note=? WHERE id=?")
+            .bind(if ok { "done" } else { "failed" })
+            .bind(note)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn audit_list(
+        &self,
+        org: &str,
+        entity: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<AuditRow>, StoreError> {
+        let rows = if let Some(e) = entity {
+            sqlx::query("SELECT id, actor_id, action, entity, entity_id, created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, actor_id, action, entity, entity_id, created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| AuditRow {
+                id: x.get::<u64, _>("id") as i64,
+                actor: x.get::<Option<String>, _>("actor_id"),
+                action: x.get::<String, _>("action"),
+                entity: x.get::<String, _>("entity"),
+                entity_id: x.get::<i64, _>("entity_id"),
+                created: x.get::<chrono::NaiveDateTime, _>("created_at").to_string(),
+            })
+            .collect())
+    }
+    async fn audit_add(
+        &self,
+        tenant: &str,
+        actor: Option<&str>,
+        action: &str,
+        entity: &str,
+        entity_id: i64,
+    ) -> Result<(), StoreError> {
+        sqlx::query("INSERT INTO audit_events (tenant_id, actor_id, action, entity, entity_id) VALUES (?,?,?,?,?)").bind(tenant).bind(actor).bind(action).bind(entity).bind(entity_id).execute(&self.pool).await.map_err(db_err)?;
+        Ok(())
+    }
+    async fn trust_create_account(
+        &self,
+        org: &str,
+        client_id: i64,
+        currency: &str,
+    ) -> Result<TrustAccountRow, StoreError> {
+        if currency.trim().is_empty() {
+            return Err(StoreError::Conflict("currency required".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO trust_accounts (org_id, client_id, currency) VALUES (?,?,?)")
+                .bind(org)
+                .bind(client_id as u64)
+                .bind(currency)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(TrustAccountRow {
+            id: r.last_insert_id() as i64,
+            org: org.into(),
+            client_id,
+            currency: currency.into(),
+            balance: 0,
+        })
+    }
+    async fn trust_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(TrustAccountRow, Vec<TrustEntryRow>), StoreError> {
+        let x = sqlx::query("SELECT id, org_id, client_id, currency, balance FROM trust_accounts WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let a = TrustAccountRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            client_id: x.get::<u64, _>("client_id") as i64,
+            currency: x.get::<String, _>("currency"),
+            balance: x.get::<i64, _>("balance"),
+        };
+        let es = sqlx::query("SELECT id, org_id, account_id, matter_id, kind, amount_minor, ref_type, ref_id, created_by FROM trust_entries WHERE account_id=? ORDER BY id").bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok((
+            a,
+            es.into_iter()
+                .map(|e| TrustEntryRow {
+                    id: e.get::<u64, _>("id") as i64,
+                    org: e.get::<String, _>("org_id"),
+                    account_id: e.get::<u64, _>("account_id") as i64,
+                    matter_id: e.get::<Option<u64>, _>("matter_id").map(|v| v as i64),
+                    kind: e.get::<String, _>("kind"),
+                    amount: e.get::<i64, _>("amount_minor"),
+                    ref_type: e.get::<String, _>("ref_type"),
+                    ref_id: e.get::<u64, _>("ref_id") as i64,
+                    created_by: e.get::<String, _>("created_by"),
+                })
+                .collect(),
+        ))
+    }
+    async fn trust_list(&self, org: &str) -> Result<Vec<TrustAccountRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, currency, balance FROM trust_accounts WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| TrustAccountRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                currency: x.get::<String, _>("currency"),
+                balance: x.get::<i64, _>("balance"),
+            })
+            .collect())
+    }
+    async fn trust_post(
+        &self,
+        org: &str,
+        account: i64,
+        matter: Option<i64>,
+        kind: &str,
+        amount: i64,
+        ref_type: &str,
+        ref_id: i64,
+        created_by: &str,
+    ) -> Result<TrustEntryRow, StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let e = post_entry(
+            &mut tx, org, account, matter, kind, amount, ref_type, ref_id, created_by,
+        )
+        .await?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(e)
+    }
+    async fn trust_transfer(
+        &self,
+        org: &str,
+        from: i64,
+        to: i64,
+        amount: i64,
+        matter: Option<i64>,
+        ref_type: &str,
+        ref_id: i64,
+        created_by: &str,
+    ) -> Result<(TrustEntryRow, TrustEntryRow), StoreError> {
+        if from == to {
+            return Err(StoreError::Conflict("same account".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let a = post_entry(
+            &mut tx, org, from, matter, "debit", amount, ref_type, ref_id, created_by,
+        )
+        .await?;
+        let b = post_entry(
+            &mut tx, org, to, matter, "credit", amount, ref_type, ref_id, created_by,
+        )
+        .await?;
+        tx.commit().await.map_err(db_err)?;
+        Ok((a, b))
     }
 }
