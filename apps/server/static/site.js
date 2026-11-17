@@ -36,6 +36,11 @@
   });
   qsa('#t1', function (el) { el.addEventListener('click', function () { window.tab(1); }); });
   qsa('#t2', function (el) { el.addEventListener('click', function () { window.tab(2); }); });
+  on('demo', 'click', function () {
+    document.getElementById('email').value = 'admin@legalrust.test';
+    document.getElementById('pwd').value = 'LegalRust-Admin-2026';
+    document.getElementById('err').textContent = 'Akun demo terisi — klik Masuk aplikasi.';
+  });
 
   /* ---- app dashboard ---- */
   if (!document.getElementById('hi')) return;

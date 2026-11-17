@@ -1936,7 +1936,7 @@ table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
 .rv.in{opacity:1;transform:none;filter:none}\
 @media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
 
-const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body>
+const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>
 <div class="container-xl"><div class="topbar"><div class="logo">⚖️<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur ▾</a><a href="/app">Solusi ▾</a><a href="#harga">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><span class="srch">🔍</span><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis →</a></div></div></div>
 <section class="hero"><div class="container-xl hero-in"><div>
 <span class="badge-soft rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
@@ -1966,10 +1966,10 @@ const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charse
 <section class="cta rv" id="harga"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a class="go" href="/login">Mulai Sekarang &nbsp;→</a></div><ul><li>✓ Gratis selamanya</li><li>✓ Setup mudah dalam 1 menit</li><li>✓ Support profesional</li></ul></section>
 <footer class="site"><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
 <script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js"></script>
+<script src="/static/site.js?v=2"></script>
 </body></html>"##;
 
-const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body class="d-flex flex-column">
+const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body class="d-flex flex-column">
 <div class="page page-center flex-fill"><div class="container container-tight py-4">
 <div class="text-center mb-4"><a href="/">⚖️ <strong>LegalRust</strong></a><div class="text-muted">Smart Legal Solution</div></div>
 <div class="card card-md"><div class="card-body">
@@ -1980,12 +1980,25 @@ const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset=
 <div class="mb-2"><label class="form-label">Kata sandi <span class="form-label-description"><a href="/faq">Lupa?</a></span></label><input class="form-control" id="pwd" type="password" autocomplete="current-password"></div>
 <div class="text-danger mb-2" id="err"></div>
 <button class="btn btn-primary w-100" id="go">Masuk aplikasi</button>
+<button class="btn btn-ghost-secondary w-100 mt-2" id="demo">Gunakan akun demo</button>
+<details class="mt-3"><summary class="text-muted" style="cursor:pointer">Peran &amp; hak akses</summary>
+<div class="table-responsive mt-2"><table class="table table-sm"><thead><tr><th>Peran</th><th>Hak akses ringkas</th></tr></thead><tbody>
+<tr><td><span class="badge bg-blue-lt">org_owner</span></td><td>Semua (View/Create/Update/Delete/Approve/Reject/Export/Download/Share/Sign/Verify/Assign)</td></tr>
+<tr><td><span class="badge bg-blue-lt">office_admin</span></td><td>Kelola harian + Assign, tanpa Delete/Reject/Sign/Verify</td></tr>
+<tr><td><span class="badge bg-blue-lt">notary / ppat</span></td><td>Akta: Sign, Verify, Approve + kelola, tanpa Delete/Assign</td></tr>
+<tr><td><span class="badge bg-blue-lt">lawyer</span></td><td>Perkara/dokumen + Export/Download/Share</td></tr>
+<tr><td><span class="badge bg-blue-lt">legal_staff / document_officer</span></td><td>Verifikasi dokumen + Download/Share</td></tr>
+<tr><td><span class="badge bg-blue-lt">finance_officer</span></td><td>Keuangan: Approve + Export/Download</td></tr>
+<tr><td><span class="badge bg-blue-lt">auditor / reviewer</span></td><td>Lihat + Export/Download saja</td></tr>
+<tr><td><span class="badge bg-blue-lt">client</span></td><td>Portal klien terbatas</td></tr>
+</tbody></table></div>
+<p class="text-muted" style="font-size:12px">Akun demo: <b>admin@legalrust.test</b> (org_owner, dibuat saat registrasi organisasi).</p></details>
 </div></div><div class="text-center text-muted mt-3">Kembali ke <a href="/">Beranda</a></div></div></div>
 <script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js"></script>
+<script src="/static/site.js?v=2"></script>
 </body></html>"##;
 
-const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body>
+const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>
 <div class="page"><header class="navbar navbar-expand-md navbar-light sticky-top bg-white border-bottom"><div class="container-xl">
 <a href="/" class="navbar-brand">⚖️ <strong>LegalRust</strong></a>
 <ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li></ul>
@@ -2002,7 +2015,7 @@ const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="u
 <div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div>
 </div></div></div>
 <script src="/static/vendor/tabler.min.js?v=2"></script>
-<script src="/static/site.js"></script>
+<script src="/static/site.js?v=2"></script>
 </body></html>"##;
 
 fn page(html: &str) -> impl IntoResponse {

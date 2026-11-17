@@ -576,7 +576,7 @@ impl OpsStore for MysqlOps {
         Ok(r.last_insert_id() as i64)
     }
     async fn share_list(&self, org: &str, doc: i64) -> Result<Vec<ShareRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, document_id, token, expires_at, revoked FROM document_shares WHERE org_id=? AND document_id=? ORDER BY id DESC").bind(org).bind(doc as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, document_id, token, DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%s') AS expires_at, revoked FROM document_shares WHERE org_id=? AND document_id=? ORDER BY id DESC").bind(org).bind(doc as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| ShareRow {
@@ -584,19 +584,19 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 doc: x.get::<u64, _>("document_id") as i64,
                 token: x.get::<String, _>("token"),
-                expires: x.get::<chrono::NaiveDateTime, _>("expires_at").to_string(),
+                expires: x.get::<String, _>("expires_at"),
                 revoked: x.get::<bool, _>("revoked"),
             })
             .collect())
     }
     async fn share_get(&self, token: &str) -> Result<Option<ShareRow>, StoreError> {
-        let x = sqlx::query("SELECT id, org_id, document_id, token, expires_at, revoked FROM document_shares WHERE token=?").bind(token).fetch_optional(&self.pool).await.map_err(db_err)?;
+        let x = sqlx::query("SELECT id, org_id, document_id, token, DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%s') AS expires_at, revoked FROM document_shares WHERE token=?").bind(token).fetch_optional(&self.pool).await.map_err(db_err)?;
         Ok(x.map(|x| ShareRow {
             id: x.get::<u64, _>("id") as i64,
             org: x.get::<String, _>("org_id"),
             doc: x.get::<u64, _>("document_id") as i64,
             token: x.get::<String, _>("token"),
-            expires: x.get::<chrono::NaiveDateTime, _>("expires_at").to_string(),
+            expires: x.get::<String, _>("expires_at"),
             revoked: x.get::<bool, _>("revoked"),
         }))
     }
@@ -678,9 +678,9 @@ impl OpsStore for MysqlOps {
         limit: i64,
     ) -> Result<Vec<AuditRow>, StoreError> {
         let rows = if let Some(e) = entity {
-            sqlx::query("SELECT id, actor_id, action, entity, entity_id, created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
+            sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
         } else {
-            sqlx::query("SELECT id, actor_id, action, entity, entity_id, created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
+            sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
         };
         Ok(rows
             .into_iter()
@@ -690,7 +690,7 @@ impl OpsStore for MysqlOps {
                 action: x.get::<String, _>("action"),
                 entity: x.get::<String, _>("entity"),
                 entity_id: x.get::<i64, _>("entity_id"),
-                created: x.get::<chrono::NaiveDateTime, _>("created_at").to_string(),
+                created: x.get::<String, _>("created_at"),
             })
             .collect())
     }
@@ -985,13 +985,13 @@ impl MarketingStore for MysqlOps {
     async fn mkt_followup_list(&self, lead: i64) -> Result<Vec<MarketingFollowUpRow>, StoreError> {
         use sqlx::Row;
         self.mkt_lead_get(lead).await?;
-        let rows = sqlx::query("SELECT id, lead_id, due_at, done, note FROM marketing_follow_ups WHERE lead_id=? ORDER BY id").bind(lead as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, lead_id, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, done, note FROM marketing_follow_ups WHERE lead_id=? ORDER BY id").bind(lead as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MarketingFollowUpRow {
                 id: x.get::<u64, _>("id") as i64,
                 lead_id: x.get::<u64, _>("lead_id") as i64,
-                due_at: x.get::<chrono::NaiveDateTime, _>("due_at").to_string(),
+                due_at: x.get::<String, _>("due_at"),
                 done: x.get::<bool, _>("done"),
                 note: x.get::<String, _>("note"),
             })
@@ -1009,7 +1009,7 @@ impl MarketingStore for MysqlOps {
             return Err(StoreError::NotFound);
         }
         let x = sqlx::query(
-            "SELECT id, lead_id, due_at, done, note FROM marketing_follow_ups WHERE id=?",
+            "SELECT id, lead_id, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, done, note FROM marketing_follow_ups WHERE id=?",
         )
         .bind(id as u64)
         .fetch_one(&self.pool)
@@ -1018,7 +1018,7 @@ impl MarketingStore for MysqlOps {
         Ok(MarketingFollowUpRow {
             id: x.get::<u64, _>("id") as i64,
             lead_id: x.get::<u64, _>("lead_id") as i64,
-            due_at: x.get::<chrono::NaiveDateTime, _>("due_at").to_string(),
+            due_at: x.get::<String, _>("due_at"),
             done: x.get::<bool, _>("done"),
             note: x.get::<String, _>("note"),
         })
