@@ -1,0 +1,10 @@
+{
+  "name": "LegalRust",
+  "short_name": "LegalRust",
+  "start_url": "/app",
+  "display": "standalone",
+  "theme_color": "#1D5BD8",
+  "background_color": "#fff",
+  "icons": [],
+  "_note": "placeholder: add 192px and 512px PNG icons under apps/server/static/ when brand assets land, then list them here with sizes and type"
+}

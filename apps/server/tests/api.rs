@@ -2986,3 +2986,300 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
     let (st, _, _) = page_get(&a, "/faq").await;
     assert_eq!(st, StatusCode::OK);
 }
+
+async fn mk_crm_client(app: &axum::Router, tok: &str) -> i64 {
+    use tower::ServiceExt;
+    let res = app
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"CRM Client","kind":"individual"}"#,
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    body_json(res).await["id"].as_i64().unwrap()
+}
+
+#[tokio::test]
+async fn crm_meeting_validation_422() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmv@x.id").await;
+    let cid = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"ab","happened_at":"2026-11-18 10:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"Kickoff call","happened_at":"18-11-2026"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn crm_meeting_flow_ok() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmok@x.id").await;
+    let cid = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"Kickoff call","notes":"scope notes","happened_at":"2026-11-18 10:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/meetings"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let list = body_json(res).await;
+    assert_eq!(list.as_array().unwrap().len(), 1);
+    assert_eq!(list[0]["title"].as_str().unwrap(), "Kickoff call");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/meetings?limit=10", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let recent = body_json(res).await;
+    assert!(recent
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["id"].as_i64() == Some(mid)));
+}
+
+#[tokio::test]
+async fn crm_meeting_cross_org_404() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok_a = reg(&a, "crma@x.id").await;
+    let tok_b = reg(&a, "crmb@x.id").await;
+    let cid = mk_crm_client(&a, &tok_a).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"Foreign attempt","happened_at":"2026-11-18 10:00:00"}"#,
+            Some(&tok_b),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/meetings"), &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"Own meeting","happened_at":"2026-11-18 10:00:00"}"#,
+            Some(&tok_a),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/meetings/{mid}"), &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/meetings", &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn crm_tag_dup_409() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmt@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/tags", r#"{"name":"vip"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/tags", r#"{"name":"vip"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a.clone().oneshot(get("/api/v1/tags", &tok)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn crm_tag_attach_idempotent() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmat@x.id").await;
+    let cid = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/tags", r#"{"name":"priority"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    for _ in 0..2 {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/clients/{cid}/tags"),
+                &format!(r#"{{"tag_id":{tid}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/tags"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tags = body_json(res).await;
+    assert_eq!(tags.as_array().unwrap().len(), 1);
+    assert_eq!(tags[0]["name"].as_str().unwrap(), "priority");
+}
+
+#[tokio::test]
+async fn crm_tag_detach() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmdt@x.id").await;
+    let cid = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/tags", r#"{"name":"temp"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/tags"),
+            &format!(r#"{{"tag_id":{tid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/clients/{cid}/tags/{tid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/clients/{cid}/tags/{tid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/tags"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn crm_meeting_delete() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "crmdel@x.id").await;
+    let cid = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cid}/meetings"),
+            r#"{"title":"To remove","happened_at":"2026-11-18 10:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/meetings/{mid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(del_auth(&format!("/api/v1/meetings/{mid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/meetings"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn crm_client_tags_cross_org_404() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok_a = reg(&a, "crmca@x.id").await;
+    let tok_b = reg(&a, "crmcb@x.id").await;
+    let cid = mk_crm_client(&a, &tok_a).await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cid}/tags"), &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn crm_app_contains_crm_ids() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "crm-meet-list",
+        "crm-meet-btn",
+        "crm-tag-list",
+        "crm-tag-btn",
+        "crm-ct-list",
+        "crm-recent",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

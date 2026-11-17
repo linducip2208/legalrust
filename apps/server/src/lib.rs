@@ -10,8 +10,8 @@ use legalrust_audit::AuditEvent;
 use legalrust_auth::{Claims, Session};
 use legalrust_authorization::can;
 use legalrust_database::{
-    CoreStore, DocRow, MarketingArticleRow, MarketingFaqRow, MarketingLeadRow, MarketingPlanRow,
-    MarketingStore, MatterRow, TaskRow, UserStore,
+    CoreStore, CrmStore, DocRow, MarketingArticleRow, MarketingFaqRow, MarketingLeadRow,
+    MarketingPlanRow, MarketingStore, MatterRow, TaskRow, UserStore,
 };
 use legalrust_database::{DeedRow, InvoiceRow, OcrJobRow, OpsStore, TemplateRow};
 use legalrust_domain::{MarketingLeadStatus, Permission, Role};
@@ -71,6 +71,7 @@ pub struct Stores {
     pub core: Arc<dyn CoreStore>,
     pub ops: Arc<dyn OpsStore>,
     pub mkt: Arc<dyn MarketingStore>,
+    pub crm: Arc<dyn CrmStore>,
     pub objects: Arc<dyn ObjectStore>,
     pub jwt_secret: Vec<u8>,
     pub integration_secret: Vec<u8>,
@@ -86,6 +87,7 @@ impl Stores {
         core: Arc<dyn CoreStore>,
         ops: Arc<dyn OpsStore>,
         mkt: Arc<dyn MarketingStore>,
+        crm: Arc<dyn CrmStore>,
         objects: Arc<dyn ObjectStore>,
         jwt_secret: Vec<u8>,
     ) -> Self {
@@ -95,6 +97,7 @@ impl Stores {
             core,
             ops,
             mkt,
+            crm,
             objects,
             jwt_secret,
             integration_secret: Vec::new(),
@@ -1956,6 +1959,7 @@ async fn static_img(Path(name): Path<String>) -> Result<impl IntoResponse, AppEr
         "ttf" => "font/ttf",
         "woff2" => "font/woff2",
         "mp4" => "video/mp4",
+        "json" => "application/manifest+json",
         _ => return Err(AppError::NotFound("asset".into())),
     };
     let bytes =
@@ -2053,7 +2057,7 @@ fn page_shell(title: &str, desc: &str, path: &str, active: &str, body: &str) -> 
         o4 = on("Kontak"),
     );
     format!(
-        r#"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust</title><meta name="description" content="{d}"><link rel="canonical" href="{b}{p}"><meta property="og:title" content="{t} — LegalRust"><meta property="og:description" content="{d}"><meta property="og:type" content="website"><meta property="og:url" content="{b}{p}"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"><script type="application/ld+json">{{"@context":"https://schema.org","@type":"Organization","name":"LegalRust","url":"{b}","description":"Platform manajemen hukum untuk notaris, PPAT, firma hukum, dan profesional legal."}}</script></head><body><div class="container-xl"><div class="topbar"><div class="logo">LegalRust<small>Smart Legal Solution</small></div>{n}<div class="topact"><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis</a></div></div></div><main class="container-xl page-main">{body}</main><div class="container-xl"><footer class="site"><span>2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/sitemap.xml">Peta Situs</a> · <a href="/healthz">Status</a></span></footer></div><script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"#,
+        r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust</title><meta name="description" content="{d}"><link rel="canonical" href="{b}{p}"><meta property="og:title" content="{t} — LegalRust"><meta property="og:description" content="{d}"><meta property="og:type" content="website"><meta property="og:url" content="{b}{p}"><link rel="manifest" href="/static/manifest.json"><meta name="theme-color" content="#1D5BD8"><link rel="apple-touch-icon" href="/static/hero-office.png"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"><script type="application/ld+json">{{"@context":"https://schema.org","@type":"Organization","name":"LegalRust","url":"{b}","description":"Platform manajemen hukum untuk notaris, PPAT, firma hukum, dan profesional legal."}}</script></head><body><div class="container-xl"><div class="topbar"><div class="logo">LegalRust<small>Smart Legal Solution</small></div>{n}<div class="topact"><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis</a></div></div></div><main class="container-xl page-main">{body}</main><div class="container-xl"><footer class="site"><span>2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/sitemap.xml">Peta Situs</a> · <a href="/healthz">Status</a></span></footer></div><script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"##,
         t = esc(title),
         d = esc(desc),
         b = SITE_BASE,
@@ -2065,7 +2069,7 @@ fn page_shell(title: &str, desc: &str, path: &str, active: &str, body: &str) -> 
 
 fn app_shell(title: &str, body: &str) -> String {
     format!(
-        r#"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust App</title><meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>{b}<script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"#,
+        r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust App</title><meta name="robots" content="noindex,nofollow"><link rel="manifest" href="/static/manifest.json"><meta name="theme-color" content="#1D5BD8"><link rel="apple-touch-icon" href="/static/hero-office.png"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body>{b}<script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"##,
         t = title,
         b = body,
     )
@@ -2073,7 +2077,7 @@ fn app_shell(title: &str, body: &str) -> String {
 
 fn auth_shell(title: &str, desc: &str, body: &str) -> String {
     format!(
-        r#"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust</title><meta name="description" content="{d}"><meta name="robots" content="noindex,nofollow"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body><div class="container-xl"><div class="topbar"><div class="logo">LegalRust<small>Smart Legal Solution</small></div><div class="topact"><a href="/" class="btn-line sm">← Beranda</a></div></div></div><main class="container-xl">{b}</main><div class="container-xl"><footer class="site"><span>2026 LegalRust</span><span><a href="/healthz">Status</a></span></footer></div><script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"#,
+        r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{t} — LegalRust</title><meta name="description" content="{d}"><meta name="robots" content="noindex,nofollow"><link rel="manifest" href="/static/manifest.json"><meta name="theme-color" content="#1D5BD8"><link rel="apple-touch-icon" href="/static/hero-office.png"><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css?v=2"></head><body><div class="container-xl"><div class="topbar"><div class="logo">LegalRust<small>Smart Legal Solution</small></div><div class="topact"><a href="/" class="btn-line sm">← Beranda</a></div></div></div><main class="container-xl">{b}</main><div class="container-xl"><footer class="site"><span>2026 LegalRust</span><span><a href="/healthz">Status</a></span></footer></div><script src="/static/vendor/tabler.min.js?v=2"></script><script src="/static/site.js?v=2"></script></body></html>"##,
         t = esc(title),
         d = esc(desc),
         b = body,
@@ -2160,7 +2164,7 @@ async fn login_page() -> impl IntoResponse {
 }
 
 async fn app_page() -> impl IntoResponse {
-    let body = r#"<div class="dash"><aside class="navbar-vertical dash-side" id="sidebar"><div class="side-brand"><span class="side-logo">LegalRust</span><small>Smart Legal Solution</small><button class="btn btn-sm side-close" id="sbToggle2" type="button">Tutup</button></div><div class="side-org"><label class="side-title" for="orgsel">Organisasi</label><select class="form-select form-select-sm" id="orgsel"><option value="">Memuat…</option></select></div><div class="side-group"><div class="side-title">Utama</div><a class="snav" href="/app" data-tab="ringkas">Dashboard</a></div><div class="side-group"><div class="side-title">Identitas &amp; KYC</div><a class="snav" href="/app" data-tab="ocr">Verifikasi Identitas</a><a class="snav" href="/app" data-tab="ocr">KTP / KK / NPWP</a><a class="snav" href="/app" data-tab="ocr">Review KYC</a></div><div class="side-group"><div class="side-title">Klien &amp; Relasi</div><a class="snav" href="/app" data-tab="klien">Klien</a><a class="snav" href="/app" data-tab="mkt">Kontak</a><a class="snav" href="/app" data-tab="mkt">Organisasi</a></div><div class="side-group"><div class="side-title">Perkara</div><a class="snav" href="/app" data-tab="klien">Daftar Perkara</a><a class="snav" href="/app" data-tab="klien" data-focus="task-title">Tugas</a><a class="snav" href="/app" data-tab="klien">Proyek</a></div><div class="side-group"><div class="side-title">Jadwal</div><a class="snav" href="/app" data-tab="ringkas">Kalender</a></div><div class="side-group"><div class="side-title">Dokumen</div><a class="snav" href="/app" data-tab="dok">Pustaka Dokumen</a><a class="snav" href="/app" data-tab="dok">Versi</a><a class="snav" href="/app" data-tab="dok">Berbagi</a><a class="snav" href="/app" data-tab="ocr">OCR &amp; Ekstraksi</a></div><div class="side-group"><div class="side-title">Akta</div><a class="snav" href="/app" data-tab="akta">Template Akta</a><a class="snav" href="/app" data-tab="akta">Proses Akta</a><a class="snav" href="/app" data-tab="akta">PPAT &amp; Properti</a><a class="snav" href="/app" data-tab="akta">Alur Kerja / Persetujuan</a><a class="snav" href="/app" data-tab="akta">Tanda Tangan</a></div><div class="side-group"><div class="side-title">Pengaturan</div><a class="snav" href="/app" data-tab="pengaturan">Pengaturan</a></div><div class="side-user"><span class="avatar" id="avatar2">?</span><span class="side-who"><strong id="uname">Memuat…</strong><small id="urole">…</small></span><button class="btn btn-sm btn-outline-danger logout" type="button">Keluar</button></div></aside><div class="dash-main"><header class="dash-top"><button class="btn btn-sm" id="sbToggle" type="button">Menu</button><a href="/" class="navbar-brand">LegalRust</a><ul class="nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Klien</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">OCR</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li><li class="nav-item"><a class="nav-link" href="/app">Marketing</a></li><li class="nav-item"><a class="nav-link" href="/app">Pengaturan</a></li></ul><div class="ms-2 position-relative"><input class="form-control form-control-sm" id="q" placeholder="Cari klien / perkara / dokumen" autocomplete="off"><div id="qres"></div></div><div class="position-relative"><button class="btn btn-sm" id="bell" type="button">Notifikasi<span class="bell-n" id="bell-n"></span></button><div id="bell-list"></div></div><span class="avatar" id="avatar">?</span><span class="text-muted small" id="orgname">…</span><button class="btn btn-outline-danger btn-sm logout" type="button">Keluar</button></header><div class="container-fluid py-3"><h1 class="page-title" id="hi">Dasbor</h1><div class="text-danger" id="err"></div><div id="p-ringkas"><div class="row g-2" id="g"><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Klien Aktif <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k1">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Perkara Berjalan <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k2">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Tugas Terbuka <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k3">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Dokumen <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k4">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">OCR Menunggu Review <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k5">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Akta Dalam Proses <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k6">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Invoice Outstanding <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k7">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Saldo Trust <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k8">…</div></div></div></div></div><div class="row g-2 mt-1"><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Pipeline Akta</h2></div><div class="card-body" id="funnel"><span class="text-muted">Memuat…</span></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Aktivitas</h2></div><div class="card-body" id="chart"><span class="text-muted">Memuat…</span></div></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Antrean Persetujuan</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al-q"></tbody></table></div></div><div class="text-muted mt-2" id="ae-q"></div><div class="row g-2 mt-1"><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Kalender</h2></div><div class="card-body" id="cal"><span class="text-muted">Memuat…</span></div></div></div><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Dokumen Terbaru</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl5"></tbody></table></div></div></div><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Review OCR</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Tipe</th><th>Status</th></tr></thead><tbody id="ocr-recent"></tbody></table></div></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Perkara Aktif</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Ringkasan Keuangan</h2></div><div class="card-body" id="fin-sum"><span class="text-muted">Memuat…</span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Aksi Cepat</h2></div><div class="card-body qa-grid"><button class="btn btn-outline-primary" id="qa-client" type="button">Tambah Klien</button><button class="btn btn-outline-primary" id="qa-matter" type="button">Buat Perkara</button><button class="btn btn-outline-primary" id="qa-upload" type="button">Upload Dokumen</button><button class="btn btn-outline-primary" id="qa-ocr" type="button">Proses OCR</button><button class="btn btn-outline-primary" id="qa-deed" type="button">Buat Akta</button><button class="btn btn-outline-primary" id="qa-invoice" type="button">Buat Invoice</button></div></div><section class="cta mt-3"><div><h2>Kelola kantor Anda dalam satu dasbor</h2><p>Perkara, dokumen, akta, dan keuangan — semuanya live dari API LegalRust.</p><a class="go" href="/login">Mulai Gratis</a></div><ul><li>Data live, bukan mockup</li><li>Jejak audit penuh</li><li class="dim">Eksternal bertahap, ditandai 501</li></ul></section></div><div id="p-klien" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Klien</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Jenis</th></tr></thead><tbody id="cl"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Tambah Klien</h2><input class="form-control mb-2" id="cli-name" placeholder="nama, mis. PT Maju"><select class="form-control mb-2" id="cli-kind"><option value="individual">individual</option><option value="corporate">corporate</option><option value="government">government</option></select><button class="btn btn-primary" id="cli-btn" type="button">Simpan</button> <button class="btn btn-outline-secondary" id="cli-csv" type="button">Ekspor CSV</button> <span class="text-danger" id="cli-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Daftar Perkara</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m-all"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Perkara</h2><input class="form-control mb-2" id="mat-title" placeholder="judul perkara"><select class="form-control mb-2" id="mat-client"><option value="">Tanpa klien</option></select><button class="btn btn-primary" id="mat-btn" type="button">Buat</button> <span class="text-danger" id="mat-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Tugas</h2></div><div class="card-body"><select class="form-control mb-2" id="task-matter"><option value="">Pilih perkara…</option></select><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Judul</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="task-list"></tbody></table></div><input class="form-control mb-2" id="task-title" placeholder="judul tugas baru"><button class="btn btn-primary" id="task-btn" type="button">Tambah tugas</button> <span class="text-danger" id="task-msg"></span></div></div></div><div id="p-dok" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Dokumen</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Unggah dokumen</h2><input class="form-control mb-2" id="dn" placeholder="nama berkas, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" id="doup" type="button">Unggah</button> <span class="text-danger" id="ue"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Bagikan dokumen</h2><input class="form-control mb-2" id="sh-doc" placeholder="ID dokumen"><input class="form-control mb-2" id="sh-hours" placeholder="masa berlaku (jam, default 72)"><button class="btn btn-secondary" id="sh-btn" type="button">Buat tautan</button> <span class="text-danger" id="sh-msg"></span><div id="sh-list"></div></div></div></div><div id="p-ocr" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Pekerjaan OCR</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Tipe</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="ocr-jobs"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Proses OCR</h2><input class="form-control mb-2" id="ocr-doc" placeholder="ID dokumen"><select class="form-control mb-2" id="ocr-type"><option value="ktp">ktp</option><option value="kk">kk</option><option value="npwp">npwp</option><option value="passport">passport</option><option value="land_certificate">land_certificate</option><option value="deed">deed</option><option value="contract">contract</option><option value="general">general</option></select><button class="btn btn-primary" id="ocr-btn" type="button">Buat job</button> <span class="text-danger" id="ocr-msg"></span><p class="text-muted mt-2">Mesin ekstraksi belum dikonfigurasi (endpoint process 501) — job tercatat queued dan dapat direview manual.</p></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Detail &amp; Review</h2><div id="ocr-detail"><span class="text-muted">Pilih Lihat pada baris pekerjaan.</span></div></div></div></div><div id="p-akta" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Akta</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Akta dari Template</h2><select class="form-control mb-2" id="deed-tpl"><option value="">Pilih template…</option></select><input class="form-control mb-2" id="deed-matter" placeholder="ID perkara"><input class="form-control mb-2" id="deed-number" placeholder="nomor akta"><input class="form-control mb-2" id="deed-type" placeholder="jenis akta"><input class="form-control mb-2" id="deed-vars" placeholder="variabel JSON, mis. {&#34;hari&#34;:&#34;Senin&#34;}"><button class="btn btn-primary" id="deed-btn" type="button">Buat akta</button> <span class="text-danger" id="deed-msg"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Template Baru</h2><input class="form-control mb-2" id="tpl-name" placeholder="nama template"><input class="form-control mb-2" id="tpl-body" placeholder="isi template, gunakan {{nama}} untuk variabel"><button class="btn btn-secondary" id="tpl-btn" type="button">Simpan template</button> <span class="text-danger" id="tpl-msg"></span><p class="text-muted mt-2">Tanda tangan digital (PSrE) belum dikonfigurasi — endpoint esign 501.</p></div></div></div><div id="p-keu" class="hidden"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Invoice per perkara</h2></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" id="showinv" type="button">Tampilkan</button><div id="il"></div></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Trust transfer</h2></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" id="dotrf" type="button">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Invoice</h2><input class="form-control mb-2" id="invm-matter" placeholder="ID perkara"><input class="form-control mb-2" id="invm-total" placeholder="total minor"><button class="btn btn-primary" id="invm-btn" type="button">Buat</button> <span class="text-danger" id="invm-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Rekening trust</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr></thead><tbody id="tl"></tbody></table></div></div></div><div id="p-mkt" class="hidden"><div class="text-danger" id="mkt-err"></div><div class="card"><div class="card-header"><h2 class="card-title">Leads pipeline</h2></div><div class="card-body"><div class="mkt-row"><label class="form-label" for="mkt-status-filter">Filter status</label><select class="form-control mkt-filter" id="mkt-status-filter"><option value="">Semua</option><option value="new">new</option><option value="contacted">contacted</option><option value="qualified">qualified</option><option value="demo">demo</option><option value="proposal">proposal</option><option value="negotiation">negotiation</option><option value="won">won</option><option value="lost">lost</option></select><button class="btn btn-secondary btn-sm" id="mkt-reload" type="button">Muat ulang</button><button class="btn btn-outline-secondary btn-sm" id="mkt-csv" type="button">Ekspor CSV</button></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="mkt-leads"></tbody></table></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Permintaan demo</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Email</th><th>Perusahaan</th><th>Status</th></tr></thead><tbody id="mkt-demos"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Pesan kontak</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Subjek</th><th>Status</th></tr></thead><tbody id="mkt-contacts"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Newsletter</h2></div><div class="card-body"><div class="mkt-row"><span>Jumlah pelanggan: <strong id="mkt-news-count">0</strong></span><input class="form-control mkt-mail" id="mkt-sub-email" type="email" placeholder="email@kantor.id"><button class="btn btn-primary btn-sm" id="mkt-sub-btn" type="button">Uji subscribe</button></div><div class="text-muted" id="mkt-sub-msg"></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Paket harga</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Kode</th><th>Nama</th><th>Bulanan</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody id="mkt-plans"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">FAQ</h2></div><div class="card-body"><div class="table-responsive"><table class="table card-table"><thead><tr><th>Slug</th><th>Pertanyaan</th></tr></thead><tbody id="mkt-faqs"></tbody></table></div><div class="mkt-row"><input class="form-control" id="faq-slug" placeholder="slug"><input class="form-control" id="faq-q" placeholder="pertanyaan"><input class="form-control" id="faq-a" placeholder="jawaban"><button class="btn btn-primary btn-sm" id="mkt-faq-add" type="button">Tambah FAQ</button></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Artikel</h2></div><div class="card-body"><div class="table-responsive"><table class="table card-table"><thead><tr><th>Slug</th><th>Judul</th><th>Terbit</th><th>Aksi</th></tr></thead><tbody id="mkt-articles"></tbody></table></div><div class="mkt-row"><input class="form-control" id="art-slug" placeholder="slug"><input class="form-control" id="art-title" placeholder="judul"><input class="form-control" id="art-body" placeholder="isi markdown"><label class="form-check"><input class="form-check-input" type="checkbox" id="art-pub"><span class="form-check-label">Terbit</span></label><button class="btn btn-primary btn-sm" id="mkt-art-add" type="button">Simpan artikel</button></div></div></div></div><div id="p-pengaturan" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Token API</h2></div><div class="card-body"><p class="text-muted">Buat token API untuk integrasi internal. Token penuh hanya ditampilkan sekali saat dibuat.</p><div class="set-row"><input class="form-control" id="tok-name" placeholder="nama token, mis. ci"><button class="btn btn-primary btn-sm" id="tok-btn" type="button">Buat token</button></div><div class="text-danger" id="tok-msg"></div><div class="tok-plain hidden" id="tok-plain"></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Aksi</th></tr></thead><tbody id="tok-list"></tbody></table></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Ubah kata sandi</h2></div><div class="card-body"><input class="form-control mb-2" id="pw-cur" type="password" autocomplete="current-password" placeholder="kata sandi saat ini"><input class="form-control mb-2" id="pw-new" type="password" autocomplete="new-password" placeholder="kata sandi baru (min 12 karakter)"><button class="btn btn-primary btn-sm" id="pw-btn" type="button">Ubah kata sandi</button> <span class="text-danger" id="pw-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Tetapkan peran (admin)</h2></div><div class="card-body"><p class="text-muted">Tidak ada daftar pengguna via API — masukkan UID pengguna secara manual. Membutuhkan hak Assign.</p><div class="set-row"><input class="form-control" id="role-uid" placeholder="UID pengguna"><select class="form-control" id="role-sel"><option value="super_admin">super_admin</option><option value="org_owner">org_owner</option><option value="office_admin">office_admin</option><option value="notary">notary</option><option value="ppat">ppat</option><option value="lawyer">lawyer</option><option value="legal_staff">legal_staff</option><option value="document_officer">document_officer</option><option value="finance_officer">finance_officer</option><option value="auditor">auditor</option><option value="client">client</option><option value="reviewer">reviewer</option></select><button class="btn btn-primary btn-sm" id="role-btn" type="button">Tetapkan</button></div><div class="text-danger" id="role-msg"></div></div></div></div><div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div></div></div></div>
+    let body = r#"<div class="dash"><aside class="navbar-vertical dash-side" id="sidebar"><div class="side-brand"><span class="side-logo">LegalRust</span><small>Smart Legal Solution</small><button class="btn btn-sm side-close" id="sbToggle2" type="button">Tutup</button></div><div class="side-org"><label class="side-title" for="orgsel">Organisasi</label><select class="form-select form-select-sm" id="orgsel"><option value="">Memuat…</option></select></div><div class="side-group"><div class="side-title">Utama</div><a class="snav" href="/app" data-tab="ringkas">Dashboard</a></div><div class="side-group"><div class="side-title">Identitas &amp; KYC</div><a class="snav" href="/app" data-tab="ocr">Verifikasi Identitas</a><a class="snav" href="/app" data-tab="ocr">KTP / KK / NPWP</a><a class="snav" href="/app" data-tab="ocr">Review KYC</a></div><div class="side-group"><div class="side-title">Klien &amp; Relasi</div><a class="snav" href="/app" data-tab="klien">Klien</a><a class="snav" href="/app" data-tab="mkt">Kontak</a><a class="snav" href="/app" data-tab="mkt">Organisasi</a></div><div class="side-group"><div class="side-title">Perkara</div><a class="snav" href="/app" data-tab="klien">Daftar Perkara</a><a class="snav" href="/app" data-tab="klien" data-focus="task-title">Tugas</a><a class="snav" href="/app" data-tab="klien">Proyek</a></div><div class="side-group"><div class="side-title">Jadwal</div><a class="snav" href="/app" data-tab="ringkas">Kalender</a></div><div class="side-group"><div class="side-title">Dokumen</div><a class="snav" href="/app" data-tab="dok">Pustaka Dokumen</a><a class="snav" href="/app" data-tab="dok">Versi</a><a class="snav" href="/app" data-tab="dok">Berbagi</a><a class="snav" href="/app" data-tab="ocr">OCR &amp; Ekstraksi</a></div><div class="side-group"><div class="side-title">Akta</div><a class="snav" href="/app" data-tab="akta">Template Akta</a><a class="snav" href="/app" data-tab="akta">Proses Akta</a><a class="snav" href="/app" data-tab="akta">PPAT &amp; Properti</a><a class="snav" href="/app" data-tab="akta">Alur Kerja / Persetujuan</a><a class="snav" href="/app" data-tab="akta">Tanda Tangan</a></div><div class="side-group"><div class="side-title">Pengaturan</div><a class="snav" href="/app" data-tab="pengaturan">Pengaturan</a></div><div class="side-user"><span class="avatar" id="avatar2">?</span><span class="side-who"><strong id="uname">Memuat…</strong><small id="urole">…</small></span><button class="btn btn-sm btn-outline-danger logout" type="button">Keluar</button></div></aside><div class="dash-main"><header class="dash-top"><button class="btn btn-sm" id="sbToggle" type="button">Menu</button><a href="/" class="navbar-brand">LegalRust</a><ul class="nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Klien</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">OCR</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li><li class="nav-item"><a class="nav-link" href="/app">Marketing</a></li><li class="nav-item"><a class="nav-link" href="/app">Pengaturan</a></li></ul><div class="ms-2 position-relative"><input class="form-control form-control-sm" id="q" placeholder="Cari klien / perkara / dokumen" autocomplete="off"><div id="qres"></div></div><div class="position-relative"><button class="btn btn-sm" id="bell" type="button">Notifikasi<span class="bell-n" id="bell-n"></span></button><div id="bell-list"></div></div><span class="avatar" id="avatar">?</span><span class="text-muted small" id="orgname">…</span><button class="btn btn-outline-danger btn-sm logout" type="button">Keluar</button></header><div class="container-fluid py-3"><h1 class="page-title" id="hi">Dasbor</h1><div class="text-danger" id="err"></div><div id="p-ringkas"><div class="row g-2" id="g"><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Klien Aktif <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k1">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Perkara Berjalan <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k2">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Tugas Terbuka <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k3">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Dokumen <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k4">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">OCR Menunggu Review <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k5">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Akta Dalam Proses <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k6">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Invoice Outstanding <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k7">…</div></div></div></div><div class="col-6 col-md-3"><div class="card kpi"><div class="card-body"><div class="text-muted">Saldo Trust <span class="badge bg-green-lt">live</span></div><div class="h1 m-0" id="k8">…</div></div></div></div></div><div class="row g-2 mt-1"><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Pipeline Akta</h2></div><div class="card-body" id="funnel"><span class="text-muted">Memuat…</span></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Aktivitas</h2></div><div class="card-body" id="chart"><span class="text-muted">Memuat…</span></div></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Antrean Persetujuan</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al-q"></tbody></table></div></div><div class="text-muted mt-2" id="ae-q"></div><div class="row g-2 mt-1"><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Kalender</h2></div><div class="card-body" id="cal"><span class="text-muted">Memuat…</span></div></div></div><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Dokumen Terbaru</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl5"></tbody></table></div></div></div><div class="col-md-4"><div class="card"><div class="card-header"><h2 class="card-title">Review OCR</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Tipe</th><th>Status</th></tr></thead><tbody id="ocr-recent"></tbody></table></div></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Perkara Aktif</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Ringkasan Keuangan</h2></div><div class="card-body" id="fin-sum"><span class="text-muted">Memuat…</span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Aksi Cepat</h2></div><div class="card-body qa-grid"><button class="btn btn-outline-primary" id="qa-client" type="button">Tambah Klien</button><button class="btn btn-outline-primary" id="qa-matter" type="button">Buat Perkara</button><button class="btn btn-outline-primary" id="qa-upload" type="button">Upload Dokumen</button><button class="btn btn-outline-primary" id="qa-ocr" type="button">Proses OCR</button><button class="btn btn-outline-primary" id="qa-deed" type="button">Buat Akta</button><button class="btn btn-outline-primary" id="qa-invoice" type="button">Buat Invoice</button></div></div><section class="cta mt-3"><div><h2>Kelola kantor Anda dalam satu dasbor</h2><p>Perkara, dokumen, akta, dan keuangan — semuanya live dari API LegalRust.</p><a class="go" href="/login">Mulai Gratis</a></div><ul><li>Data live, bukan mockup</li><li>Jejak audit penuh</li><li class="dim">Eksternal bertahap, ditandai 501</li></ul></section></div><div id="p-klien" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Klien</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Jenis</th></tr></thead><tbody id="cl"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Tambah Klien</h2><input class="form-control mb-2" id="cli-name" placeholder="nama, mis. PT Maju"><select class="form-control mb-2" id="cli-kind"><option value="individual">individual</option><option value="corporate">corporate</option><option value="government">government</option></select><button class="btn btn-primary" id="cli-btn" type="button">Simpan</button> <button class="btn btn-outline-secondary" id="cli-csv" type="button">Ekspor CSV</button> <span class="text-danger" id="cli-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Daftar Perkara</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m-all"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Perkara</h2><input class="form-control mb-2" id="mat-title" placeholder="judul perkara"><select class="form-control mb-2" id="mat-client"><option value="">Tanpa klien</option></select><button class="btn btn-primary" id="mat-btn" type="button">Buat</button> <span class="text-danger" id="mat-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Tugas</h2></div><div class="card-body"><select class="form-control mb-2" id="task-matter"><option value="">Pilih perkara…</option></select><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Judul</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="task-list"></tbody></table></div><input class="form-control mb-2" id="task-title" placeholder="judul tugas baru"><button class="btn btn-primary" id="task-btn" type="button">Tambah tugas</button> <span class="text-danger" id="task-msg"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Pertemuan klien</h2><input class="form-control mb-2" id="crm-meet-client" placeholder="ID klien" inputmode="numeric"><div class="table-responsive mb-2"><table class="table card-table"><thead><tr><th>ID</th><th>Judul</th><th>Waktu</th><th>Aksi</th></tr></thead><tbody id="crm-meet-list"><tr><td colspan="4" class="text-muted">Isi ID klien lalu Muat.</td></tr></tbody></table></div><input class="form-control mb-2" id="crm-meet-title" placeholder="judul pertemuan (min 3 huruf)"><input class="form-control mb-2" id="crm-meet-at" type="datetime-local"><textarea class="form-control mb-2" id="crm-meet-notes" rows="2" placeholder="catatan (opsional)"></textarea><button class="btn btn-primary" id="crm-meet-btn" type="button">Simpan pertemuan</button> <button class="btn btn-outline-secondary" id="crm-meet-load" type="button">Muat</button> <span class="text-danger" id="crm-meet-msg"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Tag klien</h2><div class="table-responsive mb-2"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Aksi</th></tr></thead><tbody id="crm-tag-list"></tbody></table></div><input class="form-control mb-2" id="crm-tag-name" placeholder="nama tag baru"><button class="btn btn-primary" id="crm-tag-btn" type="button">Buat tag</button> <span class="text-danger" id="crm-tag-msg"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Tag per klien</h2><input class="form-control mb-2" id="crm-ct-client" placeholder="ID klien" inputmode="numeric"><input class="form-control mb-2" id="crm-ct-tag" placeholder="ID tag" inputmode="numeric"><button class="btn btn-primary" id="crm-ct-attach" type="button">Pasang tag</button> <button class="btn btn-outline-secondary" id="crm-ct-load" type="button">Muat tag</button> <span class="text-danger" id="crm-ct-msg"></span><div class="table-responsive mt-2"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Aksi</th></tr></thead><tbody id="crm-ct-list"></tbody></table></div></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Pertemuan terbaru</h2><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Judul</th><th>Waktu</th></tr></thead><tbody id="crm-recent"></tbody></table></div><button class="btn btn-outline-secondary mt-2" id="crm-recent-btn" type="button">Muat ulang</button> <span class="text-danger" id="crm-recent-msg"></span></div></div></div><div id="p-dok" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Dokumen</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Unggah dokumen</h2><input class="form-control mb-2" id="dn" placeholder="nama berkas, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" id="doup" type="button">Unggah</button> <span class="text-danger" id="ue"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Bagikan dokumen</h2><input class="form-control mb-2" id="sh-doc" placeholder="ID dokumen"><input class="form-control mb-2" id="sh-hours" placeholder="masa berlaku (jam, default 72)"><button class="btn btn-secondary" id="sh-btn" type="button">Buat tautan</button> <span class="text-danger" id="sh-msg"></span><div id="sh-list"></div></div></div></div><div id="p-ocr" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Pekerjaan OCR</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Tipe</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="ocr-jobs"></tbody></table></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Proses OCR</h2><input class="form-control mb-2" id="ocr-doc" placeholder="ID dokumen"><select class="form-control mb-2" id="ocr-type"><option value="ktp">ktp</option><option value="kk">kk</option><option value="npwp">npwp</option><option value="passport">passport</option><option value="land_certificate">land_certificate</option><option value="deed">deed</option><option value="contract">contract</option><option value="general">general</option></select><button class="btn btn-primary" id="ocr-btn" type="button">Buat job</button> <span class="text-danger" id="ocr-msg"></span><p class="text-muted mt-2">Mesin ekstraksi belum dikonfigurasi (endpoint process 501) — job tercatat queued dan dapat direview manual.</p></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Detail &amp; Review</h2><div id="ocr-detail"><span class="text-muted">Pilih Lihat pada baris pekerjaan.</span></div></div></div></div><div id="p-akta" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Akta</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Akta dari Template</h2><select class="form-control mb-2" id="deed-tpl"><option value="">Pilih template…</option></select><input class="form-control mb-2" id="deed-matter" placeholder="ID perkara"><input class="form-control mb-2" id="deed-number" placeholder="nomor akta"><input class="form-control mb-2" id="deed-type" placeholder="jenis akta"><input class="form-control mb-2" id="deed-vars" placeholder="variabel JSON, mis. {&#34;hari&#34;:&#34;Senin&#34;}"><button class="btn btn-primary" id="deed-btn" type="button">Buat akta</button> <span class="text-danger" id="deed-msg"></span></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Template Baru</h2><input class="form-control mb-2" id="tpl-name" placeholder="nama template"><input class="form-control mb-2" id="tpl-body" placeholder="isi template, gunakan {{nama}} untuk variabel"><button class="btn btn-secondary" id="tpl-btn" type="button">Simpan template</button> <span class="text-danger" id="tpl-msg"></span><p class="text-muted mt-2">Tanda tangan digital (PSrE) belum dikonfigurasi — endpoint esign 501.</p></div></div></div><div id="p-keu" class="hidden"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Invoice per perkara</h2></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" id="showinv" type="button">Tampilkan</button><div id="il"></div></div></div></div><div class="col-md-6"><div class="card"><div class="card-header"><h2 class="card-title">Trust transfer</h2></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" id="dotrf" type="button">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div><div class="card mt-3"><div class="card-body"><h2 class="card-title">Buat Invoice</h2><input class="form-control mb-2" id="invm-matter" placeholder="ID perkara"><input class="form-control mb-2" id="invm-total" placeholder="total minor"><button class="btn btn-primary" id="invm-btn" type="button">Buat</button> <span class="text-danger" id="invm-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Rekening trust</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr></thead><tbody id="tl"></tbody></table></div></div></div><div id="p-mkt" class="hidden"><div class="text-danger" id="mkt-err"></div><div class="card"><div class="card-header"><h2 class="card-title">Leads pipeline</h2></div><div class="card-body"><div class="mkt-row"><label class="form-label" for="mkt-status-filter">Filter status</label><select class="form-control mkt-filter" id="mkt-status-filter"><option value="">Semua</option><option value="new">new</option><option value="contacted">contacted</option><option value="qualified">qualified</option><option value="demo">demo</option><option value="proposal">proposal</option><option value="negotiation">negotiation</option><option value="won">won</option><option value="lost">lost</option></select><button class="btn btn-secondary btn-sm" id="mkt-reload" type="button">Muat ulang</button><button class="btn btn-outline-secondary btn-sm" id="mkt-csv" type="button">Ekspor CSV</button></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Email</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="mkt-leads"></tbody></table></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Permintaan demo</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Email</th><th>Perusahaan</th><th>Status</th></tr></thead><tbody id="mkt-demos"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Pesan kontak</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Subjek</th><th>Status</th></tr></thead><tbody id="mkt-contacts"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Newsletter</h2></div><div class="card-body"><div class="mkt-row"><span>Jumlah pelanggan: <strong id="mkt-news-count">0</strong></span><input class="form-control mkt-mail" id="mkt-sub-email" type="email" placeholder="email@kantor.id"><button class="btn btn-primary btn-sm" id="mkt-sub-btn" type="button">Uji subscribe</button></div><div class="text-muted" id="mkt-sub-msg"></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Paket harga</h2></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Kode</th><th>Nama</th><th>Bulanan</th><th>Aktif</th><th>Aksi</th></tr></thead><tbody id="mkt-plans"></tbody></table></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">FAQ</h2></div><div class="card-body"><div class="table-responsive"><table class="table card-table"><thead><tr><th>Slug</th><th>Pertanyaan</th></tr></thead><tbody id="mkt-faqs"></tbody></table></div><div class="mkt-row"><input class="form-control" id="faq-slug" placeholder="slug"><input class="form-control" id="faq-q" placeholder="pertanyaan"><input class="form-control" id="faq-a" placeholder="jawaban"><button class="btn btn-primary btn-sm" id="mkt-faq-add" type="button">Tambah FAQ</button></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Artikel</h2></div><div class="card-body"><div class="table-responsive"><table class="table card-table"><thead><tr><th>Slug</th><th>Judul</th><th>Terbit</th><th>Aksi</th></tr></thead><tbody id="mkt-articles"></tbody></table></div><div class="mkt-row"><input class="form-control" id="art-slug" placeholder="slug"><input class="form-control" id="art-title" placeholder="judul"><input class="form-control" id="art-body" placeholder="isi markdown"><label class="form-check"><input class="form-check-input" type="checkbox" id="art-pub"><span class="form-check-label">Terbit</span></label><button class="btn btn-primary btn-sm" id="mkt-art-add" type="button">Simpan artikel</button></div></div></div></div><div id="p-pengaturan" class="hidden"><div class="card"><div class="card-header"><h2 class="card-title">Token API</h2></div><div class="card-body"><p class="text-muted">Buat token API untuk integrasi internal. Token penuh hanya ditampilkan sekali saat dibuat.</p><div class="set-row"><input class="form-control" id="tok-name" placeholder="nama token, mis. ci"><button class="btn btn-primary btn-sm" id="tok-btn" type="button">Buat token</button></div><div class="text-danger" id="tok-msg"></div><div class="tok-plain hidden" id="tok-plain"></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th><th>Aksi</th></tr></thead><tbody id="tok-list"></tbody></table></div></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Ubah kata sandi</h2></div><div class="card-body"><input class="form-control mb-2" id="pw-cur" type="password" autocomplete="current-password" placeholder="kata sandi saat ini"><input class="form-control mb-2" id="pw-new" type="password" autocomplete="new-password" placeholder="kata sandi baru (min 12 karakter)"><button class="btn btn-primary btn-sm" id="pw-btn" type="button">Ubah kata sandi</button> <span class="text-danger" id="pw-msg"></span></div></div><div class="card mt-3"><div class="card-header"><h2 class="card-title">Tetapkan peran (admin)</h2></div><div class="card-body"><p class="text-muted">Tidak ada daftar pengguna via API — masukkan UID pengguna secara manual. Membutuhkan hak Assign.</p><div class="set-row"><input class="form-control" id="role-uid" placeholder="UID pengguna"><select class="form-control" id="role-sel"><option value="super_admin">super_admin</option><option value="org_owner">org_owner</option><option value="office_admin">office_admin</option><option value="notary">notary</option><option value="ppat">ppat</option><option value="lawyer">lawyer</option><option value="legal_staff">legal_staff</option><option value="document_officer">document_officer</option><option value="finance_officer">finance_officer</option><option value="auditor">auditor</option><option value="client">client</option><option value="reviewer">reviewer</option></select><button class="btn btn-primary btn-sm" id="role-btn" type="button">Tetapkan</button></div><div class="text-danger" id="role-msg"></div></div></div></div><div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div></div></div></div>
 "#;
     html_ok(app_shell("Dasbor", body))
 }
@@ -3446,6 +3450,234 @@ async fn admin_article_upsert(
 }
 // ---------- end marketing ----------
 
+// ---------- CRM: client meetings + tags (migration 0011) ----------
+// Tables client_meetings / client_tags / client_tag_links are created by
+// migration 0011_crm.sql, applied automatically on boot via db::migrate.
+// Handlers verify client ownership against the caller's org (list_clients)
+// before any meeting/tag-link mutation, so a foreign client id yields 404.
+fn meeting_json(m: &legalrust_database::MeetingRow) -> Value {
+    json!({
+        "id": m.id, "client_id": m.client_id, "title": m.title,
+        "notes": m.notes, "happened_at": m.happened_at, "created_by": m.created_by,
+    })
+}
+fn crm_tag_json(t: &legalrust_database::ClientTagRow) -> Value {
+    json!({"id": t.id, "name": t.name})
+}
+async fn crm_require_client(org: &str, core: &Arc<dyn CoreStore>, id: i64) -> Result<(), AppError> {
+    let v = core
+        .list_clients(org)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    if v.iter().any(|c| c.id == id) {
+        Ok(())
+    } else {
+        Err(AppError::NotFound("client".into()))
+    }
+}
+#[derive(Debug, Deserialize, Validate)]
+struct MeetingReq {
+    #[validate(length(min = 3))]
+    title: String,
+    notes: Option<String>,
+    happened_at: String,
+}
+fn check_happened_at(s: &str) -> Result<(), AppError> {
+    chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
+        .map(|_| ())
+        .map_err(|_| AppError::Validation("happened_at must be YYYY-MM-DD HH:MM:SS".into()))
+}
+async fn meeting_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<MeetingReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    check_happened_at(&b.happened_at)?;
+    crm_require_client(&u.claims.org, &s.stores.core, id).await?;
+    let m = s
+        .stores
+        .crm
+        .meeting_create(
+            &u.claims.org,
+            id,
+            b.title.trim(),
+            b.notes.as_deref(),
+            &b.happened_at,
+            &u.claims.sub,
+        )
+        .await
+        .map_err(map_store)?;
+    Ok(Json(meeting_json(&m)))
+}
+async fn meeting_list_by_client(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    crm_require_client(&u.claims.org, &s.stores.core, id).await?;
+    let v = s
+        .stores
+        .crm
+        .meeting_list_by_client(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v.iter().map(meeting_json).collect::<Vec<_>>())))
+}
+#[derive(Debug, Deserialize)]
+struct RecentQ {
+    limit: Option<i64>,
+}
+async fn meeting_recent(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<RecentQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let lim = q.limit.unwrap_or(50).clamp(1, 200) as usize;
+    let mut v = s
+        .stores
+        .crm
+        .meeting_list_by_org(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    v.sort_by_key(|m| -m.id);
+    v.truncate(lim);
+    Ok(Json(json!(v.iter().map(meeting_json).collect::<Vec<_>>())))
+}
+async fn meeting_delete(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    s.stores
+        .crm
+        .meeting_delete(&u.claims.org, id)
+        .await
+        .map_err(|e| match e {
+            legalrust_database::StoreError::NotFound => AppError::NotFound("meeting".into()),
+            _ => map_store(e),
+        })?;
+    Ok(Json(json!({"deleted": true})))
+}
+#[derive(Debug, Deserialize, Validate)]
+struct TagReq {
+    #[validate(length(min = 1, max = 64))]
+    name: String,
+}
+async fn tag_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<TagReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    if b.name.trim().is_empty() {
+        return Err(AppError::Validation("name".into()));
+    }
+    let t = s
+        .stores
+        .crm
+        .tag_create(&u.claims.org, b.name.trim())
+        .await
+        .map_err(map_store)?;
+    Ok(Json(crm_tag_json(&t)))
+}
+async fn tag_list(State(s): State<FullState>, headers: HeaderMap) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .crm
+        .tag_list(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v.iter().map(crm_tag_json).collect::<Vec<_>>())))
+}
+async fn tag_delete(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    s.stores
+        .crm
+        .tag_delete(&u.claims.org, id)
+        .await
+        .map_err(|e| match e {
+            legalrust_database::StoreError::NotFound => AppError::NotFound("tag".into()),
+            _ => map_store(e),
+        })?;
+    Ok(Json(json!({"deleted": true})))
+}
+#[derive(Debug, Deserialize)]
+struct TagAttachReq {
+    tag_id: i64,
+}
+async fn tag_attach(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<TagAttachReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    crm_require_client(&u.claims.org, &s.stores.core, id).await?;
+    s.stores
+        .crm
+        .tag_attach(&u.claims.org, b.tag_id, id)
+        .await
+        .map_err(|e| match e {
+            legalrust_database::StoreError::NotFound => AppError::NotFound("tag".into()),
+            _ => map_store(e),
+        })?;
+    Ok(Json(json!({"attached": true})))
+}
+async fn tag_detach(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path((id, tag_id)): Path<(i64, i64)>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    crm_require_client(&u.claims.org, &s.stores.core, id).await?;
+    s.stores
+        .crm
+        .tag_detach(&u.claims.org, tag_id, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"detached": true})))
+}
+async fn tags_for_client(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    crm_require_client(&u.claims.org, &s.stores.core, id).await?;
+    let v = s
+        .stores
+        .crm
+        .tags_for_client(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v.iter().map(crm_tag_json).collect::<Vec<_>>())))
+}
+// ---------- end CRM ----------
+
 pub fn build_router(state: FullState) -> Router {
     let request_id = HeaderName::from_static(REQUEST_ID_HEADER);
     Router::new()
@@ -3581,6 +3813,19 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/admin/pricing", post(admin_pricing_upsert))
         .route("/api/v1/admin/faqs", post(admin_faq_upsert))
         .route("/api/v1/admin/articles", post(admin_article_upsert))
+        .route(
+            "/api/v1/clients/{id}/meetings",
+            post(meeting_create).get(meeting_list_by_client),
+        )
+        .route("/api/v1/meetings", get(meeting_recent))
+        .route("/api/v1/meetings/{id}", delete(meeting_delete))
+        .route("/api/v1/tags", post(tag_create).get(tag_list))
+        .route("/api/v1/tags/{id}", delete(tag_delete))
+        .route(
+            "/api/v1/clients/{id}/tags",
+            post(tag_attach).get(tags_for_client),
+        )
+        .route("/api/v1/clients/{id}/tags/{tag_id}", delete(tag_detach))
         .fallback(not_found)
         .layer(RequestBodyLimitLayer::new(
             (MAX_UPLOAD + 1024 * 1024) as usize,
@@ -3618,6 +3863,7 @@ pub fn dev_state() -> FullState {
     let mut stores = Stores::new(
         m.clone(),
         m,
+        o.clone(),
         o.clone(),
         o,
         Arc::new(LocalStore::new(std::env::temp_dir().join("lr-dev-objects"))),

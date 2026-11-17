@@ -680,5 +680,114 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { mktErr('Gagal simpan artikel (' + r.status + ').'); return; }
     mktArticles();
   });
+  /* ---- CRM: meetings + tags (additive, Bearer fetch, inline errors) ---- */
+  function crmToStamp(v) {
+    if (!v) return '';
+    var t = String(v).replace('T', ' ');
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(t)) return t + ':00';
+    return t;
+  }
+  async function crmMeetings() {
+    var box = document.getElementById('crm-meet-list');
+    if (!box) return;
+    var cid = pval('crm-meet-client');
+    if (!cid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID klien dulu.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(cid) + '/meetings');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.happened_at) + '</td><td><button class="btn btn-sm btn-outline-danger crm-mdel" data-id="' + x.id + '">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada pertemuan.</td></tr>';
+    pmsg('crm-meet-msg', '');
+    qsa('.crm-mdel', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/meetings/' + b.dataset.id, { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('crm-meet-msg', 'Gagal hapus (' + r.status + ').'); return; }
+        crmMeetings();
+        crmRecent();
+      });
+    });
+  }
+  async function crmTags() {
+    var box = document.getElementById('crm-tag-list');
+    if (!box) return;
+    var v = await j('/api/v1/tags');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + '</td><td><button class="btn btn-sm btn-outline-danger crm-tdel" data-id="' + x.id + '">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada tag.</td></tr>';
+    pmsg('crm-tag-msg', '');
+    qsa('.crm-tdel', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/tags/' + b.dataset.id, { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('crm-tag-msg', 'Gagal hapus (' + r.status + ').'); return; }
+        crmTags();
+      });
+    });
+  }
+  async function crmClientTags() {
+    var box = document.getElementById('crm-ct-list');
+    if (!box) return;
+    var cid = pval('crm-ct-client');
+    if (!cid) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID klien dulu.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(cid) + '/tags');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + '</td><td><button class="btn btn-sm btn-outline-danger crm-tdet" data-id="' + x.id + '">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada tag untuk klien ini.</td></tr>';
+    pmsg('crm-ct-msg', '');
+    qsa('.crm-tdet', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/clients/' + encodeURIComponent(cid) + '/tags/' + b.dataset.id, { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('crm-ct-msg', 'Gagal lepas (' + r.status + ').'); return; }
+        crmClientTags();
+      });
+    });
+  }
+  async function crmRecent() {
+    var box = document.getElementById('crm-recent');
+    if (!box) return;
+    var v = await j('/api/v1/meetings?limit=50');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + x.client_id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.happened_at) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada pertemuan.</td></tr>';
+    pmsg('crm-recent-msg', '');
+  }
+  on('crm-meet-load', 'click', crmMeetings);
+  on('crm-meet-btn', 'click', async function () {
+    var cid = pval('crm-meet-client');
+    if (!cid) { pmsg('crm-meet-msg', 'Isi ID klien dulu.'); return; }
+    var title = pval('crm-meet-title');
+    if (title.length < 3) { pmsg('crm-meet-msg', 'Judul minimal 3 huruf.'); return; }
+    var at = crmToStamp(pval('crm-meet-at'));
+    if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(at)) { pmsg('crm-meet-msg', 'Isi waktu (datetime-local), format YYYY-MM-DD HH:MM:SS.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(cid) + '/meetings', { title: title, notes: pval('crm-meet-notes') || null, happened_at: at });
+    if (!r.ok) { pmsg('crm-meet-msg', 'Gagal (' + r.status + '). Periksa ID klien / format waktu.'); return; }
+    pmsg('crm-meet-msg', '');
+    document.getElementById('crm-meet-title').value = '';
+    crmMeetings();
+    crmRecent();
+  });
+  on('crm-tag-btn', 'click', async function () {
+    var nm = pval('crm-tag-name');
+    if (!nm) { pmsg('crm-tag-msg', 'Isi nama tag dulu.'); return; }
+    var r = await ppost('/api/v1/tags', { name: nm });
+    if (!r.ok) { pmsg('crm-tag-msg', r.status === 409 ? 'Tag sudah ada (409).' : 'Gagal (' + r.status + ').'); return; }
+    pmsg('crm-tag-msg', '');
+    document.getElementById('crm-tag-name').value = '';
+    crmTags();
+  });
+  on('crm-ct-load', 'click', crmClientTags);
+  on('crm-ct-attach', 'click', async function () {
+    var cid = pval('crm-ct-client'), tid = pval('crm-ct-tag');
+    if (!cid || !tid) { pmsg('crm-ct-msg', 'Isi ID klien dan ID tag.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(cid) + '/tags', { tag_id: +tid });
+    if (!r.ok) { pmsg('crm-ct-msg', 'Gagal (' + r.status + '). Periksa ID klien / tag.'); return; }
+    pmsg('crm-ct-msg', '');
+    crmClientTags();
+  });
+  on('crm-recent-btn', 'click', crmRecent);
+  crmTags();
+  crmRecent();
   mktRefresh();
 })();

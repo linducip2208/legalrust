@@ -223,3 +223,46 @@ footer.site a{color:#8A97B5}
 .set-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .set-row .form-control{flex:1;min-width:160px}
 .tok-plain{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px;word-break:break-all}
+/* ---- responsive QA pass (marketing pages; breakpoints 1200/960/640/400) ---- */
+img,video,svg{max-width:100%}
+.hero-in>*,.split>*,.dgrid>*,.stat4>*,.fgrid>*,.steps4>*,.legend>*,.cta>*,.mock-body>*,.trust>*{min-width:0}
+.legend>div{overflow-wrap:anywhere}
+.legend code{overflow-wrap:anywhere;word-break:break-all}
+.honest{overflow-wrap:anywhere}
+.mini{overflow-x:auto}
+@media(max-width:1200px){
+.topbar{flex-wrap:wrap}
+.nav{gap:10px;margin-left:8px}
+.nav a{padding:8px 12px}
+.hero-in{grid-template-columns:1fr}
+.legend{grid-template-columns:repeat(2,1fr)}
+.steps4{grid-template-columns:repeat(2,1fr)}
+.cta{grid-template-columns:1fr}
+}
+@media(max-width:960px){
+.mkt-filter,.mkt-mail,.mkt-note-form .form-control{max-width:100%}
+.mini table{min-width:560px}
+}
+@media(max-width:640px){
+.legend{grid-template-columns:1fr}
+.steps4{grid-template-columns:1fr}
+.stat4{grid-template-columns:1fr 1fr}
+.trust{flex-direction:column;align-items:flex-start;gap:10px}
+footer.site{flex-direction:column;gap:6px}
+.cta-row .a,.cta-row .b{flex:1 1 100%;text-align:center}
+.split{gap:24px}
+.showcase{padding:36px 0}
+.feat{padding:44px 0 8px}
+}
+@media(max-width:400px){
+.stat4{grid-template-columns:1fr}
+.hero h1{font-size:32px}
+.hero-in{padding:36px 0 44px}
+.cta{padding:26px 20px;margin:40px 0}
+.logo{font-size:20px}
+.topact{width:100%}
+.topact .btn-pri,.topact .btn-line{flex:1;text-align:center}
+}
+/* ---- CRM panels (additive): reuse card/table/form controls, no new layout ---- */
+#crm-meet-list .crm-mdel,#crm-tag-list .crm-tdel,#crm-ct-list .crm-tdet{white-space:nowrap}
+#crm-meet-notes{resize:vertical}

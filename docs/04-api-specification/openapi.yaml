@@ -65,6 +65,7 @@ paths:
   /api/v1/invoices/{id}/payments: { post: { responses: { '200': { description: "recorded" }, '409': { description: "overpayment" } } } }
   /api/v1/invoices/{id}/pay-gateway: { post: { responses: { '501': { description: "billing gateway not configured" } } } }
   /api/v1/reports/matters-csv: { get: { responses: { '200': { description: "csv export" } } } }
+  /api/v1/clients.csv: { get: { responses: { '200': { description: "csv export" } } } }
   /api/v1/reports/matters.csv: { get: { responses: { '200': { description: "csv export, dot alias" } } } }
   /api/v1/webhooks/incoming/{provider}: { post: { responses: { '202': { description: "accepted" }, '401': { description: "bad signature" }, '501': { description: "secret not configured" } } } }
   /api/v1/integrations: { get: { responses: { '200': { description: "provider list, no secrets" } } } }
@@ -104,3 +105,10 @@ paths:
   /api/v1/admin/pricing: { post: { responses: { '200': { description: "Approve-gated plan upsert" } } } }
   /api/v1/admin/faqs: { post: { responses: { '200': { description: "Approve-gated faq upsert" } } } }
   /api/v1/admin/articles: { post: { responses: { '200': { description: "Approve-gated article upsert" } } } }
+  /api/v1/clients/{id}/meetings: { post: { responses: { '200': { description: "meeting logged" } } }, get: { responses: { '200': { description: "client meetings" } } } }
+  /api/v1/meetings: { get: { responses: { '200': { description: "recent meetings" } } } }
+  /api/v1/meetings/{id}: { delete: { responses: { '200': { description: "meeting deleted" } } } }
+  /api/v1/tags: { post: { responses: { '200': { description: "tag created" } } }, get: { responses: { '200': { description: "tag list" } } } }
+  /api/v1/tags/{id}: { delete: { responses: { '200': { description: "tag deleted" } } } }
+  /api/v1/clients/{id}/tags: { post: { responses: { '200': { description: "tag attached" } } }, get: { responses: { '200': { description: "client tags" } } } }
+  /api/v1/clients/{id}/tags/{tag_id}: { delete: { responses: { '200': { description: "tag detached" } } } }

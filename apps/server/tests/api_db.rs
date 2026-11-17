@@ -16,6 +16,7 @@ async fn live_mysql_register_and_matter() {
             m.clone(),
             m,
             o.clone(),
+            o.clone(),
             o,
             std::sync::Arc::new(legalrust_storage::LocalStore::new(
                 std::env::temp_dir().join("lr-db-test"),

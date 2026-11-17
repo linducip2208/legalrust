@@ -1,0 +1,602 @@
+[
+  {
+    "page": "/",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 1920,
+    "sw": 1920,
+    "maxRight": 1920,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 1366,
+    "sw": 1366,
+    "maxRight": 1366,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 1024,
+    "sw": 1024,
+    "maxRight": 1024,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 768,
+    "sw": 768,
+    "maxRight": 768,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 569,
+    "clipped": 0,
+    "inScroller": 9,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 390,
+    "sw": 390,
+    "maxRight": 390,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 569,
+    "clipped": 0,
+    "inScroller": 17,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/fitur/ocr",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/harga",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/faq",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/solusi/notaris",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/kontak",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/demo",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/login",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  },
+  {
+    "page": "/artikel",
+    "vp": 360,
+    "sw": 360,
+    "maxRight": 360,
+    "clipped": 0,
+    "inScroller": 0,
+    "pass": true,
+    "clippedEls": []
+  }
+]
