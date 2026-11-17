@@ -1,0 +1,1313 @@
+[
+ {
+  "agent": "agent-D01-A",
+  "domain": "D01",
+  "domain_name": "Identity & KYC",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (identity/ocr handlers)",
+   "migrations/0005_ocr.sql",
+   "crates/database/src/ops.rs (ocr_*)"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D01-B",
+  "domain": "D01",
+  "domain_name": "Identity & KYC",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D01-C",
+  "domain": "D01",
+  "domain_name": "Identity & KYC",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D01-*.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D01-D",
+  "domain": "D01",
+  "domain_name": "Identity & KYC",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D02-A",
+  "domain": "D02",
+  "domain_name": "Client & CRM",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (client/marketing handlers)",
+   "migrations/0002_core.sql (clients)",
+   "migrations/0010_marketing.sql",
+   "migrations/0011_crm.sql"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D02-B",
+  "domain": "D02",
+  "domain_name": "Client & CRM",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D02-C",
+  "domain": "D02",
+  "domain_name": "Client & CRM",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D02-*.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D02-D",
+  "domain": "D02",
+  "domain_name": "Client & CRM",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D03-A",
+  "domain": "D03",
+  "domain_name": "Project & Case Management",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (matter/task handlers)",
+   "migrations/0002_core.sql (matters, tasks)"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D03-B",
+  "domain": "D03",
+  "domain_name": "Project & Case Management",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D03-C",
+  "domain": "D03",
+  "domain_name": "Project & Case Management",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D03-*.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D03-D",
+  "domain": "D03",
+  "domain_name": "Project & Case Management",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 2
+ },
+ {
+  "agent": "agent-D04-A",
+  "domain": "D04",
+  "domain_name": "Document Management",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (document/share handlers)",
+   "migrations/0002_core.sql (documents, document_versions)",
+   "migrations/0008_ops.sql (document_shares)"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D04-B",
+  "domain": "D04",
+  "domain_name": "Document Management",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D04-C",
+  "domain": "D04",
+  "domain_name": "Document Management",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D04-*.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D04-D",
+  "domain": "D04",
+  "domain_name": "Document Management",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D05-A",
+  "domain": "D05",
+  "domain_name": "OCR & Document Intelligence",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (ocr_process:747)",
+   "migrations/0005_ocr.sql",
+   "crates/database/src/ops.rs (ocr_*)"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D05-B",
+  "domain": "D05",
+  "domain_name": "OCR & Document Intelligence",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D05-C",
+  "domain": "D05",
+  "domain_name": "OCR & Document Intelligence",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D05-*.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D05-D",
+  "domain": "D05",
+  "domain_name": "OCR & Document Intelligence",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 4
+ },
+ {
+  "agent": "agent-D06-A",
+  "domain": "D06",
+  "domain_name": "Deed Generation",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (deed handlers)",
+   "migrations/0003_deeds_finance.sql (deeds, deed_parties)"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D06-B",
+  "domain": "D06",
+  "domain_name": "Deed Generation",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D06-C",
+  "domain": "D06",
+  "domain_name": "Deed Generation",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D06-*.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D06-D",
+  "domain": "D06",
+  "domain_name": "Deed Generation",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D07-A",
+  "domain": "D07",
+  "domain_name": "AI Legal Assistant",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (ai_chat:995, rag handlers)",
+   "migrations/0007_ai_finance.sql (rag_chunks, ai_*)"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D07-B",
+  "domain": "D07",
+  "domain_name": "AI Legal Assistant",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D07-C",
+  "domain": "D07",
+  "domain_name": "AI Legal Assistant",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D07-*.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D07-D",
+  "domain": "D07",
+  "domain_name": "AI Legal Assistant",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D08-A",
+  "domain": "D08",
+  "domain_name": "Workflow Automation",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (workflow handlers)",
+   "crates/workflow/",
+   "migrations/0008_ops.sql (jobs)"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D08-B",
+  "domain": "D08",
+  "domain_name": "Workflow Automation",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D08-C",
+  "domain": "D08",
+  "domain_name": "Workflow Automation",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D08-*.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D08-D",
+  "domain": "D08",
+  "domain_name": "Workflow Automation",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D09-A",
+  "domain": "D09",
+  "domain_name": "Approval Management",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (approval/deed transitions)",
+   "crates/workflow/"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D09-B",
+  "domain": "D09",
+  "domain_name": "Approval Management",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D09-C",
+  "domain": "D09",
+  "domain_name": "Approval Management",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D09-*.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D09-D",
+  "domain": "D09",
+  "domain_name": "Approval Management",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 6
+ },
+ {
+  "agent": "agent-D10-A",
+  "domain": "D10",
+  "domain_name": "Electronic Signature",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (deed_esign:970)",
+   "crates/integrations/ (psre stub)"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D10-B",
+  "domain": "D10",
+  "domain_name": "Electronic Signature",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D10-C",
+  "domain": "D10",
+  "domain_name": "Electronic Signature",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D10-*.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D10-D",
+  "domain": "D10",
+  "domain_name": "Electronic Signature",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 5
+ },
+ {
+  "agent": "agent-D11-A",
+  "domain": "D11",
+  "domain_name": "Compliance & Risk",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (audit/compliance handlers)",
+   "migrations/0001_foundation.sql (audit_events)"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D11-B",
+  "domain": "D11",
+  "domain_name": "Compliance & Risk",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D11-C",
+  "domain": "D11",
+  "domain_name": "Compliance & Risk",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D11-*.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D11-D",
+  "domain": "D11",
+  "domain_name": "Compliance & Risk",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D12-A",
+  "domain": "D12",
+  "domain_name": "Notary Office Management",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (notarial workflow)",
+   "migrations/0003_deeds_finance.sql"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D12-B",
+  "domain": "D12",
+  "domain_name": "Notary Office Management",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D12-C",
+  "domain": "D12",
+  "domain_name": "Notary Office Management",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D12-*.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D12-D",
+  "domain": "D12",
+  "domain_name": "Notary Office Management",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 3
+ },
+ {
+  "agent": "agent-D13-A",
+  "domain": "D13",
+  "domain_name": "PPAT & Property Legal",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (ppat/property handlers)",
+   "crates/integrations/ (bpn stub)"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D13-B",
+  "domain": "D13",
+  "domain_name": "PPAT & Property Legal",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D13-C",
+  "domain": "D13",
+  "domain_name": "PPAT & Property Legal",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D13-*.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D13-D",
+  "domain": "D13",
+  "domain_name": "PPAT & Property Legal",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D14-A",
+  "domain": "D14",
+  "domain_name": "Finance & Accounting",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (invoice/payment handlers)",
+   "migrations/0003_deeds_finance.sql (invoices)",
+   "migrations/0007_ai_finance.sql (trust ledger)"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D14-B",
+  "domain": "D14",
+  "domain_name": "Finance & Accounting",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D14-C",
+  "domain": "D14",
+  "domain_name": "Finance & Accounting",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D14-*.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D14-D",
+  "domain": "D14",
+  "domain_name": "Finance & Accounting",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D15-A",
+  "domain": "D15",
+  "domain_name": "Billing & Subscription",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (billing handlers)",
+   "migrations/0007_ai_finance.sql"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D15-B",
+  "domain": "D15",
+  "domain_name": "Billing & Subscription",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D15-C",
+  "domain": "D15",
+  "domain_name": "Billing & Subscription",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D15-*.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D15-D",
+  "domain": "D15",
+  "domain_name": "Billing & Subscription",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 7
+ },
+ {
+  "agent": "agent-D16-A",
+  "domain": "D16",
+  "domain_name": "User, Role & Permission",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (auth_user:134, roles)",
+   "crates/auth/",
+   "crates/authorization/",
+   "migrations/0001_foundation.sql (roles, permissions, sessions)"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D16-B",
+  "domain": "D16",
+  "domain_name": "User, Role & Permission",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D16-C",
+  "domain": "D16",
+  "domain_name": "User, Role & Permission",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D16-*.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D16-D",
+  "domain": "D16",
+  "domain_name": "User, Role & Permission",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D17-A",
+  "domain": "D17",
+  "domain_name": "Multi-Office & Tenant",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (org scoping)",
+   "migrations/0001_foundation.sql (orgs)"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D17-B",
+  "domain": "D17",
+  "domain_name": "Multi-Office & Tenant",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D17-C",
+  "domain": "D17",
+  "domain_name": "Multi-Office & Tenant",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D17-*.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D17-D",
+  "domain": "D17",
+  "domain_name": "Multi-Office & Tenant",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D18-A",
+  "domain": "D18",
+  "domain_name": "Communication & Notification",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (notify/share handlers)",
+   "migrations/0008_ops.sql (notifications)"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D18-B",
+  "domain": "D18",
+  "domain_name": "Communication & Notification",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D18-C",
+  "domain": "D18",
+  "domain_name": "Communication & Notification",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D18-*.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D18-D",
+  "domain": "D18",
+  "domain_name": "Communication & Notification",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D19-A",
+  "domain": "D19",
+  "domain_name": "Client & Public Portal",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/handlers_site.rs",
+   "apps/server/static/",
+   "apps/web/ (leptos)"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D19-B",
+  "domain": "D19",
+  "domain_name": "Client & Public Portal",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D19-C",
+  "domain": "D19",
+  "domain_name": "Client & Public Portal",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D19-*.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D19-D",
+  "domain": "D19",
+  "domain_name": "Client & Public Portal",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 8
+ },
+ {
+  "agent": "agent-D20-A",
+  "domain": "D20",
+  "domain_name": "Reporting & Analytics",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (report/csv handlers)",
+   "crates/reporting/"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D20-B",
+  "domain": "D20",
+  "domain_name": "Reporting & Analytics",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D20-C",
+  "domain": "D20",
+  "domain_name": "Reporting & Analytics",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D20-*.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D20-D",
+  "domain": "D20",
+  "domain_name": "Reporting & Analytics",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D21-A",
+  "domain": "D21",
+  "domain_name": "API & Integration",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/openapi.yaml",
+   "apps/server/src/lib.rs (routes)",
+   "crates/integrations/"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D21-B",
+  "domain": "D21",
+  "domain_name": "API & Integration",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D21-C",
+  "domain": "D21",
+  "domain_name": "API & Integration",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D21-*.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D21-D",
+  "domain": "D21",
+  "domain_name": "API & Integration",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D22-A",
+  "domain": "D22",
+  "domain_name": "Security & Data Protection",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (security headers, rate-limit)",
+   "crates/auth/ (argon2/jwt)"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D22-B",
+  "domain": "D22",
+  "domain_name": "Security & Data Protection",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D22-C",
+  "domain": "D22",
+  "domain_name": "Security & Data Protection",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D22-*.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D22-D",
+  "domain": "D22",
+  "domain_name": "Security & Data Protection",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 1
+ },
+ {
+  "agent": "agent-D23-A",
+  "domain": "D23",
+  "domain_name": "Search & Discovery",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/server/src/lib.rs (global_search:1107, rag_search:1080)",
+   "migrations/0007_ai_finance.sql (rag_chunks)"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D23-B",
+  "domain": "D23",
+  "domain_name": "Search & Discovery",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D23-C",
+  "domain": "D23",
+  "domain_name": "Search & Discovery",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D23-*.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D23-D",
+  "domain": "D23",
+  "domain_name": "Search & Discovery",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 9
+ },
+ {
+  "agent": "agent-D24-A",
+  "domain": "D24",
+  "domain_name": "Mobile & Field Operations",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "apps/mobile/ (sync-core)",
+   "apps/server/src/lib.rs (sync endpoints)"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D24-B",
+  "domain": "D24",
+  "domain_name": "Mobile & Field Operations",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D24-C",
+  "domain": "D24",
+  "domain_name": "Mobile & Field Operations",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D24-*.md"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D24-D",
+  "domain": "D24",
+  "domain_name": "Mobile & Field Operations",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D25-A",
+  "domain": "D25",
+  "domain_name": "Enterprise Administration & Global Expansion",
+  "role": "A",
+  "role_name": "Builder",
+  "role_desc": "Implements PLANNED/NOT_STARTED items in scope_files; owns code writes while wave is active.",
+  "scope_files": [
+   "docs/",
+   "apps/server/src/lib.rs (admin handlers)"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D25-B",
+  "domain": "D25",
+  "domain_name": "Enterprise Administration & Global Expansion",
+  "role": "B",
+  "role_name": "Verifier",
+  "role_desc": "Reproduces evidence, writes/updates tests, records TEST-RESULTS; never edits A's files mid-wave.",
+  "scope_files": [
+   "tests/ (domain-scoped)",
+   "docs/AUTONOMOUS/TEST-RESULTS.md"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D25-C",
+  "domain": "D25",
+  "domain_name": "Enterprise Administration & Global Expansion",
+  "role": "C",
+  "role_name": "Scribe",
+  "role_desc": "Updates domain docs, ACCEPTANCE deltas, and evidence packs; docs-only writes.",
+  "scope_files": [
+   "docs/13-development-progress/",
+   "docs/AUTONOMOUS/D25-*.md"
+  ],
+  "wave": 10
+ },
+ {
+  "agent": "agent-D25-D",
+  "domain": "D25",
+  "domain_name": "Enterprise Administration & Global Expansion",
+  "role": "D",
+  "role_name": "Gatekeeper",
+  "role_desc": "Enforces RBAC/tx/fmt/test gates, reviews diffs, marks BLOCKED(501); no feature code writes.",
+  "scope_files": [
+   "gates: cargo fmt/check/clippy/test",
+   "docs/AUTONOMOUS/BLOCKERS.md"
+  ],
+  "wave": 10
+ }
+]

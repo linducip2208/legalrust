@@ -1,0 +1,1675 @@
+[
+ {
+  "id": "F-D01-001",
+  "domain": "D01",
+  "title": "National ID (KTP-el) capture & validation",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D01-002",
+  "domain": "D01",
+  "title": "Family Card (KK) capture & linking",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D01-003",
+  "domain": "D01",
+  "title": "Tax ID (NPWP) verification",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D01-004",
+  "domain": "D01",
+  "title": "Passport capture & MRZ validation",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D01-026",
+  "domain": "D01",
+  "title": "Manual review queue for low-confidence KYC",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3462 POST /api/v1/ocr/jobs/{id}/review",
+   "apps/server/src/lib.rs:723 ocr_review (approve/reject, Verify permission)",
+   "crates/database/src/ops.rs:308 ocr_review; migrations/0005_ocr.sql: ocr_reviews"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D01-027",
+  "domain": "D01",
+  "title": "KYC audit trail & evidence pack",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-001",
+  "domain": "D02",
+  "title": "Client master record (individual)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3447 route POST/GET /api/v1/clients",
+   "apps/server/src/lib.rs:321 create_client + :341 list_clients",
+   "migrations/0002_core.sql: table clients"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-002",
+  "domain": "D02",
+  "title": "Client master record (corporate)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3447 route POST/GET /api/v1/clients",
+   "apps/server/src/lib.rs:321 create_client + :341 list_clients",
+   "migrations/0002_core.sql: table clients"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-003",
+  "domain": "D02",
+  "title": "Client master record (government/institution)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3447 route POST/GET /api/v1/clients",
+   "apps/server/src/lib.rs:321 create_client + :341 list_clients",
+   "migrations/0002_core.sql: table clients"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-004",
+  "domain": "D02",
+  "title": "Lead intake & qualification",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3020 admin_lead_create (+ lead assign/notes/followups routes)",
+   "crates/database/src/ops.rs:212 mkt_lead_create",
+   "migrations/0010_marketing.sql: marketing_leads, marketing_lead_notes, marketing_follow_ups"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-005",
+  "domain": "D02",
+  "title": "Contact management & roles",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D02-035",
+  "domain": "D02",
+  "title": "Client search (360 view)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-001",
+  "domain": "D03",
+  "title": "Matter / project creation wizard",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3448 route /api/v1/matters",
+   "apps/server/src/lib.rs:365 create_matter (auto number M-, in-app notify, audit event)",
+   "apps/server/src/lib.rs:404 list_matters",
+   "migrations/0002_core.sql: table matters"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-002",
+  "domain": "D03",
+  "title": "Matter numbering scheme",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3448 route /api/v1/matters",
+   "apps/server/src/lib.rs:365 create_matter (auto number M-, in-app notify, audit event)",
+   "apps/server/src/lib.rs:404 list_matters",
+   "migrations/0002_core.sql: table matters"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-004",
+  "domain": "D03",
+  "title": "Matter stage pipeline",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3448 route /api/v1/matters",
+   "apps/server/src/lib.rs:365 create_matter (auto number M-, in-app notify, audit event)",
+   "apps/server/src/lib.rs:404 list_matters",
+   "migrations/0002_core.sql: table matters"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-005",
+  "domain": "D03",
+  "title": "Task breakdown & assignment",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3449-3453 task routes (create/list/patch, illegal transition rejected)",
+   "migrations/0002_core.sql: table tasks"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-021",
+  "domain": "D03",
+  "title": "Matter priority & escalation",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3449-3453 task routes (create/list/patch, illegal transition rejected)",
+   "migrations/0002_core.sql: table tasks"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-026",
+  "domain": "D03",
+  "title": "Matter notes & activity feed",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-033",
+  "domain": "D03",
+  "title": "Client matter statement",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3481 invoice route; :1167 inv_create",
+   "crates/database/src/ops.rs:341 inv_create; :281 invoice number uniqueness",
+   "migrations/0003_deeds_finance.sql: invoices"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-034",
+  "domain": "D03",
+  "title": "Matter access control",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D03-035",
+  "domain": "D03",
+  "title": "Matter audit history",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-001",
+  "domain": "D04",
+  "title": "Document upload (multi-file)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-002",
+  "domain": "D04",
+  "title": "Folder hierarchy per matter",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-003",
+  "domain": "D04",
+  "title": "Document versioning (major/minor)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-012",
+  "domain": "D04",
+  "title": "Document preview (PDF/Office/image)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-013",
+  "domain": "D04",
+  "title": "Full-text content indexing",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3474-3475 rag index/search routes; :1080 rag_search",
+   "rag_index rejects non-text/* (binary parsing not supported)",
+   "crates/database/src/ops.rs:339 rag_put, :340 rag_search",
+   "migrations/0007_ai_finance.sql: rag_chunks"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-015",
+  "domain": "D04",
+  "title": "Duplicate document detection",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-017",
+  "domain": "D04",
+  "title": "Document access link (internal)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
+   "migrations/0008_ops.sql: document_shares"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-024",
+  "domain": "D04",
+  "title": "Template-based document creation",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-025",
+  "domain": "D04",
+  "title": "Scanned-document ingestion",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-028",
+  "domain": "D04",
+  "title": "Document activity history",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-032",
+  "domain": "D04",
+  "title": "Document export manifest",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-033",
+  "domain": "D04",
+  "title": "Document integrity hash (SHA-256)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-036",
+  "domain": "D04",
+  "title": "Document OCR queue trigger",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D04-039",
+  "domain": "D04",
+  "title": "Document audit trail",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-021",
+  "domain": "D05",
+  "title": "Human-in-the-loop review UI",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3462 POST /api/v1/ocr/jobs/{id}/review",
+   "apps/server/src/lib.rs:723 ocr_review (approve/reject, Verify permission)",
+   "crates/database/src/ops.rs:308 ocr_review; migrations/0005_ocr.sql: ocr_reviews"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-022",
+  "domain": "D05",
+  "title": "Reviewer correction capture & learning log",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3462 POST /api/v1/ocr/jobs/{id}/review",
+   "apps/server/src/lib.rs:723 ocr_review (approve/reject, Verify permission)",
+   "crates/database/src/ops.rs:308 ocr_review; migrations/0005_ocr.sql: ocr_reviews"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-024",
+  "domain": "D05",
+  "title": "Secure archival of source images",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-026",
+  "domain": "D05",
+  "title": "OCR cost & usage metering",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3473 GET /api/v1/ai/usage",
+   "crates/database/src/ops.rs:337 usage_add (also logged on blocked ai_chat)",
+   "migrations/0007_ai_finance.sql: ai_usage, ai_conversations, ai_messages"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-037",
+  "domain": "D05",
+  "title": "OCR audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D05-039",
+  "domain": "D05",
+  "title": "OCR retry & dead-letter queue",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs job routes (enqueue/list); :1732 job_enqueue",
+   "crates/database/src/ops.rs:382 job_enqueue (+claim/done)",
+   "migrations/0008_ops.sql: jobs"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-001",
+  "domain": "D06",
+  "title": "Deed template library (notarial)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3465-3466 deed-template routes (create/list/update)",
+   "apps/server/src/lib.rs:795 tpl_create; crates/database/src/ops.rs:316 tpl_create",
+   "migrations/0006_deeds.sql: deed_templates"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-003",
+  "domain": "D06",
+  "title": "Deed drafting wizard",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-004",
+  "domain": "D06",
+  "title": "Party (penghadap) data binding",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-006",
+  "domain": "D06",
+  "title": "Deed numbering (repertorium)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-007",
+  "domain": "D06",
+  "title": "Minuta vs salinan vs kutipan tracking",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-018",
+  "domain": "D06",
+  "title": "Deed approval before signing",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-022",
+  "domain": "D06",
+  "title": "Deed search by number/party/date",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-025",
+  "domain": "D06",
+  "title": "Deed cancellation workflow",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3467-3471 deed routes",
+   "apps/server/src/lib.rs:865 deed_from_template (variable substitution render)",
+   "apps/server/src/lib.rs:921 deed_transition (illegal transition rejected)",
+   "crates/database/src/ops.rs:325 deed_create, :334 deed_set_state",
+   "crates/database/src/ops_memory.rs:174 deed number uniqueness guard",
+   "migrations/0003_deeds_finance.sql: deeds, deed_parties"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-032",
+  "domain": "D06",
+  "title": "Deed template access control",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-033",
+  "domain": "D06",
+  "title": "Deed variable audit (who changed what)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-037",
+  "domain": "D06",
+  "title": "Deed audit trail",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D06-038",
+  "domain": "D06",
+  "title": "Deed export for supervision",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D07-014",
+  "domain": "D07",
+  "title": "Token usage metering",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3473 GET /api/v1/ai/usage",
+   "crates/database/src/ops.rs:337 usage_add (also logged on blocked ai_chat)",
+   "migrations/0007_ai_finance.sql: ai_usage, ai_conversations, ai_messages"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D07-032",
+  "domain": "D07",
+  "title": "AI audit trail (prompt/response/model)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3473 GET /api/v1/ai/usage",
+   "crates/database/src/ops.rs:337 usage_add (also logged on blocked ai_chat)",
+   "migrations/0007_ai_finance.sql: ai_usage, ai_conversations, ai_messages"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D08-012",
+  "domain": "D08",
+  "title": "Webhook triggers (inbound)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
+   "integrations list endpoint (providers named, not connected)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D08-015",
+  "domain": "D08",
+  "title": "Notification action nodes",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D08-019",
+  "domain": "D08",
+  "title": "Payment-collection step",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
+   "crates/database/src/ops.rs:355 pay_add",
+   "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
+   "migrations/0003_deeds_finance.sql: payments"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D10-009",
+  "domain": "D10",
+  "title": "Document hash sealing (pre-sign)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D10-019",
+  "domain": "D10",
+  "title": "Document preview before signing",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D11-039",
+  "domain": "D11",
+  "title": "Compliance audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D12-005",
+  "domain": "D12",
+  "title": "Monthly notary report pack",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D12-006",
+  "domain": "D12",
+  "title": "MPN supervision response pack",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D12-034",
+  "domain": "D12",
+  "title": "Office audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D13-002",
+  "domain": "D13",
+  "title": "Land certificate (SHM/HGB) intake",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
+   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D13-038",
+  "domain": "D13",
+  "title": "PPAT audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D13-039",
+  "domain": "D13",
+  "title": "Certificate scan vault",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D14-011",
+  "domain": "D14",
+  "title": "Client trust (escrow) ledger",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1771 trust_acct_create; :1869 trust_transfer",
+   "crates/database/src/ops.rs:400 trust_create_account, :425 trust_transfer",
+   "crates/database/src/ops_memory.rs:623,679 insufficient-balance guards (no negative balances)",
+   "migrations/0009_trust.sql: trust_accounts, trust_entries"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D14-012",
+  "domain": "D14",
+  "title": "Trust receipt & disbursement",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1771 trust_acct_create; :1869 trust_transfer",
+   "crates/database/src/ops.rs:400 trust_create_account, :425 trust_transfer",
+   "crates/database/src/ops_memory.rs:623,679 insufficient-balance guards (no negative balances)",
+   "migrations/0009_trust.sql: trust_accounts, trust_entries"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D14-037",
+  "domain": "D14",
+  "title": "Finance audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D14-038",
+  "domain": "D14",
+  "title": "Segregation-of-duties controls",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D15-009",
+  "domain": "D15",
+  "title": "Invoice composer",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3481 invoice route; :1167 inv_create",
+   "crates/database/src/ops.rs:341 inv_create; :281 invoice number uniqueness",
+   "migrations/0003_deeds_finance.sql: invoices"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D15-015",
+  "domain": "D15",
+  "title": "Payment recording (multi-method)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
+   "crates/database/src/ops.rs:355 pay_add",
+   "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
+   "migrations/0003_deeds_finance.sql: payments"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D15-019",
+  "domain": "D15",
+  "title": "Partial-payment handling",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
+   "crates/database/src/ops.rs:355 pay_add",
+   "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
+   "migrations/0003_deeds_finance.sql: payments"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D15-020",
+  "domain": "D15",
+  "title": "Overpayment / credit-memo",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
+   "crates/database/src/ops.rs:355 pay_add",
+   "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
+   "migrations/0003_deeds_finance.sql: payments"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D15-034",
+  "domain": "D15",
+  "title": "Billing audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-001",
+  "domain": "D16",
+  "title": "User provisioning",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-006",
+  "domain": "D16",
+  "title": "RBAC role catalog",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-007",
+  "domain": "D16",
+  "title": "Least-privilege role templates",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-009",
+  "domain": "D16",
+  "title": "Data-scope rules (office/matter)",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-013",
+  "domain": "D16",
+  "title": "API service-account management",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3487-3488 token routes; :1382 token_create (revocable)",
+   "migrations/0001_foundation.sql: api_tokens"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-019",
+  "domain": "D16",
+  "title": "Session management console",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-022",
+  "domain": "D16",
+  "title": "Account lockout policy",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-023",
+  "domain": "D16",
+  "title": "Password-reset workflow",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D16-029",
+  "domain": "D16",
+  "title": "Permission-change audit",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D17-001",
+  "domain": "D17",
+  "title": "Tenant provisioning",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: organizations (single-org scoping per request)",
+   "apps/server/src/lib.rs:3446 GET /api/v1/orgs/me"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D17-010",
+  "domain": "D17",
+  "title": "Office-local admin role",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D17-022",
+  "domain": "D17",
+  "title": "Tenant integration registry",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
+   "integrations list endpoint (providers named, not connected)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D17-027",
+  "domain": "D17",
+  "title": "Tenant audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-001",
+  "domain": "D18",
+  "title": "In-app notification center",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-011",
+  "domain": "D18",
+  "title": "Matter-event notifications",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-026",
+  "domain": "D18",
+  "title": "Unsubscribe & consent respect",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-028",
+  "domain": "D18",
+  "title": "Notification audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-029",
+  "domain": "D18",
+  "title": "Notification rate limiting",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D18-038",
+  "domain": "D18",
+  "title": "Notification API",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-007",
+  "domain": "D19",
+  "title": "Shared-document viewer",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
+   "migrations/0008_ops.sql: document_shares"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-009",
+  "domain": "D19",
+  "title": "Invoice & payment view",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
+   "migrations/0008_ops.sql: document_shares"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-015",
+  "domain": "D19",
+  "title": "FAQ & help center",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-016",
+  "domain": "D19",
+  "title": "Service catalog & pricing",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:2922 public_pricing",
+   "migrations/0010_marketing.sql: marketing_pricing_plans"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-017",
+  "domain": "D19",
+  "title": "Quotation request form",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-018",
+  "domain": "D19",
+  "title": "Lead intake public form",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-019",
+  "domain": "D19",
+  "title": "Feedback & rating form",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-020",
+  "domain": "D19",
+  "title": "Complaint submission",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
+   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
+   "migrations/0010_marketing.sql: marketing_* tables"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D19-025",
+  "domain": "D19",
+  "title": "Download center (receipts/copies)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
+   "migrations/0008_ops.sql: document_shares"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D20-001",
+  "domain": "D20",
+  "title": "Standard report library",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D20-004",
+  "domain": "D20",
+  "title": "Report export (PDF/XLSX/CSV)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D20-020",
+  "domain": "D20",
+  "title": "Report access control",
+  "status": "PARTIAL",
+  "evidence": [
+   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
+   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
+   "authorize() checks per endpoint"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D20-034",
+  "domain": "D20",
+  "title": "Report audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-001",
+  "domain": "D21",
+  "title": "Public REST API (versioned)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3442-3499 /api/v1/* versioned routes behind token/session auth"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-002",
+  "domain": "D21",
+  "title": "API key management",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3487-3488 token routes; :1382 token_create (revocable)",
+   "migrations/0001_foundation.sql: api_tokens"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-005",
+  "domain": "D21",
+  "title": "API usage metering",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3473 GET /api/v1/ai/usage",
+   "crates/database/src/ops.rs:337 usage_add (also logged on blocked ai_chat)",
+   "migrations/0007_ai_finance.sql: ai_usage, ai_conversations, ai_messages"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-009",
+  "domain": "D21",
+  "title": "Inbound webhook receiver",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
+   "integrations list endpoint (providers named, not connected)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-010",
+  "domain": "D21",
+  "title": "Event catalog (domain events)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-031",
+  "domain": "D21",
+  "title": "Integration health monitor",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
+   "integrations list endpoint (providers named, not connected)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-033",
+  "domain": "D21",
+  "title": "API audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-036",
+  "domain": "D21",
+  "title": "API abuse detection",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D21-039",
+  "domain": "D21",
+  "title": "Tenant-scoped API tokens",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3487-3488 token routes; :1382 token_create (revocable)",
+   "migrations/0001_foundation.sql: api_tokens"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-001",
+  "domain": "D22",
+  "title": "Password hashing (Argon2id)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing",
+   "note: crates/auth/Cargo.toml: argon2 0.5; lib.rs:1454-1456 legalrust_auth::hash_password/verify_password live"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-004",
+  "domain": "D22",
+  "title": "Session timeout & rotation",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-005",
+  "domain": "D22",
+  "title": "JWT access/refresh design",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
+   "migrations/0001_foundation.sql: users, sessions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-006",
+  "domain": "D22",
+  "title": "API token vault",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3487-3488 token routes; :1382 token_create (revocable)",
+   "migrations/0001_foundation.sql: api_tokens"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-008",
+  "domain": "D22",
+  "title": "TLS enforcement (1.2+)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-014",
+  "domain": "D22",
+  "title": "Secure file-upload pipeline",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
+   "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
+   "migrations/0002_core.sql: documents, document_versions"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-016",
+  "domain": "D22",
+  "title": "Rate limiting & brute-force shield",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-018",
+  "domain": "D22",
+  "title": "Security headers baseline",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-020",
+  "domain": "D22",
+  "title": "XSS output-encoding standard",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D22-021",
+  "domain": "D22",
+  "title": "SQL-injection guardrails (SQLx)",
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
+   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-001",
+  "domain": "D23",
+  "title": "Global search bar",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-002",
+  "domain": "D23",
+  "title": "Matter search",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-003",
+  "domain": "D23",
+  "title": "Document full-text search",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3474-3475 rag index/search routes; :1080 rag_search",
+   "rag_index rejects non-text/* (binary parsing not supported)",
+   "crates/database/src/ops.rs:339 rag_put, :340 rag_search",
+   "migrations/0007_ai_finance.sql: rag_chunks"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-005",
+  "domain": "D23",
+  "title": "Client search",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-006",
+  "domain": "D23",
+  "title": "Contact search",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-008",
+  "domain": "D23",
+  "title": "Template search",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3465-3466 deed-template routes (create/list/update)",
+   "apps/server/src/lib.rs:795 tpl_create; crates/database/src/ops.rs:316 tpl_create",
+   "migrations/0006_deeds.sql: deed_templates"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-021",
+  "domain": "D23",
+  "title": "Search access-control trimming",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-031",
+  "domain": "D23",
+  "title": "Search API endpoint",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D23-037",
+  "domain": "D23",
+  "title": "Metadata-only search mode",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D25-009",
+  "domain": "D25",
+  "title": "Background-job monitor",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs job routes (enqueue/list); :1732 job_enqueue",
+   "crates/database/src/ops.rs:382 job_enqueue (+claim/done)",
+   "migrations/0008_ops.sql: jobs"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D25-016",
+  "domain": "D25",
+  "title": "Integration registry admin",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
+   "integrations list endpoint (providers named, not connected)"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D25-019",
+  "domain": "D25",
+  "title": "Audit-log viewer (global)",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D25-036",
+  "domain": "D25",
+  "title": "Admin audit trail",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
+   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
+   "migrations/0001_foundation.sql: audit_events"
+  ],
+  "verified": "2026-11-18"
+ },
+ {
+  "id": "F-D25-038",
+  "domain": "D25",
+  "title": "System health SLO board",
+  "status": "PARTIAL",
+  "evidence": [
+   "apps/server/src/lib.rs:3413-3414 /healthz /readyz; version endpoint"
+  ],
+  "verified": "2026-11-18"
+ }
+]
