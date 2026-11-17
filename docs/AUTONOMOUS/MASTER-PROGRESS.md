@@ -13,6 +13,7 @@
 - [ ] Wave 5 — Enterprise (multi-office PLANNED, security audit parsial, API exists, mobile sync-core only)
 - [ ] Wave 6 — Completion (integrasi penuh, testing menyeluruh, audit, optimasi, docs)
 - [ ] Wave 7 — Re-audit 1.000 fitur
+- [x] Wave 7 — Re-audit SELESAI 2026-11-18: sampel segar 40/1000 (offset 12, tiap ke-25), 0 mismatch; 5/6 titik risiko PASS, 1 temuan MEDIUM (R-01: notify_list decode mentah read_at TIMESTAMP, path MySQL tak teruji) + 2 LOW + 1 INFO — lihat docs/AUTONOMOUS/REAUDIT-REPORT.md.
 
 ## Aturan
 - Tugas selesai hanya bila: kode ada + integrasi jalan + tes hijau + docs update + bukti tercatat.

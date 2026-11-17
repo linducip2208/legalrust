@@ -2419,7 +2419,15 @@ async fn dash_app_has_sidebar_nav_groups() {
     ] {
         assert!(t.contains(s), "missing sidebar item {s}");
     }
-    for id in ["p-ringkas", "p-klien", "p-dok", "p-ocr", "p-akta", "p-keu", "p-mkt"] {
+    for id in [
+        "p-ringkas",
+        "p-klien",
+        "p-dok",
+        "p-ocr",
+        "p-akta",
+        "p-keu",
+        "p-mkt",
+    ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing section #{id}");
     }
     assert!(t.contains("id=\"orgsel\""), "missing org switcher");
@@ -2445,9 +2453,29 @@ async fn dash_app_has_kpi_labels_and_panels() {
         assert!(t.contains(s), "missing KPI {s}");
     }
     for id in [
-        "k1", "k2", "k3", "k4", "k5", "k6", "k7", "k8", "funnel", "chart", "cal",
-        "al-q", "ae-q", "dl5", "ocr-recent", "fin-sum", "m-all", "cl", "task-matter",
-        "task-list", "ocr-jobs", "ocr-detail", "fin-sum",
+        "k1",
+        "k2",
+        "k3",
+        "k4",
+        "k5",
+        "k6",
+        "k7",
+        "k8",
+        "funnel",
+        "chart",
+        "cal",
+        "al-q",
+        "ae-q",
+        "dl5",
+        "ocr-recent",
+        "fin-sum",
+        "m-all",
+        "cl",
+        "task-matter",
+        "task-list",
+        "ocr-jobs",
+        "ocr-detail",
+        "fin-sum",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing #{id}");
     }
@@ -2459,13 +2487,35 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "qa-deed",
         "qa-invoice",
     ] {
-        assert!(t.contains(&format!("id=\"{id}\"")), "missing quick action #{id}");
+        assert!(
+            t.contains(&format!("id=\"{id}\"")),
+            "missing quick action #{id}"
+        );
     }
     for id in [
-        "cli-name", "cli-kind", "cli-btn", "mat-title", "mat-client", "mat-btn",
-        "task-title", "task-btn", "ocr-doc", "ocr-type", "ocr-btn", "deed-tpl",
-        "deed-matter", "deed-number", "deed-type", "deed-btn", "tpl-name",
-        "tpl-body", "tpl-btn", "invm-matter", "invm-total", "invm-btn", "sh-doc",
+        "cli-name",
+        "cli-kind",
+        "cli-btn",
+        "mat-title",
+        "mat-client",
+        "mat-btn",
+        "task-title",
+        "task-btn",
+        "ocr-doc",
+        "ocr-type",
+        "ocr-btn",
+        "deed-tpl",
+        "deed-matter",
+        "deed-number",
+        "deed-type",
+        "deed-btn",
+        "tpl-name",
+        "tpl-body",
+        "tpl-btn",
+        "invm-matter",
+        "invm-total",
+        "invm-btn",
+        "sh-doc",
         "sh-btn",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
@@ -2549,7 +2599,11 @@ async fn dash_flow_task_lifecycle() {
     // open -> done is illegal
     let res = a
         .clone()
-        .oneshot(post(&format!("/api/v1/tasks/{tid}"), r#"{"status":"done"}"#, Some(&tok)))
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}"),
+            r#"{"status":"done"}"#,
+            Some(&tok),
+        ))
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::CONFLICT);
@@ -2566,7 +2620,11 @@ async fn dash_flow_task_lifecycle() {
     assert_eq!(res.status(), StatusCode::OK);
     let res = a
         .clone()
-        .oneshot(post(&format!("/api/v1/tasks/{tid}"), r#"{"status":"done"}"#, Some(&tok)))
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}"),
+            r#"{"status":"done"}"#,
+            Some(&tok),
+        ))
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -2594,8 +2652,9 @@ async fn dash_flow_ocr_job_create() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let jid = body_json(res).await["id"].as_i64().unwrap();
-    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "queued");
+    let j = body_json(res).await;
+    let jid = j["id"].as_i64().unwrap();
+    assert_eq!(j["status"].as_str().unwrap(), "queued");
     let res = a
         .clone()
         .oneshot(get("/api/v1/ocr/jobs", &tok))
@@ -2628,8 +2687,9 @@ async fn dash_flow_deed_from_template() {
     let tid = body_json(res).await["id"].as_i64().unwrap();
     let res = a.clone().oneshot(post("/api/v1/deeds/from-template", &format!(r#"{{"template_id":{tid},"matter_id":{mid},"number":"D-DASH-1","deed_type":"ajb","variables":{{"hari":"Senin"}}}}"#), Some(&tok))).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    let did = body_json(res).await["id"].as_i64().unwrap();
-    assert_eq!(body_json(res).await["state"].as_str().unwrap(), "draft");
+    let j = body_json(res).await;
+    let did = j["id"].as_i64().unwrap();
+    assert_eq!(j["state"].as_str().unwrap(), "draft");
     let res = a
         .clone()
         .oneshot(post(

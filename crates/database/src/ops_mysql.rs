@@ -539,16 +539,14 @@ impl OpsStore for MysqlOps {
         Ok(r.last_insert_id() as i64)
     }
     async fn notify_list(&self, user: &str) -> Result<Vec<NotifRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, kind, title, read_at FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100").bind(user).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100").bind(user).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| NotifRow {
                 id: x.get::<u64, _>("id") as i64,
                 kind: x.get::<String, _>("kind"),
                 title: x.get::<String, _>("title"),
-                read: x
-                    .get::<Option<chrono::NaiveDateTime>, _>("read_at")
-                    .is_some(),
+                read: x.get::<Option<i64>, _>("read_unix").is_some(),
             })
             .collect())
     }
