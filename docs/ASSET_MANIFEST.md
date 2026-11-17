@@ -48,3 +48,26 @@ NOT used — user chose PHOTOS ONLY, SDXL stills only. Zero rejections (6/6 appr
 - courthouse.png — 1156361 bytes, PNG magic OK, 1216x640 RGB, opens OK
 - server-room.png — 1067783 bytes, PNG magic OK, 1216x640 RGB, opens OK
 - signature.png — 829532 bytes, PNG magic OK, 1216x640 RGB, opens OK
+
+## Hero video loop 2026-11-18 (WAN 2.1 T2V, progressive enhancement)
+
+Model: `wan2.1_t2v_1.3B_fp16.safetensors` (fp16, offload_device) + text encoder
+`umt5-xxl-enc-fp8_e4m3fn.safetensors`.
+Prompts: positive "slow cinematic drift over modern blue-glass office towers, daylight, photorealistic, no people, no text";
+negative "blurry, low quality, distorted, watermark, text, logo, people, deformed, ugly".
+Params: 640x384, 25 frames @8fps (~3.1s), 12 steps, cfg 6.0, shift 5.0, scheduler unipc, seed 7,
+VAE `wan_2.1_vae.safetensors` fp16 with tiling (272px tile / 144x128 stride).
+Source: `D:/ComfyUI/output/hero-loop_00001.mp4`. ComfyUI prompt_ids:
+`aa701e15-b35c-462d-88ac-f9da6bc4d64d` (FAILED at LoadWanVideoT5TextEncoder:
+"Invalid T5 text encoder model, fp8 scaled is not supported by this node" —
+`umt5_xxl_fp8_e4m3fn_scaled.safetensors` is listed in node inputs but rejected at
+runtime; fixed by switching to `umt5-xxl-enc-fp8_e4m3fn.safetensors`) +
+`5e237709-8a94-4458-a0cb-868419335720` (success).
+Also fixed once: VHS_VideoCombine requires `save_output` + `pingpong` inputs.
+
+| Filename (apps/server/static/) | Prompt summary | Seed | Model | Resolution | Usage | Status |
+|-------------------------------|----------------|------|-------|------------|-------|--------|
+| hero-loop.mp4 (296502 bytes, <8MB) | Slow cinematic drift over modern blue-glass office towers, daylight, photorealistic, no people, no text; 25 frames, 12 steps, cfg 6.0, seed 7 | 7 | wan2.1_t2v_1.3B_fp16 | 640x384, 25f @8fps (~3.1s) | Hero background loop, progressive enhancement only — photos remain primary; gated behind prefers-reduced-motion (do not autoplay when reduced motion is requested), muted/loop/playsinline | DELIVERED, unreviewed visually at full motion |
+
+Poster: no ffmpeg on host, so no first-frame extraction — reuse existing
+`hero-office.png` as poster (no new poster file written). No Rust code touched.

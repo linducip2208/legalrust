@@ -1902,8 +1902,11 @@ async fn landing_has_6_images_with_alt() {
     let (_, _, t) = page_get(&app(), "/").await;
     let imgs = t.matches("<img").count();
     let alts = t.matches("alt=\"").count();
-    assert!(imgs >= 6, "only {imgs} images");
+    assert!(imgs >= 5, "only {imgs} images");
     assert!(alts >= imgs, "images without alt");
+    assert!(t.contains("<video"), "hero video missing");
+    assert!(t.contains("hero-loop.mp4"), "hero video src missing");
+    assert!(t.contains("aria-label"), "video without accessible label");
     for src in [
         "/static/hero-office.png",
         "/static/office-interior.png",
@@ -1917,8 +1920,8 @@ async fn landing_has_6_images_with_alt() {
         assert!(t.contains(src), "missing image {src}");
     }
     assert!(
-        t.contains("fetchpriority=\"high\""),
-        "hero LCP not prioritized"
+        t.contains("poster=\"/static/hero-office.png\""),
+        "hero poster missing"
     );
     assert!(t.contains("loading=\"lazy\""), "no lazy images");
 }

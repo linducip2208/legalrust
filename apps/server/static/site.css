@@ -15,7 +15,10 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F1B3D;backgrou
 .btn-pri:hover{transform:translateY(-2px)}
 .btn-pri.sm,.btn-line.sm{padding:10px 22px}
 .btn-line{border:1.5px solid #C9D6F2;color:#16224A;font-weight:700;border-radius:12px;padding:11px 22px;background:#fff;text-decoration:none;display:inline-block}
-.hero{background:linear-gradient(100deg,#ffffff 22%,rgba(255,255,255,.78) 48%,rgba(255,255,255,.08) 78%),url('/static/hero-office.png') right center/cover,linear-gradient(180deg,#EAF2FF,#F7FAFF)}
+.hero{position:relative;overflow:hidden;background:linear-gradient(100deg,#ffffff 22%,rgba(255,255,255,.78) 48%,rgba(255,255,255,.08) 78%),url('/static/hero-office.png') right center/cover,linear-gradient(180deg,#EAF2FF,#F7FAFF)}
+.hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35;pointer-events:none}
+.hero-in{position:relative}
+@media (prefers-reduced-motion:reduce){.hero-video{display:none}.rv{transform:none;transition:none}}
 .hero-in{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center;padding:52px 0 60px}
 .badge-soft{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #D8E4FA;border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:600;color:#33415E;box-shadow:0 6px 18px -8px rgba(29,91,216,.35)}
 .hero h1{font-size:clamp(38px,4.4vw,60px);line-height:1.08;margin:20px 0 16px;letter-spacing:-.02em;color:#101C3D}
