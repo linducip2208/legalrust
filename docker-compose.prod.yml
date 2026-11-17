@@ -1,0 +1,105 @@
+# Production compose overlay. ADDITIVE ONLY: do not edit docker-compose.yml
+# (dev services). This file is the prod topology: server + worker + mysql8
+# + redis, restart-unless-stopped, named volumes, env-only secrets.
+#
+# Usage:
+#   cp .env.prod.example .env.prod   # then fill CHANGE-ME values from vault
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# Image tags are pinned via IMAGE_TAG (rollback = re-deploy previous tag).
+
+name: legalrust-prod
+
+services:
+  mysql:
+    image: "mysql:8.4"
+    restart: unless-stopped
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_ROOT_PASSWORD:?set DB_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${DB_NAME:-legalrust}"
+      MYSQL_USER: "${DB_USER:?set DB_USER}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:?set DB_PASSWORD}"
+    volumes:
+      - mysql-prod-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks: [prod-net]
+
+  redis:
+    image: "redis:7-alpine"
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+    volumes:
+      - redis-prod-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?set REDIS_PASSWORD}", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [prod-net]
+
+  server:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.server
+    image: "${REGISTRY:-local}/legalrust-server:${IMAGE_TAG:-latest}"
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env.prod
+        required: true
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "mysql://${DB_USER:?set DB_USER}:${DB_PASSWORD:?set DB_PASSWORD}@mysql:3306/${DB_NAME:-legalrust}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379"
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    volumes:
+      - objects-prod-data:/home/appuser/objects
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [prod-net]
+
+  worker:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.worker
+    image: "${REGISTRY:-local}/legalrust-worker:${IMAGE_TAG:-latest}"
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env.prod
+        required: true
+    environment:
+      DATABASE_URL: "mysql://${DB_USER:?set DB_USER}:${DB_PASSWORD:?set DB_PASSWORD}@mysql:3306/${DB_NAME:-legalrust}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379"
+    volumes:
+      - objects-prod-data:/home/appuser/objects
+    networks: [prod-net]
+
+volumes:
+  mysql-prod-data: {}
+  redis-prod-data: {}
+  objects-prod-data: {}
+
+networks:
+  prod-net:
+    driver: bridge

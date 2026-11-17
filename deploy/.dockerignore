@@ -1,0 +1,15 @@
+# Build context is the repository root.
+target/
+target-dblive/
+var/
+.git/
+.github/
+docs/
+*.log
+.env
+.env.*
+!.env.prod.example
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile*
+deploy/k8s.yaml

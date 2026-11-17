@@ -210,14 +210,14 @@ struct RegisterReq {
     email: String,
     #[validate(length(min = 2))]
     name: String,
-    #[validate(length(min = 8))]
+    #[validate(length(min = 12))]
     password: String,
 }
 #[derive(Debug, Deserialize, Validate)]
 struct LoginReq {
     #[validate(email)]
     email: String,
-    #[validate(length(min = 8))]
+    #[validate(length(min = 12))]
     password: String,
 }
 async fn register(
@@ -1364,9 +1364,9 @@ async fn token_revoke(
 
 #[derive(Debug, Deserialize, Validate)]
 struct PasswordReq {
-    #[validate(length(min = 8))]
+    #[validate(length(min = 12))]
     current_password: String,
-    #[validate(length(min = 8))]
+    #[validate(length(min = 12))]
     new_password: String,
 }
 async fn password_change(
@@ -1849,15 +1849,246 @@ async fn sse_events(
 }
 // ---------- end Phase 11/12 final handlers ----------
 
+async fn static_img(Path(name): Path<String>) -> Result<impl IntoResponse, AppError> {
+    const ALLOW: &[(&str, &str)] = &[
+        ("hero-office.jpg", "image/jpeg"),
+        ("hero-office.png", "image/png"),
+        ("hero-office.webp", "image/webp"),
+        ("cta-building.jpg", "image/jpeg"),
+        ("cta-building.png", "image/png"),
+        ("cta-building.webp", "image/webp"),
+    ];
+    let (file, ctype) = ALLOW
+        .iter()
+        .find(|(f, _)| *f == name)
+        .ok_or_else(|| AppError::NotFound("asset".into()))?;
+    let path = std::path::PathBuf::from("apps/server/static").join(file);
+    let bytes = tokio::fs::read(&path)
+        .await
+        .map_err(|_| AppError::NotFound("asset".into()))?;
+    Ok((
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, *ctype)],
+        bytes,
+    ))
+}
 async fn not_found() -> AppError {
     AppError::NotFound("route".into())
 }
+
+// ---------- public pages (landing + login + app shell) ----------
+const PAGE_CSS: &str = ":root{--paper:#FAF7F1;--ink:#1C1917;--muted:#78716C;--gold:#B45309;--emerald:#0C4A3B;--line:rgba(28,25,23,.1);--card:#FFFFFF}\
+*{box-sizing:border-box}html{scroll-behavior:smooth}\
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;margin:0;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}\
+.serif{font-family:'Fraunces',Georgia,serif}h1,h2{letter-spacing:-.02em}\
+a{color:var(--emerald)}.wrap{max-width:1120px;margin:0 auto;padding:0 24px}\
+.island{position:sticky;top:20px;z-index:20;display:flex;justify-content:space-between;align-items:center;max-width:1120px;margin:20px auto 0;padding:12px 12px 12px 24px;background:rgba(250,247,241,.85);backdrop-filter:blur(16px);border:1px solid var(--line);border-radius:999px}\
+.island nav a{margin-left:6px;text-decoration:none;font-size:14px;font-weight:600;color:var(--ink);padding:8px 14px;border-radius:999px;transition:all .5s cubic-bezier(.32,.72,0,1)}\
+.island nav a:hover{background:rgba(28,25,23,.06)}\
+.brand{font-weight:800;letter-spacing:.14em;font-size:13px;text-decoration:none;color:var(--ink)}\
+.pill{display:inline-flex;align-items:center;gap:12px;background:var(--ink);color:#fff;padding:8px 8px 8px 24px;border-radius:999px;text-decoration:none;font-weight:700;font-size:15px;transition:transform .5s cubic-bezier(.32,.72,0,1)}\
+.pill:hover{transform:translateY(-2px)}.pill:active{transform:scale(.98)}\
+.pill .arr{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.32,.72,0,1)}\
+.pill:hover .arr{transform:translate(2px,-2px) scale(1.06)}\
+.pill.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}\
+.pill.ghost .arr{background:rgba(28,25,23,.07)}\
+.eyebrow{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);border:1px solid var(--line);border-radius:999px;padding:6px 14px;background:#fff}\
+.hero{padding:96px 0 72px}.hero h1{font-size:clamp(44px,7vw,88px);line-height:1.02;margin:24px 0}\
+.hero p.lead{font-size:19px;color:var(--muted);max-width:620px;line-height:1.7}\
+.hero-cta{display:flex;gap:14px;margin-top:32px;flex-wrap:wrap}\
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:20px;padding:24px 0 96px}\
+.shell{background:rgba(28,25,23,.045);border:1px solid var(--line);border-radius:28px;padding:10px;transition:transform .7s cubic-bezier(.32,.72,0,1),opacity .7s}\
+.shell:hover{transform:translateY(-4px)}\
+.core{background:var(--card);border-radius:20px;padding:28px;box-shadow:inset 0 1px 1px rgba(255,255,255,.9),0 24px 48px -24px rgba(28,25,23,.18);height:100%}\
+.core .n{font-size:12px;font-weight:800;letter-spacing:.18em;color:var(--gold)}\
+.core h3{font-size:22px;margin:10px 0 8px}.core p{color:var(--muted);font-size:15px;line-height:1.65;margin:0}\
+.s4{grid-column:span 4}.s6{grid-column:span 6}.s8{grid-column:span 8}.s12{grid-column:span 12}\
+.strip{display:flex;gap:40px;flex-wrap:wrap;padding:28px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:8px}\
+.strip b{font-size:30px;display:block}.strip span{color:var(--muted);font-size:13px}\
+footer{padding:48px 0 64px;color:var(--muted);font-size:13px}\
+.authmin{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:32px 16px}\
+.authcard{width:100%;max-width:440px}\
+.authcard .core h2{font-size:30px;margin:12px 0 4px}\
+.tabs{display:flex;gap:8px;margin:18px 0}.tabs button{flex:1;padding:10px;border-radius:999px;border:1px solid var(--line);background:transparent;font-weight:700;cursor:pointer;transition:all .5s cubic-bezier(.32,.72,0,1)}\
+.tabs button.on{background:var(--ink);color:#fff}\
+label.fl{display:block;font-size:13px;font-weight:700;margin:12px 0 2px}\
+input.fi{width:100%;padding:13px 16px;margin:4px 0 6px;border-radius:14px;border:1px solid var(--line);background:var(--paper);font-size:15px;font-family:inherit}\
+input.fi:focus{outline:2px solid var(--emerald);outline-offset:1px}\
+.wfull{width:100%;justify-content:center}\
+.err{color:#B91C1C;font-size:14px;min-height:20px}\
+.dashhead{display:flex;justify-content:space-between;align-items:center;padding:36px 0 8px;flex-wrap:wrap;gap:12px}\
+table.tbl{width:100%;border-collapse:collapse;font-size:15px}\
+table.tbl th{text-align:left;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--line)}\
+table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;background:rgba(12,74,59,.1);color:var(--emerald)}\
+.rv{opacity:0;transform:translateY(28px);filter:blur(6px);transition:opacity .9s cubic-bezier(.32,.72,0,1),transform .9s cubic-bezier(.32,.72,0,1),filter .9s}\
+.rv.in{opacity:1;transform:none;filter:none}\
+@media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
+
+const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust â€” Smart Legal Solution</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+*{box-sizing:border-box}body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;margin:0;color:#0F1B3D;background:#fff}
+a{text-decoration:none}.wrap{max-width:1240px;margin:0 auto;padding:0 28px}
+.topbar{display:flex;align-items:center;gap:28px;padding:18px 0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;color:#0B2BA8}
+.logo small{display:block;font-size:11px;font-weight:600;color:#5A6B8C}
+.nav{display:flex;gap:26px;margin-left:24px;font-size:15px;font-weight:600}
+.nav a{color:#1E2A4A}.nav a.on{background:#2563EB;color:#fff;padding:8px 20px;border-radius:999px}
+.topact{margin-left:auto;display:flex;gap:12px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:15px;padding:13px 26px;border-radius:14px;transition:transform .45s cubic-bezier(.32,.72,0,1)}
+.btn:active{transform:scale(.97)}.btn-pri{background:#1D5BD8;color:#fff;box-shadow:0 12px 28px -10px rgba(29,91,216,.55)}
+.btn-pri:hover{transform:translateY(-2px)}.btn-line{border:1.5px solid #C9D6F2;color:#16224A;background:#fff}
+.btn-white{background:#fff;color:#16224A}
+.hero{background:linear-gradient(180deg,rgba(234,242,255,.92),rgba(247,250,255,.94)),url('/static/hero-office.png') center/cover;overflow:hidden}
+.hero-in{display:grid;grid-template-columns:1fr 1.15fr;gap:36px;align-items:center;padding:56px 0 72px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #D8E4FA;border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:600;color:#33415E;box-shadow:0 6px 18px -8px rgba(29,91,216,.35)}
+.hero h1{font-size:clamp(38px,4.6vw,62px);line-height:1.06;margin:22px 0 18px;letter-spacing:-.02em;color:#101C3D}
+.hero h1 .bl{color:#1D5BD8}.hero p.lead{color:#4A5878;font-size:17px;line-height:1.7;max-width:520px}
+.cta-row{display:flex;gap:14px;margin:28px 0 22px;flex-wrap:wrap}
+.checks{display:flex;gap:22px;flex-wrap:wrap;font-size:14px;font-weight:600;color:#2A3866}
+.checks span{display:flex;align-items:center;gap:8px}.tick{width:22px;height:22px;border-radius:50%;background:#1D5BD8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.mock{background:#fff;border-radius:20px;box-shadow:0 40px 80px -32px rgba(15,40,120,.35);border:1px solid #E3EBFA;overflow:hidden}
+.mock-bar{display:flex;align-items:center;gap:8px;padding:12px 18px;border-bottom:1px solid #EDF1F8;font-size:12px;color:#8A97B5}
+.dot{width:10px;height:10px;border-radius:50%}
+.mock-body{display:grid;grid-template-columns:190px 1fr;min-height:420px}
+.side{background:#F6F9FF;padding:18px 12px;font-size:13.5px;font-weight:600;color:#3D4C6E}
+.side .mi{padding:10px 14px;border-radius:10px;margin-bottom:4px}.side .mi.on{background:#1D5BD8;color:#fff}
+.dmain{padding:20px 22px}.dtop{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.pill{background:#EAF1FE;border-radius:8px;padding:7px 14px;font-size:12.5px;font-weight:700;color:#29407A}
+.stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid #E7EDF7;border-radius:14px;padding:14px;font-size:12px;color:#66739A}
+.stat b{display:block;font-size:22px;color:#101C3D;margin-top:4px}.stat .up{color:#16A34A;font-weight:700}
+.chart{background:#fff;border:1px solid #E7EDF7;border-radius:14px;padding:14px;margin-bottom:14px}
+.feed{background:#fff;border:1px solid #E7EDF7;border-radius:14px;padding:14px;font-size:12.5px}
+.feed div{padding:8px 0;border-bottom:1px solid #F0F3F9;color:#3D4C6E}.feed div:last-child{border:0}
+.cap{font-size:11.5px;color:#8A97B5;text-align:center;padding:8px}
+.trust{display:flex;align-items:center;gap:26px;background:#fff;border:1px solid #E7EDF7;border-radius:18px;padding:20px 30px;box-shadow:0 18px 40px -24px rgba(15,40,120,.25);font-size:13px;color:#5A6B8C;flex-wrap:wrap}
+.trust b{color:#101C3D}.seg{font-weight:800;color:#33415E;letter-spacing:.04em}
+.feat{padding:72px 0 20px;text-align:center}.feat h2{font-size:clamp(28px,3.4vw,44px);margin:14px 0 10px;color:#101C3D;letter-spacing:-.02em}
+.feat p.sub{color:#5A6B8C;font-size:16px}.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px;text-align:left}
+.fcard{background:#F4F7FE;border-radius:18px;padding:28px;transition:transform .5s cubic-bezier(.32,.72,0,1)}
+.fcard:hover{transform:translateY(-5px)}.fcard .ic{font-size:26px}.fcard h3{font-size:17px;margin:12px 0 8px;color:#101C3D}.fcard p{font-size:14px;color:#5A6B8C;line-height:1.65;margin:0}
+.cta{background:linear-gradient(100deg,rgba(11,43,168,.94),rgba(29,91,216,.88)),url('/static/cta-building.png') center/cover;border-radius:26px;color:#fff;padding:56px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center;margin:64px 0}
+.cta h2{font-size:clamp(24px,3vw,38px);margin:0 0 10px}.cta p{opacity:.85}.cta ul{list-style:none;margin:0;padding:0;font-size:15px;font-weight:600}.cta li{margin:10px 0}
+footer{padding:28px 0 48px;color:#8A97B5;font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.rv{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.32,.72,0,1),transform .8s cubic-bezier(.32,.72,0,1)}
+.rv.in{opacity:1;transform:none}
+@media(max-width:960px){.hero-in{grid-template-columns:1fr}.nav{display:none}.stat4{grid-template-columns:repeat(2,1fr)}.fgrid{grid-template-columns:1fr}.cta{grid-template-columns:1fr;padding:36px}.mock-body{grid-template-columns:1fr}.side{display:none}}
+</style></head><body>
+<div class="wrap"><div class="topbar"><div class="logo">âš–ï¸<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur</a><a href="/app">Solusi</a><a href="#fitur">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><a class="btn btn-line" href="/login" style="padding:10px 22px">Masuk</a><a class="btn btn-pri" href="/login" style="padding:10px 22px">Coba Gratis â†’</a></div></div></div>
+<section class="hero"><div class="wrap hero-in"><div>
+<span class="badge rv">ðŸš€ Solusi LegalTech Terdepan di Indonesia</span>
+<h1 class="rv">Kelola Perkara Hukum Lebih Mudah, <span class="bl">Profesional</span> <span class="bl">dan Terpercaya</span></h1>
+<p class="lead rv">LegalRust adalah platform manajemen hukum modern untuk notaris, firma hukum dan profesional hukum dengan teknologi Rust yang super cepat dan aman.</p>
+<div class="cta-row rv"><a class="btn btn-pri" href="/app">â–¶&nbsp; Lihat Demo â†’</a><a class="btn btn-line" href="/login">Mulai Gratis Sekarang â†’</a></div>
+<div class="checks rv"><span><i class="tick">âœ“</i>Gratis Selamanya</span><span><i class="tick">âœ“</i>Aman &amp; Terpercaya</span><span><i class="tick">âœ“</i>Support 24/7</span></div>
+</div>
+<div class="mock rv"><div class="mock-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span style="margin-left:8px">LegalRust â€” pratinjau dasbor (ilustrasi)</span></div>
+<div class="mock-body"><div class="side"><div class="mi on">ðŸ  Dashboard</div><div class="mi">ðŸ“ Perkara</div><div class="mi">ðŸ‘¥ Klien</div><div class="mi">ðŸ“„ Dokumen</div><div class="mi">ðŸ” OCR &amp; Verifikasi</div><div class="mi">âœ’ï¸ Akta &amp; Kontrak</div><div class="mi">ðŸ’° Keuangan</div><div class="mi">ðŸ“Š Laporan</div><div class="mi">âš™ï¸ Pengaturan</div></div>
+<div class="dmain"><div class="dtop"><b>Dashboard</b><span class="pill">30 Hari Terakhir â–¾</span></div>
+<div class="stat4"><div class="stat">Total Perkara<b>128</b><span class="up">â†‘ 12.5%</span></div><div class="stat">Dokumen Diproses<b>842</b><span class="up">â†‘ 18.7%</span></div><div class="stat">Klien Aktif<b>256</b><span class="up">â†‘ 8.2%</span></div><div class="stat">Pendapatan<b>Rp 248 jt</b><span class="up">â†‘ 14.6%</span></div></div>
+<div class="chart"><b style="font-size:13px">Tren Perkara</b><svg viewBox="0 0 400 110" width="100%" height="90"><polygon points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24 400,110 0,110" fill="rgba(37,99,235,.12)"/><polyline points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24" fill="none" stroke="#2563EB" stroke-width="3"/></svg></div>
+<div class="feed"><div>âœ… Dokumen Akta Notaris disetujui â€” 2 menit lalu</div><div>ðŸ“ Perkara #KR-2026-1047 diperbarui â€” 5 menit lalu</div><div>ðŸ‘¤ Klien baru: PT Maju Bersama â€” 10 menit lalu</div></div>
+</div></div><div class="cap">Angka di atas ilustrasi tampilan â€” data live Anda tampil setelah masuk.</div></div>
+</div></section>
+<div class="wrap"><div class="trust rv"><div><b>Dipercaya oleh</b><br>Ribuan Profesional</div><span class="seg">NOTARIS</span><span class="seg">PPAT</span><span class="seg">FIRMA HUKUM</span><span class="seg">KORPORAT</span><span class="seg">ADVOKAT</span></div>
+<section class="feat" id="fitur"><span class="badge rv">Fitur Unggulan</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga laporan analitik, semua terintegrasi dengan sempurna.</p>
+<div class="fgrid">
+<div class="fcard rv"><div class="ic">âš¡</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara â€” klien, tugas, jadwal â€” dalam satu alur yang tertib dan teraudit.</p></div>
+<div class="fcard rv"><div class="ic">ðŸ“„</div><h3>OCR &amp; Verifikasi Dokumen</h3><p>Scan dan verifikasi KTP, KK, NPWP, dan sertifikat dengan skor kepercayaan + review manusia.</p></div>
+<div class="fcard rv"><div class="ic">âœ’ï¸</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dari template profesional dengan alur persetujuan ber-guard.</p></div>
+<div class="fcard rv"><div class="ic">ðŸ’°</div><h3>Keuangan &amp; Trust Ledger</h3><p>Invoice anti-overpay dan rekening dana klien yang saldonya tak pernah negatif.</p></div>
+<div class="fcard rv"><div class="ic">ðŸ“Š</div><h3>Laporan &amp; Analitik</h3><p>Pantau kinerja perkara dan keuangan lewat ekspor CSV siap olah.</p></div>
+<div class="fcard rv"><div class="ic">ðŸ›¡ï¸</div><h3>Keamanan Tingkat Tinggi</h3><p>Argon2, JWT + lockout, RBAC per endpoint, dan jejak audit di setiap langkah.</p></div>
+</div></section>
+<section class="cta rv"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><br><a class="btn btn-white" href="/login">Mulai Sekarang â†’</a></div><ul><li>âœ“ Gratis selamanya</li><li>âœ“ Setup mudah dalam 1 menit</li><li>âœ“ Support profesional</li></ul></section>
+<footer><span>Â© 2026 LegalRust â€” Smart Legal Solution</span><span><a href="/healthz">Status</a> Â· <a href="/api/v1/version">API</a> Â· <a href="/login">Masuk</a></span></footer></div>
+<script>const io=new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.add('in')),{threshold:.1});document.querySelectorAll('.rv').forEach(el=>io.observe(el));</script>
+</body></html>"##;
+
+const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk â€” LEGALRUST</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"><style>CSS</style></head><body>
+<div class="island"><a class="brand" href="/">LEGALRUST</a><nav><a href="/">Beranda</a></nav></div>
+<div class="authmin"><div class="authcard shell"><div class="core">
+<span class="eyebrow">Akses konsultan</span><h2 class="serif">Masuk</h2>
+<p style="color:var(--muted);font-size:14px">Sesi JWT + proteksi brute-force 5x percobaan.</p>
+<div class="tabs"><button id="t1" class="on" onclick="tab(1)">Masuk</button><button id="t2" onclick="tab(2)">Daftar organisasi</button></div>
+<div id="f_reg" style="display:none"><label class="fl">Nama organisasi</label><input class="fi" id="org"><label class="fl">Nama Anda</label><input class="fi" id="nm"></div>
+<label class="fl">Email</label><input class="fi" id="email" type="email" autocomplete="username">
+<label class="fl">Kata sandi</label><input class="fi" id="pwd" type="password" autocomplete="current-password">
+<p class="err" id="err"></p>
+<a class="pill wfull" href="#" id="go" onclick="go();return false">Masuk aplikasi <span class="arr">â†’</span></a>
+</div></div></div>
+<script>
+let mode=1;function tab(m){mode=m;document.getElementById('t1').className=m===1?'on':'';document.getElementById('t2').className=m===2?'on':'';document.getElementById('f_reg').style.display=m===2?'block':'none';document.getElementById('go').innerHTML=(m===1?'Masuk aplikasi ':'Daftar & masuk ')+'<span class="arr">â†’</span>';}
+async function go(){const e=document.getElementById('err');e.textContent='';document.getElementById('go').style.opacity='.6';
+const url=mode===1?'/api/v1/auth/login':'/api/v1/auth/register';
+const body=mode===1?{email:email.value,password:pwd.value}:{org_name:org.value,email:email.value,name:nm.value,password:pwd.value};
+try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+const j=await r.json();if(!r.ok){e.textContent=mode===1?'Gagal masuk ('+r.status+'). Periksa email & kata sandi.':'Gagal daftar ('+r.status+'). Email mungkin sudah dipakai.';document.getElementById('go').style.opacity='1';return;}
+localStorage.setItem('lr_token',j.token);location.href='/app';}catch(x){e.textContent='Server tidak terjangkau.';document.getElementById('go').style.opacity='1';}}
+</script></body></html>"##;
+
+const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor â€” LEGALRUST</title><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet"><style>CSS</style></head><body>
+<div class="island"><a class="brand" href="/">LEGALRUST</a><nav><a href="#" onclick="out();return false">Keluar</a></nav></div>
+<div class="wrap"><div class="dashhead"><div><span class="eyebrow">Ruang kerja</span><h1 class="serif" id="hi" style="font-size:40px;margin:12px 0 4px">Dasbor</h1></div><a class="pill ghost" href="/login" onclick="localStorage.removeItem('lr_token')">Ganti akun <span class="arr">â†’</span></a></div>
+<p class="err" id="err"></p>
+<div class="tabs" id="tabs"><button class="on" data-t="ringkasan" onclick="show('ringkasan')">Ringkasan</button><button data-t="dokumen" onclick="show('dokumen')">Dokumen</button><button data-t="akta" onclick="show('akta')">Akta</button><button data-t="keuangan" onclick="show('keuangan')">Keuangan</button></div>
+<section id="tab-ringkasan"><section class="bento" id="g" style="padding-top:8px"></section>
+<div class="shell s12 rv"><div class="core"><div class="n">PERKARA AKTIF</div><div id="m"><p style="color:var(--muted)">Memuatâ€¦</p></div></div></div></section>
+<section id="tab-dokumen" style="display:none"><div class="shell s12"><div class="core"><div class="n">DOKUMEN</div><h3 class="serif">Dokumen</h3><div id="dlist"><p style="color:var(--muted)">Memuatâ€¦</p></div><h3 class="serif" style="margin-top:16px">Unggah dokumen</h3><label class="fl">Matter ID (opsional)</label><input class="fi" id="up_matter" inputmode="numeric" placeholder="cth 1"><label class="fl">Nama berkas</label><input class="fi" id="up_name" value="catatan.txt"><label class="fl">MIME</label><input class="fi" id="up_mime" value="text/plain"><label class="fl">Isi teks</label><input class="fi" id="up_text" value="hello legalrust"><p class="err" id="dmsg"></p><a class="pill" href="#" onclick="upDoc();return false">Unggah <span class="arr">â†‘</span></a></div></div></section>
+<section id="tab-akta" style="display:none"><div class="shell s12"><div class="core"><div class="n">AKTA</div><h3 class="serif">Akta</h3><div id="alist"><p style="color:var(--muted)">Memuatâ€¦</p></div><p class="err" id="amsg"></p></div></div></section>
+<section id="tab-keuangan" style="display:none"><div class="shell s12"><div class="core"><div class="n">KEUANGAN</div><h3 class="serif">Keuangan</h3><div id="ilist"><p style="color:var(--muted)">Memuatâ€¦</p></div><h3 class="serif" style="margin-top:16px">Trust accounts</h3><div id="tlist"><p style="color:var(--muted)">Memuatâ€¦</p></div><h3 class="serif" style="margin-top:16px">Transfer trust</h3><label class="fl">Dari (akun id)</label><input class="fi" id="tf_from" inputmode="numeric"><label class="fl">Ke (akun id)</label><input class="fi" id="tf_to" inputmode="numeric"><label class="fl">Nominal (minor)</label><input class="fi" id="tf_amt" inputmode="numeric" value="100000"><p class="err" id="tmsg"></p><a class="pill" href="#" onclick="doTransfer();return false">Transfer <span class="arr">â†’</span></a></div></div></section>
+</div>
+<script>
+const t=localStorage.getItem('lr_token');if(!t)location.href='/login';
+const H={Authorization:'Bearer '+t};
+function show(n){document.querySelectorAll('#tabs button').forEach(b=>b.className=b.dataset.t===n?'on':'');for(const k of ['ringkasan','dokumen','akta','keuangan']){document.getElementById('tab-'+k).style.display=k===n?'block':'none';}}
+async function j(u){const r=await fetch(u,{headers:H});if(r.status===401){location.href='/login';return null;}return r.json();}
+async function loadDocs(){try{const d=await j('/api/v1/documents');document.getElementById('dlist').innerHTML='<table class="tbl"><tr><th>ID</th><th>Nama</th></tr>'+d.map(x=>'<tr><td><b>'+x.id+'</b></td><td>'+x.name+'</td></tr>').join('')+'</table>'||'<p>Belum ada dokumen.</p>';}catch(e){document.getElementById('dmsg').textContent='Gagal memuat dokumen: '+e;}}
+async function hexSha(b){const h=await crypto.subtle.digest('SHA-256',b);return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+async function upDoc(){const m=document.getElementById('dmsg');m.textContent='';try{const enc=new TextEncoder().encode(document.getElementById('up_text').value);const sha=await hexSha(enc);const mid=document.getElementById('up_matter').value.trim();const meta={matter_id:mid===''?null:Number(mid),name:document.getElementById('up_name').value,mime:document.getElementById('up_mime').value,size:enc.length,sha};const r=await fetch('/api/v1/documents',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify(meta)});const jj=await r.json();if(!r.ok){m.textContent='Metadata gagal ('+r.status+'): '+(jj.error?jj.error.message:'');return;}const p=await fetch('/api/v1/documents/'+jj.id+'/content',{method:'PUT',headers:H,body:enc});if(!p.ok){m.textContent='PUT bytes gagal ('+p.status+')';return;}m.textContent='';loadDocs();}catch(e){m.textContent='Gagal unggah: '+e;}}
+async function loadAkta(){try{const a=await j('/api/v1/deeds');const nxt=['collection','verification','legal_review','approval','signing'];document.getElementById('alist').innerHTML='<table class="tbl"><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr>'+a.map(x=>'<tr><td><b>'+x.id+'</b></td><td>'+x.number+'</td><td><span class="badge">'+x.state+'</span></td><td>'+nxt.map(s=>'<button onclick="trDeed('+x.id+",'"+s+'\')">'+s+'</button>').join(' ')+'</td></tr>').join('')+'</table>'||'<p>Belum ada akta.</p>';}catch(e){document.getElementById('amsg').textContent='Gagal memuat akta: '+e;}}
+async function trDeed(id,to){const m=document.getElementById('amsg');m.textContent='';const r=await fetch('/api/v1/deeds/'+id+'/transition',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({to})});if(r.status===409){const jj=await r.json();m.textContent='Transisi ditolak (409): '+(jj.error?jj.error.message:'illegal transition');return;}if(!r.ok){m.textContent='Gagal transisi ('+r.status+')';return;}loadAkta();}
+async function loadKeu(matters){try{let h='';for(const mm of matters.slice(0,5)){const inv=await j('/api/v1/matters/'+mm.id+'/invoices');h+='<p><b>'+mm.number+'</b> Â· '+inv.length+' invoice'+(inv.length?': '+inv.map(v=>v.number+' ('+v.total+')').join(', '):'')+'</p>';}document.getElementById('ilist').innerHTML=h||'<p>Belum ada perkara.</p>';const tr=await j('/api/v1/trust/accounts');document.getElementById('tlist').innerHTML='<table class="tbl"><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr>'+tr.map(x=>'<tr><td><b>'+x.id+'</b></td><td>'+x.client_id+'</td><td>'+x.balance+'</td></tr>').join('')+'</table>'||'<p>Belum ada akun.</p>';}catch(e){document.getElementById('tmsg').textContent='Gagal memuat keuangan: '+e;}}
+async function doTransfer(){const m=document.getElementById('tmsg');m.textContent='';try{const r=await fetch('/api/v1/trust/transfer',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({from:Number(tf_from.value),to:Number(tf_to.value),amount_minor:Number(tf_amt.value)})});const jj=await r.json();if(r.status===409){m.textContent='Transfer ditolak (409): '+(jj.error?jj.error.message:'saldo tidak cukup');return;}if(!r.ok){m.textContent='Gagal transfer ('+r.status+')';return;}m.textContent='';loadKeu(window._m||[]);}catch(e){m.textContent='Gagal transfer: '+e;}}
+(async()=>{try{
+const me=await j('/api/v1/orgs/me');document.getElementById('hi').textContent='Dasbor â€” '+me.org_id.slice(0,8)+'â€¦';
+const c=await j('/api/v1/clients'),m=await j('/api/v1/matters'),d=await j('/api/v1/documents'),a=await j('/api/v1/deeds'),tr=await j('/api/v1/trust/accounts');
+window._m=m;
+const cards=[['Klien',c.length,'nama terdaftar'],['Perkara',m.length,'matter aktif'],['Dokumen',d.length,'berkas berversi'],['Akta',a.length,'dalam alur'],['Trust',tr.length,'rekening dana'],['Saldo trust','Rp '+tr.reduce((s,x)=>s+(x.balance||0),0).toLocaleString('id-ID'),'total minor']];
+document.getElementById('g').innerHTML=cards.map((x,i)=>'<div class="shell '+(i<2?'s6':'s4')+' rv in"><div class="core"><div class="n">0'+(i+1)+'</div><div style="font-size:30px;font-weight:800">'+x[1]+'</div><div style="color:var(--muted);font-size:14px">'+x[0]+' Â· '+x[2]+'</div></div></div>').join('');
+document.getElementById('m').innerHTML='<table class="tbl"><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr>'+m.map(x=>'<tr><td><b>'+x.number+'</b></td><td>'+x.title+'</td><td><span class="badge">'+x.status+'</span></td></tr>').join('')+'</table>'||'<p style="color:var(--muted)">Belum ada perkara.</p>';
+loadDocs();loadAkta();loadKeu(m);
+}catch(e){document.getElementById('err').textContent='Gagal memuat: '+e;}})();
+async function out(){try{await fetch('/api/v1/auth/logout',{method:'POST',headers:H});}catch(x){}localStorage.removeItem('lr_token');location.href='/login';}
+</script></body></html>"##;
+
+fn page(html: &str) -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "text/html; charset=utf-8")],
+        html.replacen("CSS", PAGE_CSS, 1),
+    )
+}
+async fn landing() -> impl IntoResponse {
+    page(LANDING_HTML)
+}
+async fn login_page() -> impl IntoResponse {
+    page(LOGIN_HTML)
+}
+async fn app_page() -> impl IntoResponse {
+    page(APP_HTML)
+}
+// ---------- end public pages ----------
 
 pub fn build_router(state: FullState) -> Router {
     let request_id = HeaderName::from_static(REQUEST_ID_HEADER);
     Router::new()
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
+        .route("/", get(landing))
+        .route("/login", get(login_page))
+        .route("/app", get(app_page))
+        .route("/static/{name}", get(static_img))
         .route("/api/v1/version", get(version))
         .route("/api/v1/auth/register", post(register))
         .route("/api/v1/auth/login", post(login))
@@ -1965,7 +2196,7 @@ pub fn dev_state() -> FullState {
         m,
         o,
         Arc::new(LocalStore::new(std::env::temp_dir().join("lr-dev-objects"))),
-        b"test-secret".to_vec(),
+        b"test-secret-0123456789-0123456789ab".to_vec(),
     );
     stores.integration_secret = b"test-integration".to_vec();
     FullState {

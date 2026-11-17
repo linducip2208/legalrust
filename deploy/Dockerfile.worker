@@ -1,0 +1,55 @@
+# multi-stage production image for legalrust-worker.
+# Same cargo-chef-less caching strategy as Dockerfile.server.
+# NOTE: the worker exposes no HTTP listener, so there is intentionally no
+# EXPOSE here and the HEALTHCHECK asserts the worker process is alive
+# (the server image is the one that probes GET /healthz on :8080).
+# No secrets are baked in: all configuration arrives via environment.
+
+FROM rust:1.99-bookworm AS builder
+WORKDIR /app
+ENV SQLX_OFFLINE=true \
+    CARGO_TERM_COLOR=never
+
+# 1. Cache layer: workspace + per-crate manifests only.
+COPY Cargo.toml Cargo.lock* ./
+COPY apps/server/Cargo.toml ./apps/server/Cargo.toml
+COPY apps/worker/Cargo.toml ./apps/worker/Cargo.toml
+COPY crates ./crates-manifest-staging
+RUN set -e; \
+    for d in ./crates-manifest-staging/*/; do \
+      name=$(basename "$d"); \
+      mkdir -p "crates/$name"; \
+      cp "$d/Cargo.toml" "crates/$name/Cargo.toml"; \
+    done; \
+    rm -rf ./crates-manifest-staging; \
+    ls crates/*/Cargo.toml
+
+# 2. Dummy sources so `cargo build` can compile the dependency graph.
+RUN set -e; \
+    mkdir -p apps/server/src apps/worker/src; \
+    printf 'fn main() {}\n' > apps/server/src/main.rs; \
+    printf '// dummy lib\n' > apps/server/src/lib.rs; \
+    printf 'fn main() {}\n' > apps/worker/src/main.rs; \
+    for d in crates/*/; do \
+      mkdir -p "$d/src"; \
+      printf '// dummy\n' > "$d/src/lib.rs"; \
+    done; \
+    cargo build --release -p legalrust-worker; \
+    rm -rf apps/server/src apps/worker/src crates/*/src target/release/legalrust-worker
+
+# 3. Real sources + real release build.
+COPY apps ./apps
+COPY crates ./crates
+RUN cargo build --release -p legalrust-worker
+
+# ---- runtime ----
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates procps \
+    && rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 10001 appuser
+COPY --from=builder /app/target/release/legalrust-worker /usr/local/bin/legalrust-worker
+USER appuser
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD pgrep -x legalrust-worker > /dev/null || exit 1
+CMD ["legalrust-worker"]

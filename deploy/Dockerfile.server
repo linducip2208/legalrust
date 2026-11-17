@@ -1,8 +1,56 @@
-FROM rust:1-bookworm AS build
+# multi-stage production image for legalrust-server.
+# Builder pins rust:1.99-bookworm (matches AGENTS.md toolchain expectations).
+# Layer caching is cargo-chef-less: manifests are copied first and a dummy
+# crate graph is compiled so dependency layers survive source changes.
+# No secrets are baked in: all configuration arrives via environment.
+
+FROM rust:1.99-bookworm AS builder
 WORKDIR /app
-COPY . .
+ENV SQLX_OFFLINE=true \
+    CARGO_TERM_COLOR=never
+
+# 1. Cache layer: workspace + per-crate manifests only.
+COPY Cargo.toml Cargo.lock* ./
+COPY apps/server/Cargo.toml ./apps/server/Cargo.toml
+COPY apps/worker/Cargo.toml ./apps/worker/Cargo.toml
+COPY crates ./crates-manifest-staging
+# Reconstruct manifest tree from staged crates (glob-safe explicit copy).
+RUN set -e; \
+    for d in ./crates-manifest-staging/*/; do \
+      name=$(basename "$d"); \
+      mkdir -p "crates/$name"; \
+      cp "$d/Cargo.toml" "crates/$name/Cargo.toml"; \
+    done; \
+    rm -rf ./crates-manifest-staging; \
+    ls crates/*/Cargo.toml
+
+# 2. Dummy sources so `cargo build` can compile the dependency graph.
+RUN set -e; \
+    mkdir -p apps/server/src apps/worker/src; \
+    printf 'fn main() {}\n' > apps/server/src/main.rs; \
+    printf '// dummy lib\n' > apps/server/src/lib.rs; \
+    printf 'fn main() {}\n' > apps/worker/src/main.rs; \
+    for d in crates/*/; do \
+      mkdir -p "$d/src"; \
+      printf '// dummy\n' > "$d/src/lib.rs"; \
+    done; \
+    cargo build --release -p legalrust-server; \
+    rm -rf apps/server/src apps/worker/src crates/*/src target/release/legalrust-server
+
+# 3. Real sources + real release build.
+COPY apps ./apps
+COPY crates ./crates
 RUN cargo build --release -p legalrust-server
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=build /app/target/release/legalrust-server /usr/local/bin/
+
+# ---- runtime ----
+FROM debian:bookworm-slim AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN useradd --create-home --shell /usr/sbin/nologin --uid 10001 appuser
+COPY --from=builder /app/target/release/legalrust-server /usr/local/bin/legalrust-server
+USER appuser
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8080/healthz > /dev/null || exit 1
 CMD ["legalrust-server"]

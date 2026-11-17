@@ -50,6 +50,53 @@ async fn healthz_ok() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
 }
+async fn body_text(res: axum::response::Response) -> String {
+    String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap()
+}
+#[tokio::test]
+async fn public_pages_serve_landing_login_app() {
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+    let b = body_text(res).await;
+    assert!(b.contains("LegalRust") && b.contains("/login"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/login")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let b = body_text(res).await;
+    assert!(b.contains("/api/v1/auth/login") && b.contains("Masuk"));
+    let res = a
+        .clone()
+        .oneshot(Request::builder().uri("/app").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let b = body_text(res).await;
+    assert!(b.contains("/api/v1/clients"));
+    assert!(b.contains("Dokumen"));
+    assert!(b.contains("Keuangan"));
+    assert!(b.contains("/api/v1/trust/accounts"));
+    assert!(b.contains("Ringkasan") && b.contains("Akta"));
+}
 #[tokio::test]
 async fn full_flow_memory() {
     let a = app();
@@ -58,7 +105,7 @@ async fn full_flow_memory() {
         .clone()
         .oneshot(post(
             "/api/v1/auth/register",
-            r#"{"org_name":"Acme","email":"a@x.id","name":"Ayu","password":"password1"}"#,
+            r#"{"org_name":"Acme","email":"a@x.id","name":"Ayu","password":"password1-2-3"}"#,
             None,
         ))
         .await
@@ -190,7 +237,7 @@ async fn reg(app: &axum::Router, email: &str) -> String {
         .oneshot(post(
             "/api/v1/auth/register",
             &format!(
-                r#"{{"org_name":"Acme","email":"{email}","name":"Ayu","password":"password1"}}"#
+                r#"{{"org_name":"Acme","email":"{email}","name":"Ayu","password":"password1-2-3"}}"#
             ),
             None,
         ))
@@ -458,7 +505,7 @@ async fn webhook_verify_and_rate_limit() {
             .oneshot(post(
                 "/api/v1/auth/register",
                 &format!(
-                    r#"{{"org_name":"R{i}","email":"r{i}@x.id","name":"Ray","password":"password1"}}"#
+                    r#"{{"org_name":"R{i}","email":"r{i}@x.id","name":"Ray","password":"password1-2-3"}}"#
                 ),
                 None,
             ))
@@ -470,7 +517,7 @@ async fn webhook_verify_and_rate_limit() {
         .clone()
         .oneshot(post(
             "/api/v1/auth/register",
-            r#"{"org_name":"R21","email":"r21@x.id","name":"Ray","password":"password1"}"#,
+            r#"{"org_name":"R21","email":"r21@x.id","name":"Ray","password":"password1-2-3"}"#,
             None,
         ))
         .await
@@ -622,7 +669,7 @@ async fn login_lockout_after_5_bad_attempts() {
             .clone()
             .oneshot(post(
                 "/api/v1/auth/login",
-                &format!(r#"{{"email":"{email}","password":"wrongpass1"}}"#),
+                &format!(r#"{{"email":"{email}","password":"wrongpass1234"}}"#),
                 None,
             ))
             .await
@@ -752,7 +799,7 @@ async fn tokens_password_roles_notifications() {
         .clone()
         .oneshot(post(
             "/api/v1/auth/password",
-            r#"{"current_password":"password1","new_password":"password2"}"#,
+            r#"{"current_password":"password1-2-3","new_password":"password2-2-3"}"#,
             Some(&tok),
         ))
         .await
@@ -762,7 +809,7 @@ async fn tokens_password_roles_notifications() {
         .clone()
         .oneshot(post(
             "/api/v1/auth/login",
-            r#"{"email":"sec@x.id","password":"password2"}"#,
+            r#"{"email":"sec@x.id","password":"password2-2-3"}"#,
             None,
         ))
         .await
@@ -988,4 +1035,95 @@ async fn shares_reports_audit_jobs_trust_sse() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     assert_eq!(res.headers()["content-type"], "text/event-stream");
+}
+
+#[tokio::test]
+async fn trust_transfer_json_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "trx@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"C1","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let c1 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"C2","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let c2 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/accounts",
+            &format!(r#"{{"client_id":{c1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid1 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/accounts",
+            &format!(r#"{{"client_id":{c2}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let aid2 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid1}/entries"),
+            r#"{"kind":"credit","amount_minor":1000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/transfer",
+            &format!(r#"{{"from":{aid1},"to":{aid2},"amount_minor":400000}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/trust/accounts/{aid1}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["balance"].as_i64().unwrap(), 600000);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/trust/accounts/{aid2}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["balance"].as_i64().unwrap(), 400000);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/transfer",
+            &format!(r#"{{"from":{aid1},"to":{aid2},"amount_minor":700000}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
 }

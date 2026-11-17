@@ -59,10 +59,22 @@ impl AppError {
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
+
+    /// Client-facing message. Self-audit hardening 2026-11-17: `Internal`
+    /// (which wraps arbitrary `anyhow` chains incl. `sqlx`/`StoreError::Db`
+    /// text) MUST render as a fixed string so DB internals can never reach
+    /// the wire even if a handler forwards `e.to_string()`. All other
+    /// variants carry only caller-supplied, validation-style messages.
+    pub fn public_message(&self) -> String {
+        match self {
+            AppError::Internal(_) => "internal error".to_string(),
+            _ => self.to_string(),
+        }
+    }
 }
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let body = Json(json!({"error": {"code": self.code(), "message": self.to_string()}}));
+        let body = Json(json!({"error": {"code": self.code(), "message": self.public_message()}}));
         (self.status(), body).into_response()
     }
 }
@@ -127,5 +139,31 @@ mod tests {
         }
         .normalized();
         assert_eq!((p, n), (1, 200));
+    }
+    // --- self-audit hardening tests (2026-11-17) ---
+    #[test]
+    fn internal_never_leaks_db_detail() {
+        // Simulate a handler forwarding a sqlx/StoreError chain verbatim.
+        let leaked = AppError::Internal(anyhow::anyhow!(
+            "SELECT * FROM users WHERE id=1: Column 'pw_hash' not found (sqlx mysql)"
+        ));
+        assert_eq!(leaked.status(), StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(leaked.code(), "INTERNAL");
+        assert_eq!(leaked.public_message(), "internal error");
+        assert!(!leaked.public_message().contains("SELECT"));
+        assert!(!leaked.public_message().contains("sqlx"));
+    }
+    #[test]
+    fn validation_messages_stay_client_safe() {
+        // allowlist-style messages remain visible to callers.
+        let v = AppError::Validation("password invalid".into());
+        assert_eq!(v.public_message(), "validation failed: password invalid");
+        assert_eq!(v.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    #[test]
+    fn blocked_external_maps_to_501() {
+        let b = AppError::BlockedExternal("ocr engine unavailable".into());
+        assert_eq!(b.status(), StatusCode::NOT_IMPLEMENTED);
+        assert_eq!(b.code(), "EXTERNAL_BLOCKED");
     }
 }

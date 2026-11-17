@@ -10,8 +10,29 @@ pub enum AuthError {
     Hash,
     #[error("invalid credentials")]
     Invalid,
-    #[error("token error: {0}")]
-    Token(String),
+    #[error("password does not meet policy")]
+    WeakPassword,
+    #[error("token error")]
+    Token,
+}
+
+/// Minimum accepted password length (self-audit hardening 2026-11-17:
+/// raised from 8 to 12 to match NIST 800-63B guidance for user-chosen secrets).
+pub const MIN_PASSWORD_LEN: usize = 12;
+/// Session lifetime in hours (self-audit hardening 2026-11-17: reduced 24h -> 8h
+/// so a stolen JWT is useful for at most one work shift).
+pub const SESSION_TTL_HOURS: i64 = 8;
+/// Minimum JWT secret length in bytes (256-bit key material).
+pub const MIN_SECRET_LEN: usize = 32;
+
+/// Shared password-policy gate used by `register` (and mirrored by
+/// `password_change` callers). Length-only on purpose: complexity rules push
+/// users toward predictable `P@ssw0rd1!` patterns; length is what matters.
+pub fn validate_password(pw: &str) -> Result<(), AuthError> {
+    if pw.len() < MIN_PASSWORD_LEN {
+        return Err(AuthError::WeakPassword);
+    }
+    Ok(())
 }
 pub fn hash_password(plain: &str) -> Result<String, AuthError> {
     let salt = SaltString::generate(&mut OsRng);
@@ -40,7 +61,7 @@ pub fn issue_token(secret: &[u8], claims: &Claims) -> Result<String, AuthError> 
         claims,
         &jsonwebtoken::EncodingKey::from_secret(secret),
     )
-    .map_err(|e| AuthError::Token(e.to_string()))
+    .map_err(|_| AuthError::Token)
 }
 pub fn validate_token(secret: &[u8], token: &str) -> Result<Claims, AuthError> {
     jsonwebtoken::decode::<Claims>(
@@ -49,7 +70,7 @@ pub fn validate_token(secret: &[u8], token: &str) -> Result<Claims, AuthError> {
         &jsonwebtoken::Validation::default(),
     )
     .map(|d| d.claims)
-    .map_err(|e| AuthError::Token(e.to_string()))
+    .map_err(|_| AuthError::Token)
 }
 pub fn recovery_codes(n: usize) -> Vec<String> {
     use rand_core::RngCore;
@@ -68,21 +89,39 @@ fn map_store(e: StoreError) -> AppError {
         StoreError::Db(m) => AppError::Internal(anyhow::Error::msg(m)),
     }
 }
-#[derive(Debug, Clone, Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Session {
     pub user_id: String,
     pub org_id: String,
     pub token: String,
     pub session_id: String,
 }
+
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Session")
+            .field("user_id", &self.user_id)
+            .field("org_id", &self.org_id)
+            .field("token", &"[redacted]")
+            .field("session_id", &self.session_id)
+            .finish()
+    }
+}
+
 fn expiry() -> (chrono::NaiveDateTime, usize) {
-    let dt = chrono::Utc::now() + chrono::Duration::hours(24);
+    let dt = chrono::Utc::now() + chrono::Duration::hours(SESSION_TTL_HOURS);
     (dt.naive_utc(), dt.timestamp() as usize)
 }
+
 pub fn check_secret(secret: &[u8]) -> Result<(), AppError> {
     if secret.is_empty() {
         return Err(AppError::BlockedExternal(
             "JWT_SECRET not configured".into(),
+        ));
+    }
+    if secret.len() < MIN_SECRET_LEN {
+        return Err(AppError::BlockedExternal(
+            "JWT_SECRET too short; provide at least 32 bytes".into(),
         ));
     }
     Ok(())
@@ -96,9 +135,10 @@ pub async fn register(
     pw: &str,
 ) -> Result<Session, AppError> {
     check_secret(secret)?;
-    if !email.contains('@') || pw.len() < 8 {
-        return Err(AppError::Validation("email/password invalid".into()));
+    if !email.contains('@') {
+        return Err(AppError::Validation("email invalid".into()));
     }
+    validate_password(pw).map_err(|_| AppError::Validation("password invalid".into()))?;
     let hash = hash_password(pw).map_err(|_| AppError::Internal(anyhow::Error::msg("hash")))?;
     let (org_id, uid) = store
         .create_org_owner(org, email, name, &hash)
@@ -268,14 +308,15 @@ mod tests {
     #[tokio::test]
     async fn register_then_login_memory() {
         let s = MemoryStores::default();
-        let r = register(&s, b"secret", "Acme", "a@x.id", "Ayu", "password1")
+        let secret = b"0123456789abcdef0123456789abcdef";
+        let r = register(&s, secret, "Acme", "a@x.id", "Ayu", "password1-2-3")
             .await
             .unwrap();
         assert_eq!(r.org_id.chars().count(), 5);
-        let l = login(&s, b"secret", "a@x.id", "password1").await.unwrap();
+        let l = login(&s, secret, "a@x.id", "password1-2-3").await.unwrap();
         assert_eq!(l.org_id, r.org_id);
-        assert!(login(&s, b"secret", "a@x.id", "nope-nope").await.is_err());
-        assert!(register(&s, b"", "Acme", "b@x.id", "Bud", "password1")
+        assert!(login(&s, secret, "a@x.id", "nope-nope-nope").await.is_err());
+        assert!(register(&s, b"", "Acme", "b@x.id", "Bud", "password1-2-3")
             .await
             .is_err());
     }
@@ -303,5 +344,59 @@ mod tests {
         g.reset("3.3.3.3");
         assert!(!g.is_locked("3.3.3.3"));
         assert!(!g.register_failure("3.3.3.3"));
+    }
+    // --- self-audit hardening tests (2026-11-17) ---
+    #[test]
+    fn password_policy_rejects_short() {
+        assert_eq!(MIN_PASSWORD_LEN, 12);
+        assert!(validate_password("short").is_err());
+        assert!(validate_password("12345678").is_err()); // old 8-char minimum no longer enough
+        assert!(validate_password("password1-2-3").is_ok());
+    }
+    #[test]
+    fn secret_must_be_32_bytes() {
+        assert!(check_secret(b"").is_err());
+        assert!(check_secret(b"short").is_err());
+        assert!(check_secret(b"0123456789abcdef0123456789abcdef").is_ok());
+    }
+    #[test]
+    fn session_ttl_is_eight_hours() {
+        assert_eq!(SESSION_TTL_HOURS, 8);
+        let (dt, exp) = expiry();
+        let now = chrono::Utc::now().naive_utc();
+        let delta = (dt - now).num_minutes();
+        assert!((450..=490).contains(&delta), "ttl ~8h, got {delta}m");
+        let _ = exp;
+    }
+    #[test]
+    fn session_debug_redacts_token() {
+        let s = Session {
+            user_id: "u".into(),
+            org_id: "o".into(),
+            token: "super-secret-jwt".into(),
+            session_id: "sid".into(),
+        };
+        let dbg = format!("{s:?}");
+        assert!(!dbg.contains("super-secret-jwt"), "token leaked in Debug");
+        assert!(dbg.contains("[redacted]"));
+    }
+    #[test]
+    fn token_error_carries_no_detail() {
+        let err = validate_token(b"0123456789abcdef0123456789abcdef", "bogus").unwrap_err();
+        assert_eq!(err.to_string(), "token error");
+        assert!(!err.to_string().contains("Invalid"));
+    }
+    #[tokio::test]
+    async fn register_rejects_weak_password() {
+        let s = MemoryStores::default();
+        let secret = b"0123456789abcdef0123456789abcdef";
+        assert!(register(&s, secret, "Acme", "w@x.id", "W", "short-pw")
+            .await
+            .is_err());
+        assert!(
+            register(&s, b"tiny", "Acme", "w2@x.id", "W", "password1-2-3")
+                .await
+                .is_err()
+        );
     }
 }
