@@ -1934,50 +1934,82 @@ table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
 @media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
 
 const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css"><style>
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F1B3D;background:#fff}
 @font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}
-.hero{background:linear-gradient(100deg,rgba(247,250,255,.96) 30%,rgba(247,250,255,.55) 60%,rgba(247,250,255,.15)),url('/static/hero-office.png') center/cover}
-.hero h1{letter-spacing:-.02em}
-.mock-shadow{box-shadow:0 40px 80px -32px rgba(15,40,120,.35)}
-.cta-bg{background:linear-gradient(100deg,rgba(11,43,168,.88),rgba(29,91,216,.55)),url('/static/cta-building.png') center/cover}
+.topbar{display:flex;align-items:center;gap:26px;padding:18px 0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:23px;color:#0B2BA8}
+.logo small{display:block;font-size:11px;font-weight:600;color:#5A6B8C}
+.nav{display:flex;gap:22px;margin-left:24px;font-size:15px;font-weight:600;align-items:center}
+.nav a{color:#1E2A4A;padding:8px 18px;border-radius:999px}.nav a.on{background:#2563EB;color:#fff}.nav a:hover{color:#2563EB}.nav a.on:hover{color:#fff}
+.topact{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn-pri{background:#1D5BD8;color:#fff;font-weight:700;border-radius:12px;padding:11px 24px;box-shadow:0 12px 28px -10px rgba(29,91,216,.55);transition:transform .45s cubic-bezier(.32,.72,0,1)}
+.btn-pri:hover{transform:translateY(-2px)}.btn-line{border:1.5px solid #C9D6F2;color:#16224A;font-weight:700;border-radius:12px;padding:11px 22px;background:#fff}
+.hero{background:linear-gradient(90deg,#fff 30%,rgba(255,255,255,.55) 55%,rgba(255,255,255,0) 75%),url('/static/hero-office.png') right center/cover,linear-gradient(180deg,#EAF2FF,#F7FAFF)}
+.hero-in{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center;padding:52px 0 60px}
+.badge-soft{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #D8E4FA;border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:600;color:#33415E;box-shadow:0 6px 18px -8px rgba(29,91,216,.35)}
+.hero h1{font-size:clamp(38px,4.4vw,60px);line-height:1.08;margin:20px 0 16px;letter-spacing:-.02em;color:#101C3D}
+.hero h1 .bl{color:#1D5BD8}.hero p.lead{color:#4A5878;font-size:16.5px;line-height:1.7;max-width:510px}
+.cta-row{display:flex;gap:14px;margin:26px 0 20px;flex-wrap:wrap}
+.cta-row .a{background:#1D5BD8;color:#fff;font-weight:700;border-radius:12px;padding:14px 28px;box-shadow:0 12px 28px -10px rgba(29,91,216,.55)}
+.cta-row .b{border:1.5px solid #C9D6F2;color:#16224A;font-weight:700;border-radius:12px;padding:14px 26px;background:#fff}
+.checks{display:flex;gap:20px;flex-wrap:wrap;font-size:14px;font-weight:600;color:#2A3866}
+.checks span{display:flex;align-items:center;gap:8px}.tick{width:22px;height:22px;border-radius:50%;background:#1D5BD8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
+.mock{background:#fff;border-radius:16px;box-shadow:0 40px 80px -32px rgba(15,40,120,.35);border:1px solid #E3EBFA;overflow:hidden;transform:rotate(1.2deg)}
+.mock-top{display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid #EDF1F8;font-size:12px;color:#8A97B5}
+.dot{width:9px;height:9px;border-radius:50%}
+.mock-body{display:grid;grid-template-columns:172px 1fr;min-height:400px}
+.side{background:#F6F9FF;padding:14px 10px;font-size:12.5px;font-weight:600;color:#3D4C6E}
+.side .logo2{display:flex;align-items:center;gap:6px;font-weight:800;color:#0B2BA8;font-size:14px;padding:4px 10px 12px}
+.side .mi{padding:8px 12px;border-radius:8px;margin-bottom:2px}.side .mi.on{background:#1D5BD8;color:#fff}
+.dmain{padding:16px 18px}.dtop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.dtop small{color:#8A97B5}.pill{background:#EAF1FE;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#29407A}
+.stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.stat{border:1px solid #E7EDF7;border-radius:12px;padding:10px;font-size:11px;color:#66739A}
+.stat b{display:block;font-size:19px;color:#101C3D;margin:2px 0}.stat .up{color:#16A34A;font-weight:700}
+.dgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+.panel{border:1px solid #E7EDF7;border-radius:12px;padding:10px;font-size:11.5px}
+.panel b{font-size:12.5px}.feed div{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #F0F3F9;color:#3D4C6E}.feed div:last-child{border:0}
+.trust{display:flex;align-items:center;gap:22px;background:#fff;border:1px solid #E7EDF7;border-radius:16px;padding:18px 28px;box-shadow:0 18px 40px -24px rgba(15,40,120,.25);font-size:13px;color:#5A6B8C;flex-wrap:wrap;margin-top:8px}
+.trust b{color:#101C3D}.seg{font-weight:800;color:#33415E;letter-spacing:.03em;font-size:14px}
+.feat{padding:64px 0 12px;text-align:center}.feat h2{font-size:clamp(28px,3.2vw,42px);margin:14px 0 8px;color:#101C3D;letter-spacing:-.02em}
+.feat p.sub{color:#5A6B8C;font-size:16px}.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px;text-align:left}
+.fcard{background:#F4F7FE;border-radius:16px;padding:26px;transition:transform .5s cubic-bezier(.32,.72,0,1)}
+.fcard:hover{transform:translateY(-5px)}.fcard .ic{font-size:26px}.fcard h3{font-size:16.5px;margin:10px 0 6px;color:#101C3D}.fcard p{font-size:13.5px;color:#5A6B8C;line-height:1.6;margin:0}
+.cta{background:linear-gradient(100deg,rgba(11,43,168,.94),rgba(29,91,216,.75)),url('/static/cta-building.png') center/cover;border-radius:22px;color:#fff;padding:50px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center;margin:56px 0}
+.cta h2{font-size:clamp(22px,2.8vw,34px);margin:0 0 8px}.cta p{opacity:.85;margin:0 0 18px}.cta ul{list-style:none;margin:0;padding:0;font-size:15px;font-weight:600}.cta li{margin:10px 0}
+footer{padding:24px 0 44px;color:#8A97B5;font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .rv{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.32,.72,0,1),transform .8s cubic-bezier(.32,.72,0,1)}
 .rv.in{opacity:1;transform:none}
+@media(max-width:960px){.hero-in{grid-template-columns:1fr}.nav{display:none}.stat4{grid-template-columns:repeat(2,1fr)}.fgrid{grid-template-columns:1fr}.cta{grid-template-columns:1fr;padding:32px}.mock{transform:none}.mock-body{grid-template-columns:1fr}.side{display:none}.dgrid{grid-template-columns:1fr}}
 </style></head><body>
-<div class="container-xl"><div class="d-flex align-items-center gap-3 py-3"><a href="/" class="d-flex align-items-center gap-2 text-decoration-none"><span style="font-size:26px">⚖️</span><span><strong>LegalRust</strong><span class="d-block text-muted" style="font-size:11px">Smart Legal Solution</span></span></a><nav class="d-none d-md-flex gap-3 mx-auto"><a class="btn btn-primary btn-sm" href="/">Beranda</a><a class="btn btn-ghost-secondary btn-sm" href="#fitur">Fitur</a><a class="btn btn-ghost-secondary btn-sm" href="/app">Solusi</a><a class="btn btn-ghost-secondary btn-sm" href="#harga">Harga</a><a class="btn btn-ghost-secondary btn-sm" href="#fitur">Tentang</a><a class="btn btn-ghost-secondary btn-sm" href="/login">Kontak</a></nav><div class="ms-auto d-flex gap-2"><a href="/login" class="btn btn-outline-primary">Masuk</a><a href="/login" class="btn btn-primary">Coba Gratis <i class="ti ti-arrow-right"></i></a></div></div></div>
-<section class="hero"><div class="container-xl"><div class="row align-items-center py-5">
-<div class="col-lg-6 py-4"><span class="badge bg-white text-primary border rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
-<h1 class="display-5 fw-bolder mt-3 rv">Kelola Perkara Hukum Lebih Mudah, <span class="text-primary">Profesional dan Terpercaya.</span></h1>
-<p class="text-muted fs-4 mt-3 rv">Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal. Kelola perkara, dokumen, akta, OCR, dan proses administrasi dalam satu platform.</p>
-<div class="d-flex gap-2 mt-4 rv"><a href="/login" class="btn btn-primary btn-lg">▶ Mulai Gratis</a><a href="/app" class="btn btn-outline-primary btn-lg">Lihat Demo</a></div>
-<div class="d-flex gap-4 mt-4 text-muted flex-wrap rv"><span><i class="ti ti-check text-primary"></i> Platform Terintegrasi</span><span><i class="ti ti-check text-primary"></i> Workflow Lebih Efisien</span><span><i class="ti ti-check text-primary"></i> Keamanan Berlapis</span></div></div>
-<div class="col-lg-6 py-4"><div class="card mock-shadow rv"><div class="card-header"><span class="badge bg-blue-lt">Dasbor live Anda — ilustrasi</span></div>
-<div class="card-body"><div class="row g-2">
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Total Perkara</div><div class="h2 m-0">128</div><div class="text-success small">↑ 12.5%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Dokumen</div><div class="h2 m-0">842</div><div class="text-success small">↑ 18.7%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Klien Aktif</div><div class="h2 m-0">256</div><div class="text-success small">↑ 8.2%</div></div></div></div>
-<div class="col-6 col-md-3"><div class="card"><div class="card-body p-2 text-center"><div class="text-muted small">Pendapatan</div><div class="h2 m-0">Rp 248 jt</div><div class="text-success small">↑ 14.6%</div></div></div></div>
-</div><div class="table-responsive mt-3"><table class="table table-sm"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody>
-<tr><td><strong>M-1047</strong></td><td>Akta Jual Beli Tanah</td><td><span class="badge bg-green-lt">review</span></td></tr>
-<tr><td><strong>M-1046</strong></td><td>Pendirian PT Maju Bersama</td><td><span class="badge bg-yellow-lt">draft</span></td></tr>
-<tr><td><strong>M-1045</strong></td><td>Perjanjian Kredit Bank</td><td><span class="badge bg-blue-lt">approved</span></td></tr>
-</tbody></table></div></div></div></div>
-</div></div></section>
-<div class="container-xl"><div class="card mt-3 mb-2 rv"><div class="card-body d-flex align-items-center gap-3 flex-wrap py-3">
-<div><strong>Dipercaya oleh</strong><div class="text-muted">Ribuan Profesional</div></div>
-<span class="badge bg-azure-lt">NOTARIS</span><span class="badge bg-azure-lt">PPAT</span><span class="badge bg-azure-lt">FIRMA HUKUM</span><span class="badge bg-azure-lt">KORPORAT</span><span class="badge bg-azure-lt">ADVOKAT</span></div></div>
-<div class="text-center mt-5" id="fitur"><span class="badge bg-blue-lt rv">FITUR UNGGULAN</span><h2 class="mt-2 rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="text-muted rv">Dari manajemen perkara hingga laporan analitik, semua terintegrasi dengan sempurna.</p></div>
-<div class="row g-3 mt-2">
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-scale fs-2 text-primary"></i><h3 class="mt-2">Manajemen Perkara</h3><p class="text-muted">Klien, tugas, jadwal, dan status perkara dalam satu alur tertib dan teraudit. <a href="/app">Buka dasbor →</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-file-search fs-2 text-primary"></i><h3 class="mt-2">OCR &amp; Verifikasi</h3><p class="text-muted">Ekstraksi KTP/KK/NPWP/sertifikat dengan skor kepercayaan + review manusia. <a href="/app">Lihat alur →</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-writing fs-2 text-primary"></i><h3 class="mt-2">Generasi Akta</h3><p class="text-muted">Template render variabel dengan guard transisi draft → review → approved → signed. <a href="/app">Lihat alur →</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-wallet fs-2 text-primary"></i><h3 class="mt-2">Keuangan &amp; Trust</h3><p class="text-muted">Invoice anti-overpay dan rekening dana klien anti-saldo-negatif. <a href="/app">Lihat alur →</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-chart-bar fs-2 text-primary"></i><h3 class="mt-2">Laporan &amp; Analitik</h3><p class="text-muted">Ekspor CSV perkara dan trust ledger siap olah. <a href="/api/v1/version">Cek API →</a></p></div></div></div>
-<div class="col-md-4"><div class="card h-100 rv"><div class="card-body"><i class="ti ti-shield-check fs-2 text-primary"></i><h3 class="mt-2">Keamanan Berlapis</h3><p class="text-muted">Argon2, JWT + lockout, RBAC per endpoint, jejak audit. <a href="/api/v1/version">Cek API →</a></p></div></div></div>
+<div class="container-xl"><div class="topbar"><div class="logo">⚖️<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur ▾</a><a href="/app">Solusi ▾</a><a href="#harga">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><span style="color:#8A97B5">🔍</span><a href="/login" class="btn-line" style="padding:10px 22px">Masuk</a><a href="/login" class="btn-pri" style="padding:10px 22px">Coba Gratis →</a></div></div></div>
+<section class="hero"><div class="container-xl hero-in"><div>
+<span class="badge-soft rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
+<h1 class="rv">Kelola Perkara Hukum Lebih Mudah, <span class="bl">Profesional dan Terpercaya.</span></h1>
+<p class="lead rv">LegalRust adalah platform manajemen hukum modern untuk notaris, firma hukum dan profesional hukum dengan teknologi Rust yang super cepat dan aman.</p>
+<div class="cta-row rv"><a class="a" href="/app">▶&nbsp; Lihat Demo &nbsp;→</a><a class="b" href="/login">Mulai Gratis Sekarang &nbsp;→</a></div>
+<div class="checks rv"><span><i class="tick">✓</i>Gratis Selamanya</span><span><i class="tick">✓</i>Aman &amp; Terpercaya</span><span><i class="tick">✓</i>Support 24/7</span></div>
 </div>
-<div class="card cta-bg text-white mt-5 rv" id="harga"><div class="card-body p-5"><div class="row align-items-center">
-<div class="col-lg-8"><h2>Bangun Praktik Hukum yang Lebih Modern.</h2><p class="opacity-75">Mulai gratis — harga paket menyusul dari backend/CMS. <a href="/login" class="text-white text-decoration-underline">Mulai Perjalanan Anda dengan LegalRust →</a></p></div>
-<div class="col-lg-4"><a href="/login" class="btn btn-light btn-lg w-100">Mulai Sekarang</a></div></div></div></div>
-<footer class="d-flex justify-content-between flex-wrap gap-2 py-4 text-muted"><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
+<div class="mock rv"><div class="mock-top"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span></div>
+<div class="mock-body"><div class="side"><div class="logo2">⚖️ LegalRust</div><div class="mi on">🏠 Dashboard</div><div class="mi">📁 Perkara</div><div class="mi">👥 Klien</div><div class="mi">📄 Dokumen</div><div class="mi">🔍 OCR &amp; Verifikasi</div><div class="mi">✒️ Akta &amp; Kontrak</div><div class="mi">✍️ Tanda Tangan</div><div class="mi">💰 Keuangan</div><div class="mi">📊 Laporan</div><div class="mi">⚙️ Pengaturan</div></div>
+<div class="dmain"><div class="dtop"><div><b>Dashboard</b><br><small>Selamat datang, Budi Santoso</small></div><span class="pill">30 Hari Terakhir ▾</span></div>
+<div class="stat4"><div class="stat">Total Perkara<b>128</b><span class="up">↑ 12.5%</span></div><div class="stat">Dokumen Diproses<b>842</b><span class="up">↑ 18.7%</span></div><div class="stat">Klien Aktif<b>256</b><span class="up">↑ 8.2%</span></div><div class="stat">Pendapatan<b>Rp 248 jt</b><span class="up">↑ 14.6%</span></div></div>
+<div class="dgrid"><div class="panel"><b>Tren Perkara</b><svg viewBox="0 0 400 110" width="100%" height="86"><polygon points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24 400,110 0,110" fill="rgba(37,99,235,.12)"/><polyline points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24" fill="none" stroke="#2563EB" stroke-width="3"/></svg><div style="display:flex;justify-content:space-between;color:#8A97B5;font-size:10px"><span>Jan</span><span>Mar</span><span>Mei</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Des</span></div></div>
+<div class="panel"><b>Aktivitas Terbaru</b><div class="feed"><div>✅ Dokumen Akta Notaris disetujui<br><span style="color:#8A97B5">2 menit lalu</span></div><div>📝 Perkara #KR-2026-1047 diperbarui<br><span style="color:#8A97B5">5 menit lalu</span></div><div>👤 Klien baru: PT Maju Bersama<br><span style="color:#8A97B5">10 menit lalu</span></div></div></div></div>
+</div></div></div>
+</div></div></section>
+<div class="container-xl"><div class="trust rv"><div><b>Dipercaya oleh</b><br>Ribuan Profesional</div><span class="seg">NOTARIS</span><span class="seg">PPAT</span><span class="seg">FIRMA HUKUM</span><span class="seg">KORPORAT</span><span class="seg">ADVOKAT</span></div>
+<section class="feat" id="fitur"><span class="badge-soft rv" style="color:#1D5BD8;font-weight:800;letter-spacing:.18em">FITUR UNGGULAN</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga tanda tangan digital, semua terintegrasi dengan sempurna.</p>
+<div class="fgrid">
+<div class="fcard rv"><div class="ic">⚡</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara dengan mudah dan efisien. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic">📄</div><h3>OCR &amp; Verifikasi Dokumen</h3><p>Scan dan verifikasi dokumen secara otomatis dengan AI. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic">✒️</div><h3>Tanda Tangan Digital</h3><p>Tandatangani dokumen secara online dan aman (aktivasi PSrE bertahap). <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic">⚖️</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dengan template profesional. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic">📊</div><h3>Laporan &amp; Analitik</h3><p>Pantau kinerja dan pertumbuhan bisnis Anda. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic">🛡️</div><h3>Keamanan Tingkat Tinggi</h3><p>Data Anda terlindungi dengan standar enterprise. <a href="/app">Pelajari →</a></p></div>
+</div></section>
+<section class="cta rv" id="harga"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a href="/login" class="btn" style="background:#fff;color:#16224A;font-weight:700;border-radius:12px;padding:13px 30px">Mulai Sekarang &nbsp;→</a></div><ul><li>✓ Gratis selamanya</li><li>✓ Setup mudah dalam 1 menit</li><li>✓ Support profesional</li></ul></section>
+<footer><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
 <script src="/static/vendor/tabler.min.js"></script>
 <script>const io=new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.add('in')),{threshold:.1});document.querySelectorAll('.rv').forEach(el=>io.observe(el));</script>
 </body></html>"##;
