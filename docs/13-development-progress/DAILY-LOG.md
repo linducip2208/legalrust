@@ -43,6 +43,14 @@
 - Final workspace verification (main): fmt PASS, clippy `-D warnings` PASS, `cargo test --workspace` **118 passed, 0 failed** (+29: mobile 12, integrations 14, ocr 3).
 - Acceptance 28/32 = 87/100. Remaining: OCR/AI providers live, final security audit, production deployment + counsel sign-off.
 
+## 2026-11-17 (12) — wave 5: public website + marketing CMS + QA visual (main)
+- 22 halaman publik (fitur x7, solusi x5, harga server-rendered, tentang, kontak/demo form urlencoded, artikel + slug, FAQ accordion, privasi, syarat, sitemap.xml, robots.txt) + meta/OG/canonical/JSON-LD + mega menu CSS-only + mobile details-menu. Status jujur per fitur (TERSEDIA/TERBATAS/BUTUH KONFIGURASI).
+- CMS terisi live: 4 paket harga (1 aktif), 8 FAQ, 2 artikel — semua endpoint publik 200.
+- 6 gambar seksi ComfyUI (approved) + manifest; WAN T2V terkonfirmasi ada tapi tidak dipakai (keputusan: foto saja).
+- TIMESTAMP decode panic diperbaiki (DATE_FORMAT/UNIX_TIMESTAMP); /orgs/me 200 kembali.
+- QA visual headless Chromium: landing + fitur + harga terkonfirmasi render benar.
+- fmt/clippy/test: **187 passed, 0 failed**. Pushed `5c42dc5`.
+
 ## 2026-11-17 (12) — wave 4: marketing backend + Tabler + WAN (main)
 - Migration 0010 marketing (9 tabel) + MarketingStore (memory+MySQL) + lead status state-machine; 23 endpoint public/admin (lead pipeline, notes, assign, follow-up, pricing/faq/article CMS) — RBAC Approve + audit.
 - Landing/login/dasbor dirombak ke Tabler self-host (CSS+JS+49 ikon woff2 lokal, font PlusJakarta lokal, nol CDN). Foto hero/CTA + 4 aset fitur dari ComfyUI RealVisXL (reviewed, approved). WAN 2.1 T2V 1.3B terkonfimasi ada + render 9 frame jalan (user pilih: foto saja — render video dibatalkan, stills diekstrak dari frame bila perlu).
