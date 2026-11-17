@@ -83,7 +83,7 @@ async fn public_pages_serve_landing_login_app() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let b = body_text(res).await;
-    assert!(b.contains("/api/v1/auth/login") && b.contains("Masuk"));
+    assert!(b.contains("/static/site.js") && b.contains("Masuk"));
     let res = a
         .clone()
         .oneshot(Request::builder().uri("/app").body(Body::empty()).unwrap())
@@ -91,11 +91,23 @@ async fn public_pages_serve_landing_login_app() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
     let b = body_text(res).await;
-    assert!(b.contains("/api/v1/clients"));
+    assert!(b.contains("/static/site.js"));
     assert!(b.contains("Dokumen"));
+    assert!(b.contains("/static/site.css"));
     assert!(b.contains("Keuangan"));
-    assert!(b.contains("/api/v1/trust/accounts"));
     assert!(b.contains("Ringkasan") && b.contains("Akta"));
+    for (u, needle) in [
+        ("/static/site.css", ".hero"),
+        ("/static/site.js", "lr_token"),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(u).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{u}");
+        assert!(body_text(res).await.contains(needle), "{u}");
+    }
 }
 #[tokio::test]
 async fn full_flow_memory() {

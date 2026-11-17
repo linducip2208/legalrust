@@ -1870,10 +1870,13 @@ async fn static_img(Path(name): Path<String>) -> Result<impl IntoResponse, AppEr
         "woff2" => "font/woff2",
         _ => return Err(AppError::NotFound("asset".into())),
     };
-    let path = std::path::PathBuf::from("apps/server/static").join(&name);
-    let bytes = tokio::fs::read(&path)
-        .await
-        .map_err(|_| AppError::NotFound("asset".into()))?;
+    let bytes =
+        match tokio::fs::read(std::path::PathBuf::from("apps/server/static").join(&name)).await {
+            Ok(b) => b,
+            Err(_) => tokio::fs::read(std::path::PathBuf::from("static").join(&name))
+                .await
+                .map_err(|_| AppError::NotFound("asset".into()))?,
+        };
     Ok((
         StatusCode::OK,
         [(axum::http::header::CONTENT_TYPE, ctype)],
@@ -1933,56 +1936,8 @@ table.tbl td{padding:12px;border-bottom:1px solid var(--line)}\
 .rv.in{opacity:1;transform:none;filter:none}\
 @media(max-width:768px){.s4,.s6,.s8{grid-column:span 12}.wrap{padding:0 16px}.hero{padding:64px 0 48px}.island{margin:12px;border-radius:24px}}";
 
-const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><style>
-body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#0F1B3D;background:#fff}
-@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}
-.topbar{display:flex;align-items:center;gap:26px;padding:18px 0}
-.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:23px;color:#0B2BA8}
-.logo small{display:block;font-size:11px;font-weight:600;color:#5A6B8C}
-.nav{display:flex;gap:22px;margin-left:24px;font-size:15px;font-weight:600;align-items:center}
-.nav a{color:#1E2A4A;padding:8px 18px;border-radius:999px}.nav a.on{background:#2563EB;color:#fff}.nav a:hover{color:#2563EB}.nav a.on:hover{color:#fff}
-.topact{margin-left:auto;display:flex;gap:10px;align-items:center}
-.btn-pri{background:#1D5BD8;color:#fff;font-weight:700;border-radius:12px;padding:11px 24px;box-shadow:0 12px 28px -10px rgba(29,91,216,.55);transition:transform .45s cubic-bezier(.32,.72,0,1)}
-.btn-pri:hover{transform:translateY(-2px)}.btn-line{border:1.5px solid #C9D6F2;color:#16224A;font-weight:700;border-radius:12px;padding:11px 22px;background:#fff}
-.hero{background:linear-gradient(100deg,#ffffff 22%,rgba(255,255,255,.78) 48%,rgba(255,255,255,.08) 78%),url('/static/hero-office.png?v=3') right center/cover,linear-gradient(180deg,#EAF2FF,#F7FAFF)}
-.hero-in{display:grid;grid-template-columns:1fr 1.1fr;gap:20px;align-items:center;padding:52px 0 60px}
-.badge-soft{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #D8E4FA;border-radius:999px;padding:8px 18px;font-size:13.5px;font-weight:600;color:#33415E;box-shadow:0 6px 18px -8px rgba(29,91,216,.35)}
-.hero h1{font-size:clamp(38px,4.4vw,60px);line-height:1.08;margin:20px 0 16px;letter-spacing:-.02em;color:#101C3D}
-.hero h1 .bl{color:#1D5BD8}.hero p.lead{color:#4A5878;font-size:16.5px;line-height:1.7;max-width:510px}
-.cta-row{display:flex;gap:14px;margin:26px 0 20px;flex-wrap:wrap}
-.cta-row .a{background:#1D5BD8;color:#fff;font-weight:700;border-radius:12px;padding:14px 28px;box-shadow:0 12px 28px -10px rgba(29,91,216,.55)}
-.cta-row .b{border:1.5px solid #C9D6F2;color:#16224A;font-weight:700;border-radius:12px;padding:14px 26px;background:#fff}
-.checks{display:flex;gap:20px;flex-wrap:wrap;font-size:14px;font-weight:600;color:#2A3866}
-.checks span{display:flex;align-items:center;gap:8px}.tick{width:22px;height:22px;border-radius:50%;background:#1D5BD8;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:13px}
-.mock{background:#fff;border-radius:16px;box-shadow:0 40px 80px -32px rgba(15,40,120,.35);border:1px solid #E3EBFA;overflow:hidden;transform:rotate(1.2deg)}
-.mock-top{display:flex;align-items:center;gap:6px;padding:10px 16px;border-bottom:1px solid #EDF1F8;font-size:12px;color:#8A97B5}
-.dot{width:9px;height:9px;border-radius:50%}
-.mock-body{display:grid;grid-template-columns:172px 1fr;min-height:400px}
-.side{background:#F6F9FF;padding:14px 10px;font-size:12.5px;font-weight:600;color:#3D4C6E}
-.side .logo2{display:flex;align-items:center;gap:6px;font-weight:800;color:#0B2BA8;font-size:14px;padding:4px 10px 12px}
-.side .mi{padding:8px 12px;border-radius:8px;margin-bottom:2px}.side .mi.on{background:#1D5BD8;color:#fff}
-.dmain{padding:16px 18px}.dtop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
-.dtop small{color:#8A97B5}.pill{background:#EAF1FE;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;color:#29407A}
-.stat4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.stat{border:1px solid #E7EDF7;border-radius:12px;padding:10px;font-size:11px;color:#66739A}
-.stat b{display:block;font-size:19px;color:#101C3D;margin:2px 0}.stat .up{color:#16A34A;font-weight:700}
-.dgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
-.panel{border:1px solid #E7EDF7;border-radius:12px;padding:10px;font-size:11.5px}
-.panel b{font-size:12.5px}.feed div{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #F0F3F9;color:#3D4C6E}.feed div:last-child{border:0}
-.trust{display:flex;align-items:center;gap:22px;background:#fff;border:1px solid #E7EDF7;border-radius:16px;padding:18px 28px;box-shadow:0 18px 40px -24px rgba(15,40,120,.25);font-size:13px;color:#5A6B8C;flex-wrap:wrap;margin-top:8px}
-.trust b{color:#101C3D}.seg{font-weight:800;color:#33415E;letter-spacing:.03em;font-size:14px}
-.feat{padding:64px 0 12px;text-align:center}.feat h2{font-size:clamp(28px,3.2vw,42px);margin:14px 0 8px;color:#101C3D;letter-spacing:-.02em}
-.feat p.sub{color:#5A6B8C;font-size:16px}.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px;text-align:left}
-.fcard{background:#F4F7FE;border-radius:16px;padding:26px;transition:transform .5s cubic-bezier(.32,.72,0,1)}
-.fcard:hover{transform:translateY(-5px)}.fcard .ic{font-size:26px}.fcard h3{font-size:16.5px;margin:10px 0 6px;color:#101C3D}.fcard p{font-size:13.5px;color:#5A6B8C;line-height:1.6;margin:0}
-.cta{background:linear-gradient(100deg,rgba(11,43,168,.94),rgba(29,91,216,.75)),url('/static/cta-building.png?v=2') center/cover;border-radius:22px;color:#fff;padding:50px;display:grid;grid-template-columns:1.3fr 1fr;gap:24px;align-items:center;margin:56px 0}
-.cta h2{font-size:clamp(22px,2.8vw,34px);margin:0 0 8px}.cta p{opacity:.85;margin:0 0 18px}.cta ul{list-style:none;margin:0;padding:0;font-size:15px;font-weight:600}.cta li{margin:10px 0}
-footer{padding:24px 0 44px;color:#8A97B5;font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
-.rv{opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.32,.72,0,1),transform .8s cubic-bezier(.32,.72,0,1)}
-.rv.in{opacity:1;transform:none}
-@media(max-width:960px){.hero-in{grid-template-columns:1fr}.nav{display:none}.stat4{grid-template-columns:repeat(2,1fr)}.fgrid{grid-template-columns:1fr}.cta{grid-template-columns:1fr;padding:32px}.mock{transform:none}.mock-body{grid-template-columns:1fr}.side{display:none}.dgrid{grid-template-columns:1fr}}
-</style></head><body>
-<div class="container-xl"><div class="topbar"><div class="logo">⚖️<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur ▾</a><a href="/app">Solusi ▾</a><a href="#harga">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><span style="color:#8A97B5">🔍</span><a href="/login" class="btn-line" style="padding:10px 22px">Masuk</a><a href="/login" class="btn-pri" style="padding:10px 22px">Coba Gratis →</a></div></div></div>
+const LANDING_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LegalRust — Smart Legal Solution</title><meta name="description" content="Platform manajemen hukum terpadu untuk notaris, PPAT, firma hukum, dan profesional legal."><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body>
+<div class="container-xl"><div class="topbar"><div class="logo">⚖️<span>LegalRust<small>Smart Legal Solution</small></span></div><nav class="nav"><a class="on" href="/">Beranda</a><a href="#fitur">Fitur ▾</a><a href="/app">Solusi ▾</a><a href="#harga">Harga</a><a href="#fitur">Tentang</a><a href="/login">Kontak</a></nav><div class="topact"><span class="srch">🔍</span><a href="/login" class="btn-line sm">Masuk</a><a href="/login" class="btn-pri sm">Coba Gratis →</a></div></div></div>
 <section class="hero"><div class="container-xl hero-in"><div>
 <span class="badge-soft rv">🚀 Solusi LegalTech Terdepan di Indonesia</span>
 <h1 class="rv">Kelola Perkara Hukum Lebih Mudah, <span class="bl">Profesional dan Terpercaya.</span></h1>
@@ -1990,97 +1945,65 @@ footer{padding:24px 0 44px;color:#8A97B5;font-size:13px;display:flex;justify-con
 <div class="cta-row rv"><a class="a" href="/app">▶&nbsp; Lihat Demo &nbsp;→</a><a class="b" href="/login">Mulai Gratis Sekarang &nbsp;→</a></div>
 <div class="checks rv"><span><i class="tick">✓</i>Gratis Selamanya</span><span><i class="tick">✓</i>Aman &amp; Terpercaya</span><span><i class="tick">✓</i>Support 24/7</span></div>
 </div>
-<div class="mock rv"><div class="mock-top"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span></div>
+<div class="mock rv"><div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>LegalRust — pratinjau dasbor (ilustrasi)</span></div>
 <div class="mock-body"><div class="side"><div class="logo2">⚖️ LegalRust</div><div class="mi on">🏠 Dashboard</div><div class="mi">📁 Perkara</div><div class="mi">👥 Klien</div><div class="mi">📄 Dokumen</div><div class="mi">🔍 OCR &amp; Verifikasi</div><div class="mi">✒️ Akta &amp; Kontrak</div><div class="mi">✍️ Tanda Tangan</div><div class="mi">💰 Keuangan</div><div class="mi">📊 Laporan</div><div class="mi">⚙️ Pengaturan</div></div>
-<div class="dmain"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px"><span style="background:#F1F5FB;border-radius:8px;padding:7px 14px;font-size:12px;color:#8A97B5;flex:1">🔍 Cari perkara, klien, atau dokumen…</span><span style="position:relative">🔔<span style="position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;font-size:9px;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center">3</span></span><span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:26px;height:26px;border-radius:50%;background:#2563EB;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800">B</span><span><b>Budi Santoso</b><br><span style="color:#8A97B5">Notaris</span></span></span></div><div class="dtop"><div><b>Dashboard</b><br><small>Selamat datang, Budi Santoso</small></div><span class="pill">30 Hari Terakhir ▾</span></div>
+<div class="dmain"><div class="msearch"><span class="box">🔍 Cari perkara, klien, atau dokumen…</span><span class="bell">🔔<span class="n">3</span></span><span class="me"><span class="av">B</span><span><b>Budi Santoso</b><br><small>Notaris</small></span></span></div><div class="dtop"><div><b>Dashboard</b><br><small>Selamat datang, Budi Santoso</small></div><span class="pill">30 Hari Terakhir ▾</span></div>
 <div class="stat4"><div class="stat">Total Perkara<b>128</b><span class="up">↑ 12.5%</span></div><div class="stat">Dokumen Diproses<b>842</b><span class="up">↑ 18.7%</span></div><div class="stat">Klien Aktif<b>256</b><span class="up">↑ 8.2%</span></div><div class="stat">Pendapatan<b>Rp 248 jt</b><span class="up">↑ 14.6%</span></div></div>
-<div class="dgrid"><div class="panel"><b>Tren Perkara</b> <span style="font-size:10px;color:#8A97B5">● Tahun Ini &nbsp;○ Tahun Lalu</span><svg viewBox="0 0 400 110" width="100%" height="86"><polygon points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24 400,110 0,110" fill="rgba(37,99,235,.12)"/><polyline points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24" fill="none" stroke="#2563EB" stroke-width="3"/></svg><div style="display:flex;justify-content:space-between;color:#8A97B5;font-size:10px"><span>Jan</span><span>Mar</span><span>Mei</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Des</span></div></div>
-<div class="panel"><b>Aktivitas Terbaru</b> <a href="/app" style="font-size:11px;float:right">Lihat Semua →</a><div class="feed"><div>✅ Dokumen Akta Notaris disetujui<br><span style="color:#8A97B5">2 menit lalu</span></div><div>📝 Perkara #KR-2026-1047 diperbarui<br><span style="color:#8A97B5">5 menit lalu</span></div><div>👤 Klien baru: PT Maju Bersama<br><span style="color:#8A97B5">10 menit lalu</span></div></div></div></div>
+<div class="dgrid"><div class="panel"><b>Tren Perkara</b> <span class="legend">● Tahun Ini &nbsp;○ Tahun Lalu</span><svg viewBox="0 0 400 110" width="100%" height="86"><polygon points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24 400,110 0,110" fill="rgba(37,99,235,.12)"/><polyline points="0,90 40,82 80,84 120,70 160,72 200,58 240,60 280,44 320,46 360,28 400,24" fill="none" stroke="#2563EB" stroke-width="3"/></svg><div class="months"><span>Jan</span><span>Mar</span><span>Mei</span><span>Jul</span><span>Sep</span><span>Nov</span><span>Des</span></div></div>
+<div class="panel"><b>Aktivitas Terbaru</b> <a class="more" href="/app">Lihat Semua →</a><div class="feed"><div>✅ Dokumen Akta Notaris disetujui<br><span class="t">2 menit lalu</span></div><div>📝 Perkara #KR-2026-1047 diperbarui<br><span class="t">5 menit lalu</span></div><div>👤 Klien baru: PT Maju Bersama<br><span class="t">10 menit lalu</span></div></div></div></div>
 </div></div></div>
 </div></div></section>
 <div class="container-xl"><div class="trust rv"><div><b>Dipercaya oleh</b><br>Ribuan Profesional</div><span class="seg">NOTARIS</span><span class="seg">PPAT</span><span class="seg">FIRMA HUKUM</span><span class="seg">KORPORAT</span><span class="seg">ADVOKAT</span></div>
-<section class="feat" id="fitur"><span class="badge-soft rv" style="color:#1D5BD8;font-weight:800;letter-spacing:.18em">FITUR UNGGULAN</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga tanda tangan digital, semua terintegrasi dengan sempurna.</p>
+<section class="feat" id="fitur"><span class="badge-soft tag rv">FITUR UNGGULAN</span><h2 class="rv">Semua yang Anda Butuhkan dalam Satu Platform</h2><p class="sub rv">Dari manajemen perkara hingga tanda tangan digital, semua terintegrasi dengan sempurna.</p>
 <div class="fgrid">
-<div class="fcard rv"><div class="ic" style="color:#2563EB">⚡</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara dengan mudah dan efisien. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic" style="color:#7C3AED">📄</div><h3>OCR &amp; Verifikasi Dokumen</h3><p>Scan dan verifikasi dokumen secara otomatis dengan AI. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic" style="color:#059669">✒️</div><h3>Tanda Tangan Digital</h3><p>Tandatangani dokumen secara online dan aman (aktivasi PSrE bertahap). <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic" style="color:#D97706">⚖️</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dengan template profesional. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic" style="color:#7C3AED">📊</div><h3>Laporan &amp; Analitik</h3><p>Pantau kinerja dan pertumbuhan bisnis Anda. <a href="/app">Pelajari →</a></p></div>
-<div class="fcard rv"><div class="ic" style="color:#16A34A">🛡️</div><h3>Keamanan Tingkat Tinggi</h3><p>Data Anda terlindungi dengan standar enterprise. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic blue">⚡</div><h3>Manajemen Perkara Terintegrasi</h3><p>Kelola seluruh perkara dengan mudah dan efisien. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic purple">📄</div><h3>OCR &amp; Verifikasi Dokumen</h3><p>Scan dan verifikasi dokumen secara otomatis dengan AI. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic green">✒️</div><h3>Tanda Tangan Digital</h3><p>Tandatangani dokumen secara online dan aman (aktivasi PSrE bertahap). <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic orange">⚖️</div><h3>Pengelolaan Akta</h3><p>Buat akta dan kontrak dengan template profesional. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic purple">📊</div><h3>Laporan &amp; Analitik</h3><p>Pantau kinerja dan pertumbuhan bisnis Anda. <a href="/app">Pelajari →</a></p></div>
+<div class="fcard rv"><div class="ic green2">🛡️</div><h3>Keamanan Tingkat Tinggi</h3><p>Data Anda terlindungi dengan standar enterprise. <a href="/app">Pelajari →</a></p></div>
 </div></section>
-<section class="cta rv" id="harga"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a href="/login" class="btn" style="background:#fff;color:#16224A;font-weight:700;border-radius:12px;padding:13px 30px">Mulai Sekarang &nbsp;→</a></div><ul><li>✓ Gratis selamanya</li><li>✓ Setup mudah dalam 1 menit</li><li>✓ Support profesional</li></ul></section>
-<footer><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
+<section class="cta rv" id="harga"><div><h2>Siap Meningkatkan Produktivitas Kantor Hukum Anda?</h2><p>Bergabunglah dengan ribuan profesional yang telah mempercayai LegalRust.</p><a class="go" href="/login">Mulai Sekarang &nbsp;→</a></div><ul><li>✓ Gratis selamanya</li><li>✓ Setup mudah dalam 1 menit</li><li>✓ Support profesional</li></ul></section>
+<footer class="site"><span>© 2026 LegalRust — Smart Legal Solution</span><span><a href="/kebijakan-privasi">Privasi</a> · <a href="/syarat-ketentuan">Syarat</a> · <a href="/faq">FAQ</a> · <a href="/healthz">Status</a></span></footer></div>
 <script src="/static/vendor/tabler.min.js?v=2"></script>
-<script>const io=new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.add('in')),{threshold:.1});document.querySelectorAll('.rv').forEach(el=>io.observe(el));</script>
+<script src="/static/site.js"></script>
 </body></html>"##;
 
-const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body class="d-flex flex-column">
+const LOGIN_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Masuk — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body class="d-flex flex-column">
 <div class="page page-center flex-fill"><div class="container container-tight py-4">
 <div class="text-center mb-4"><a href="/">⚖️ <strong>LegalRust</strong></a><div class="text-muted">Smart Legal Solution</div></div>
 <div class="card card-md"><div class="card-body">
 <h2 class="h2 text-center mb-1">Masuk</h2><p class="text-muted text-center">Sesi JWT + proteksi brute-force 5x percobaan</p>
-<div class="btn-group w-100 mb-3"><button class="btn btn-primary" id="t1" onclick="tab(1)">Masuk</button><button class="btn" id="t2" onclick="tab(2)">Daftar organisasi</button></div>
-<div id="f_reg" style="display:none"><div class="mb-2"><label class="form-label">Nama organisasi</label><input class="form-control" id="org"></div><div class="mb-2"><label class="form-label">Nama Anda</label><input class="form-control" id="nm"></div></div>
+<div class="btn-group w-100 mb-3"><button class="btn btn-primary" id="t1">Masuk</button><button class="btn" id="t2">Daftar organisasi</button></div>
+<div id="f_reg" class="hidden"><div class="mb-2"><label class="form-label">Nama organisasi</label><input class="form-control" id="org"></div><div class="mb-2"><label class="form-label">Nama Anda</label><input class="form-control" id="nm"></div></div>
 <div class="mb-2"><label class="form-label">Email</label><input class="form-control" id="email" type="email" autocomplete="username"></div>
 <div class="mb-2"><label class="form-label">Kata sandi <span class="form-label-description"><a href="/faq">Lupa?</a></span></label><input class="form-control" id="pwd" type="password" autocomplete="current-password"></div>
 <div class="text-danger mb-2" id="err"></div>
-<button class="btn btn-primary w-100" id="go" onclick="go()">Masuk aplikasi</button>
+<button class="btn btn-primary w-100" id="go">Masuk aplikasi</button>
 </div></div><div class="text-center text-muted mt-3">Kembali ke <a href="/">Beranda</a></div></div></div>
-<script>let mode=1;function tab(m){mode=m;document.getElementById('t1').className=m===1?'btn btn-primary':'btn';document.getElementById('t2').className=m===2?'btn btn-primary':'btn';document.getElementById('f_reg').style.display=m===2?'block':'none';document.getElementById('go').textContent=m===1?'Masuk aplikasi':'Daftar & masuk';}
-async function go(){const e=document.getElementById('err');e.textContent='';document.getElementById('go').disabled=true;
-const url=mode===1?'/api/v1/auth/login':'/api/v1/auth/register';
-const body=mode===1?{email:email.value,password:pwd.value}:{org_name:org.value,email:email.value,name:nm.value,password:pwd.value};
-try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-const j=await r.json();if(!r.ok){e.textContent=mode===1?'Gagal masuk ('+r.status+'). Periksa email & kata sandi.':'Gagal daftar ('+r.status+').';document.getElementById('go').disabled=false;return;}
-localStorage.setItem('lr_token',j.token);location.href='/app';}catch(x){e.textContent='Server tidak terjangkau.';document.getElementById('go').disabled=false;}}</script>
+<script src="/static/vendor/tabler.min.js?v=2"></script>
+<script src="/static/site.js"></script>
 </body></html>"##;
 
-const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><style>body{font-family:'Plus Jakarta Sans',system-ui,sans-serif}@font-face{font-family:'Plus Jakarta Sans';src:url('/static/fonts/PlusJakartaSans.ttf') format('truetype');font-weight:100 900;font-display:swap}</style></head><body>
+const APP_HTML: &str = r##"<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dasbor — LegalRust</title><link rel="stylesheet" href="/static/vendor/tabler.min.css?v=2"><link rel="stylesheet" href="/static/vendor/tabler-fonts/tabler-icons.min.css?v=2"><link rel="stylesheet" href="/static/site.css"></head><body>
 <div class="page"><header class="navbar navbar-expand-md navbar-light sticky-top bg-white border-bottom"><div class="container-xl">
 <a href="/" class="navbar-brand">⚖️ <strong>LegalRust</strong></a>
-<ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="#" onclick="tab('ringkas');return false">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('dok');return false">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('akta');return false">Akta</a></li><li class="nav-item"><a class="nav-link" href="#" onclick="tab('keu');return false">Keuangan</a></li></ul>
-<button class="btn btn-outline-danger btn-sm" onclick="out()">Keluar</button></div></header>
+<ul class="navbar-nav mx-auto" id="tabs"><li class="nav-item"><a class="nav-link active" href="/app">Ringkasan</a></li><li class="nav-item"><a class="nav-link" href="/app">Dokumen</a></li><li class="nav-item"><a class="nav-link" href="/app">Akta</a></li><li class="nav-item"><a class="nav-link" href="/app">Keuangan</a></li></ul>
+<button class="btn btn-outline-danger btn-sm logout">Keluar</button></div></header>
 <div class="page-wrapper"><div class="container-xl py-4">
 <h2 class="page-title" id="hi">Dasbor</h2><div class="text-danger" id="err"></div>
 <div id="p-ringkas"><div class="row g-2" id="g"></div><div class="card mt-3"><div class="card-header"><h3 class="card-title">Perkara Aktif</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Judul</th><th>Status</th></tr></thead><tbody id="m"></tbody></table></div></div></div>
-<div id="p-dok" style="display:none"><div class="card"><div class="card-header"><h3 class="card-title">Dokumen</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div>
-<div class="card mt-3"><div class="card-body"><h3 class="card-title">Unggah dokumen</h3><input class="form-control mb-2" id="dn" placeholder="nama file, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" onclick="up()">Unggah</button> <span class="text-danger" id="ue"></span></div></div></div>
-<div id="p-akta" style="display:none"><div class="card"><div class="card-header"><h3 class="card-title">Akta</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div></div>
-<div id="p-keu" style="display:none"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Invoice per perkara</h3></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" onclick="invs()">Tampilkan</button><div id="il"></div></div></div></div>
-<div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Trust transfer</h3></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" onclick="trf()">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div>
+<div id="p-dok" class="hidden"><div class="card"><div class="card-header"><h3 class="card-title">Dokumen</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nama</th></tr></thead><tbody id="dl"></tbody></table></div></div>
+<div class="card mt-3"><div class="card-body"><h3 class="card-title">Unggah dokumen</h3><input class="form-control mb-2" id="dn" placeholder="nama file, mis. kontrak.pdf"><input class="form-control mb-2" type="file" id="df"><button class="btn btn-primary" id="doup">Unggah</button> <span class="text-danger" id="ue"></span></div></div></div>
+<div id="p-akta" class="hidden"><div class="card"><div class="card-header"><h3 class="card-title">Akta</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nomor</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="al"></tbody></table></div></div><div class="text-muted mt-2" id="ae"></div></div>
+<div id="p-keu" class="hidden"><div class="row g-2"><div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Invoice per perkara</h3></div><div class="card-body"><input class="form-control mb-2" id="km" placeholder="ID perkara"><button class="btn btn-secondary mb-2" id="showinv">Tampilkan</button><div id="il"></div></div></div></div>
+<div class="col-md-6"><div class="card"><div class="card-header"><h3 class="card-title">Trust transfer</h3></div><div class="card-body"><input class="form-control mb-2" id="tf" placeholder="dari rekening ID"><input class="form-control mb-2" id="tt" placeholder="ke rekening ID"><input class="form-control mb-2" id="ta" placeholder="nominal minor"><button class="btn btn-primary" id="dotrf">Transfer</button> <span class="text-danger" id="te"></span></div></div></div></div>
 <div class="card mt-3"><div class="card-header"><h3 class="card-title">Rekening trust</h3></div><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Klien</th><th>Saldo</th></tr></thead><tbody id="tl"></tbody></table></div></div></div>
+<div class="mt-3"><a href="/login" class="btn btn-outline-secondary btn-sm logout">Ganti akun</a></div>
 </div></div></div>
 <script src="/static/vendor/tabler.min.js?v=2"></script>
-<script>
-const t=localStorage.getItem('lr_token');if(!t)location.href='/login';
-const H={'Authorization':'Bearer '+t};
-async function j(u){const r=await fetch(u,{headers:H});if(r.status===401){location.href='/login';return null;}return r.json();}
-function tab(x){['ringkas','dok','akta','keu'].forEach(k=>{document.getElementById('p-'+k).style.display=k===x?'block':'none';});document.querySelectorAll('#tabs .nav-link').forEach(a=>a.classList.toggle('active',a.textContent.toLowerCase().includes({ringkas:'ringkasan',dok:'dokumen',akta:'akta',keu:'keuangan'}[x])));}
-(async()=>{try{
-const me=await j('/api/v1/orgs/me');document.getElementById('hi').textContent='Dasbor — '+me.org_id.slice(0,8)+'…';
-const c=await j('/api/v1/clients'),m=await j('/api/v1/matters'),d=await j('/api/v1/documents'),a=await j('/api/v1/deeds'),tr=await j('/api/v1/trust/accounts');
-const cards=[['Klien',c.length],['Perkara',m.length],['Dokumen',d.length],['Akta',a.length],['Trust',tr.length],['Saldo trust','Rp '+tr.reduce((s,x)=>s+(x.balance||0),0).toLocaleString('id-ID')]];
-document.getElementById('g').innerHTML=cards.map(x=>'<div class="col-6 col-md-4"><div class="card"><div class="card-body"><div class="text-muted">'+x[0]+'</div><div class="h1 m-0">'+x[1]+'</div></div></div></div>').join('');
-document.getElementById('m').innerHTML=m.map(x=>'<tr><td><strong>'+x.number+'</strong></td><td>'+x.title+'</td><td><span class="badge bg-green-lt">'+x.status+'</span></td></tr>').join('');
-document.getElementById('dl').innerHTML=d.map(x=>'<tr><td>'+x.id+'</td><td>'+x.name+'</td></tr>').join('');
-document.getElementById('al').innerHTML=a.map(x=>'<tr><td>'+x.id+'</td><td>'+x.number+'</td><td><span class="badge bg-blue-lt">'+x.state+'</span></td><td><button class="btn btn-sm btn-outline-primary" onclick="adv('+x.id+',\''+x.state+'\')">Maju →</button></td></tr>').join('');
-document.getElementById('tl').innerHTML=tr.map(x=>'<tr><td>'+x.id+'</td><td>'+x.client_id+'</td><td>Rp '+(x.balance||0).toLocaleString('id-ID')+'</td></tr>').join('');
-}catch(e){document.getElementById('err').textContent='Gagal memuat: '+e;}})();
-const NX={draft:'review',review:'approved',approved:'signed'};
-async function adv(id,st){const to=NX[st];if(!to){document.getElementById('ae').textContent='Status akhir.';return;}
-const r=await fetch('/api/v1/deeds/'+id+'/transition',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({to})});
-if(!r.ok){document.getElementById('ae').textContent='Gagal ('+r.status+'): transisi ilegal dari '+st;return;}location.reload();}
-async function up(){const f=document.getElementById('df').files[0];if(!f){document.getElementById('ue').textContent='Pilih berkas dulu.';return;}
-const buf=await f.arrayBuffer();const h=await crypto.subtle.digest('SHA-256',buf);const sha=[...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('');
-const meta=await (await fetch('/api/v1/documents',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('dn').value||f.name,mime:f.type||'application/octet-stream',size:f.size,sha})})).json();
-const r=await fetch('/api/v1/documents/'+meta.id+'/content',{method:'PUT',headers:H,body:buf});
-if(!r.ok){document.getElementById('ue').textContent='Gagal unggah ('+r.status+')';return;}location.reload();}
-async function invs(){const id=document.getElementById('km').value;const v=await j('/api/v1/matters/'+id+'/invoices');
-document.getElementById('il').innerHTML=v.map(x=>'<div>#'+x.number+' — Rp '+x.total.toLocaleString('id-ID')+'</div>').join('')||'Belum ada invoice.';}
-async function trf(){const r=await fetch('/api/v1/trust/transfer',{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({from:+document.getElementById('tf').value,to:+document.getElementById('tt').value,amount_minor:+document.getElementById('ta').value})});
-if(!r.ok){document.getElementById('te').textContent='Gagal ('+r.status+'): saldo tidak cukup?';return;}location.reload();}
-async function out(){try{await fetch('/api/v1/auth/logout',{method:'POST',headers:H});}catch(x){}localStorage.removeItem('lr_token');location.href='/login';}
-</script></body></html>"##;
+<script src="/static/site.js"></script>
+</body></html>"##;
 
 fn page(html: &str) -> impl IntoResponse {
     (
