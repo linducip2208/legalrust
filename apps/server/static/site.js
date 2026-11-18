@@ -341,16 +341,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
 
   /* ---- command-center actions (all endpoints live; 501 noted in UI) ---- */
   on('bell', 'click', function () { var l = document.getElementById('bell-list'); if (l) l.classList.toggle('show'); });
-  /* ---- notifications dropdown: 5 latest, unread badge, click marks read ---- */
+  /* ---- notifications dropdown: 5 latest server-side, unread badge ---- */
   async function refreshNotifs() {
     var bn = document.getElementById('bell-n');
     var bl = document.getElementById('bell-list');
     if (!bl) return;
-    var list = await j('/api/v1/notifications');
+    var list = await j('/api/v1/notifications?limit=5');
     if (!list) { bl.innerHTML = '<div class="text-muted">Gagal memuat.</div>'; return; }
-    var unread = list.filter(function (x) { return !x.read; });
-    if (bn) bn.textContent = unread.length ? (unread.length > 5 ? '5+' : String(unread.length)) : '';
-    bl.innerHTML = list.slice(-5).reverse().map(function (x) {
+    var unread = await j('/api/v1/notifications?unread_only=true&limit=100');
+    var n = unread ? unread.length : list.filter(function (x) { return !x.read; }).length;
+    if (bn) bn.textContent = n ? (n > 5 ? '5+' : String(n)) : '';
+    bl.innerHTML = list.slice(0, 5).map(function (x) {
       var act = x.read ? '<span class="text-muted small">dibaca</span>'
         : '<button class="btn btn-sm btn-outline-primary nread" data-id="' + x.id + '">Tandai dibaca</button>';
       return '<div class="q-group"><strong>' + esc(x.kind) + '</strong><div>' + esc(x.title) + '</div><div class="mt-1">' + act + '</div></div>';

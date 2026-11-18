@@ -1156,11 +1156,15 @@ impl OpsStore for MysqlOps {
         &self,
         user: &str,
         kind: Option<&str>,
+        unread_only: bool,
+        limit: i64,
     ) -> Result<Vec<NotifRow>, StoreError> {
-        let rows = if let Some(k) = kind {
-            sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT 100").bind(user).bind(k).fetch_all(&self.pool).await.map_err(db_err)?
-        } else {
-            sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 100").bind(user).fetch_all(&self.pool).await.map_err(db_err)?
+        let lim = limit.clamp(1, 100);
+        let rows = match (kind, unread_only) {
+            (Some(k), true) => sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? AND kind=? AND read_at IS NULL ORDER BY id DESC LIMIT ?").bind(user).bind(k).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(k), false) => sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT ?").bind(user).bind(k).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, true) => sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? AND read_at IS NULL ORDER BY id DESC LIMIT ?").bind(user).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, false) => sqlx::query("SELECT id, kind, title, UNIX_TIMESTAMP(read_at) AS read_unix FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT ?").bind(user).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?,
         };
         Ok(rows
             .into_iter()

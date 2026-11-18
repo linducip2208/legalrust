@@ -399,21 +399,28 @@ impl OpsStore for MemoryOps {
         &self,
         user: &str,
         kind: Option<&str>,
+        unread_only: bool,
+        limit: i64,
     ) -> Result<Vec<NotifRow>, StoreError> {
-        Ok(self
+        let mut v: Vec<NotifRow> = self
             .inner
             .lock()
             .unwrap()
             .notifs
             .iter()
-            .filter(|(_, (u, k, _, _, _))| u == user && kind.is_none_or(|x| k == x))
+            .filter(|(_, (u, k, _, _, r))| {
+                u == user && kind.is_none_or(|x| k == x) && (!unread_only || !r)
+            })
             .map(|(id, (_, k, t, _, r))| NotifRow {
                 id: *id,
                 kind: k.clone(),
                 title: t.clone(),
                 read: *r,
             })
-            .collect())
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(limit.clamp(0, 100) as usize);
+        Ok(v)
     }
     async fn notify_read(&self, user: &str, id: i64) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

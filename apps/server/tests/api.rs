@@ -1335,6 +1335,92 @@ async fn notifications_kind_filter_and_read() {
 }
 
 #[tokio::test]
+async fn notifications_unread_only_and_limit() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "notifunread@x.id").await;
+    let tok_b = reg(&a, "notifunreadB@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // All seeded notifs start unread; other users see none.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?unread_only=true", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    let all_unread = v.as_array().unwrap();
+    assert!(all_unread.len() >= 2);
+    assert!(all_unread.iter().all(|n| n["read"] == false));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?unread_only=true", &tok_b))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Mark one read: unread shrinks, full list keeps it flagged.
+    let nid = all_unread[0]["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/notifications/{nid}/read"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?unread_only=true", &tok))
+        .await
+        .unwrap();
+    let now_unread = body_json(res).await;
+    assert_eq!(now_unread.as_array().unwrap().len(), all_unread.len() - 1);
+    // Limit pages server-side; out-of-range clamps instead of erroring.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?limit=1", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?limit=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // Bad bool rejected at the query layer (Axum: 400); missing token unauthorized.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?unread_only=yes", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::BAD_REQUEST);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/notifications?unread_only=true")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn shares_reports_audit_jobs_trust_sse() {
     use tower::ServiceExt;
     let a = app();

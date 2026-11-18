@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 19: notification unread/limit polish (main)
+- GET /api/v1/notifications?unread_only=&limit= (clamp 1..100) + DESC order both backends; bell dropdown server-side.
+- Isolation/clamp/400/401 tests. F-D18-038 51.8->67.9 (stays PARTIAL: visible filter UI + docs follow-up).
+- Workspace 314/0; registry 18.5 (63 IMPLEMENTED); 8-cat mean 19.4 (32 verified).
+
 ## Done wave 18: AR aging report piutang terbuka (main)
 - inv_list_open (memory aggregate + MySQL LEFT JOIN/HAVING) + ar_aging_csv + GET /api/v1/reports/ar-aging.csv (Export+audit) + kartu Keuangan.
 - Partial/overpay/full-pay API test + reporting unit test. F-D14-004 PLANNED->IMPLEMENTED (8-cat 81.6).

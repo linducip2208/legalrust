@@ -12193,17 +12193,17 @@
   "domain": "D18",
   "status": "PARTIAL",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 80,
+   "database": 70,
+   "frontend": 60,
+   "business_logic": 65,
+   "security": 75,
+   "testing": 78,
+   "integration": 60,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 67.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D18-039",

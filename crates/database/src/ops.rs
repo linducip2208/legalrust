@@ -613,6 +613,8 @@ pub trait OpsStore: Send + Sync {
         &self,
         user: &str,
         kind: Option<&str>,
+        unread_only: bool,
+        limit: i64,
     ) -> Result<Vec<NotifRow>, StoreError>;
     async fn notify_read(&self, user: &str, id: i64) -> Result<(), StoreError>;
     async fn share_create(

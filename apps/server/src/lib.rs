@@ -2839,6 +2839,8 @@ async fn user_assign_role(
 #[derive(Debug, Deserialize)]
 struct NotifyListQ {
     kind: Option<String>,
+    unread_only: Option<bool>,
+    limit: Option<i64>,
 }
 async fn notify_list(
     State(s): State<FullState>,
@@ -2854,7 +2856,12 @@ async fn notify_list(
     let v = s
         .stores
         .ops
-        .notify_list(&u.claims.sub, q.kind.as_deref())
+        .notify_list(
+            &u.claims.sub,
+            q.kind.as_deref(),
+            q.unread_only.unwrap_or(false),
+            q.limit.unwrap_or(50).clamp(1, 100),
+        )
         .await
         .map_err(map_store)?;
     Ok(Json(json!(v
