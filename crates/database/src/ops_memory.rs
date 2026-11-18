@@ -32,6 +32,8 @@ struct Inner {
     meetings: HashMap<i64, MeetingRow>,
     crm_tags: HashMap<i64, ClientTagRow>,
     crm_links: HashSet<(i64, i64)>,
+    apprs: HashMap<i64, ApprovalReqRow>,
+    appr_steps: HashMap<i64, ApprovalStepRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -576,6 +578,173 @@ impl OpsStore for MemoryOps {
             .invs
             .get(&inv)
             .map(|v| v.org.clone()))
+    }
+    async fn appr_create(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        created_by: &str,
+        steps: &[(i64, String)],
+    ) -> Result<i64, StoreError> {
+        appr_check(entity, steps)?;
+        if title.trim().is_empty() {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.apprs.insert(
+            id,
+            ApprovalReqRow {
+                id,
+                org: org.into(),
+                entity: entity.into(),
+                entity_id,
+                title: title.into(),
+                status: "pending".into(),
+                created_by: created_by.into(),
+            },
+        );
+        for (no, role) in steps {
+            let sid = self.next(&mut m);
+            m.appr_steps.insert(
+                sid,
+                ApprovalStepRow {
+                    id: sid,
+                    req: id,
+                    step_no: *no,
+                    role: role.trim().into(),
+                    user: None,
+                    status: "pending".into(),
+                    comment: None,
+                },
+            );
+        }
+        Ok(id)
+    }
+    async fn appr_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<ApprovalReqRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .apprs
+            .values()
+            .filter(|r| r.org == org && status.is_none_or(|s| r.status == s))
+            .cloned()
+            .collect())
+    }
+    async fn appr_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(ApprovalReqRow, Vec<ApprovalStepRow>), StoreError> {
+        let m = self.inner.lock().unwrap();
+        let r = m
+            .apprs
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        let mut steps: Vec<ApprovalStepRow> = m
+            .appr_steps
+            .values()
+            .filter(|s| s.req == id)
+            .cloned()
+            .collect();
+        steps.sort_by_key(|s| s.step_no);
+        Ok((r, steps))
+    }
+    async fn appr_decide(
+        &self,
+        org: &str,
+        id: i64,
+        step_no: i64,
+        user: &str,
+        decision: &str,
+        comment: Option<&str>,
+    ) -> Result<ApprovalStepRow, StoreError> {
+        if !["approve", "reject", "rework"].contains(&decision) {
+            return Err(StoreError::Conflict("decision".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let req = m
+            .apprs
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if !["pending", "needs_rework"].contains(&req.status.as_str()) {
+            return Err(StoreError::Conflict("request closed".into()));
+        }
+        let mut steps: Vec<i64> = m
+            .appr_steps
+            .values()
+            .filter(|s| s.req == id)
+            .map(|s| s.id)
+            .collect();
+        steps.sort_by_key(|sid| m.appr_steps[sid].step_no);
+        let target = *steps
+            .iter()
+            .find(|sid| m.appr_steps[sid].step_no == step_no)
+            .ok_or(StoreError::NotFound)?;
+        if m.appr_steps[&target].status != "pending" {
+            return Err(StoreError::Conflict("step already decided".into()));
+        }
+        for sid in &steps {
+            let s = &m.appr_steps[sid];
+            if s.step_no < step_no && s.status != "approved" {
+                return Err(StoreError::Conflict("earlier step pending".into()));
+            }
+        }
+        {
+            let s = m.appr_steps.get_mut(&target).unwrap();
+            s.status = match decision {
+                "approve" => "approved",
+                "reject" => "rejected",
+                _ => "pending",
+            }
+            .into();
+            s.user = Some(user.into());
+            s.comment = comment.map(str::to_string);
+        }
+        let max_no = steps
+            .iter()
+            .map(|sid| m.appr_steps[sid].step_no)
+            .max()
+            .unwrap_or(0);
+        let new_status = match decision {
+            "approve" if step_no == max_no => "approved",
+            "approve" => req.status.as_str(),
+            "reject" => "rejected",
+            _ => "needs_rework",
+        };
+        if new_status == "needs_rework" {
+            for sid in &steps {
+                let s = m.appr_steps.get_mut(sid).unwrap();
+                s.status = "pending".into();
+                s.comment = None;
+            }
+        }
+        m.apprs.get_mut(&id).unwrap().status = new_status.into();
+        Ok(m.appr_steps[&target].clone())
+    }
+    async fn appr_revoke(&self, org: &str, id: i64, _user: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .apprs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if !["pending", "needs_rework"].contains(&r.status.as_str()) {
+            return Err(StoreError::Conflict("request closed".into()));
+        }
+        r.status = "revoked".into();
+        Ok(())
     }
     async fn trust_create_account(
         &self,

@@ -5,6 +5,8 @@
   "display": "standalone",
   "theme_color": "#1D5BD8",
   "background_color": "#fff",
-  "icons": [],
-  "_note": "placeholder: add 192px and 512px PNG icons under apps/server/static/ when brand assets land, then list them here with sizes and type"
+  "icons": [
+    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
 }

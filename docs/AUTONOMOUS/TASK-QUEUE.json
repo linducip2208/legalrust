@@ -2,29 +2,214 @@
   "version": 1,
   "updated": "2026-11-18",
   "tasks": [
-    { "id": "QA-W5", "title": "QA visual wave-5 + LANDING-QA docs", "status": "DONE", "owner": "agent:ses_e15953882", "depends": [] },
-    { "id": "WAN-HERO", "title": "Animasi WAN hero ringan + poster", "status": "DONE", "owner": "agent:ses_e159ccf19", "depends": [] },
-    { "id": "F-SEARCH", "title": "Global search API + wiring /app", "status": "DONE", "owner": "agent:ses_e158901e2", "depends": [] },
-    { "id": "F-AUDIT", "title": "Audit repo formal (INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP)", "status": "DONE", "owner": "agent:ses_e15890203", "depends": [] },
-    { "id": "F-REGISTRY", "title": "Klasifikasi 1000 fitur (FEATURE-REGISTRY.json + matrix)", "status": "DONE", "owner": "agent:ses_e158901e5", "depends": ["F-AUDIT"] },
-    { "id": "F-MKTADMIN", "title": "Marketing admin UI di /app", "status": "DONE", "owner": "agent:ses_e1577ec23", "depends": [] },
-    { "id": "F-CRM", "title": "CRM API+UI (meetings/tags, migration 0011 live)", "status": "DONE", "owner": "agent:ses_e15404050", "depends": [] },
-    { "id": "F-WATCHDOG", "title": "Watchdog auto-restart :8080 (background loop + log)", "status": "DONE", "owner": "main", "depends": [] },
-    { "id": "F-REAUDIT", "title": "Wave 7 re-audit 1000 fitur", "status": "DONE", "owner": "agent:F-REAUDIT", "depends": ["F-REGISTRY"] },
-    { "id": "B-OCR", "title": "OCR engine live", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "native lib / cloud creds" },
-    { "id": "B-AI", "title": "AI provider activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "API credentials" },
-    { "id": "B-ESIGN", "title": "PSrE e-sign activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "PSrE credentials" },
-    { "id": "B-PAY", "title": "Payment gateway activation", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "gateway credentials" },
-    { "id": "B-COUNSEL", "title": "Counsel sign-off + prod deploy", "status": "BLOCKED", "owner": null, "depends": [], "blocked_by": "human/infra" },
-    { "id": "UIUX-01", "title": "UI/UX wave-1 items UIUX-0001..0100 (D01-D03 feature renders/empty/loading/error/mobile)", "status": "TODO", "owner": null, "depends": [] },
-    { "id": "UIUX-02", "title": "UI/UX wave-2 items UIUX-0101..0200", "status": "TODO", "owner": null, "depends": ["UIUX-01"] },
-    { "id": "UIUX-03", "title": "UI/UX wave-3 items UIUX-0201..0300", "status": "TODO", "owner": null, "depends": ["UIUX-02"] },
-    { "id": "UIUX-04", "title": "UI/UX wave-4 items UIUX-0301..0400", "status": "TODO", "owner": null, "depends": ["UIUX-03"] },
-    { "id": "UIUX-05", "title": "UI/UX wave-5 items UIUX-0401..0500", "status": "TODO", "owner": null, "depends": ["UIUX-04"] },
-    { "id": "UIUX-06", "title": "UI/UX wave-6 items UIUX-0501..0600", "status": "TODO", "owner": null, "depends": ["UIUX-05"] },
-    { "id": "UIUX-07", "title": "UI/UX wave-7 items UIUX-0601..0700 + global sweeps mulai", "status": "TODO", "owner": null, "depends": ["UIUX-06"] },
-    { "id": "UIUX-08", "title": "UI/UX wave-8 items UIUX-0701..0800 (breakpoint sweeps + global a11y)", "status": "TODO", "owner": null, "depends": ["UIUX-07"] },
-    { "id": "UIUX-09", "title": "UI/UX wave-9 items UIUX-0801..0900 (susulan QA + gap CSS)", "status": "TODO", "owner": null, "depends": ["UIUX-08"] },
-    { "id": "UIUX-10", "title": "UI/UX wave-10 items UIUX-0901..1000 (misc + final audit per-elemen)", "status": "TODO", "owner": null, "depends": ["UIUX-09"] }
+    {
+      "id": "QA-W5",
+      "title": "QA visual wave-5 + LANDING-QA docs",
+      "status": "DONE",
+      "owner": "agent:ses_e15953882",
+      "depends": []
+    },
+    {
+      "id": "WAN-HERO",
+      "title": "Animasi WAN hero ringan + poster",
+      "status": "DONE",
+      "owner": "agent:ses_e159ccf19",
+      "depends": []
+    },
+    {
+      "id": "F-SEARCH",
+      "title": "Global search API + wiring /app",
+      "status": "DONE",
+      "owner": "agent:ses_e158901e2",
+      "depends": []
+    },
+    {
+      "id": "F-AUDIT",
+      "title": "Audit repo formal (INITIAL-AUDIT/ARCHITECTURE/DEPENDENCY-MAP)",
+      "status": "DONE",
+      "owner": "agent:ses_e15890203",
+      "depends": []
+    },
+    {
+      "id": "F-REGISTRY",
+      "title": "Klasifikasi 1000 fitur (FEATURE-REGISTRY.json + matrix)",
+      "status": "DONE",
+      "owner": "agent:ses_e158901e5",
+      "depends": [
+        "F-AUDIT"
+      ]
+    },
+    {
+      "id": "F-MKTADMIN",
+      "title": "Marketing admin UI di /app",
+      "status": "DONE",
+      "owner": "agent:ses_e1577ec23",
+      "depends": []
+    },
+    {
+      "id": "F-CRM",
+      "title": "CRM API+UI (meetings/tags, migration 0011 live)",
+      "status": "DONE",
+      "owner": "agent:ses_e15404050",
+      "depends": []
+    },
+    {
+      "id": "F-WATCHDOG",
+      "title": "Watchdog auto-restart :8080 (background loop + log)",
+      "status": "DONE",
+      "owner": "main",
+      "depends": []
+    },
+    {
+      "id": "F-REAUDIT",
+      "title": "Wave 7 re-audit 1000 fitur",
+      "status": "DONE",
+      "owner": "agent:F-REAUDIT",
+      "depends": [
+        "F-REGISTRY"
+      ]
+    },
+    {
+      "id": "B-OCR",
+      "title": "OCR engine live",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "DONE: tesseract 5.4.0 + ind/eng/osd dev-host; process endpoint live; prod image bundles tesseract (owner main 2026-11-18)"
+    },
+    {
+      "id": "B-AI",
+      "title": "AI provider activation",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "DONE: Ollama qwen2.5:1.5b local endpoint live via AI_* env; reqwest/rustls client (owner main 2026-11-18)"
+    },
+    {
+      "id": "B-ESIGN",
+      "title": "PSrE e-sign activation",
+      "status": "BLOCKED",
+      "owner": null,
+      "depends": [],
+      "blocked_by": "PSrE credentials"
+    },
+    {
+      "id": "B-PAY",
+      "title": "Payment gateway activation",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "DONE-wired: Tripay adapter (checkout + PAID callback + idempotency); needs merchant creds sandbox-to-prod (owner main 2026-11-18)"
+    },
+    {
+      "id": "B-COUNSEL",
+      "title": "Counsel sign-off + prod deploy",
+      "status": "BLOCKED",
+      "owner": null,
+      "depends": [],
+      "blocked_by": "human/infra"
+    },
+    {
+      "id": "UIUX-01",
+      "title": "UI/UX wave-1 items UIUX-0001..0100 (D01-D03 feature renders/empty/loading/error/mobile)",
+      "status": "TODO",
+      "owner": null,
+      "depends": []
+    },
+    {
+      "id": "UIUX-02",
+      "title": "UI/UX wave-2 items UIUX-0101..0200",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-01"
+      ]
+    },
+    {
+      "id": "UIUX-03",
+      "title": "UI/UX wave-3 items UIUX-0201..0300",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-02"
+      ]
+    },
+    {
+      "id": "UIUX-04",
+      "title": "UI/UX wave-4 items UIUX-0301..0400",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-03"
+      ]
+    },
+    {
+      "id": "UIUX-05",
+      "title": "UI/UX wave-5 items UIUX-0401..0500",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-04"
+      ]
+    },
+    {
+      "id": "UIUX-06",
+      "title": "UI/UX wave-6 items UIUX-0501..0600",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-05"
+      ]
+    },
+    {
+      "id": "UIUX-07",
+      "title": "UI/UX wave-7 items UIUX-0601..0700 + global sweeps mulai",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-06"
+      ]
+    },
+    {
+      "id": "UIUX-08",
+      "title": "UI/UX wave-8 items UIUX-0701..0800 (breakpoint sweeps + global a11y)",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-07"
+      ]
+    },
+    {
+      "id": "UIUX-09",
+      "title": "UI/UX wave-9 items UIUX-0801..0900 (susulan QA + gap CSS)",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-08"
+      ]
+    },
+    {
+      "id": "UIUX-10",
+      "title": "UI/UX wave-10 items UIUX-0901..1000 (misc + final audit per-elemen)",
+      "status": "TODO",
+      "owner": null,
+      "depends": [
+        "UIUX-09"
+      ]
+    },
+    {
+      "id": "B-APPR-UI",
+      "title": "Approvals /app tab UI (compose/list/decide/history)",
+      "status": "PLANNED",
+      "owner": null,
+      "depends": []
+    },
+    {
+      "id": "B-REPORT-UI",
+      "title": "Report center UI + trust CSV wiring",
+      "status": "PLANNED",
+      "owner": null,
+      "depends": []
+    }
   ]
 }

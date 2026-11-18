@@ -1559,6 +1559,19 @@ async fn matters_csv(
         "content-type",
         HeaderValue::from_static("text/csv; charset=utf-8"),
     );
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "report.matters_csv_exported".into(),
+            entity: "report".into(),
+            entity_id: 0,
+            ip: None,
+        },
+    )
+    .await;
     Ok((StatusCode::OK, h, csv))
 }
 
@@ -1588,6 +1601,19 @@ async fn clients_csv(
         "content-type",
         HeaderValue::from_static("text/csv; charset=utf-8"),
     );
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "report.clients_csv_exported".into(),
+            entity: "report".into(),
+            entity_id: 0,
+            ip: None,
+        },
+    )
+    .await;
     Ok((StatusCode::OK, h, csv))
 }
 
@@ -1957,6 +1983,19 @@ async fn report_matters(
     for m in v {
         rows.push(vec![m.id.to_string(), m.number, m.title, m.status]);
     }
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "report.matters_exported".into(),
+            entity: "report".into(),
+            entity_id: 0,
+            ip: None,
+        },
+    )
+    .await;
     Ok((
         [("content-type", "text/csv")],
         legalrust_reporting::to_csv(&rows),
@@ -2172,6 +2211,282 @@ async fn trust_transfer(
         .map_err(map_store)?;
     Ok(Json(json!({"out": a.id, "in": x.id})))
 }
+
+// ---------- approvals engine (generic sequential multi-step) ----------
+#[derive(Debug, Deserialize)]
+struct ApprStepIn {
+    step_no: i64,
+    role: String,
+}
+#[derive(Debug, Deserialize)]
+struct ApprCreateReq {
+    entity: String,
+    entity_id: i64,
+    title: String,
+    steps: Vec<ApprStepIn>,
+}
+fn appr_step_row_json(x: &legalrust_database::ApprovalStepRow) -> Value {
+    json!({"id": x.id, "step_no": x.step_no, "role": x.role, "status": x.status, "comment": x.comment})
+}
+async fn appr_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<ApprCreateReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    if b.title.trim().is_empty() || b.title.len() > 200 {
+        return Err(AppError::Validation("title".into()));
+    }
+    if b.steps.is_empty() || b.steps.len() > 20 {
+        return Err(AppError::Validation("steps".into()));
+    }
+    if b.steps.iter().any(|x| x.role.trim().is_empty()) {
+        return Err(AppError::Validation("role".into()));
+    }
+    // Referenced entity must exist (no dangling approvals).
+    match b.entity.as_str() {
+        "matter" => {
+            s.stores
+                .core
+                .get_matter(&u.claims.org, b.entity_id)
+                .await
+                .map_err(|_| AppError::NotFound("matter".into()))?;
+        }
+        "invoice" => {
+            s.stores
+                .ops
+                .inv_get(&u.claims.org, b.entity_id)
+                .await
+                .map_err(|_| AppError::NotFound("invoice".into()))?;
+        }
+        "deed" => {
+            let ds = s
+                .stores
+                .ops
+                .deed_list(&u.claims.org)
+                .await
+                .map_err(map_store)?;
+            if !ds.iter().any(|d| d.id == b.entity_id) {
+                return Err(AppError::NotFound("deed".into()));
+            }
+        }
+        _ => return Err(AppError::Validation("entity".into())),
+    }
+    let steps: Vec<(i64, String)> = b
+        .steps
+        .iter()
+        .map(|x| (x.step_no, x.role.trim().to_string()))
+        .collect();
+    let id = s
+        .stores
+        .ops
+        .appr_create(
+            &u.claims.org,
+            b.entity.trim(),
+            b.entity_id,
+            b.title.trim(),
+            &u.claims.sub,
+            &steps,
+        )
+        .await
+        .map_err(|e| match e {
+            legalrust_database::StoreError::Conflict(m) => AppError::Validation(m),
+            _ => map_store(e),
+        })?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "approval.created".into(),
+            entity: "approval".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    notify_user(
+        &s,
+        &u.claims.org,
+        &u.claims.sub,
+        "approval",
+        &format!("Approval requested: {}", b.title.trim()),
+    )
+    .await;
+    Ok(Json(json!({"id": id, "status": "pending"})))
+}
+#[derive(Debug, Deserialize)]
+struct ApprListQ {
+    status: Option<String>,
+}
+async fn appr_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<ApprListQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    if let Some(st) = q.status.as_deref() {
+        if !["pending", "approved", "rejected", "needs_rework", "revoked"].contains(&st) {
+            return Err(AppError::Validation("status".into()));
+        }
+    }
+    let v = s
+        .stores
+        .ops
+        .appr_list(&u.claims.org, q.status.as_deref())
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|r| json!({"id": r.id, "entity": r.entity, "entity_id": r.entity_id, "title": r.title, "status": r.status}))
+        .collect::<Vec<_>>())))
+}
+async fn appr_get(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let (r, steps) = s
+        .stores
+        .ops
+        .appr_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({
+        "id": r.id, "entity": r.entity, "entity_id": r.entity_id,
+        "title": r.title, "status": r.status,
+        "steps": steps.iter().map(appr_step_row_json).collect::<Vec<_>>(),
+    })))
+}
+#[derive(Debug, Deserialize)]
+struct ApprDecideReq {
+    step_no: i64,
+    decision: String,
+    comment: Option<String>,
+}
+/// Decider must hold Approve AND (the step role or an admin/owner role).
+fn appr_may_decide(user: &AuthUser, step_role: &str) -> bool {
+    user.claims.roles.iter().any(|r| {
+        let r = r.trim();
+        r == step_role
+            || matches!(
+                legalrust_domain::Role::parse(r).map(|x| x.as_str()),
+                Some("super_admin") | Some("org_owner") | Some("office_admin")
+            )
+    })
+}
+async fn appr_decide(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<ApprDecideReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Approve)?;
+    if let Some(c) = b.comment.as_deref() {
+        if c.len() > 2000 {
+            return Err(AppError::Validation("comment".into()));
+        }
+    }
+    let (_, steps) = s
+        .stores
+        .ops
+        .appr_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    let step = steps
+        .iter()
+        .find(|x| x.step_no == b.step_no)
+        .ok_or_else(|| AppError::NotFound("step".into()))?;
+    if !appr_may_decide(&u, &step.role) {
+        return Err(AppError::Forbidden);
+    }
+    let done = s
+        .stores
+        .ops
+        .appr_decide(
+            &u.claims.org,
+            id,
+            b.step_no,
+            &u.claims.sub,
+            b.decision.trim(),
+            b.comment.as_deref(),
+        )
+        .await
+        .map_err(|e| match e {
+            legalrust_database::StoreError::Conflict(m) => {
+                if m == "decision" {
+                    AppError::Validation(m)
+                } else {
+                    AppError::Conflict(m)
+                }
+            }
+            _ => map_store(e),
+        })?;
+    let (req, _) = s
+        .stores
+        .ops
+        .appr_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: format!("approval.{}", done.status),
+            entity: "approval".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    notify_user(
+        &s,
+        &u.claims.org,
+        &u.claims.sub,
+        "approval",
+        &format!("Approval #{} step {}: {}", id, b.step_no, done.status),
+    )
+    .await;
+    Ok(Json(
+        json!({"step_no": done.step_no, "status": done.status, "request_status": req.status}),
+    ))
+}
+async fn appr_revoke(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Approve)?;
+    s.stores
+        .ops
+        .appr_revoke(&u.claims.org, id, &u.claims.sub)
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "approval.revoked".into(),
+            entity: "approval".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"revoked": true})))
+}
+// ---------- end approvals engine ----------
 
 async fn sse_events(
     State(s): State<FullState>,
@@ -4049,6 +4364,10 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/trust/accounts/{id}", get(trust_acct_get))
         .route("/api/v1/trust/accounts/{id}/entries", post(trust_entry_add))
         .route("/api/v1/trust/transfer", post(trust_transfer))
+        .route("/api/v1/approvals", post(appr_create).get(appr_list))
+        .route("/api/v1/approvals/{id}", get(appr_get))
+        .route("/api/v1/approvals/{id}/decisions", post(appr_decide))
+        .route("/api/v1/approvals/{id}/revoke", post(appr_revoke))
         .route("/api/v1/events", get(sse_events))
         .route("/api/v1/public/contact", post(public_contact))
         .route("/api/v1/public/demo-requests", post(public_demo))

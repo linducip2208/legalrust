@@ -115,6 +115,13 @@
 - Manual: 02-PORTAL ditulis ulang (/app 10 tab + search + notif), 04/06/07/08 diperbarui (OCR engine, Tripay, AI live, troubleshooting baru); env AI/CORS/Tripay di `.env.example` + `.env.prod.example`; `deploy/README` langkah 6-8.
 - Skor: 31/32 = 97/100. Sisa jujur: prod deploy + benchmarks + prod-DB + counsel sign-off.
 
+## 2026-11-18 — AUDIT-1000 + approvals engine (main, mode eksekusi otonom)
+- Refresh aman: HEAD == origin/main (3d09a96), tree bersih, 1 worktree, tanpa uncommitted work. 3 subagent read-only (inventory 110 routes/105 trait methods/44 tabel; gap scan: nol TODO/mock/501-jujur; partial-verify D08/D20/D25).
+- Implementasi: migrasi 0013 approvals; `OpsStore::appr_*` (memory+mysql, tx atomik); 5 endpoint + RBAC + role-match; audit di 3 endpoint CSV; ikon PWA 192/512.
+- Tes: 3 approvals tests baru; workspace **288 passed, 0 failed**; fmt+clippy clean.
+- Registry: F-D09 ×9 → PARTIAL (backend lengkap, UI pending), F-D20-034 → IMPLEMENTED. Skor registry 15.8 → **16.3/100**; 8-cat mean 18.2; komposit kualitas ≈ 44/100 — BUKAN 100 (lapor jujur).
+- Artefak: docs/AUTONOMOUS/AUDIT-1000/ (scores, evidence, domain, uiux, security, tests, manifest, results, ownership, RESUME.md). Next: approvals /app tab UI, report center, queue-depth, webhook log (lihat RESUME.md).
+
 ## 2026-11-18 — legalrust.test jadi file listing: diagnosis + perbaikan (main)
 - Penyebab ganda: (1) backend :8080 mati (dimatikan saat bersih-bersih sesi) → proxy tanpa tujuan; (2) Laragon menimpa `auto.legalrust.test.conf` (ProxyPass manual hilang) → vhost jadi DocumentRoot repo = terlihat seperti file manager.
 - Perbaikan: `D:/laragon/etc/apache2/sites-enabled/00-legalrust-proxy.conf` (prefix `00-`, bukan `auto.*` agar tidak ditimpa; dimuat duluan sehingga menang untuk ServerName sama) + restart Apache (kill tree + start ulang dengan `-d` ServerRoot yang sama; `-k restart` gagal karena Apache jalan sebagai proses biasa, bukan service) + backend dijalankan ulang (`target-ui5/debug/legalrust-server.exe`, JWT 32+, DB Laragon `legalrust`).

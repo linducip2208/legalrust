@@ -19,6 +19,11 @@
 - `cargo test --workspace`: **285 passed, 0 failed** (ai 19 incl. live-stub + unreachable-blocked; server API 102 incl. stub-200, gated-ollama-live, 501-unreachable; OCR 21; Tripay stub E2E).
 - Live proof: `POST /api/v1/ai/chat` → `{"reply":"4","model":"qwen2.5:1.5b","input_tokens":40,"output_tokens":2}` (Ollama lokal via endpoint).
 - Self-audit: grep secrets/TODO/unsafe/PII-log + CORS permissive→allowlist + .env ignored — temuan ditutup kecuali pentest eksternal (rekomendasi).
+## 2026-11-18 — AUDIT-1000 wave (SQLX_OFFLINE=true; 3 subagent read-only + eksekutor)
+- Gates: fmt PASS, clippy `-D warnings` PASS.
+- `cargo test --workspace`: **288 passed, 0 failed** (approvals 3 baru; sisanya hijau).
+- Gap scan: nol TODO/mock di non-test source; semua 501 jujur dan terdokumentasi.
+- Registry: 10 fitur update (F-D09 ×9 → PARTIAL backend-lengkap, F-D20-034 → IMPLEMENTED); skor 15.8 → 16.3/100; artefak AUDIT-1000 + RESUME.md lengkap.
 ## 2026-11-18 — Tripay gateway wired (SQLX_OFFLINE=true, stub HTTP lokal, tanpa kredensial asli)
 - `cargo fmt --all -- --check`: PASS. `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
 - `cargo test --workspace`: **280 passed, 0 failed** (integrations 30 incl. HMAC vector + callback + stub create/reject; server API 100 incl. 501-tanpa-env + stub E2E checkout→PAID→duplikat→401; OCR 21; full matrix).

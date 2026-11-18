@@ -3910,3 +3910,266 @@ async fn uib_trust_has_no_csv_endpoint() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
+
+// ----- approvals engine -----
+fn forged_role_token(owner_tok: &str, roles: Vec<&str>) -> String {
+    let secret = b"test-secret-0123456789-0123456789ab";
+    let c: legalrust_auth::Claims =
+        legalrust_auth::validate_token(secret, owner_tok).expect("decode owner token");
+    legalrust_auth::issue_token(
+        secret,
+        &legalrust_auth::Claims {
+            sub: c.sub,
+            org: c.org,
+            roles: roles.into_iter().map(str::to_string).collect(),
+            sid: c.sid,
+            exp: c.exp,
+        },
+    )
+    .expect("reissue role token")
+}
+
+async fn mk_approval(app: &axum::Router, tok: &str, mid: i64, steps: &str) -> i64 {
+    use tower::ServiceExt;
+    let res = app
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals",
+            &format!(
+                r#"{{"entity":"matter","entity_id":{mid},"title":"Setujui AJB","steps":{steps}}}"#
+            ),
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["status"].as_str().unwrap(), "pending");
+    v["id"].as_i64().unwrap()
+}
+
+#[tokio::test]
+async fn approvals_sequential_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "appr@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(
+        &a,
+        &tok,
+        mid,
+        r#"[{"step_no":1,"role":"office_admin"},{"step_no":2,"role":"finance_officer"}]"#,
+    )
+    .await;
+    // Out-of-order decision is rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":2,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Step 1 approve (owner bypasses role match), step 2 approve closes.
+    for (no, done) in [(1, "pending"), (2, "approved")] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/approvals/{aid}/decisions"),
+                &format!(r#"{{"step_no":{no},"decision":"approve"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let v = body_json(res).await;
+        assert_eq!(v["status"].as_str().unwrap(), "approved");
+        assert_eq!(v["request_status"].as_str().unwrap(), done);
+    }
+    // Re-deciding a closed step and revoking a closed request both fail.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":2,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/revoke"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // List filter + history evidence.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals?status=approved", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64().unwrap() == aid));
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}"), &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert_eq!(v["steps"].as_array().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn approvals_rework_revoke_roundtrip() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "appr2@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"rework","comment":"lengkapi lampiran"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["request_status"].as_str().unwrap(),
+        "needs_rework"
+    );
+    // Rework resets the step to pending; a fresh approve closes it.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["request_status"].as_str().unwrap(),
+        "approved"
+    );
+    // Revoke path on a fresh request.
+    let aid2 = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid2}/revoke"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid2}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["status"].as_str().unwrap(), "revoked");
+}
+
+#[tokio::test]
+async fn approvals_validation_and_rbac() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "appr3@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let notary = forged_role_token(&tok, vec!["notary"]);
+    // Lawyer (no Create) cannot compose; unknown entity/matter/steps rejected.
+    for (payload, want) in [
+        (
+            format!(r#"{{"entity":"matter","entity_id":{mid},"title":"T","steps":[]}}"#),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
+        (
+            format!(
+                r#"{{"entity":"deed","entity_id":{mid},"title":"T","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#
+            ),
+            StatusCode::NOT_FOUND,
+        ),
+        (
+            format!(
+                r#"{{"entity":"alien","entity_id":{mid},"title":"T","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#
+            ),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
+        (
+            format!(
+                r#"{{"entity":"matter","entity_id":{mid},"title":"T","steps":[{{"step_no":2,"role":"office_admin"}}]}}"#
+            ),
+            StatusCode::UNPROCESSABLE_ENTITY,
+        ),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/approvals", &payload, Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "payload was {payload}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals",
+            &format!(r#"{{"entity":"matter","entity_id":{mid},"title":"T","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Lawyer (no Approve) cannot decide; notary cannot decide a finance step.
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"finance_officer"}]"#).await;
+    for (t, want) in [
+        (&lawyer, StatusCode::FORBIDDEN),
+        (&notary, StatusCode::FORBIDDEN),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/approvals/{aid}/decisions"),
+                r#"{"step_no":1,"decision":"approve"}"#,
+                Some(t),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want);
+    }
+    // Notary CAN decide a notary step.
+    let aid2 = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"notary"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid2}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&notary),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Unknown list filter rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals?status=bogus", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}

@@ -3086,10 +3086,18 @@
   "id": "F-D09-001",
   "domain": "D09",
   "title": "Approval request composer",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Approval composer: API complete (create/list/get, entity-exists check, audit+notify); no dedicated UI composer yet — /app tab pending."
  },
  {
   "id": "F-D09-002",
@@ -3149,10 +3157,18 @@
   "id": "F-D09-008",
   "domain": "D09",
   "title": "Approval with comments",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Comments supported on decisions (2000-char cap, stored per step, visible in appr_get history); no UI thread yet."
  },
  {
   "id": "F-D09-009",
@@ -3167,10 +3183,18 @@
   "id": "F-D09-010",
   "domain": "D09",
   "title": "Rework / return-to-drafter",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Rework supported (decision=rework resets steps to pending, request needs_rework, resubmission tested); no UI return-to-drafter button yet."
  },
  {
   "id": "F-D09-011",
@@ -3212,28 +3236,52 @@
   "id": "F-D09-015",
   "domain": "D09",
   "title": "Sequential vs parallel policy",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Sequential policy enforced server-side (out-of-order → 409 earlier step pending, tested); parallel branches not modeled."
  },
  {
   "id": "F-D09-016",
   "domain": "D09",
   "title": "Approval audit pack",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Audit pack via audit approval.created/decided/revoked + appr_get history; no export bundle yet."
  },
  {
   "id": "F-D09-017",
   "domain": "D09",
   "title": "Approval dashboard",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Dashboard = list endpoint with status filter; no board UI yet."
  },
  {
   "id": "F-D09-018",
@@ -3293,19 +3341,35 @@
   "id": "F-D09-024",
   "domain": "D09",
   "title": "Approval evidence (who/when/why)",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Evidence who/when/why: decided_by + timestamp + comment per step + audit events; no export yet."
  },
  {
   "id": "F-D09-025",
   "domain": "D09",
   "title": "Approval revocation",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Revocation endpoint live with terminal-state guard + audit; no UI button yet."
  },
  {
   "id": "F-D09-026",
@@ -3366,10 +3430,18 @@
   "id": "F-D09-032",
   "domain": "D09",
   "title": "Approval role mapping",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
+   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
+   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
+   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
+   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
+   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
+   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+  ],
+  "audit_note": "Role mapping: steps carry approver_role slugs; decide requires step role or admin/owner (tested incl. notary-mismatch 403)."
  },
  {
   "id": "F-D09-033",
@@ -7461,12 +7533,13 @@
   "id": "F-D20-034",
   "domain": "D20",
   "title": "Report audit trail",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
-   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "apps/server/src/lib.rs:1992 report.matters_exported audit on Export-gated CSV",
+   "apps/server/src/lib.rs:1568 matters_csv + :1610 clients_csv audit (View-gated)",
+   "crates/database/src/ops.rs: audit_list role-gated reader"
+  ],
+  "audit_note": "Report audit trail now emitted: report.matters_exported (:1992), report.matters_csv_exported (:1568), report.clients_csv_exported (:1610)."
  },
  {
   "id": "F-D20-035",

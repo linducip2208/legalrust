@@ -18,6 +18,31 @@ fn db_err(e: sqlx::Error) -> StoreError {
     }
     StoreError::Db(e.to_string())
 }
+fn appr_req_row(x: sqlx::mysql::MySqlRow) -> ApprovalReqRow {
+    ApprovalReqRow {
+        id: x.get::<u64, _>("id") as i64,
+        org: x.get::<String, _>("org_id"),
+        entity: x.get::<String, _>("entity"),
+        entity_id: x.get::<u64, _>("entity_id") as i64,
+        title: x.get::<String, _>("title"),
+        status: x.get::<String, _>("status"),
+        created_by: x.get::<String, _>("created_by"),
+    }
+}
+fn appr_step_row(x: sqlx::mysql::MySqlRow) -> ApprovalStepRow {
+    ApprovalStepRow {
+        id: x.get::<u64, _>("id") as i64,
+        req: x.get::<u64, _>("request_id") as i64,
+        step_no: x.get::<i32, _>("step_no") as i64,
+        role: x.get::<String, _>("approver_role"),
+        user: x
+            .try_get::<Option<String>, _>("approver_user")
+            .ok()
+            .flatten(),
+        status: x.get::<String, _>("status"),
+        comment: x.try_get::<Option<String>, _>("comment").ok().flatten(),
+    }
+}
 /// 9-arg helper mirrors the `OpsStore::trust_post`/`trust_transfer` signatures so both
 /// legs of a transfer share one guarded insert path; grouping would churn the trait.
 #[allow(clippy::too_many_arguments)]
@@ -513,6 +538,186 @@ impl OpsStore for MysqlOps {
             .await
             .map_err(db_err)?;
         Ok(x.map(|r| r.get::<String, _>("org_id")))
+    }
+    async fn appr_create(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        created_by: &str,
+        steps: &[(i64, String)],
+    ) -> Result<i64, StoreError> {
+        super::ops::appr_check(entity, steps)?;
+        if title.trim().is_empty() {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let r = sqlx::query(
+            "INSERT INTO approval_requests (org_id, entity, entity_id, title, created_by) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(entity)
+        .bind(entity_id as u64)
+        .bind(title)
+        .bind(created_by)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let id = r.last_insert_id() as i64;
+        for (no, role) in steps {
+            sqlx::query(
+                "INSERT INTO approval_steps (request_id, step_no, approver_role) VALUES (?,?,?)",
+            )
+            .bind(id as u64)
+            .bind(*no)
+            .bind(role.trim())
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+    async fn appr_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<ApprovalReqRow>, StoreError> {
+        let rows = if let Some(s) = status {
+            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE org_id=? AND status=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(s).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows.into_iter().map(appr_req_row).collect())
+    }
+    async fn appr_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(ApprovalReqRow, Vec<ApprovalStepRow>), StoreError> {
+        let x = sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE id=? AND org_id=?")
+            .bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let fs = sqlx::query("SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? ORDER BY step_no")
+            .bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok((appr_req_row(x), fs.into_iter().map(appr_step_row).collect()))
+    }
+    async fn appr_decide(
+        &self,
+        org: &str,
+        id: i64,
+        step_no: i64,
+        user: &str,
+        decision: &str,
+        comment: Option<&str>,
+    ) -> Result<ApprovalStepRow, StoreError> {
+        if !["approve", "reject", "rework"].contains(&decision) {
+            return Err(StoreError::Conflict("decision".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let x = sqlx::query("SELECT status FROM approval_requests WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        let cur: String = x.get::<String, _>("status");
+        if !["pending", "needs_rework"].contains(&cur.as_str()) {
+            return Err(StoreError::Conflict("request closed".into()));
+        }
+        let steps = sqlx::query(
+            "SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? ORDER BY step_no",
+        )
+        .bind(id as u64)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let target = steps
+            .iter()
+            .find(|r| r.get::<i32, _>("step_no") as i64 == step_no)
+            .ok_or(StoreError::NotFound)?;
+        if target.get::<String, _>("status") != "pending" {
+            return Err(StoreError::Conflict("step already decided".into()));
+        }
+        for r in &steps {
+            if (r.get::<i32, _>("step_no") as i64) < step_no
+                && r.get::<String, _>("status") != "approved"
+            {
+                return Err(StoreError::Conflict("earlier step pending".into()));
+            }
+        }
+        let max_no = steps
+            .iter()
+            .map(|r| r.get::<i32, _>("step_no") as i64)
+            .max()
+            .unwrap_or(0);
+        let step_status = match decision {
+            "approve" => "approved",
+            "reject" => "rejected",
+            _ => "pending",
+        };
+        sqlx::query("UPDATE approval_steps SET status=?, approver_user=?, comment=? WHERE request_id=? AND step_no=?")
+            .bind(step_status)
+            .bind(user)
+            .bind(comment)
+            .bind(id as u64)
+            .bind(step_no)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        let new_status = match decision {
+            "approve" if step_no == max_no => "approved",
+            "approve" => cur.as_str(),
+            "reject" => "rejected",
+            _ => "needs_rework",
+        };
+        if new_status == "needs_rework" {
+            sqlx::query(
+                "UPDATE approval_steps SET status='pending', comment=NULL WHERE request_id=?",
+            )
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        }
+        sqlx::query("UPDATE approval_requests SET status=? WHERE id=?")
+            .bind(new_status)
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        let fx = sqlx::query("SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? AND step_no=?")
+            .bind(id as u64).bind(step_no).fetch_one(&self.pool).await.map_err(db_err)?;
+        Ok(appr_step_row(fx))
+    }
+    async fn appr_revoke(&self, org: &str, id: i64, _user: &str) -> Result<(), StoreError> {
+        let n = sqlx::query(
+            "UPDATE approval_requests SET status='revoked' WHERE id=? AND org_id=? AND status IN ('pending','needs_rework')",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            let exists = sqlx::query("SELECT id FROM approval_requests WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .is_some();
+            if exists {
+                return Err(StoreError::Conflict("request closed".into()));
+            }
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
     }
     async fn pay_add(
         &self,

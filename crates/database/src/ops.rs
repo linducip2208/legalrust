@@ -15,6 +15,47 @@ pub struct OcrFieldRow {
     pub page: i64,
 }
 #[derive(Debug, Clone)]
+pub struct ApprovalReqRow {
+    pub id: i64,
+    pub org: String,
+    pub entity: String,
+    pub entity_id: i64,
+    pub title: String,
+    pub status: String,
+    pub created_by: String,
+}
+#[derive(Debug, Clone)]
+pub struct ApprovalStepRow {
+    pub id: i64,
+    pub req: i64,
+    pub step_no: i64,
+    pub role: String,
+    pub user: Option<String>,
+    pub status: String,
+    pub comment: Option<String>,
+}
+
+/// Shared validation for approval creation: entity allowlist + contiguous
+/// step numbers starting at 1 with non-empty roles.
+pub fn appr_check(entity: &str, steps: &[(i64, String)]) -> Result<(), super::store::StoreError> {
+    use super::store::StoreError;
+    if !["deed", "invoice", "matter"].contains(&entity) {
+        return Err(StoreError::Conflict("entity".into()));
+    }
+    if steps.is_empty() {
+        return Err(StoreError::Conflict("steps".into()));
+    }
+    let mut nos: Vec<i64> = steps.iter().map(|(n, _)| *n).collect();
+    nos.sort_unstable();
+    if nos.iter().enumerate().any(|(i, n)| *n != i as i64 + 1) {
+        return Err(StoreError::Conflict("steps".into()));
+    }
+    if steps.iter().any(|(_, r)| r.trim().is_empty()) {
+        return Err(StoreError::Conflict("role".into()));
+    }
+    Ok(())
+}
+#[derive(Debug, Clone)]
 pub struct TemplateRow {
     pub id: i64,
     pub org: String,
@@ -388,6 +429,44 @@ pub trait OpsStore: Send + Sync {
     /// Owner organization of an invoice (for unauthenticated callbacks that
     /// only carry the invoice id). Returns `Ok(None)` when unknown.
     async fn inv_owner_org(&self, inv: i64) -> Result<Option<String>, StoreError>;
+    /// Create an approval request with ordered steps (single transaction).
+    /// `steps` is `[(step_no, approver_role)]`; step numbers must start at 1
+    /// and be contiguous. Entity must be one of `deed|invoice|matter`.
+    async fn appr_create(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        created_by: &str,
+        steps: &[(i64, String)],
+    ) -> Result<i64, StoreError>;
+    async fn appr_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<ApprovalReqRow>, StoreError>;
+    async fn appr_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(ApprovalReqRow, Vec<ApprovalStepRow>), StoreError>;
+    /// Decide step `step_no` as `user`. Enforces: request open, step pending,
+    /// all earlier steps approved, decision in {approve,reject,rework}.
+    /// `approve` on the last step closes the request approved; `reject`
+    /// closes it rejected; `rework` resets all steps to pending with the
+    /// request back at `needs_rework`.
+    async fn appr_decide(
+        &self,
+        org: &str,
+        id: i64,
+        step_no: i64,
+        user: &str,
+        decision: &str,
+        comment: Option<&str>,
+    ) -> Result<ApprovalStepRow, StoreError>;
+    /// Revoke a non-terminal request (`pending`/`needs_rework` only).
+    async fn appr_revoke(&self, org: &str, id: i64, user: &str) -> Result<(), StoreError>;
     async fn notify(
         &self,
         org: &str,

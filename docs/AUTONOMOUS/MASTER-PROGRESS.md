@@ -1,8 +1,9 @@
 # LEGALRUST AUTONOMOUS PROGRESS (master)
 
 ## Status ringkas
-- Fase: Wave 1 (Foundation) → berjalan. Checklist penerimaan: 28/32 = 87/100 (recount 2026-11-18, unchanged — lihat docs/13-development-progress/ACCEPTANCE.md + docs/AUTONOMOUS/FINAL-REPORT.md §15).
-- Tes terakhir: 224 passed, 0 failed, 1 ignored (live-DB) — ukur 2026-11-18 (`cargo test --workspace`, SQLX_OFFLINE=true, target-finalverify). `cargo fmt --check` MERAH (2 files perlu rewrapping, formatting-only — jalankan `cargo fmt --all` sebelum gate berikut).
+- Fase: Wave 1 (Foundation) → berjalan. Checklist penerimaan: 31/32 = 97/100 (lihat docs/13-development-progress/ACCEPTANCE.md + docs/AUTONOMOUS/FINAL-REPORT.md §15).
+- Tes terakhir: 288 passed, 0 failed (SQLX_OFFLINE=true) — ukur 2026-11-18 (`cargo test --workspace`). `cargo fmt --check` + clippy `-D warnings` HIJAU.
+- Registry 1000: IMPLEMENTED 38 / PARTIAL 112 / PLANNED 319 / NOT_STARTED 372 / CONFIG 159 → skor 16.3/100 (grade E); 8-cat weighted mean 18.2. Detail: docs/AUTONOMOUS/AUDIT-1000/.
 - Live lokal: http://legalrust.test/ (server :8080 + Laragon proxy + MySQL Laragon).
 
 ## Wave map
@@ -14,6 +15,7 @@
 - [ ] Wave 6 — Completion (integrasi penuh, testing menyeluruh, audit, optimasi, docs)
 - [ ] Wave 7 — Re-audit 1.000 fitur
 - [x] Wave 7 — Re-audit SELESAI 2026-11-18: sampel segar 40/1000 (offset 12, tiap ke-25), 0 mismatch; 5/6 titik risiko PASS, 1 temuan MEDIUM (R-01: notify_list decode mentah read_at TIMESTAMP, path MySQL tak teruji) + 2 LOW + 1 INFO — lihat docs/AUTONOMOUS/REAUDIT-REPORT.md.
+- [x] Wave 8 — AUDIT-1000 + approvals engine SELESAI 2026-11-18: 3 subagent baca-saja (inventory/gap/partial-verify) + eksekutor utama; migrasi 0013 approvals; 5 API approvals + RBAC + 3 tes; audit CSV; ikon PWA; registry 10 fitur update; artefak AUDIT-1000 + RESUME.md. Skor registry 16.3/100 (jujur, bukan 100).
 
 ## Aturan
 - Tugas selesai hanya bila: kode ada + integrasi jalan + tes hijau + docs update + bukti tercatat.
