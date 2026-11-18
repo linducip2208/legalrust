@@ -40,6 +40,7 @@ struct Inner {
     webhook_secrets: HashMap<i64, String>,
     obligations: HashMap<i64, PdpObligationRow>,
     consents: HashMap<i64, ConsentRow>,
+    ropa: HashMap<i64, RopaRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -1010,6 +1011,61 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| -r.id);
         Ok(v)
+    }
+    async fn ropa_create(
+        &self,
+        org: &str,
+        activity: &str,
+        purpose: &str,
+        data_categories: &str,
+        legal_basis: &str,
+        retention: &str,
+    ) -> Result<i64, StoreError> {
+        if activity.trim().is_empty() || activity.len() > 200 || purpose.trim().is_empty() {
+            return Err(StoreError::Conflict("activity/purpose".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ropa.insert(
+            id,
+            RopaRow {
+                id,
+                org: org.into(),
+                activity: activity.trim().into(),
+                purpose: purpose.trim().into(),
+                data_categories: data_categories.trim().into(),
+                legal_basis: if legal_basis.trim().is_empty() {
+                    "consent".into()
+                } else {
+                    legal_basis.trim().into()
+                },
+                retention: retention.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ropa_list(&self, org: &str) -> Result<Vec<RopaRow>, StoreError> {
+        let mut v: Vec<RopaRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ropa
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ropa_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.ropa.get(&id) {
+            Some(r) if r.org == org => {
+                m.ropa.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn trust_create_account(
         &self,
@@ -2079,6 +2135,26 @@ mod crm_tests {
 mod compliance_tests {
     use super::*;
     use crate::ops::OpsStore;
+
+    #[tokio::test]
+    async fn ropa_crud_and_tenant_isolation() {
+        let ops = MemoryOps::default();
+        assert!(ops
+            .ropa_create("org1", "  ", "p", "", "", "")
+            .await
+            .is_err());
+        let id = ops
+            .ropa_create("org1", "ROPA A", "Pemasaran", "nik", "consent", "2y")
+            .await
+            .unwrap();
+        let v = ops.ropa_list("org1").await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].legal_basis, "consent");
+        assert!(ops.ropa_list("org2").await.unwrap().is_empty());
+        ops.ropa_delete("org2", id).await.unwrap_err();
+        ops.ropa_delete("org1", id).await.unwrap();
+        assert!(ops.ropa_list("org1").await.unwrap().is_empty());
+    }
 
     #[tokio::test]
     async fn obligation_lifecycle_and_tenant_isolation() {

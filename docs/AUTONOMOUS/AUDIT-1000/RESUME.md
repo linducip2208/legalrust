@@ -43,6 +43,12 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 11: ROPA register (UU PDP) + compliance test fixes (main)
+- POST/GET /api/v1/compliance/ropa + DELETE /{id}; migration 0017; memory+MySQL impls; Create/View/Delete RBAC + validator + audit; api test (422/403/404) + memory tenant-isolation test.
+- Bugfix nyata: memory ropa_delete menghapus baris walau org beda (check-after-remove); diperbaiki ke check-before-remove ala meeting_delete/webhook_ep_delete.
+- Test-file fix: payload ROPA pakai `activity` (bukan `title`); hapus stray eprintln debug.
+- Workspace 306/0; registry 17.7 (56 IMPLEMENTED); 8-cat mean 19.1 (25 verified).
+
 ## Done wave 10: dead-letter alerting v1 + benchmarks baseline (main)
 - Dead-letter audit entry on max-retry exhaustion; ?status= filter on deliveries; /app Dead letters card + needles; status-filter API test.
 - Workspace 304/0; registry 17.6 (55+2 re-scored); 8-cat mean 19.0.

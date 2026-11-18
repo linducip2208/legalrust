@@ -4676,6 +4676,113 @@ async fn webhook_failed_send_queues_retry() {
 }
 
 #[tokio::test]
+async fn compliance_ro_pa_crud_and_guards() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ropax@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Validation: activity too short rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/ropa",
+            r#"{"activity":"X","purpose":"Y"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // RBAC: auditor cannot create (payload valid so the Create guard fires first).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/ropa",
+            r#"{"activity":"ROPA Pemasaran","purpose":"Pemasaran langsung"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/ropa",
+            r#"{"activity":"ROPA Pemasaran","purpose":"Pemasaran langsung","data_categories":"nama,email","retention":"2 tahun"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/ropa", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64().unwrap() == rid));
+    // Delete is Delete-gated: auditor forbidden, owner ok; twice -> 404.
+    let res = a
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/v1/compliance/ropa/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/v1/compliance/ropa/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/v1/compliance/ropa/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn trust_csv_export_returns_ledger() {
     use tower::ServiceExt;
     let a = app();

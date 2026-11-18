@@ -153,6 +153,16 @@ pub struct ConsentRow {
     pub status: String,
 }
 #[derive(Debug, Clone)]
+pub struct RopaRow {
+    pub id: i64,
+    pub org: String,
+    pub activity: String,
+    pub purpose: String,
+    pub data_categories: String,
+    pub legal_basis: String,
+    pub retention: String,
+}
+#[derive(Debug, Clone)]
 pub struct NotifRow {
     pub id: i64,
     pub kind: String,
@@ -567,6 +577,18 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         subject: Option<&str>,
     ) -> Result<Vec<ConsentRow>, StoreError>;
+    /// Record of Processing Activities entry.
+    async fn ropa_create(
+        &self,
+        org: &str,
+        activity: &str,
+        purpose: &str,
+        data_categories: &str,
+        legal_basis: &str,
+        retention: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ropa_list(&self, org: &str) -> Result<Vec<RopaRow>, StoreError>;
+    async fn ropa_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn notify(
         &self,
         org: &str,

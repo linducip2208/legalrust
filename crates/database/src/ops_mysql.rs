@@ -991,6 +991,66 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn ropa_create(
+        &self,
+        org: &str,
+        activity: &str,
+        purpose: &str,
+        data_categories: &str,
+        legal_basis: &str,
+        retention: &str,
+    ) -> Result<i64, StoreError> {
+        if activity.trim().is_empty() || activity.len() > 200 || purpose.trim().is_empty() {
+            return Err(StoreError::Conflict("activity/purpose".into()));
+        }
+        let lb = if legal_basis.trim().is_empty() {
+            "consent"
+        } else {
+            legal_basis.trim()
+        };
+        let r = sqlx::query(
+            "INSERT INTO ropa_entries (org_id, activity, purpose, data_categories, legal_basis, retention) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(activity.trim())
+        .bind(purpose.trim())
+        .bind(data_categories.trim())
+        .bind(lb)
+        .bind(retention.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ropa_list(&self, org: &str) -> Result<Vec<RopaRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, activity, purpose, data_categories, legal_basis, retention FROM ropa_entries WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RopaRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                activity: x.get::<String, _>("activity"),
+                purpose: x.get::<String, _>("purpose"),
+                data_categories: x.get::<String, _>("data_categories"),
+                legal_basis: x.get::<String, _>("legal_basis"),
+                retention: x.get::<String, _>("retention"),
+            })
+            .collect())
+    }
+    async fn ropa_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM ropa_entries WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn pay_add(
         &self,
         org: &str,

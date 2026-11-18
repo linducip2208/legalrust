@@ -1952,6 +1952,7 @@ async fn consent_withdraw(
 struct ConsentListQ {
     subject: Option<String>,
 }
+
 async fn consent_list(
     State(s): State<FullState>,
     headers: HeaderMap,
@@ -1972,7 +1973,108 @@ async fn consent_list(
         )
         .collect::<Vec<_>>())))
 }
-// ---------- end compliance slice ----------
+// ---------- end compliance slice: consent ----------
+
+// ---------- compliance slice: UU PDP ROPA register ----------
+#[derive(Debug, Deserialize, Validate)]
+struct RopaCreateReq {
+    #[validate(length(min = 2, max = 200))]
+    activity: String,
+    #[validate(length(min = 2, max = 200))]
+    purpose: String,
+    #[validate(length(max = 200))]
+    data_categories: Option<String>,
+    #[validate(length(max = 120))]
+    legal_basis: Option<String>,
+    #[validate(length(max = 120))]
+    retention: Option<String>,
+}
+async fn ropa_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<RopaCreateReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let id = s
+        .stores
+        .ops
+        .ropa_create(
+            &u.claims.org,
+            b.activity.trim(),
+            b.purpose.trim(),
+            b.data_categories.as_deref().unwrap_or(""),
+            b.legal_basis.as_deref().unwrap_or("consent"),
+            b.retention.as_deref().unwrap_or(""),
+        )
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "compliance.ropa_created".into(),
+            entity: "ropa".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id})))
+}
+async fn ropa_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .ops
+        .ropa_list(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|r| json!({
+            "id": r.id, "activity": r.activity, "purpose": r.purpose,
+            "data_categories": r.data_categories, "legal_basis": r.legal_basis,
+            "retention": r.retention
+        }))
+        .collect::<Vec<_>>())))
+}
+async fn ropa_delete(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Delete)?;
+    s.stores
+        .ops
+        .ropa_delete(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "compliance.ropa_deleted".into(),
+            entity: "ropa".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"deleted": true})))
+}
+// ---------- end compliance slice: ROPA ----------
 
 async fn webhook_in(
     State(s): State<FullState>,
@@ -5004,6 +5106,8 @@ pub fn build_router(state: FullState) -> Router {
         )
         .route("/api/v1/consents", post(consent_grant).get(consent_list))
         .route("/api/v1/consents/{id}/withdraw", post(consent_withdraw))
+        .route("/api/v1/compliance/ropa", post(ropa_create).get(ropa_list))
+        .route("/api/v1/compliance/ropa/{id}", delete(ropa_delete))
         .route("/api/v1/integrations", get(integrations))
         .route("/api/v1/auth/tokens", post(token_create).get(token_list))
         .route("/api/v1/auth/tokens/{id}", delete(token_revoke))

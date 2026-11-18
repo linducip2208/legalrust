@@ -2,7 +2,7 @@
 
 ## Status ringkas
 - Fase: Wave 1 (Foundation) → berjalan. Checklist penerimaan: 31/32 = 97/100 (lihat docs/13-development-progress/ACCEPTANCE.md + docs/AUTONOMOUS/FINAL-REPORT.md §15).
-- Tests terakhir: 304 passed, 0 failed (SQLX_OFFLINE=true — ukur 2026-11-18 (`cargo test --workspace`). `cargo fmt --check` + clippy `-D warnings` HIJAU.
+- Tests terakhir: 306 passed, 0 failed (SQLX_OFFLINE=true — ukur 2026-11-18 (`cargo test --workspace`). `cargo fmt --check` + clippy `-D warnings` HIJAU.
 - Registry 1000: IMPLEMENTED 38 / PARTIAL 112 / PLANNED 319 / NOT_STARTED 372 / CONFIG 159 → skor 16.3/100 (grade E); 8-cat weighted mean 18.2. Detail: docs/AUTONOMOUS/AUDIT-1000/.
 - Live lokal: http://legalrust.test/ (server :8080 + Laragon proxy + MySQL Laragon).
 
