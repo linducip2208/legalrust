@@ -95,37 +95,51 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       localStorage.removeItem('lr_token'); location.href = '/login';
     });
   });
-  /* ---- global search: Enter to search, grouped results ---- */
+  /* ---- global search: Enter to search, grouped results + pager ---- */
   function hesc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
-  on('q', 'keydown', async function (ev) {
-    if (ev.key !== 'Enter') return;
-    ev.preventDefault();
+  var qpage = 1;
+  async function runSearch() {
     var box = document.getElementById('qres');
     var query = document.getElementById('q').value.trim();
     if (query.length < 2) { box.textContent = 'Ketik minimal 2 huruf lalu tekan Enter.'; return; }
     box.textContent = 'Mencari…';
     try {
-      var r = await fetch('/api/v1/search?q=' + encodeURIComponent(query), { headers: H });
+      var r = await fetch('/api/v1/search?q=' + encodeURIComponent(query) + '&page=' + qpage, { headers: H });
       if (!r.ok) { box.textContent = 'Pencarian gagal (' + r.status + ').'; return; }
       var d = await r.json();
       var cs = d.clients || [], ms = d.matters || [], ds = d.documents || [];
+      var totals = d.totals || {};
       if (!cs.length && !ms.length && !ds.length) {
         box.textContent = 'Tidak ada hasil untuk "' + query + '".';
         return;
       }
       var html = '';
-      function group(title, items, fmt) {
-        html += '<div class="q-group"><strong>' + title + ' (' + items.length + ')</strong>';
+      function group(title, items, total, fmt) {
+        var shown = total && total > items.length ? items.length + ' dari ' + total : String(items.length);
+        html += '<div class="q-group"><strong>' + title + ' (' + shown + ')</strong>';
         html += items.length
           ? '<ul>' + items.map(function (x) { return '<li><a href="/app">' + fmt(x) + '</a></li>'; }).join('') + '</ul>'
           : '<div class="text-muted">Tidak ada hasil.</div>';
         html += '</div>';
       }
-      group('Klien', cs, function (x) { return hesc(x.name); });
-      group('Perkara', ms, function (x) { return hesc(x.number + ' — ' + x.title); });
-      group('Dokumen', ds, function (x) { return hesc(x.name); });
+      group('Klien', cs, totals.clients, function (x) { return hesc(x.name); });
+      group('Perkara', ms, totals.matters, function (x) { return hesc(x.number + ' — ' + x.title); });
+      group('Dokumen', ds, totals.documents, function (x) { return hesc(x.name); });
+      var anyTotal = (totals.clients || 0) + (totals.matters || 0) + (totals.documents || 0);
+      var anyShown = cs.length + ms.length + ds.length;
+      if (anyTotal > anyShown) {
+        html += '<div class="q-pager"><button class="btn btn-sm" id="qprev" type="button">Sebelumnya</button> <span>Halaman ' + (d.page || qpage) + '</span> <button class="btn btn-sm" id="qnext" type="button">Berikutnya</button></div>';
+      }
       box.innerHTML = html;
+      on('qprev', 'click', function () { if (qpage > 1) { qpage -= 1; runSearch(); } });
+      on('qnext', 'click', function () { qpage += 1; runSearch(); });
     } catch (x) { box.textContent = 'Server tidak terjangkau.'; }
+  }
+  on('q', 'keydown', async function (ev) {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    qpage = 1;
+    runSearch();
   });
   /* ---- dashboard helpers (live data only, no fake series) ---- */
   var DEED_NEXT = { draft: 'collection', collection: 'verification', verification: 'legal_review', legal_review: 'approval', revision: 'legal_review', approval: 'signing', signing: 'registration', registration: 'completion', completion: 'archive' };

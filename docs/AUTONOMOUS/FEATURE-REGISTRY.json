@@ -8363,11 +8363,16 @@
   "id": "F-D23-001",
   "domain": "D23",
   "title": "Global search bar",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
-   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
-  ]
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)",
+   "apps/server/src/lib.rs: global_search page/per_page/types + totals (clients/matters/documents arrays kept)",
+   "apps/server/src/lib.rs: rag_search ranks via legalrust_rag::rank + org-trim at API boundary (get_doc)",
+   "apps/server/static/site.js: runSearch totals display + prev/next pager",
+   "apps/server/tests/api.rs: search_pagination_totals_and_types + rag_search_isolates_tenants"
+  ],
+  "audit_note": " Wave 14: pagination+totals+types; RAG rank+ACL-trim; UI pager; isolation tests."
  },
  {
   "id": "F-D23-002",
@@ -8554,11 +8559,16 @@
   "id": "F-D23-021",
   "domain": "D23",
   "title": "Search access-control trimming",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
-   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
-  ]
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)",
+   "apps/server/src/lib.rs: global_search page/per_page/types + totals (clients/matters/documents arrays kept)",
+   "apps/server/src/lib.rs: rag_search ranks via legalrust_rag::rank + org-trim at API boundary (get_doc)",
+   "apps/server/static/site.js: runSearch totals display + prev/next pager",
+   "apps/server/tests/api.rs: search_pagination_totals_and_types + rag_search_isolates_tenants"
+  ],
+  "audit_note": " Wave 14: pagination+totals+types; RAG rank+ACL-trim; UI pager; isolation tests."
  },
  {
   "id": "F-D23-022",
@@ -8645,11 +8655,16 @@
   "id": "F-D23-031",
   "domain": "D23",
   "title": "Search API endpoint",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
-   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
-  ]
+   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)",
+   "apps/server/src/lib.rs: global_search page/per_page/types + totals (clients/matters/documents arrays kept)",
+   "apps/server/src/lib.rs: rag_search ranks via legalrust_rag::rank + org-trim at API boundary (get_doc)",
+   "apps/server/static/site.js: runSearch totals display + prev/next pager",
+   "apps/server/tests/api.rs: search_pagination_totals_and_types + rag_search_isolates_tenants"
+  ],
+  "audit_note": " Wave 14: pagination+totals+types; RAG rank+ACL-trim; UI pager; isolation tests."
  },
  {
   "id": "F-D23-032",

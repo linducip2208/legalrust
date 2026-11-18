@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 14: search hardening + RAG ACL-trim (main)
+- Search pagination/types/totals + RAG rank + tenant trim; UI pager; workspace **308 passed, 0 failed**; F-D23-001/021/031 IMPLEMENTED (8-cat 74.4).
+
 ## 2026-11-18 AUDIT-1000 wave 13: repertorium period report (main)
 - deeds.csv periode dari/sampai + guard rentang; /app from/to; workspace **306 passed, 0 failed**; F-D20-009 IMPLEMENTED (8-cat 76.9).
 

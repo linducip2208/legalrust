@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 14: global search hardening + RAG ACL-trim (main)
+- /api/v1/search: page/per_page/types + totals (arrays kept); rag_search ranks via rank() + org-trim at boundary.
+- UI pager + totals; pagination/types/isolation tests. F-D23-001/021/031 PARTIAL->IMPLEMENTED (8-cat 74.4).
+- Workspace 308/0; registry 18.1 (60 IMPLEMENTED); 8-cat mean 19.2 (28 verified).
+
 ## Done wave 13: repertorium period report from/to (main)
 - deeds.csv supports inclusive ?from=&to= (YYYY-MM-DD) + from>to guard; ?date= kept; /app card now from/to with client guard; period + guard API tests.
 - F-D20-009 PARTIAL->IMPLEMENTED (8-cat 76.9). Workspace 306/0; registry 17.8 (57 IMPLEMENTED); 8-cat mean 19.1 (25 verified).

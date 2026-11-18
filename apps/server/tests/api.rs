@@ -2465,6 +2465,108 @@ async fn search_isolates_tenants() {
         .iter()
         .any(|c| c["id"].as_i64() == Some(cid)));
 }
+#[tokio::test]
+async fn search_pagination_totals_and_types() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "searchpage@x.id").await;
+    for n in ["Qpg Alpha Satu", "Qpg Alpha Dua", "Qpg Alpha Tiga"] {
+        mk_search_client(&a, &tok, n).await;
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=qpg&per_page=2&page=1", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["clients"].as_array().unwrap().len(), 2);
+    assert_eq!(j["totals"]["clients"].as_i64().unwrap(), 3);
+    assert_eq!(j["page"].as_i64().unwrap(), 1);
+    assert_eq!(j["per_page"].as_i64().unwrap(), 2);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=qpg&per_page=2&page=2", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["clients"].as_array().unwrap().len(), 1);
+    // Type filter narrows groups; unknown type rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=qpg&types=clients", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(!j["clients"].as_array().unwrap().is_empty());
+    assert!(j["matters"].as_array().unwrap().is_empty());
+    assert!(j["documents"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/search?q=qpg&types=bogus", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn rag_search_isolates_tenants() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok_a = reg(&a, "ragisoA@x.id").await;
+    let tok_b = reg(&a, "ragisoB@x.id").await;
+    let mid = mk_matter(&a, &tok_a).await;
+    let content = b"Zzqrag rahasia isolasi tenant sertifikat unik.";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"r.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok_a))).await.unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let req = Request::builder()
+        .uri(format!("/api/v1/documents/{did}/content"))
+        .method("PUT")
+        .header(
+            "authorization",
+            format!("Bearer {tok_a}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::from(content.to_vec()))
+        .unwrap();
+    assert_eq!(
+        a.clone().oneshot(req).await.unwrap().status(),
+        StatusCode::OK
+    );
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/rag/index",
+            &format!(r#"{{"document_id":{did}}}"#),
+            Some(&tok_a),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Same org sees the hit with its doc id; foreign org sees nothing.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/rag/search?q=zzqrag", &tok_a))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hits = body_json(res).await;
+    assert!(hits
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|h| h["doc_id"].as_i64() == Some(did)));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/rag/search?q=zzqrag", &tok_b))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+}
 
 #[tokio::test]
 async fn app_page_has_search_box() {

@@ -1178,22 +1178,43 @@ async fn rag_search(
     if q.q.trim().is_empty() {
         return Err(AppError::Validation("q".into()));
     }
+    let lim = q.limit.unwrap_or(10).clamp(1, 50);
     let hits = s
         .stores
         .ops
-        .rag_search(&u.claims.org, &q.q, q.limit.unwrap_or(10).clamp(1, 50))
+        .rag_search(&u.claims.org, &q.q, lim)
         .await
         .map_err(map_store)?;
-    Ok(Json(json!(hits
-        .iter()
-        .map(|h| json!({"doc_id": h.doc_id, "idx": h.idx, "text": h.text}))
-        .collect::<Vec<_>>())))
+    // Rank by keyword relevance, then enforce tenant scope at the API boundary
+    // (the MySQL impl already scopes by org; the memory impl scans all docs).
+    // RagHit.idx travels in ScoredChunk.version_id so ranking stays lossless.
+    let chunks: Vec<legalrust_rag::ScoredChunk> = hits
+        .into_iter()
+        .map(|h| legalrust_rag::ScoredChunk {
+            doc_id: h.doc_id.to_string(),
+            version_id: h.idx,
+            page: 0,
+            text: h.text,
+            score: 0.0,
+        })
+        .collect();
+    let mut out = Vec::new();
+    for c in legalrust_rag::rank(&q.q, &chunks, lim as usize) {
+        let doc_id: i64 = c.doc_id.parse().unwrap_or(-1);
+        if s.stores.core.get_doc(&u.claims.org, doc_id).await.is_ok() {
+            out.push(json!({"doc_id": doc_id, "idx": c.version_id, "text": c.text}));
+        }
+    }
+    Ok(Json(json!(out)))
 }
 
 #[derive(Debug, Deserialize)]
 struct SearchQ {
     q: Option<String>,
     limit: Option<i64>,
+    page: Option<i64>,
+    per_page: Option<i64>,
+    types: Option<String>,
 }
 async fn global_search(
     State(s): State<FullState>,
@@ -1206,7 +1227,35 @@ async fn global_search(
     if needle.chars().count() < 2 {
         return Err(AppError::Validation("q".into()));
     }
-    let lim = q.limit.unwrap_or(10).clamp(1, 50) as usize;
+    // `limit` is kept as a legacy alias for `per_page`.
+    let per_page = q.per_page.or(q.limit).unwrap_or(10).clamp(1, 50) as usize;
+    let page = q.page.unwrap_or(1).clamp(1, 100) as usize;
+    let mut want_clients = true;
+    let mut want_matters = true;
+    let mut want_docs = true;
+    if let Some(t) = q.types.as_deref() {
+        want_clients = false;
+        want_matters = false;
+        want_docs = false;
+        let mut any = false;
+        for part in t.split(',').map(str::trim).filter(|x| !x.is_empty()) {
+            match part.to_lowercase().as_str() {
+                "clients" => want_clients = true,
+                "matters" => want_matters = true,
+                "documents" | "docs" => want_docs = true,
+                _ => return Err(AppError::Validation("types".into())),
+            }
+            any = true;
+        }
+        if !any {
+            return Err(AppError::Validation("types".into()));
+        }
+    }
+    let skip = (page - 1) * per_page;
+    let mut totals = serde_json::Map::new();
+    let mut hc_all: Vec<Value> = Vec::new();
+    let mut hm_all: Vec<Value> = Vec::new();
+    let mut hd_all: Vec<Value> = Vec::new();
     let clients = s
         .stores
         .core
@@ -1225,27 +1274,43 @@ async fn global_search(
         .list_docs(&u.claims.org, None)
         .await
         .map_err(map_store)?;
-    let hc: Vec<Value> = clients
-        .into_iter()
-        .filter(|c| c.display_name.to_lowercase().contains(&needle))
-        .take(lim)
-        .map(|c| json!({"id": c.id, "name": c.display_name}))
-        .collect();
-    let hm: Vec<Value> = matters
-        .into_iter()
-        .filter(|m| {
-            m.number.to_lowercase().contains(&needle) || m.title.to_lowercase().contains(&needle)
-        })
-        .take(lim)
-        .map(|m| json!({"id": m.id, "number": m.number, "title": m.title}))
-        .collect();
-    let hd: Vec<Value> = docs
-        .into_iter()
-        .filter(|d| d.name.to_lowercase().contains(&needle))
-        .take(lim)
-        .map(|d| json!({"id": d.id, "name": d.name}))
-        .collect();
-    Ok(Json(json!({"clients": hc, "matters": hm, "documents": hd})))
+    if want_clients {
+        hc_all = clients
+            .into_iter()
+            .filter(|c| c.display_name.to_lowercase().contains(&needle))
+            .map(|c| json!({"id": c.id, "name": c.display_name}))
+            .collect();
+    }
+    if want_matters {
+        hm_all = matters
+            .into_iter()
+            .filter(|m| {
+                m.number.to_lowercase().contains(&needle)
+                    || m.title.to_lowercase().contains(&needle)
+            })
+            .map(|m| json!({"id": m.id, "number": m.number, "title": m.title}))
+            .collect();
+    }
+    if want_docs {
+        hd_all = docs
+            .into_iter()
+            .filter(|d| d.name.to_lowercase().contains(&needle))
+            .map(|d| json!({"id": d.id, "name": d.name}))
+            .collect();
+    }
+    totals.insert("clients".into(), json!(hc_all.len()));
+    totals.insert("matters".into(), json!(hm_all.len()));
+    totals.insert("documents".into(), json!(hd_all.len()));
+    // Backward-compat keys stay arrays; pagination applies per group.
+    let paged = |v: Vec<Value>| v.into_iter().skip(skip).take(per_page).collect::<Vec<_>>();
+    Ok(Json(json!({
+        "clients": paged(hc_all),
+        "matters": paged(hm_all),
+        "documents": paged(hd_all),
+        "totals": totals,
+        "page": page,
+        "per_page": per_page,
+    })))
 }
 
 #[derive(Debug, Deserialize, Validate)]
