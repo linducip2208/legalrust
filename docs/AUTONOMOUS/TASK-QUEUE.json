@@ -238,9 +238,10 @@
     {
       "id": "B-COMP-UI",
       "title": "Compliance /app tab (obligations + consents)",
-      "status": "PLANNED",
-      "owner": null,
-      "depends": []
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 wave 6: p-kepatuhan panel + tab + JS + needles"
     }
   ]
 }

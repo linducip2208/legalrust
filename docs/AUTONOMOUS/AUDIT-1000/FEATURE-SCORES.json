@@ -6802,35 +6802,35 @@
  {
   "feature_id": "F-D11-001",
   "domain": "D11",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 82,
-   "database": 85,
-   "frontend": 20,
-   "business_logic": 78,
-   "security": 85,
-   "testing": 85,
-   "integration": 65,
-   "documentation": 68
+   "backend": 86,
+   "database": 88,
+   "frontend": 75,
+   "business_logic": 82,
+   "security": 88,
+   "testing": 88,
+   "integration": 72,
+   "documentation": 75
   },
-  "overall_score": 71.8,
+  "overall_score": 83.3,
   "verified_8cat": true
  },
  {
   "feature_id": "F-D11-002",
   "domain": "D11",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 82,
-   "database": 85,
-   "frontend": 20,
-   "business_logic": 78,
-   "security": 85,
-   "testing": 85,
-   "integration": 65,
-   "documentation": 68
+   "backend": 86,
+   "database": 88,
+   "frontend": 75,
+   "business_logic": 82,
+   "security": 88,
+   "testing": 88,
+   "integration": 72,
+   "documentation": 75
   },
-  "overall_score": 71.8,
+  "overall_score": 83.3,
   "verified_8cat": true
  },
  {

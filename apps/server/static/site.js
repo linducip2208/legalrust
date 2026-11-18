@@ -52,8 +52,8 @@
     if (r.status === 401) { location.href = '/login'; return null; }
     return r.json();
   }
-  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'appr', 'mkt', 'pengaturan', 'audit', 'jobs'];
-  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', appr: 'persetujuan', mkt: 'marketing', pengaturan: 'pengaturan', audit: 'audit', jobs: 'jobs' };
+  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'appr', 'mkt', 'pengaturan', 'audit', 'jobs', 'kepatuhan'];
+  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', appr: 'persetujuan', mkt: 'marketing', pengaturan: 'pengaturan', audit: 'audit', jobs: 'jobs', kepatuhan: 'kepatuhan' };
   window.apptab = function (x) {
     TABS.forEach(function (k) {
       var el = document.getElementById('p-' + k);
@@ -975,9 +975,74 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   qsa('.snav[data-tab="appr"]', function (a) {
     a.addEventListener('click', function () { apprRefresh(); });
   });
+  /* ---- compliance: UU PDP obligations + consent ---- */
+  async function kepRefresh() {
+    var box = document.getElementById('kep-list');
+    if (!box) return;
+    var f = pval('kep-filter');
+    var v = await j('/api/v1/compliance/obligations' + (f ? '?status=' + encodeURIComponent(f) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var acts = x.status === 'done'
+        ? '<span class="text-muted">selesai</span>'
+        : '<button class="btn btn-sm" data-kep-next="' + x.id + '" data-kep-to="' + (x.status === 'open' ? 'in_progress' : 'done') + '" type="button">Maju</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.category) + '</td><td>' + badge(x.status) + '</td><td>' + acts + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada obligasi.</td></tr>';
+    qsa('[data-kep-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/obligations/' + b.getAttribute('data-kep-next') + '/status', { status: b.getAttribute('data-kep-to') });
+        if (!r.ok) { pmsg('kep-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('kep-msg', '');
+        kepRefresh();
+      });
+    });
+  }
+  async function conRefresh() {
+    var box = document.getElementById('con-list');
+    if (!box) return;
+    var f = pval('con-filter');
+    var v = await j('/api/v1/consents' + (f ? '?subject=' + encodeURIComponent(f) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var acts = x.status === 'granted'
+        ? '<button class="btn btn-sm" data-con-wd="' + x.id + '" type="button">Cabut</button>'
+        : '<span class="text-muted">dicabut</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.subject) + '</td><td>' + esc(x.purpose) + '</td><td>' + badge(x.status) + '</td><td>' + acts + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada persetujuan.</td></tr>';
+    qsa('[data-con-wd]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/consents/' + b.getAttribute('data-con-wd') + '/withdraw', {});
+        if (!r.ok) { pmsg('con-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('con-msg', '');
+        conRefresh();
+      });
+    });
+  }
+  on('kep-add', 'click', async function () {
+    if (!pval('kep-title')) { pmsg('kep-msg', 'Isi judul obligasi.'); return; }
+    var r = await ppost('/api/v1/compliance/obligations', { title: pval('kep-title'), category: pval('kep-cat') || 'general', owner: pval('kep-owner') || '' });
+    if (!r.ok) { pmsg('kep-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('kep-msg', '');
+    kepRefresh();
+  });
+  on('kep-reload', 'click', kepRefresh);
+  on('kep-filter', 'change', kepRefresh);
+  on('con-grant', 'click', async function () {
+    if (!pval('con-subject') || !pval('con-purpose')) { pmsg('con-msg', 'Isi subjek dan tujuan.'); return; }
+    var r = await ppost('/api/v1/consents', { subject: pval('con-subject'), purpose: pval('con-purpose') });
+    if (!r.ok) { pmsg('con-msg', 'Gagal (' + r.status + '). Mungkin sudah ada yang aktif.'); return; }
+    pmsg('con-msg', '');
+    conRefresh();
+  });
+  on('con-reload', 'click', conRefresh);
+  qsa('.snav[data-tab="kepatuhan"]', function (a) {
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); });
+  });
   mktRefresh();
   loadAudit();
   loadJobs();
   apprRefresh();
   whRefresh();
+  kepRefresh();
+  conRefresh();
 })();

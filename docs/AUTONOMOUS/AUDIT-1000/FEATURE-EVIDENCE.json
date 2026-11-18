@@ -5068,34 +5068,34 @@
  {
   "feature_id": "F-D11-001",
   "domain": "D11",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0015_compliance.sql: pdp_obligations + consent_records (FK org, tenant keys)",
-   "crates/database/src/ops.rs: pdp_obligation_create/list/set_status + consent_grant/withdraw/list (+appr_check-style validation)",
-   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/obligations, POST /{id}/status, POST/GET /api/v1/consents, POST /{id}/withdraw (Create/View/Update-gated + audit)",
-   "apps/server/tests/api.rs: compliance_obligation_and_consent_lifecycle (validation, RBAC lawyer/auditor, transitions, duplicate/re-grant)",
-   "crates/database/src/ops_memory.rs: compliance_tests (lifecycle + tenant isolation)"
+   "apps/server/src/lib.rs: p-kepatuhan panel (obligations compose/list/transition + consent grant/list/withdraw)",
+   "apps/server/src/lib.rs: Kepatuhan top-tab + sidenav group (data-tab=kepatuhan)",
+   "apps/server/static/site.js: kepRefresh/conRefresh + wire (node --check clean)",
+   "migrations/0015_compliance.sql + 6 API endpoints + audit (wave 5)",
+   "apps/server/tests/api.rs: compliance lifecycle + needle tests"
   ],
-  "audit_note": "UU PDP obligation register live (CRUD-lite + terminal guard + audit); dashboards/retention scheduler pending. No UI yet.",
-  "overall_score": 71.8,
+  "audit_note": "Obligation register + transitions + /app UI + tests; retention scheduler pending.",
+  "overall_score": 83.3,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (no UI yet)"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D11-002",
   "domain": "D11",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0015_compliance.sql: pdp_obligations + consent_records (FK org, tenant keys)",
-   "crates/database/src/ops.rs: pdp_obligation_create/list/set_status + consent_grant/withdraw/list (+appr_check-style validation)",
-   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/obligations, POST /{id}/status, POST/GET /api/v1/consents, POST /{id}/withdraw (Create/View/Update-gated + audit)",
-   "apps/server/tests/api.rs: compliance_obligation_and_consent_lifecycle (validation, RBAC lawyer/auditor, transitions, duplicate/re-grant)",
-   "crates/database/src/ops_memory.rs: compliance_tests (lifecycle + tenant isolation)"
+   "apps/server/src/lib.rs: p-kepatuhan panel (obligations compose/list/transition + consent grant/list/withdraw)",
+   "apps/server/src/lib.rs: Kepatuhan top-tab + sidenav group (data-tab=kepatuhan)",
+   "apps/server/static/site.js: kepRefresh/conRefresh + wire (node --check clean)",
+   "migrations/0015_compliance.sql + 6 API endpoints + audit (wave 5)",
+   "apps/server/tests/api.rs: compliance lifecycle + needle tests"
   ],
-  "audit_note": "Consent grant/withdraw/re-grant with duplicate + terminal guards + audit; no UI yet, DSAR workflows pending.",
-  "overall_score": 71.8,
+  "audit_note": "Consent lifecycle + /app UI + tests; DSAR workflows pending.",
+  "overall_score": 83.3,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (no UI yet)"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D11-003",

@@ -2,8 +2,8 @@
 
 Date: 2026-11-18 (wave 5 done). HEAD: (record on commit — wave ends with commit).
 Workspace: 296 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0015.
-Registry: IMPLEMENTED 52 / PARTIAL 104 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
-Scores: registry 17.3/100; 8-cat mean 18.8 (20 verified). Composite ≈ 45/100 — NOT 100.
+Registry: IMPLEMENTED 54 / PARTIAL 102 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
+Scores: registry 17.4/100; 8-cat mean 18.8 (20 verified). Composite ≈ 45/100 — NOT 100.
 Server + Apache running detached via WMI (survives shell sessions); legalrust.test 200.
 
 ## Done wave 5: compliance slice (UU PDP obligations + consent API) + repertorium UI verification
@@ -21,9 +21,13 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
   F-D08-013, F-D25-017 → PARTIAL (outbound dispatch + alerting remain).
 - TASK-QUEUE: B-APPR-UI + B-REPORT-UI → DONE.
 
+## Done wave 6: compliance /app tab (panel kepatuhan + JS + needles)
+- F-D11-001/002 PARTIAL -> IMPLEMENTED. Scores: registry 17.4/100.
+
 ## Next executable tasks (priority order)
-1. **Compliance UI tab** (/app panel for obligations + consents) -> F-D11 up to IMPLEMENTED.
+1. **Mobile D24**: offline capture queue UI (large; split into capture-queue first).
 2. **Outbound webhook dispatch** (retry queue + HMAC sign + delivery log update) -> F-D08-013 -> IMPLEMENTED, F-D25-017 up.
+3. **Mobile D24**: offline capture queue UI on top of existing outbox (large; split).
 3. **Mobile D24**: offline capture queue UI on top of existing outbox (large; split).
 4. **External blockers** (do not fake): PSrE creds, prod deploy + benchmarks + prod-DB run, counsel sign-off, external pentest, Dukcapil/BPN creds.
 5. Performance benchmarks on dev machine for new endpoints (approvals, repertorium).

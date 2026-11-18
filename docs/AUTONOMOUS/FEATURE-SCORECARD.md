@@ -2,7 +2,7 @@
 
 Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_STARTED 0.
 
-## Skor keseluruhan: 17.3/100 (grade E)
+## Skor keseluruhan: 17.4/100 (grade E)
 
 | Domain | Nama | Skor | Grade |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 | D08 | Workflow Automation | 10.2 | E |
 | D09 | Approval Mgmt | 25.4 | E |
 | D10 | Electronic Signature | 23.4 | E |
-| D11 | Compliance & Risk | 7.9 | E |
+| D11 | Compliance & Risk | 10.1 | E |
 | D12 | Notary Office Mgmt | 9.0 | E |
 | D13 | PPAT & Property | 8.5 | E |
 | D14 | Finance & Accounting | 11.5 | E |

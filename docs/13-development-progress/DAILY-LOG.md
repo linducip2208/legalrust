@@ -142,3 +142,9 @@
 - API: `GET /api/v1/reports/trust-ledger.csv` (Export-gated + audit `report.trust_csv_exported`); job counts client-side (tanpa endpoint baru).
 - Tes: server API 105 → 107, workspace **290 passed, 0 failed**; fmt+clippy clean.
 - Registry: F-D09 ×8, F-D20-001/004/020, F-D25-009 → IMPLEMENTED (total 51); skor 16.3 → **16.9/100**; 8-cat mean 18.4 (14 verified).
+## 2026-11-18 — AUDIT-1000 wave 4-6: repertorium + webhook log + compliance (main)
+- Wave 4: DeedRow.created + GET /api/v1/reports/deeds.csv?date= (Export-gated + audit) + /app akta card + JS + tes; F-D12-001 -> IMPLEMENTED, F-D20-009 -> PARTIAL.
+- Wave 5: compliance slice (migration 0015, 6 endpoint + RBAC + audit), api_db stale-test fix, migrasi 0001-0015 live-verified MySQL; F-D11-001/002 -> PARTIAL.
+- Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
+- Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
+

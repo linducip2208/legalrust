@@ -4577,6 +4577,14 @@ async fn uib_app_has_approvals_ui() {
         "deed-rep-date",
         "deed-csv",
         "deed-csv-msg",
+        "p-kepatuhan",
+        "kep-title",
+        "kep-add",
+        "kep-list",
+        "con-subject",
+        "con-grant",
+        "con-list",
+        "Kepatuhan",
         "Persetujuan",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");

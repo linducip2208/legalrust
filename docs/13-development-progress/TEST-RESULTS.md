@@ -41,3 +41,9 @@
 - `cargo fmt --all -- --check`: PASS. `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
 - `cargo test --workspace`: **280 passed, 0 failed** (integrations 30 incl. HMAC vector + callback + stub create/reject; server API 100 incl. 501-tanpa-env + stub E2E checkout→PAID→duplikat→401; OCR 21; full matrix).
 - Kredensial: TIDAK ada hardcode — semua via `TRIPAY_*` env; rahasia tidak muncul di Debug/log/audit. Live sandbox menunggu kredensial merchant dari user.
+
+## 2026-11-18 — AUDIT-1000 wave 4-6: repertorium + compliance (SQLX_OFFLINE=true, node --check clean)
+- Gates: fmt PASS, clippy `-D warnings` PASS, site.js node --check PASS.
+- `cargo test --workspace`: **296 passed, 0 failed** (compliance lifecycle + store tests; deeds CSV repertorium + wh deliveries + approvals UI needles; OCR 21; AI 19; full matrix).
+- Registry: IMPLEMENTED 51 -> **54**; PARTIAL 99 -> 104 -> 102; skor **17.4/100**; 8-cat mean 18.8 (22 verified).
+- Live MySQL: migrasi 0001-0015 verified; api_db stale-test fixed -> PASS.

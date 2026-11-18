@@ -1,4 +1,4 @@
-# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 5)
+# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 6: compliance UI + repertorium + live migration proof)
 
 Gates (SQLX_OFFLINE=true):
 - `cargo fmt --all -- --check`: PASS
