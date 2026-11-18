@@ -5523,8 +5523,12 @@
    "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
    "crates/database/src/ops.rs:355 pay_add",
    "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
-   "migrations/0003_deeds_finance.sql: payments"
-  ]
+   "migrations/0003_deeds_finance.sql: payments",
+   "apps/server/src/lib.rs: inv_list now carries paid/balance; p-keu invoice table + per-row pay form",
+   "apps/server/static/site.js: invRefresh + data-pay wiring + 409 overpay message",
+   "apps/server/tests/api.rs: invoice_list_shows_paid_balance_and_records_payment + il-msg needle"
+  ],
+  "audit_note": " Wave 24: pay-from-UI live in Keuangan tab."
  },
  {
   "id": "F-D15-016",
@@ -5562,8 +5566,12 @@
    "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
    "crates/database/src/ops.rs:355 pay_add",
    "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
-   "migrations/0003_deeds_finance.sql: payments"
-  ]
+   "migrations/0003_deeds_finance.sql: payments",
+   "apps/server/src/lib.rs: inv_list now carries paid/balance; p-keu invoice table + per-row pay form",
+   "apps/server/static/site.js: invRefresh + data-pay wiring + 409 overpay message",
+   "apps/server/tests/api.rs: invoice_list_shows_paid_balance_and_records_payment + il-msg needle"
+  ],
+  "audit_note": " Wave 24: pay-from-UI live in Keuangan tab."
  },
  {
   "id": "F-D15-020",
@@ -5574,8 +5582,11 @@
    "apps/server/src/lib.rs:3482 payments route; :1250 pay_add (manual)",
    "crates/database/src/ops.rs:355 pay_add",
    "crates/database/src/ops_memory.rs:539 overpayment -> Conflict (rejected)",
-   "migrations/0003_deeds_finance.sql: payments"
-  ]
+   "migrations/0003_deeds_finance.sql: payments",
+   "apps/server/static/site.js: overpay 409 surfaced as \"nominal melebihi sisa\" in Keuangan tab",
+   "apps/server/tests/api.rs: overpay 409 via list flow"
+  ],
+  "audit_note": " Wave 24: overpay guard visible in UI; credit-memo still missing."
  },
  {
   "id": "F-D15-021",

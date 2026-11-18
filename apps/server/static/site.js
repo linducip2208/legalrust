@@ -317,11 +317,37 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     } catch (e) { document.getElementById('err').textContent = 'Gagal memuat: ' + e; }
   })();
   on('showinv', 'click', async function () {
-    var v = await j('/api/v1/matters/' + document.getElementById('km').value + '/invoices');
-    document.getElementById('il').innerHTML = v.map(function (x) {
-      return '<div>#' + x.number + ' — Rp ' + x.total.toLocaleString('id-ID') + '</div>';
-    }).join('') || 'Belum ada invoice.';
+    var mid = document.getElementById('km').value;
+    if (!mid) { pmsg('il-msg', 'Isi ID perkara dulu.'); return; }
+    pmsg('il-msg', '');
+    invRefresh(mid);
   });
+  async function invRefresh(mid) {
+    var box = document.getElementById('il');
+    var v = await j('/api/v1/matters/' + mid + '/invoices');
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    box.innerHTML = '<div class="table-responsive"><table class="table card-table"><thead><tr><th>Nomor</th><th>Total</th><th>Terbayar</th><th>Sisa</th><th>Bayar</th></tr></thead><tbody>' + v.map(function (x) {
+      var paid = x.paid || 0, bal = (x.balance != null ? x.balance : x.total - paid);
+      var payForm = bal > 0
+        ? '<input class="form-control form-control-sm" style="width:110px;display:inline-block" id="pay-amt-' + x.id + '" placeholder="nominal" inputmode="numeric"> '
+        + '<select class="form-control form-control-sm" style="width:auto;display:inline-block" id="pay-method-' + x.id + '"><option value="transfer">transfer</option><option value="cash">cash</option><option value="qris">qris</option></select> '
+        + '<button class="btn btn-sm btn-primary" data-pay="' + x.id + '" type="button">Catat bayar</button>'
+        : '<span class="text-muted">lunas</span>';
+      return '<tr><td>#' + esc(x.number) + '</td><td>' + fmtRp(x.total) + '</td><td>' + fmtRp(paid) + '</td><td>' + fmtRp(bal) + '</td><td>' + payForm + '</td></tr>';
+    }).join('') + '</tbody></table></div>' || '<p class="text-muted">Belum ada invoice.</p>';
+    qsa('[data-pay]', function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-pay');
+        var amt = +(document.getElementById('pay-amt-' + id) || {}).value;
+        var msel = document.getElementById('pay-method-' + id);
+        if (!amt || amt <= 0) { pmsg('il-msg', 'Isi nominal bayar dulu.'); return; }
+        var r = await ppost('/api/v1/invoices/' + id + '/payments', { amount_minor: amt, method: msel ? msel.value : 'transfer' });
+        if (!r.ok) { pmsg('il-msg', r.status === 409 ? 'Gagal: nominal melebihi sisa.' : 'Gagal catat bayar (' + r.status + ').'); return; }
+        pmsg('il-msg', '');
+        invRefresh(document.getElementById('km').value);
+      });
+    });
+  }
   on('dotrf', 'click', async function () {
     var r = await fetch('/api/v1/trust/transfer', { method: 'POST', headers: Object.assign({}, H, { 'Content-Type': 'application/json' }), body: JSON.stringify({ from: +document.getElementById('tf').value, to: +document.getElementById('tt').value, amount_minor: +document.getElementById('ta').value }) });
     if (!r.ok) { document.getElementById('te').textContent = 'Gagal (' + r.status + '): saldo tidak cukup?'; return; }

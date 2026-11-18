@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 24: catat bayar UI (main)
+- Menu Keuangan kini bisa catat pembayaran + sisa; workspace **317 passed, 0 failed**; F-D15-015/019 86.5.
+
 ## 2026-11-18 AUDIT-1000 wave 23: user directory (main)
 - Direktori user org + dropdown peran + IDOR fix + audit; workspace **316 passed, 0 failed**; F-D16-001 IMPLEMENTED (76.9).
 

@@ -9764,15 +9764,15 @@
   "scores": {
    "backend": 95,
    "database": 90,
-   "frontend": 65,
+   "frontend": 80,
    "business_logic": 90,
    "security": 85,
-   "testing": 88,
+   "testing": 90,
    "integration": 80,
    "documentation": 82
   },
-  "overall_score": 85.3,
-  "verified_8cat": false
+  "overall_score": 86.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D15-016",
@@ -9832,32 +9832,32 @@
   "scores": {
    "backend": 95,
    "database": 90,
-   "frontend": 65,
+   "frontend": 80,
    "business_logic": 90,
    "security": 85,
-   "testing": 88,
+   "testing": 90,
    "integration": 80,
    "documentation": 82
   },
-  "overall_score": 85.3,
-  "verified_8cat": false
+  "overall_score": 86.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D15-020",
   "domain": "D15",
   "status": "PARTIAL",
   "scores": {
-   "backend": 60,
+   "backend": 70,
    "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "frontend": 60,
+   "business_logic": 65,
+   "security": 70,
+   "testing": 70,
+   "integration": 50,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 62.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D15-021",

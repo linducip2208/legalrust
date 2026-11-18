@@ -3571,6 +3571,57 @@ async fn dash_flow_invoice_create() {
 }
 
 #[tokio::test]
+async fn invoice_list_shows_paid_balance_and_records_payment() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "invpay@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let iid = mk_invoice(&a, &tok, mid, 1000000).await;
+    // List carries paid/balance for the Keuangan tab pay form.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/invoices"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let list = body_json(res).await;
+    let row = &list.as_array().unwrap()[0];
+    assert_eq!(row["id"].as_i64().unwrap(), iid);
+    assert_eq!(row["paid"].as_i64().unwrap(), 0);
+    assert_eq!(row["balance"].as_i64().unwrap(), 1000000);
+    // Record partial payment; list reflects it; overpay rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":250000,"method":"cash"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/invoices"), &tok))
+        .await
+        .unwrap();
+    let list = body_json(res).await;
+    let row = &list.as_array().unwrap()[0];
+    assert_eq!(row["paid"].as_i64().unwrap(), 250000);
+    assert_eq!(row["balance"].as_i64().unwrap(), 750000);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":800000,"method":"transfer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+}
+
+#[tokio::test]
 async fn dash_search_still_green() {
     use tower::ServiceExt;
     let a = app();
@@ -5588,6 +5639,7 @@ async fn uib_app_has_approvals_ui() {
         "ar-csv",
         "ar-msg",
         "Piutang terbuka",
+        "il-msg",
         "wh-list",
         "wh-reload",
         "wh-msg",
