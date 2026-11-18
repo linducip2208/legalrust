@@ -6738,8 +6738,12 @@
   "evidence": [
    "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
    "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables"
-  ]
+   "migrations/0010_marketing.sql: marketing_* tables",
+   "apps/server/src/lib.rs: POST /api/v1/public/newsletter/unsubscribe (mkt:unsubscribe rate bucket, email-validated)",
+   "apps/server/static/site.js: mkt-unsub-btn wiring + count decrement",
+   "apps/server/tests/api.rs: mkt_newsletter_unsubscribe_lifecycle (404/422/unsub/resub) + needles"
+  ],
+  "audit_note": " Wave 20: public unsubscribe route live; stays PARTIAL (no consent timestamp/preference center)."
  },
  {
   "id": "F-D18-027",

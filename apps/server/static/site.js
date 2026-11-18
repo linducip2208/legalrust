@@ -675,6 +675,16 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     c.textContent = String(+c.textContent + 1);
     msg.textContent = 'Berhasil subscribe.';
   });
+  on('mkt-unsub-btn', 'click', async function () {
+    var em = document.getElementById('mkt-sub-email').value;
+    var msg = document.getElementById('mkt-sub-msg');
+    var r = await mktPost('/api/v1/public/newsletter/unsubscribe', { email: em });
+    if (!r) return;
+    if (!r.ok) { msg.textContent = 'Unsubscribe gagal (' + r.status + ').'; return; }
+    var c = document.getElementById('mkt-news-count');
+    c.textContent = String(Math.max(0, +c.textContent - 1));
+    msg.textContent = 'Berhasil berhenti berlangganan.';
+  });
   on('mkt-faq-add', 'click', async function () {
     var r = await mktPost('/api/v1/admin/faqs', {
       slug: document.getElementById('faq-slug').value,

@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 19: notification unread/limit (main)
+## 2026-11-18 — AUDIT-1000 wave 20: newsletter unsubscribe (main)
+- 404/422/unsub/resub lifecycle + needles; workspace **315 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 19: notification unread/limit (main)
 - Unread isolation + clamp + bad-bool + 401; workspace **314 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 18: AR aging report (main)

@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 20: public newsletter unsubscribe (main)
+- POST /api/v1/public/newsletter/unsubscribe (rate bucket + email validation) + Berhenti button + lifecycle test.
+- F-D18-026 51.8->69.4 (stays PARTIAL: no consent timestamp/preference center).
+- Workspace 315/0; registry 18.5 (63 IMPLEMENTED); 8-cat mean 19.4 (33 verified).
+
 ## Done wave 19: notification unread/limit polish (main)
 - GET /api/v1/notifications?unread_only=&limit= (clamp 1..100) + DESC order both backends; bell dropdown server-side.
 - Isolation/clamp/400/401 tests. F-D18-038 51.8->67.9 (stays PARTIAL: visible filter UI + docs follow-up).

@@ -1676,6 +1676,69 @@ async fn mkt_newsletter_subscribe_then_dup_409() {
 }
 
 #[tokio::test]
+async fn mkt_newsletter_unsubscribe_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    // Unknown email cannot be unsubscribed; bad email rejected.
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/unsubscribe",
+            r#"{"email":"gone@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/unsubscribe",
+            r#"{"email":"bukan-email"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Subscribe -> unsubscribe -> gone -> resubscribe works.
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/subscribe",
+            r#"{"email":"cycle@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/unsubscribe",
+            r#"{"email":"cycle@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["subscribed"], false);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/unsubscribe",
+            r#"{"email":"cycle@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(pub_post(
+            "/api/v1/public/newsletter/subscribe",
+            r#"{"email":"cycle@x.id"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn mkt_public_demo_ok() {
     use tower::ServiceExt;
     let a = app();
@@ -2858,6 +2921,7 @@ async fn mkt_app_has_marketing_tab_and_admin_refs() {
         "mkt-contacts",
         "mkt-news-count",
         "mkt-sub-btn",
+        "mkt-unsub-btn",
         "mkt-plans",
         "mkt-faqs",
         "mkt-faq-add",
@@ -3122,6 +3186,7 @@ async fn mkt_app_page_csp_safe_and_js_wires_marketing() {
         "mkt-plan-toggle",
         "mkt-art-toggle",
         "mkt-sub-btn",
+        "mkt-unsub-btn",
         "mkt-faq-add",
         "mkt-art-add",
         "leads.csv",
