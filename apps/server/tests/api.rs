@@ -3357,6 +3357,9 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "invm-btn",
         "sh-doc",
         "sh-btn",
+        "doc-version-id",
+        "doc-version-btn",
+        "doc-version-detail",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
     }
@@ -3540,6 +3543,65 @@ async fn dash_flow_deed_from_template() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn document_version_history_lists_versions() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docver@x.id").await;
+    // Create doc without content: no versions yet.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            r#"{"name":"v.txt","mime":"text/plain","size":4,"sha":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["versions"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    // Upload content ("test" sha256 above) -> version 1 recorded.
+    let req = Request::builder()
+        .uri(format!("/api/v1/documents/{did}/content"))
+        .method("PUT")
+        .header(
+            "authorization",
+            format!("Bearer {tok}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::from(b"test".to_vec()))
+        .unwrap();
+    let res = a.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["version"], 1);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}"), &tok))
+        .await
+        .unwrap();
+    let vs = body_json(res).await["versions"].clone();
+    assert_eq!(vs.as_array().unwrap().len(), 1);
+    assert_eq!(vs[0]["v"], 1);
+    // Unknown doc is a clean 404.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/999999999", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

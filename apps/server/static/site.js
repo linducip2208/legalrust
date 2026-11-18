@@ -559,6 +559,23 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('sh-msg', '');
     if (box) box.innerHTML = '<div>Tautan: <a href="' + esc(v.url) + '">' + esc(v.url) + '</a></div>';
   });
+  /* ---- document detail + version history ---- */
+  async function docVersionRefresh() {
+    var box = document.getElementById('doc-version-detail');
+    if (!box) return;
+    var id = pval('doc-version-id');
+    if (!id) { pmsg('doc-version-msg', 'Isi ID dokumen dulu.'); return; }
+    pmsg('doc-version-msg', '');
+    var v = await j('/api/v1/documents/' + encodeURIComponent(id));
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat (cek ID / hak akses).</p>'; return; }
+    box.innerHTML = '<p><strong>#' + v.id + '</strong> ' + esc(v.name) + ' <span class="text-muted">' + esc(v.mime) + ' · ' + v.size + ' byte</span><br>SHA-256: <code>' + esc(v.sha) + '</code></p>'
+      + '<div class="table-responsive"><table class="table card-table"><thead><tr><th>Versi</th><th>Kunci objek</th></tr></thead><tbody>'
+      + ((v.versions || []).map(function (x) {
+        return '<tr><td>v' + x.v + '</td><td>' + esc(x.key) + '</td></tr>';
+      }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada versi tersimpan.</td></tr>')
+      + '</tbody></table></div>';
+  }
+  on('doc-version-btn', 'click', docVersionRefresh);
   /* ---- marketing admin (RBAC-gated: Permission::Approve; 401 -> /login) ---- */
   var MKT_NEXT = { new: 'contacted', contacted: 'qualified', qualified: 'demo', demo: 'proposal', proposal: 'negotiation', negotiation: 'won' };
   var mktLeadCache = [], mktPlanCache = [], mktArtCache = [];

@@ -1161,8 +1161,12 @@
   "evidence": [
    "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
    "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
-   "migrations/0002_core.sql: documents, document_versions"
-  ]
+   "migrations/0002_core.sql: documents, document_versions",
+   "apps/server/src/lib.rs: p-dok Detail & riwayat versi card",
+   "apps/server/static/site.js: docVersionRefresh (metadata + versions table + 404)",
+   "apps/server/tests/api.rs: document_version_history_lists_versions + needles"
+  ],
+  "audit_note": " Wave 25: version history UI live in Dokumen tab."
  },
  {
   "id": "F-D04-004",

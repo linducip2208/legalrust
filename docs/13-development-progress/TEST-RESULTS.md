@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 24: catat bayar UI (main)
+## 2026-11-18 — AUDIT-1000 wave 25: riwayat versi dokumen (main)
+- Version lifecycle + 404 + needles; workspace **318 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 24: catat bayar UI (main)
 - List paid/balance + pay + overpay 409; workspace **317 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 23: user directory (main)
