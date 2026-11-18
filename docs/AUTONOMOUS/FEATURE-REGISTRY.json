@@ -5865,12 +5865,13 @@
   "id": "F-D16-007",
   "domain": "D16",
   "title": "Least-privilege role templates",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
-   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
-   "authorize() checks per endpoint"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/roles/matrix from authorization crate (View-gated)",
+   "apps/server/static/site.js: role-matrix table + boot/tab hooks",
+   "apps/server/tests/api.rs: role_matrix_lists_least_privilege_sets (12 roles, owner 12 perms, auditor least) + needles"
+  ],
+  "audit_note": "Wave 35: least-privilege catalog visible in Pengaturan."
  },
  {
   "id": "F-D16-008",

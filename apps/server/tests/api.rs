@@ -4275,6 +4275,41 @@ async fn session_console_lists_and_revokes_others() {
 }
 
 #[tokio::test]
+async fn role_matrix_lists_least_privilege_sets() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "rolemat@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/roles/matrix", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let all = v.as_array().unwrap();
+    assert_eq!(all.len(), 12);
+    let owner = all.iter().find(|r| r["role"] == "org_owner").unwrap();
+    assert_eq!(owner["permissions"].as_array().unwrap().len(), 12);
+    let auditor = all.iter().find(|r| r["role"] == "auditor").unwrap();
+    let ap = auditor["permissions"].as_array().unwrap();
+    assert!(ap.iter().any(|p| p == "View"));
+    assert!(!ap.iter().any(|p| p == "Assign"));
+    assert!(!ap.iter().any(|p| p == "Approve"));
+    // Unauthenticated callers get nothing.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/roles/matrix")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn users_list_scoped_and_cross_org_assign_blocked() {
     use tower::ServiceExt;
     let a = app();
@@ -4415,6 +4450,7 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
         "tok-name",
         "tok-btn",
         "tok-list",
+        "role-matrix",
         "sess-list",
         "sess-reload",
         "sess-msg",

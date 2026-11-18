@@ -529,6 +529,16 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       return '<option value="' + esc(x.id) + '">' + esc(x.email) + ' — ' + esc((x.roles || []).join(', ') || 'tanpa peran') + '</option>';
     }).join('') || '<option value="">Tidak ada pengguna.</option>';
   }
+  /* ---- role catalog matrix (least-privilege reference) ---- */
+  async function loadRoleMatrix() {
+    var box = document.getElementById('role-matrix');
+    if (!box) return;
+    var v = await j('/api/v1/roles/matrix');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (r) {
+      return '<tr><td><code>' + esc(r.role) + '</code></td><td>' + r.permissions.map(function (p) { return '<span class="badge">' + esc(p) + '</span>'; }).join(' ') + '</td></tr>';
+    }).join('');
+  }
   on('role-btn', 'click', async function () {
     var uid = pval('role-uid');
     var sel = document.getElementById('role-sel');
@@ -539,7 +549,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     loadRoleUsers();
   });
   qsa('.snav[data-tab="pengaturan"]', function (a) {
-    a.addEventListener('click', function () { loadRoleUsers(); loadSessions(); });
+    a.addEventListener('click', function () { loadRoleUsers(); loadSessions(); loadRoleMatrix(); });
   });
   on('cli-csv', 'click', async function () {
     var r = await fetch('/api/v1/clients.csv', { headers: H });
@@ -554,6 +564,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   loadTokens();
   loadRoleUsers();
+  loadRoleMatrix();
   loadSessions();
   [['qa-client', 'klien', 'cli-name'], ['qa-matter', 'klien', 'mat-title'], ['qa-upload', 'dok', 'dn'], ['qa-ocr', 'ocr', 'ocr-doc'], ['qa-deed', 'akta', 'deed-number'], ['qa-invoice', 'keu', 'invm-total']].forEach(function (x) {
     on(x[0], 'click', function () { window.apptab(x[1]); var t = document.getElementById(x[2]); if (t) t.focus(); });

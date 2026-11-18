@@ -10304,19 +10304,19 @@
  {
   "feature_id": "F-D16-007",
   "domain": "D16",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 85,
+   "database": 70,
+   "frontend": 80,
+   "business_logic": 85,
+   "security": 80,
+   "testing": 85,
+   "integration": 60,
+   "documentation": 60
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 75.6,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D16-008",
