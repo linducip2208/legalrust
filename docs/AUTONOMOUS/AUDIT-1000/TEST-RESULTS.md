@@ -1,4 +1,4 @@
-# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 7: compliance UI + repertorium + live migration proof)
+# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 8: durable retry queue)
 
 Gates (SQLX_OFFLINE=true):
 - `cargo fmt --all -- --check`: PASS

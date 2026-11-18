@@ -10,15 +10,27 @@ async fn run_once(pool: &sqlx::MySqlPool) {
         return;
     };
     tracing::info!("claimed job {} kind={}", job.id, job.kind);
-    let (ok, note) = match job.kind.as_str() {
-        "notify.digest" => (true, "digest marked"),
+    let (ok, note): (bool, String) = match job.kind.as_str() {
+        "notify.digest" => (true, "digest marked".into()),
         "ocr.process" => (
             false,
-            "no OCR engine available: native libtesseract missing",
+            "no OCR engine available: native libtesseract missing".into(),
         ),
-        _ => (false, "no executor for kind"),
+        "webhook.dispatch" => match legalrust_integrations::process_webhook_job(&ops, &job).await {
+            Ok(legalrust_integrations::DispatchOutcome::Delivered(code)) => {
+                (true, format!("delivered HTTP {code}"))
+            }
+            Ok(legalrust_integrations::DispatchOutcome::RetryScheduled(secs)) => {
+                (false, format!("retry scheduled in {secs}s"))
+            }
+            Ok(legalrust_integrations::DispatchOutcome::DeadLetter(reason)) => {
+                (false, format!("dead-letter: {reason}"))
+            }
+            Err(e) => (false, format!("dispatch error: {e}")),
+        },
+        _ => (false, "no executor for kind".into()),
     };
-    if let Err(e) = ops.job_done(job.id, ok, note).await {
+    if let Err(e) = ops.job_done(job.id, ok, &note).await {
         tracing::error!("job_done failed: {e}");
     }
 }

@@ -1440,6 +1440,7 @@ dependencies = [
  "hex",
  "hmac 0.12.1",
  "legalrust-application",
+ "legalrust-database",
  "reqwest",
  "serde",
  "serde_json",
@@ -1564,6 +1565,7 @@ version = "0.1.0"
 dependencies = [
  "legalrust-database",
  "legalrust-infrastructure",
+ "legalrust-integrations",
  "sqlx",
  "tokio",
  "tracing",

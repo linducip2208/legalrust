@@ -1137,13 +1137,46 @@ impl OpsStore for MysqlOps {
         Ok(())
     }
     async fn job_enqueue(&self, org: &str, kind: &str, payload: &str) -> Result<i64, StoreError> {
-        let r = sqlx::query("INSERT INTO jobs (org_id, kind, payload) VALUES (?,?,?)")
-            .bind(org)
-            .bind(kind)
-            .bind(payload)
-            .execute(&self.pool)
+        self.job_enqueue_at(org, kind, payload, 0).await
+    }
+    async fn job_enqueue_at(
+        &self,
+        org: &str,
+        kind: &str,
+        payload: &str,
+        delay_secs: u64,
+    ) -> Result<i64, StoreError> {
+        let run_at: Option<String> = if delay_secs == 0 {
+            None
+        } else {
+            // Resolved in SQL so DB time (not app time) governs the lease.
+            let row: (String,) = sqlx::query_as(
+                "SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL ? SECOND),'%Y-%m-%d %H:%i:%s')",
+            )
+            .bind(delay_secs)
+            .fetch_one(&self.pool)
             .await
             .map_err(db_err)?;
+            Some(row.0)
+        };
+        let r = if let Some(ts) = run_at {
+            sqlx::query("INSERT INTO jobs (org_id, kind, payload, run_at) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(kind)
+                .bind(payload)
+                .bind(ts)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?
+        } else {
+            sqlx::query("INSERT INTO jobs (org_id, kind, payload) VALUES (?,?,?)")
+                .bind(org)
+                .bind(kind)
+                .bind(payload)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?
+        };
         Ok(r.last_insert_id() as i64)
     }
     async fn job_list(&self, org: &str) -> Result<Vec<JobRow>, StoreError> {

@@ -165,6 +165,126 @@ pub async fn post_json(
         )))
     }
 }
+
+/// Outcome of processing one `webhook.dispatch` job.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DispatchOutcome {
+    Delivered(u16),
+    RetryScheduled(u64),
+    DeadLetter(String),
+}
+
+/// Max delivery attempts (initial + retries) before dead-lettering.
+pub const WEBHOOK_MAX_ATTEMPTS: i64 = 5;
+
+/// Backoff schedule per failed attempt count (1-based).
+pub fn webhook_backoff_secs(failed_attempts: i64) -> u64 {
+    match failed_attempts {
+        1 => 60,
+        2 => 300,
+        3 => 900,
+        _ => 3600,
+    }
+}
+
+/// Process one claimed `webhook.dispatch` job.
+/// Payload: `{"endpoint_id": N, "org": "...", "event": "..."}`.
+/// Sends a signed JSON POST, records the delivery log, and schedules a
+/// delayed retry (or dead-letters after [`WEBHOOK_MAX_ATTEMPTS`] attempts).
+/// Never panics on bad input: poison payloads become dead letters.
+pub async fn process_webhook_job(
+    ops: &(dyn legalrust_database::OpsStore + Send + Sync),
+    job: &legalrust_database::JobRow,
+) -> Result<DispatchOutcome, IntegrationError> {
+    let v: serde_json::Value = serde_json::from_str(&job.payload)
+        .map_err(|_| IntegrationError::Blocked("poison payload".into()))?;
+    let endpoint_id = v
+        .get("endpoint_id")
+        .and_then(|x| x.as_i64())
+        .ok_or_else(|| IntegrationError::Blocked("poison payload".into()))?;
+    let org = v
+        .get("org")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let event = v
+        .get("event")
+        .and_then(|x| x.as_str())
+        .unwrap_or("ping")
+        .to_string();
+    if org.is_empty() {
+        return Ok(DispatchOutcome::DeadLetter("missing org".into()));
+    }
+    let eps = ops
+        .webhook_ep_list(&org)
+        .await
+        .map_err(|e| IntegrationError::Blocked(format!("endpoint lookup failed: {e}")))?;
+    let ep = match eps.into_iter().find(|e| e.id == endpoint_id && e.active) {
+        Some(e) => e,
+        None => {
+            let _ = ops
+                .webhook_log(Some(&org), "outbound", &event, "rejected", "endpoint gone")
+                .await;
+            return Ok(DispatchOutcome::DeadLetter("endpoint gone".into()));
+        }
+    };
+    let secret = ops
+        .webhook_ep_secret(&org, ep.id)
+        .await
+        .map_err(|e| IntegrationError::Blocked(format!("secret lookup failed: {e}")))?
+        .unwrap_or_default();
+    let client = tripay::http_client(10)
+        .map_err(|_| IntegrationError::Blocked("http client build".into()))?;
+    let body = serde_json::json!({
+        "event": event,
+        "endpoint_id": ep.id,
+        "ts": chrono::Utc::now().timestamp(),
+    });
+    match post_json(&client, &ep.url, &secret, &body).await {
+        Ok((code, _)) => {
+            let _ = ops
+                .webhook_log(
+                    Some(&org),
+                    "outbound",
+                    &event,
+                    "accepted",
+                    &format!("HTTP {code}"),
+                )
+                .await;
+            Ok(DispatchOutcome::Delivered(code))
+        }
+        Err(e) => {
+            if job.attempts >= WEBHOOK_MAX_ATTEMPTS {
+                let _ = ops
+                    .webhook_log(
+                        Some(&org),
+                        "outbound",
+                        &event,
+                        "rejected",
+                        "dead-letter: max attempts",
+                    )
+                    .await;
+                Ok(DispatchOutcome::DeadLetter(format!("max attempts: {e}")))
+            } else {
+                let delay = webhook_backoff_secs(job.attempts.max(1));
+                let payload = serde_json::json!({
+                    "endpoint_id": ep.id,
+                    "org": org,
+                    "event": event,
+                })
+                .to_string();
+                ops.job_enqueue_at(&org, "webhook.dispatch", &payload, delay)
+                    .await
+                    .map_err(|e| IntegrationError::Blocked(format!("retry enqueue failed: {e}")))?;
+                let detail: String = format!("retry in {delay}s").chars().take(200).collect();
+                let _ = ops
+                    .webhook_log(Some(&org), "outbound", &event, "rejected", &detail)
+                    .await;
+                Ok(DispatchOutcome::RetryScheduled(delay))
+            }
+        }
+    }
+}
 // ---------------------------------------------------------------------------
 // Provider adapter layer (no live network calls).
 //
@@ -614,5 +734,101 @@ mod tests {
         assert!(!dbg.contains("super-secret-value"));
         assert!(dbg.contains("[redacted]"));
         std::env::remove_var(env_name);
+    }
+
+    #[test]
+    fn webhook_backoff_schedule() {
+        assert_eq!(webhook_backoff_secs(1), 60);
+        assert_eq!(webhook_backoff_secs(3), 900);
+        assert_eq!(webhook_backoff_secs(99), 3600);
+        assert_eq!(WEBHOOK_MAX_ATTEMPTS, 5);
+    }
+
+    fn dispatch_job(id: i64, attempts: i64, endpoint_id: i64) -> legalrust_database::JobRow {
+        legalrust_database::JobRow {
+            id,
+            org: "org1".into(),
+            kind: "webhook.dispatch".into(),
+            payload: serde_json::json!({"endpoint_id": endpoint_id, "org": "org1", "event": "matter.closed"}).to_string(),
+            status: "running".into(),
+            attempts,
+        }
+    }
+
+    async fn dispatch_stub() -> (std::net::SocketAddr, tokio::task::JoinHandle<()>) {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind stub");
+        let addr = listener.local_addr().expect("stub addr");
+        let handle = tokio::task::spawn_blocking(move || {
+            let (mut s, _) = listener.accept().expect("accept");
+            let mut buf = vec![0u8; 8192];
+            let _ = s.read(&mut buf);
+            let body = br#"{"ok":true}"#;
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            s.write_all(head.as_bytes()).expect("head");
+            s.write_all(body).expect("body");
+        });
+        (addr, handle)
+    }
+
+    #[tokio::test]
+    async fn dispatch_delivers_and_logs() {
+        use legalrust_database::OpsStore;
+        let ops = legalrust_database::ops_memory::MemoryOps::default();
+        let (addr, handle) = dispatch_stub().await;
+        let eid = ops
+            .webhook_ep_create("org1", &format!("http://{addr}/hook"), "s3cr3t", "matter.*")
+            .await
+            .expect("endpoint");
+        let out = process_webhook_job(&ops, &dispatch_job(1, 1, eid))
+            .await
+            .expect("dispatch ok");
+        assert!(matches!(out, DispatchOutcome::Delivered(200)));
+        let v = ops.webhook_list("org1", Some("outbound")).await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].status, "accepted");
+        handle.await.expect("stub served");
+    }
+
+    #[tokio::test]
+    async fn dispatch_dead_letters_after_max_attempts() {
+        use legalrust_database::OpsStore;
+        let ops = legalrust_database::ops_memory::MemoryOps::default();
+        let eid = ops
+            .webhook_ep_create("org1", "http://127.0.0.1:1/hook", "", "*")
+            .await
+            .expect("endpoint");
+        let out = process_webhook_job(&ops, &dispatch_job(7, WEBHOOK_MAX_ATTEMPTS, eid))
+            .await
+            .expect("dead letter, not error");
+        assert!(matches!(out, DispatchOutcome::DeadLetter(_)));
+        // No retry enqueued (only the manual dead-letter, no new job).
+        assert!(ops
+            .job_list("org1")
+            .await
+            .unwrap()
+            .iter()
+            .all(|j| j.kind != "webhook.dispatch" || j.status != "queued"));
+        let v = ops.webhook_list("org1", Some("outbound")).await.unwrap();
+        assert!(v.iter().any(|r| r.status == "rejected"));
+    }
+
+    #[tokio::test]
+    async fn dispatch_schedules_retry_below_cap() {
+        use legalrust_database::OpsStore;
+        let ops = legalrust_database::ops_memory::MemoryOps::default();
+        let eid = ops
+            .webhook_ep_create("org1", "http://127.0.0.1:1/hook", "", "*")
+            .await
+            .expect("endpoint");
+        let out = process_webhook_job(&ops, &dispatch_job(9, 1, eid))
+            .await
+            .expect("retry, not error");
+        assert!(matches!(out, DispatchOutcome::RetryScheduled(60)));
+        let v = ops.webhook_list("org1", Some("outbound")).await.unwrap();
+        assert!(v.iter().any(|r| r.detail.contains("retry in 60s")));
     }
 }

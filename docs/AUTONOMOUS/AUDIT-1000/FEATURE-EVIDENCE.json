@@ -3702,16 +3702,18 @@
  {
   "feature_id": "F-D08-013",
   "domain": "D08",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: notify_user fans out to subscribed endpoints (background task, signed post_json, 10s timeout)",
-   "apps/server/src/lib.rs: POST /api/v1/webhooks/endpoints + /{id}/test + DELETE (serialisasi tanpa secret)",
-   "apps/server/src/lib.rs: /app audit panel webhook card + whe* JS + needle tests",
-   "migrations/0016_webhook_endpoints.sql (endpoints + direction)",
-   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send + webhook_auto_dispatch_on_notify (signed stub + delivery log)"
+   "migrations/0016_webhook_endpoints.sql (endpoints + direction=log in/out)",
+   "crates/database/src/ops.rs: webhook_ep_* + job_enqueue_at(delay) (memory+MySQL run_at lease)",
+   "apps/server/src/lib.rs: fan-out on notify (immediate signed POST; failure -> durable retry job)",
+   "apps/worker/src/main.rs: webhook.dispatch executor (send -> done / requeue w/ backoff / dead-letter)",
+   "crates/integrations/src/lib.rs: post_json + process_webhook_job + webhook_backoff_secs (unit-tested)",
+   "apps/server/tests/api.rs: webhook_auto_dispatch_on_notify + webhook_failed_send_queues_retry + needle tests",
+   "apps/server/src/lib.rs: /app audit panel (endpoints CRUD, test-send, deliveries log)"
   ],
-  "audit_note": "Auto-dispatch on notify events works (tested signed stub + log); endpoint registry + test-send + UI done. Retry queue + dead-letter remain queued.",
-  "overall_score": 83.0,
+  "audit_note": "Outbound loop complete and tested: register/list/delete endpoints, signed test-send, auto-dispatch on notify events, retry with backoff, dead-letter after 5 attempts, full delivery log. Remaining: failure alerting, event-type routing UI beyond exact-match/*.",
+  "overall_score": 86.5,
   "verified_8cat": true,
   "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },

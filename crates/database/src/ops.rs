@@ -588,6 +588,14 @@ pub trait OpsStore: Send + Sync {
     async fn share_get(&self, token: &str) -> Result<Option<ShareRow>, StoreError>;
     async fn share_revoke(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn job_enqueue(&self, org: &str, kind: &str, payload: &str) -> Result<i64, StoreError>;
+    /// Enqueue with a not-before delay (durable backoff for retries).
+    async fn job_enqueue_at(
+        &self,
+        org: &str,
+        kind: &str,
+        payload: &str,
+        delay_secs: u64,
+    ) -> Result<i64, StoreError>;
     async fn job_list(&self, org: &str) -> Result<Vec<JobRow>, StoreError>;
     async fn job_claim(&self) -> Result<Option<JobRow>, StoreError>;
     async fn job_done(&self, id: i64, ok: bool, note: &str) -> Result<(), StoreError>;

@@ -4619,6 +4619,50 @@ async fn webhook_auto_dispatch_on_notify() {
 }
 
 #[tokio::test]
+async fn webhook_failed_send_queues_retry() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "whretry@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/webhooks/endpoints",
+            r#"{"url":"http://127.0.0.1:1/hook","events":"matter"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            r#"{"title":"Retry me"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // The background task fails fast (refused) and must leave a retry job.
+    let mut queued = false;
+    for _ in 0..50 {
+        let res = a.clone().oneshot(get("/api/v1/jobs", &tok)).await.unwrap();
+        if body_json(res)
+            .await
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|j| j["kind"] == "webhook.dispatch" && j["status"] == "queued")
+        {
+            queued = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert!(queued, "retry job not queued");
+}
+
+#[tokio::test]
 async fn trust_csv_export_returns_ledger() {
     use tower::ServiceExt;
     let a = app();

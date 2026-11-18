@@ -2232,8 +2232,9 @@ async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &s
     let _ = s.stores.ops.notify(org, user, kind, title, None).await;
     let _ = s.stores.events.send(format!("notify:{kind}"));
     // Outbound webhook fan-out (best-effort, never blocks the request):
-    // endpoints subscribed to this kind (or '*') get a signed JSON ping,
-    // and every attempt is recorded in the delivery log.
+    // endpoints subscribed to this kind (or '*') get a signed JSON ping
+    // immediately; failures are queued as durable retry jobs (worker sends
+    // with backoff, dead-letters after 5 attempts). Every attempt is logged.
     let st = s.clone();
     let org = org.to_string();
     let kind = kind.to_string();
@@ -2287,7 +2288,24 @@ async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &s
                         .await;
                 }
                 Err(e) => {
-                    let detail: String = e.to_string().chars().take(200).collect();
+                    // Immediate send failed: queue a durable retry (worker
+                    // retries with backoff, dead-letters after 5 attempts).
+                    let payload = serde_json::json!({
+                        "endpoint_id": ep.id,
+                        "org": org,
+                        "event": kind,
+                    })
+                    .to_string();
+                    let delay = legalrust_integrations::webhook_backoff_secs(1);
+                    let _ = st
+                        .stores
+                        .ops
+                        .job_enqueue_at(&org, "webhook.dispatch", &payload, delay)
+                        .await;
+                    let detail: String = format!("retry queued in {delay}s: {e}")
+                        .chars()
+                        .take(200)
+                        .collect();
                     let _ = st
                         .stores
                         .ops

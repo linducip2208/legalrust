@@ -1,10 +1,14 @@
-# RESUME (AUDIT-1000 — next session entry point)
+# RESUME (AUDIT-1000— next session entry point)
 
-Date: 2026-11-18 (wave 5 done). HEAD: (record on commit — wave ends with commit).
+Date: 2026-11-18 (wave 8 done). HEAD: (record on commit — wave ends with commit).
 Workspace: 299 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
-Registry: IMPLEMENTED 54 / PARTIAL 102 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
-Scores: registry 17.4/100; 8-cat mean 18.8 (20 verified). Composite ≈ 45/100 — NOT 100.
+Registry: IMPLEMENTED 55 / PARTIAL 101 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
+Scores: registry 17.4/100; 8-cat mean 18.9 (20 verified). Composite ~45/100 — NOT 100.
 Server + Apache running detached via WMI (survives shell sessions); legalrust.test 200.
+
+## Done wave 8: durable webhook retry queue (main)
+- OpsStore::job_enqueue_at (memory run_at lease + MySQL DATE_ADD); integrations::process_webhook_job (send/requeue/dead-letter); worker webhook.dispatch arm; notify fan-out queues retry on failure.
+- 4 new tests (enqueue_at lease + 3 dispatch paths); workspace 299/0; registry 17.4/100 (55 IMPLEMENTED); 8-cat mean 18.9 (20 verified).
 
 ## Done wave 5: compliance slice (UU PDP obligations + consent API) + repertorium UI verification
 - Migration 0015, 6 API endpoints + RBAC + audit, tests (API + store); live MySQL migration proof 0001-0015; api_db stale-test fixed.

@@ -1,6 +1,6 @@
 # DOMAIN-SCORES (AUDIT-1000 wave 2026-11-18, updated wave 3)
 
-Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.9/100** (was 18.6; +repertorium + compliance slice + kepatuhan UI).
+Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.9/100 (verified 20)** (was 18.6; +repertorium + compliance slice + kepatuhan UI).
 
 ## Rubric (explicit — no fake precision)
 

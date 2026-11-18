@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 struct Inner {
     jobs: HashMap<i64, OcrJobRow>,
     bg_jobs: HashMap<i64, JobRow>,
+    job_run_at: HashMap<i64, Option<std::time::Instant>>,
     fields: HashMap<i64, Vec<OcrFieldRow>>,
     tpls: HashMap<i64, TemplateRow>,
     deeds: HashMap<i64, DeedRow>,
@@ -446,6 +447,15 @@ impl OpsStore for MemoryOps {
             .ok_or(StoreError::NotFound)
     }
     async fn job_enqueue(&self, org: &str, kind: &str, payload: &str) -> Result<i64, StoreError> {
+        self.job_enqueue_at(org, kind, payload, 0).await
+    }
+    async fn job_enqueue_at(
+        &self,
+        org: &str,
+        kind: &str,
+        payload: &str,
+        delay_secs: u64,
+    ) -> Result<i64, StoreError> {
         let mut m = self.inner.lock().unwrap();
         let id = self.next(&mut m);
         m.bg_jobs.insert(
@@ -457,6 +467,14 @@ impl OpsStore for MemoryOps {
                 payload: payload.into(),
                 status: "queued".into(),
                 attempts: 0,
+            },
+        );
+        m.job_run_at.insert(
+            id,
+            if delay_secs == 0 {
+                None
+            } else {
+                Some(std::time::Instant::now() + std::time::Duration::from_secs(delay_secs))
             },
         );
         Ok(id)
@@ -474,10 +492,18 @@ impl OpsStore for MemoryOps {
     }
     async fn job_claim(&self) -> Result<Option<JobRow>, StoreError> {
         let mut m = self.inner.lock().unwrap();
+        let now = std::time::Instant::now();
         let id = m
             .bg_jobs
             .values()
-            .filter(|j| j.status == "queued")
+            .filter(|j| {
+                j.status == "queued"
+                    && m.job_run_at
+                        .get(&j.id)
+                        .copied()
+                        .flatten()
+                        .is_none_or(|t| t <= now)
+            })
             .map(|j| j.id)
             .min();
         Ok(match id {
@@ -491,13 +517,13 @@ impl OpsStore for MemoryOps {
         })
     }
     async fn job_done(&self, id: i64, ok: bool, _note: &str) -> Result<(), StoreError> {
-        self.inner
-            .lock()
-            .unwrap()
-            .bg_jobs
+        let mut m = self.inner.lock().unwrap();
+        m.bg_jobs
             .get_mut(&id)
             .map(|j| j.status = if ok { "done".into() } else { "failed".into() })
-            .ok_or(StoreError::NotFound)
+            .ok_or(StoreError::NotFound)?;
+        m.job_run_at.remove(&id);
+        Ok(())
     }
     async fn audit_list(
         &self,
