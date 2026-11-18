@@ -91,6 +91,16 @@ pub struct PaymentRow {
     pub amount: i64,
     pub method: String,
 }
+/// Open invoice with derived paid/balance (AR aging input row).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArOpenRow {
+    pub id: i64,
+    pub number: String,
+    pub matter_id: i64,
+    pub total: i64,
+    pub paid: i64,
+    pub balance: i64,
+}
 #[derive(Debug, Clone)]
 pub struct TrustAccountRow {
     pub id: i64,
@@ -466,6 +476,8 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         id: i64,
     ) -> Result<(InvoiceRow, Vec<PaymentRow>), StoreError>;
+    /// Open (partially paid or unpaid) invoices with paid/balance math.
+    async fn inv_list_open(&self, org: &str) -> Result<Vec<ArOpenRow>, StoreError>;
     async fn pay_add(
         &self,
         org: &str,

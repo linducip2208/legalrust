@@ -5040,10 +5040,17 @@
   "id": "F-D14-004",
   "domain": "D14",
   "title": "Accounts receivable ledger",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs: ArOpenRow + OpsStore::inv_list_open",
+   "crates/database/src/ops_memory.rs: paid aggregation, balance>0 filter",
+   "crates/database/src/ops_mysql.rs: LEFT JOIN payments GROUP BY HAVING paid<total",
+   "crates/reporting/src/lib.rs: ar_aging_csv + math/escaping unit test",
+   "apps/server/src/lib.rs: GET /api/v1/reports/ar-aging.csv (Export+report.ar_csv_exported audit) + p-keu Piutang terbuka card",
+   "apps/server/static/site.js: ar-csv dlCsv wiring",
+   "apps/server/tests/api.rs: ar_aging_csv_lists_only_open_invoices (partial/overpay/full-pay) + needles"
+  ],
+  "audit_note": "Wave 18: org-wide open-invoice AR view + CSV + Keuangan card live."
  },
  {
   "id": "F-D14-005",

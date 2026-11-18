@@ -500,6 +500,35 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn inv_list_open(&self, org: &str) -> Result<Vec<ArOpenRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT i.id, i.number, i.matter_id, i.total_minor, COALESCE(SUM(p.amount_minor),0) AS paid \
+             FROM invoices i LEFT JOIN payments p ON p.invoice_id=i.id \
+             WHERE i.org_id=? GROUP BY i.id HAVING paid < i.total_minor ORDER BY i.id DESC LIMIT 200",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| {
+                let total = x.get::<i64, _>("total_minor");
+                // SUM over BIGINT UNSIGNED may decode as u64.
+                let paid: i64 = x
+                    .try_get::<i64, _>("paid")
+                    .unwrap_or_else(|_| x.get::<u64, _>("paid") as i64);
+                ArOpenRow {
+                    id: x.get::<u64, _>("id") as i64,
+                    number: x.get::<String, _>("number"),
+                    matter_id: x.get::<u64, _>("matter_id") as i64,
+                    total,
+                    paid,
+                    balance: total - paid,
+                }
+            })
+            .collect())
+    }
     async fn inv_get(
         &self,
         org: &str,

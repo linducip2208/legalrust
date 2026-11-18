@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 17: papan skor 1000 fitur (main)
+## 2026-11-18 — AUDIT-1000 wave 18: AR aging report (main)
+- Open-only CSV + overpay guard + needles; workspace **313 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 17: papan skor 1000 fitur (main)
 - Katalog 1000 + filter + summary math + /skor needles; workspace **311 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 16: sidebar dedup 1:1 (main)

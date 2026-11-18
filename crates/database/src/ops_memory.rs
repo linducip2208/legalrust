@@ -332,6 +332,32 @@ impl OpsStore for MemoryOps {
             .cloned()
             .collect())
     }
+    async fn inv_list_open(&self, org: &str) -> Result<Vec<ArOpenRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        let mut v: Vec<ArOpenRow> = m
+            .invs
+            .values()
+            .filter(|v| v.org == org)
+            .map(|v| {
+                let paid: i64 = m
+                    .pays
+                    .get(&v.id)
+                    .map(|ps| ps.iter().map(|p| p.amount).sum())
+                    .unwrap_or(0);
+                ArOpenRow {
+                    id: v.id,
+                    number: v.number.clone(),
+                    matter_id: v.matter_id,
+                    total: v.total,
+                    paid,
+                    balance: v.total - paid,
+                }
+            })
+            .filter(|r| r.balance > 0)
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
     async fn inv_get(
         &self,
         org: &str,

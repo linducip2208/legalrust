@@ -268,6 +268,20 @@ async fn mk_matter(app: &axum::Router, tok: &str) -> i64 {
     assert_eq!(res.status(), StatusCode::OK);
     body_json(res).await["id"].as_i64().unwrap()
 }
+async fn mk_invoice(app: &axum::Router, tok: &str, mid: i64, total: i64) -> i64 {
+    use tower::ServiceExt;
+    let res = app
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            &format!(r#"{{"total_minor":{total}}}"#),
+            Some(tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    body_json(res).await["id"].as_i64().unwrap()
+}
 #[tokio::test]
 async fn ocr_process_requires_content() {
     use tower::ServiceExt;
@@ -5125,6 +5139,60 @@ async fn trust_csv_export_returns_ledger() {
 }
 
 #[tokio::test]
+async fn ar_aging_csv_lists_only_open_invoices() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "araging@x.id").await;
+    let m1 = mk_matter(&a, &tok).await;
+    let m2 = mk_matter(&a, &tok).await;
+    let i1 = mk_invoice(&a, &tok, m1, 1000000).await;
+    let i2 = mk_invoice(&a, &tok, m2, 500000).await;
+    // Partial pay on i1; overpay rejected; full pay on i2 closes it.
+    for (iid, amount, want) in [
+        (i1, 400000, StatusCode::OK),
+        (i1, 700000, StatusCode::CONFLICT),
+        (i2, 500000, StatusCode::OK),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/invoices/{iid}/payments"),
+                &format!(r#"{{"amount_minor":{amount},"method":"transfer"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ar-aging.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(bytes.to_vec()).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(
+        lines.next().unwrap(),
+        "id,number,matter_id,total_minor,paid_minor,balance_minor"
+    );
+    let rows: Vec<&str> = lines.collect();
+    assert_eq!(rows.len(), 1, "only the partially-paid invoice stays open");
+    assert!(rows[0].contains("1000000"), "row was {}", rows[0]);
+    assert!(rows[0].contains("400000"), "row was {}", rows[0]);
+    assert!(rows[0].contains("600000"), "row was {}", rows[0]);
+    let _ = i1;
+    let _ = i2;
+}
+
+#[tokio::test]
 async fn deeds_csv_repertorium_export() {
     use tower::ServiceExt;
     let a = app();
@@ -5251,6 +5319,9 @@ async fn uib_app_has_approvals_ui() {
         "trust-csv-acct",
         "trust-csv-btn",
         "trust-csv-msg",
+        "ar-csv",
+        "ar-msg",
+        "Piutang terbuka",
         "wh-list",
         "wh-reload",
         "wh-msg",

@@ -32,7 +32,7 @@ pub enum DbError {
     Migrate(String),
 }
 pub use ops::{
-    appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, AuditRow,
+    appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow, AuditRow,
     ClientTagRow, ConsentRow, CrmStore, DeedRow, InvoiceRow, JobRow, MarketingArticleRow,
     MarketingContactRow, MarketingDemoRow, MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow,
     MarketingNoteRow, MarketingPlanRow, MarketingStore, MarketingSubscriberRow, MeetingRow,

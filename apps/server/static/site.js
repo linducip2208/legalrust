@@ -818,6 +818,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
   on('keu-csv', 'click', function () { dlCsv('/api/v1/reports/matters-csv', 'matters.csv', 'keu-msg'); });
+  on('ar-csv', 'click', function () { dlCsv('/api/v1/reports/ar-aging.csv', 'ar-aging.csv', 'ar-msg'); });
   async function whRefresh() {
     var box = document.getElementById('wh-list');
     if (!box) return;

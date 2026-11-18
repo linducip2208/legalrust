@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 18: AR aging report (main)
+- Piutang terbuka org-wide + CSV + kartu Keuangan; workspace **313 passed, 0 failed**; F-D14-004 IMPLEMENTED (81.6).
+
 ## 2026-11-18 AUDIT-1000 wave 17: papan skor 1000 fitur (main)
 - Semua 1000 fitur tampil di /skor + API dengan skor jujur; workspace **311 passed, 0 failed**.
 

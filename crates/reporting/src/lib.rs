@@ -70,6 +70,35 @@ pub fn trust_ledger_csv(entries: &[TrustLedgerEntry]) -> String {
     out
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArAgingEntry {
+    pub id: String,
+    pub number: String,
+    pub matter_id: String,
+    pub total_minor: i64,
+    pub paid_minor: i64,
+    pub balance_minor: i64,
+}
+
+pub fn ar_aging_csv(entries: &[ArAgingEntry]) -> String {
+    let mut out = String::from("id,number,matter_id,total_minor,paid_minor,balance_minor");
+    for e in entries {
+        out.push('\n');
+        out.push_str(&escape(&e.id));
+        out.push(',');
+        out.push_str(&escape(&e.number));
+        out.push(',');
+        out.push_str(&escape(&e.matter_id));
+        out.push(',');
+        out.push_str(&e.total_minor.to_string());
+        out.push(',');
+        out.push_str(&e.paid_minor.to_string());
+        out.push(',');
+        out.push_str(&e.balance_minor.to_string());
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,6 +131,25 @@ mod tests {
         assert_eq!(
             trust_ledger_csv(&entries),
             "id,matter_id,amount_cents,memo\nt-1,m-1,1500,\"deposit, \"\"escrow\"\"\""
+        );
+    }
+    #[test]
+    fn ar_aging_csv_header_and_math() {
+        let entries = vec![ArAgingEntry {
+            id: "1".into(),
+            number: "INV-0001".into(),
+            matter_id: "7".into(),
+            total_minor: 1000000,
+            paid_minor: 400000,
+            balance_minor: 600000,
+        }];
+        assert_eq!(
+            ar_aging_csv(&entries),
+            "id,number,matter_id,total_minor,paid_minor,balance_minor\n1,INV-0001,7,1000000,400000,600000"
+        );
+        assert_eq!(
+            ar_aging_csv(&[]),
+            "id,number,matter_id,total_minor,paid_minor,balance_minor"
         );
     }
 }
