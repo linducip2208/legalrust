@@ -315,6 +315,102 @@ impl OpsStore for MysqlOps {
         }
         self.tpl_get(org, id).await
     }
+    async fn clause_create(
+        &self,
+        org: &str,
+        name: &str,
+        category: &str,
+        body: &str,
+    ) -> Result<ClauseRow, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 200 || body.trim().is_empty() {
+            return Err(StoreError::Conflict("name/body".into()));
+        }
+        let cat = if category.trim().is_empty() {
+            "umum"
+        } else {
+            category.trim()
+        };
+        let r =
+            sqlx::query("INSERT INTO deed_clauses (org_id, name, category, body) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(name)
+                .bind(cat)
+                .bind(body)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(ClauseRow {
+            id: r.last_insert_id() as i64,
+            org: org.into(),
+            name: name.into(),
+            category: cat.into(),
+            body: body.into(),
+            version: 1,
+        })
+    }
+    async fn clause_list(&self, org: &str) -> Result<Vec<ClauseRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, category, body, version FROM deed_clauses WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClauseRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                category: x.get::<String, _>("category"),
+                body: x.get::<String, _>("body"),
+                version: x.get::<i32, _>("version") as i64,
+            })
+            .collect())
+    }
+    async fn clause_update(&self, org: &str, id: i64, body: &str) -> Result<ClauseRow, StoreError> {
+        if body.trim().is_empty() {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let n = sqlx::query(
+            "UPDATE deed_clauses SET body=?, version=version+1 WHERE id=? AND org_id=?",
+        )
+        .bind(body)
+        .bind(id as u64)
+        .bind(org)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        let x = sqlx::query(
+            "SELECT id, org_id, name, category, body, version FROM deed_clauses WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .ok_or(StoreError::NotFound)?;
+        Ok(ClauseRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            name: x.get::<String, _>("name"),
+            category: x.get::<String, _>("category"),
+            body: x.get::<String, _>("body"),
+            version: x.get::<i32, _>("version") as i64,
+        })
+    }
+    async fn clause_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM deed_clauses WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn deed_create(
         &self,
         org: &str,

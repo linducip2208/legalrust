@@ -1936,10 +1936,15 @@
   "id": "F-D06-002",
   "domain": "D06",
   "title": "Clause library with versioning",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0022_clauses.sql: deed_clauses (versioned, org-scoped)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: clause CRUD + version bump",
+   "apps/server/src/lib.rs: POST/GET /api/v1/deed-clauses + PUT/DELETE /{id} (RBAC + validator)",
+   "apps/server/static/site.js: pustaka klausa card + revise/delete + hooks",
+   "apps/server/tests/api.rs: clause_library_versions_and_guards + needles"
+  ],
+  "audit_note": "Wave 38: clause library live end-to-end."
  },
  {
   "id": "F-D06-003",

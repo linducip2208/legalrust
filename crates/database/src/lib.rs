@@ -33,7 +33,7 @@ pub enum DbError {
 }
 pub use ops::{
     appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow, AuditRow,
-    BreachRow, ClientTagRow, ConsentRow, CrmStore, DeedRow, DpiaRow, InvoiceRow, JobRow,
+    BreachRow, ClauseRow, ClientTagRow, ConsentRow, CrmStore, DeedRow, DpiaRow, InvoiceRow, JobRow,
     MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
     MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
     MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow,

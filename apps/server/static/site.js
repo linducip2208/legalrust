@@ -685,6 +685,47 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     certRefresh();
   });
   on('cert-reload', 'click', certRefresh);
+  on('cert-reload', 'click', certRefresh);
+  /* ---- deed clause library (versioned snippets) ---- */
+  async function clauseRefresh() {
+    var box = document.getElementById('clause-list');
+    if (!box) return;
+    var v = await j('/api/v1/deed-clauses');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.category) + '</td><td>v' + x.version + '</td>'
+        + '<td><button class="btn btn-sm" data-clause-edit="' + x.id + '" type="button">Revisi</button> <button class="btn btn-sm btn-outline-danger" data-clause-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada klausa.</td></tr>';
+    qsa('[data-clause-edit]', function (b) {
+      b.addEventListener('click', async function () {
+        var body = pval('clause-body');
+        if (!body) { pmsg('clause-msg', 'Isi revisi klausa dulu.'); return; }
+        var r = await fetch('/api/v1/deed-clauses/' + b.getAttribute('data-clause-edit'), { method: 'PUT', headers: Object.assign({}, H, { 'Content-Type': 'application/json' }), body: JSON.stringify({ body: body }) });
+        if (!r.ok) { pmsg('clause-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('clause-msg', '');
+        clauseRefresh();
+      });
+    });
+    qsa('[data-clause-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/deed-clauses/' + b.getAttribute('data-clause-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('clause-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('clause-msg', '');
+        clauseRefresh();
+      });
+    });
+  }
+  on('clause-add', 'click', async function () {
+    if (!pval('clause-name') || !pval('clause-body')) { pmsg('clause-msg', 'Isi nama dan isi klausa.'); return; }
+    var r = await ppost('/api/v1/deed-clauses', { name: pval('clause-name'), category: pval('clause-cat') || 'umum', body: pval('clause-body') });
+    if (!r.ok) { pmsg('clause-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('clause-msg', '');
+    clauseRefresh();
+  });
+  on('clause-reload', 'click', clauseRefresh);
+  qsa('.snav[data-tab="akta"]', function (a) {
+    a.addEventListener('click', function () { certRefresh(); clauseRefresh(); });
+  });
   qsa('.snav[data-tab="akta"]', function (a) {
     a.addEventListener('click', function () { certRefresh(); });
   });
@@ -1508,6 +1549,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apprNotifRefresh();
   certRefresh();
   ppatRefresh();
+  clauseRefresh();
   whRefresh();
   kepRefresh();
   conRefresh();

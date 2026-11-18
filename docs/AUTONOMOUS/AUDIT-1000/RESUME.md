@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 38: pustaka klausa berversi (main)
+- Migration 0022; clause CRUD + version bump + kartu akta + revisi/hapus.
+- F-D06-002 NOT_STARTED->IMPLEMENTED (76.9). Workspace 331/0; registry 20.0 (75 IMPLEMENTED); mean 20.2 (56 v).
+
 ## Done wave 37: DPIA + breach log 72 jam (main)
 - Migrations 0020/0021; CRUD + guarded transitions + kepatuhan UI cards + audit.
 - F-D13-007/008 -> IMPLEMENTED (76.9). Workspace 330/0; registry 19.9 (74 IMPLEMENTED); mean 20.1 (55 v).

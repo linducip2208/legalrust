@@ -3475,6 +3475,12 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "cert-reload",
         "cert-msg",
         "cert-list",
+        "clause-name",
+        "clause-cat",
+        "clause-body",
+        "clause-add",
+        "clause-reload",
+        "clause-list",
         "ppat-number",
         "ppat-kind",
         "ppat-add",
@@ -3802,6 +3808,121 @@ async fn ppat_register_crud_and_guards() {
         .unwrap()
         .iter()
         .any(|e| e["action"] == "ppat.created"));
+}
+
+#[tokio::test]
+async fn clause_library_versions_and_guards() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clause@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // RBAC: auditor cannot create.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-clauses",
+            r#"{"name":"K1","body":"isi"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Validation: blank body rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-clauses",
+            r#"{"name":"K1","body":""}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-clauses",
+            r#"{"name":"Klausul AJB","category":"ajb","body":"Para pihak {{nama}} sepakat."}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["version"], 1);
+    let cid = body_json(
+        a.clone()
+            .oneshot(post(
+                "/api/v1/deed-clauses",
+                r#"{"name":"K2","body":"x"}"#,
+                Some(&tok),
+            ))
+            .await
+            .unwrap(),
+    )
+    .await["id"]
+        .as_i64()
+        .unwrap();
+    // Update bumps version; list shows it; delete removes.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/deed-clauses/{cid}"))
+                .method("PUT")
+                .header("content-type", "application/json")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(r#"{"body":"revisi"}"#.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["version"], 2);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/deed-clauses", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["id"].as_i64() == Some(cid) && c["version"] == 2));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/deed-clauses/{cid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/deed-clauses", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|c| c["id"].as_i64() != Some(cid)));
 }
 
 #[tokio::test]

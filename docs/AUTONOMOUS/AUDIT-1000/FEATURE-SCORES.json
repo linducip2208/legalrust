@@ -3419,19 +3419,19 @@
  {
   "feature_id": "F-D06-002",
   "domain": "D06",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 85,
+   "database": 85,
+   "frontend": 75,
+   "business_logic": 85,
+   "security": 85,
+   "testing": 85,
+   "integration": 60,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 76.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D06-003",

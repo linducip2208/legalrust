@@ -63,6 +63,16 @@ pub struct TemplateRow {
     pub body: String,
     pub version: i64,
 }
+/// Reusable deed clause (versioned).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClauseRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub category: String,
+    pub body: String,
+    pub version: i64,
+}
 #[derive(Debug, Clone)]
 pub struct DeedRow {
     pub id: i64,
@@ -478,6 +488,16 @@ pub trait OpsStore: Send + Sync {
     async fn tpl_list(&self, org: &str) -> Result<Vec<TemplateRow>, StoreError>;
     async fn tpl_get(&self, org: &str, id: i64) -> Result<TemplateRow, StoreError>;
     async fn tpl_update(&self, org: &str, id: i64, body: &str) -> Result<TemplateRow, StoreError>;
+    async fn clause_create(
+        &self,
+        org: &str,
+        name: &str,
+        category: &str,
+        body: &str,
+    ) -> Result<ClauseRow, StoreError>;
+    async fn clause_list(&self, org: &str) -> Result<Vec<ClauseRow>, StoreError>;
+    async fn clause_update(&self, org: &str, id: i64, body: &str) -> Result<ClauseRow, StoreError>;
+    async fn clause_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn deed_create(
         &self,
         org: &str,

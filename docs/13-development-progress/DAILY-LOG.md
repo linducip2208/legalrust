@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 38: pustaka klausa (main)
+- Klausa berversi + revisi/hapus di UI; workspace **331 passed, 0 failed**; F-D06-002 IMPLEMENTED (76.9).
+
 ## 2026-11-18 AUDIT-1000 wave 37: DPIA + breach (main)
 - Asesmen + log insiden + transisi; workspace **330 passed, 0 failed**; F-D13-007/008 IMPLEMENTED (76.9).
 

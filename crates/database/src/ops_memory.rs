@@ -9,6 +9,7 @@ struct Inner {
     job_run_at: HashMap<i64, Option<std::time::Instant>>,
     fields: HashMap<i64, Vec<OcrFieldRow>>,
     tpls: HashMap<i64, TemplateRow>,
+    clauses: HashMap<i64, ClauseRow>,
     deeds: HashMap<i64, DeedRow>,
     convs: HashMap<i64, String>,
     msgs: HashMap<i64, Vec<(String, String)>>,
@@ -191,6 +192,71 @@ impl OpsStore for MemoryOps {
         t.body = body.into();
         t.version += 1;
         Ok(t.clone())
+    }
+    async fn clause_create(
+        &self,
+        org: &str,
+        name: &str,
+        category: &str,
+        body: &str,
+    ) -> Result<ClauseRow, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 200 || body.trim().is_empty() {
+            return Err(StoreError::Conflict("name/body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        let r = ClauseRow {
+            id,
+            org: org.into(),
+            name: name.into(),
+            category: if category.trim().is_empty() {
+                "umum".into()
+            } else {
+                category.trim().into()
+            },
+            body: body.into(),
+            version: 1,
+        };
+        m.clauses.insert(id, r.clone());
+        Ok(r)
+    }
+    async fn clause_list(&self, org: &str) -> Result<Vec<ClauseRow>, StoreError> {
+        let mut v: Vec<ClauseRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .clauses
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn clause_update(&self, org: &str, id: i64, body: &str) -> Result<ClauseRow, StoreError> {
+        if body.trim().is_empty() {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .clauses
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.body = body.into();
+        r.version += 1;
+        Ok(r.clone())
+    }
+    async fn clause_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.clauses.get(&id) {
+            Some(r) if r.org == org => {
+                m.clauses.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn deed_create(
         &self,
