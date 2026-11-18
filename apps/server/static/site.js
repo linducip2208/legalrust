@@ -605,8 +605,18 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     box.innerHTML = v.map(function (x) {
       var nx = PPAT_NEXT[x.status];
       var act = nx ? '<button class="btn btn-sm" data-ppat-next="' + x.id + '" data-ppat-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">selesai</span>';
+      act += ' <button class="btn btn-sm btn-outline-secondary" data-ppat-check="' + x.id + '" type="button">Cek</button> <span class="text-muted small" id="ppat-chk-' + x.id + '"></span>';
       return '<tr><td>' + x.id + '</td><td>' + esc(x.number) + '</td><td>' + esc(x.deed_kind) + '</td><td>' + esc(x.seller) + ' → ' + esc(x.buyer) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
     }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada akta PPAT.</td></tr>';
+    qsa('[data-ppat-check]', function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-ppat-check');
+        var v = await j('/api/v1/ppat/' + id + '/checklist');
+        var box2 = document.getElementById('ppat-chk-' + id);
+        if (!v) { if (box2) box2.textContent = 'gagal'; return; }
+        if (box2) box2.textContent = v.complete ? 'lengkap, siap ' + (PPAT_NEXT[v.status] || 'arsip') : 'kurang: ' + v.missing.join(', ');
+      });
+    });
     qsa('[data-ppat-next]', function (b) {
       b.addEventListener('click', async function () {
         var r = await ppost('/api/v1/ppat/' + b.getAttribute('data-ppat-next') + '/status', { status: b.getAttribute('data-ppat-to') });

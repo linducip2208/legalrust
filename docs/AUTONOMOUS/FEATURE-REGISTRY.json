@@ -4678,10 +4678,13 @@
   "id": "F-D13-003",
   "domain": "D13",
   "title": "Certificate authenticity checklist",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/ppat/{id}/checklist (required fields per kind + flow position)",
+   "apps/server/static/site.js: per-row Cek button with inline missing-fields",
+   "apps/server/tests/api.rs: checklist complete/gaps/404 assertions"
+  ],
+  "audit_note": "Wave 29: PPAT completeness checklist live; full certificate-authenticity flow still pending."
  },
  {
   "id": "F-D13-004",
@@ -4697,10 +4700,12 @@
   "id": "F-D13-005",
   "domain": "D13",
   "title": "AJB drafting (sale & purchase)",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0018_ppat.sql + CRUD: AJB entries recordable with parties+object (deed_kind=ajb)",
+   "apps/server/src/lib.rs: checklist validates AJB completeness before signing"
+  ],
+  "audit_note": "Wave 29: AJB recordable + gated; template-based drafting + price/tax worksheets pending."
  },
  {
   "id": "F-D13-006",
@@ -6797,9 +6802,10 @@
    "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
    "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)",
    "apps/server/src/lib.rs: notify_user audits notify.{kind}.sent; notify_read audits notification.read",
-   "apps/server/tests/api.rs: notification audit trail assertions (?entity=notification)"
+   "apps/server/tests/api.rs: notification audit trail assertions (?entity=notification)",
+   "apps/server/src/lib.rs: audit-entity filter options +notification/user/ppat/report/ropa; entity=ppat trail test"
   ],
-  "audit_note": " Wave 21: send+read audit live; stays PARTIAL (no dedicated audit-surface UI)."
+  "audit_note": " Wave 21: send+read audit live; stays PARTIAL (no dedicated audit-surface UI). Wave 29: audit filter covers new entities; stays PARTIAL (surface is filter-only)."
  },
  {
   "id": "F-D18-029",

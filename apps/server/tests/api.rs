@@ -3714,6 +3714,52 @@ async fn ppat_register_crud_and_guards() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Checklist: full entry complete; minimal entry lists gaps; unknown 404.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/checklist"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["complete"], true);
+    assert!(j["missing"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"9/2026","deed_kind":"ajb"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let pid2 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid2}/checklist"), &tok))
+        .await
+        .unwrap();
+    let j = body_json(res).await;
+    assert_eq!(j["complete"], false);
+    assert_eq!(j["missing"].as_array().unwrap().len(), 3);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ppat/999999999/checklist", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Audit filter surfaces the new ppat trail.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=ppat", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "ppat.created"));
 }
 
 #[tokio::test]
