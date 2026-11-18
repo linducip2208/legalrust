@@ -44,7 +44,7 @@ placeholders pending per-feature code reads, NOT final grades.
 | D17 Multi-office | 10.7 | tenant model only |
 | D18 Notify | 18.7 | in-app+SSE live, email/SMS pending |
 | D19 Portal | 21.0 | /app + marketing site live |
-| D20 Reporting | 13.6 | CSV library + audit + UI buttons; builder pending |
+| D20 Reporting | 14.9 | CSV library + audit + UI buttons + deed-volume(partial); builder pending |
 | D21 API/Integration | 29.8 | 110 routes, keys, webhooks live |
 | D22 Security | 23.7 | Argon2/RBAC/CORS/rate-limit, no pentest |
 | D23 Search | 20.6 | global+RAG keyword live, vectors pending |

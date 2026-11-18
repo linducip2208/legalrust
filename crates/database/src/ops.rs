@@ -71,6 +71,8 @@ pub struct DeedRow {
     pub number: String,
     pub deed_type: String,
     pub state: String,
+    /// Creation timestamp as `YYYY-MM-DD HH:MM:SS` (repertorium ordering).
+    pub created: String,
 }
 #[derive(Debug, Clone)]
 pub struct InvoiceRow {

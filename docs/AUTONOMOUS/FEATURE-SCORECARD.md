@@ -2,7 +2,7 @@
 
 Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_STARTED 0.
 
-## Skor keseluruhan: 17.0/100 (grade E)
+## Skor keseluruhan: 17.2/100 (grade E)
 
 | Domain | Nama | Skor | Grade |
 |---|---|---|---|---|
@@ -17,7 +17,7 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 | D09 | Approval Mgmt | 25.4 | E |
 | D10 | Electronic Signature | 23.4 | E |
 | D11 | Compliance & Risk | 5.2 | E |
-| D12 | Notary Office Mgmt | 6.5 | E |
+| D12 | Notary Office Mgmt | 9.0 | E |
 | D13 | PPAT & Property | 8.5 | E |
 | D14 | Finance & Accounting | 11.5 | E |
 | D15 | Billing & Subscription | 13.5 | E |
@@ -25,7 +25,7 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 | D17 | Multi-Office & Tenant | 8.2 | E |
 | D18 | Communication & Notification | 17.2 | E |
 | D19 | Client & Public Portal | 20.8 | E |
-| D20 | Reporting & Analytics | 12.8 | E |
+| D20 | Reporting & Analytics | 14.0 | E |
 | D21 | API & Integration | 27.2 | E |
 | D22 | Security & Data Protection | 24.2 | E |
 | D23 | Search & Discovery | 19.2 | E |

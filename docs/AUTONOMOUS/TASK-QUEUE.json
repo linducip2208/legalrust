@@ -223,6 +223,13 @@
     {
       "id": "B-D12-REP",
       "title": "Notary repertorium (deed daily log + CSV)",
+      "status": "DONE",
+      "owner": "main",
+      "evidence": "2026-11-18 wave 4: DeedRow.created, deeds.csv?date=, /app button, tests"
+    },
+    {
+      "id": "B-D11-PDP",
+      "title": "UU PDP obligation register + consent lifecycle",
       "status": "PLANNED",
       "owner": null,
       "depends": []

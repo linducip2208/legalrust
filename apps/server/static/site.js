@@ -898,6 +898,12 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('trust-csv-msg', '');
     dlCsv('/api/v1/reports/trust-ledger.csv?account_id=' + encodeURIComponent(id), 'trust-' + id + '.csv', 'trust-csv-msg');
   });
+  on('deed-csv', 'click', function () {
+    var d = pval('deed-rep-date');
+    if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) { pmsg('deed-csv-msg', 'Format tanggal YYYY-MM-DD.'); return; }
+    pmsg('deed-csv-msg', '');
+    dlCsv('/api/v1/reports/deeds.csv' + (d ? '?date=' + encodeURIComponent(d) : ''), 'repertorium' + (d ? '-' + d : '') + '.csv', 'deed-csv-msg');
+  });
   /* ---- approvals engine UI ---- */
   async function apprRefresh() {
     var box = document.getElementById('appr-list');

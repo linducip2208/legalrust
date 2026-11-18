@@ -348,10 +348,11 @@ impl OpsStore for MysqlOps {
             number: number.into(),
             deed_type: deed_type.into(),
             state: "draft".into(),
+            created: chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
         })
     }
     async fn deed_list(&self, org: &str) -> Result<Vec<DeedRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, matter_id, number, deed_type, state FROM deeds WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, matter_id, number, deed_type, state, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM deeds WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| DeedRow {
@@ -361,6 +362,7 @@ impl OpsStore for MysqlOps {
                 number: x.get::<String, _>("number"),
                 deed_type: x.get::<String, _>("deed_type"),
                 state: x.get::<String, _>("state"),
+                created: x.get::<String, _>("created_at"),
             })
             .collect())
     }
@@ -377,7 +379,7 @@ impl OpsStore for MysqlOps {
             return Err(StoreError::NotFound);
         }
         let x = sqlx::query(
-            "SELECT id, org_id, matter_id, number, deed_type, state FROM deeds WHERE id=?",
+            "SELECT id, org_id, matter_id, number, deed_type, state, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM deeds WHERE id=?",
         )
         .bind(id as u64)
         .fetch_one(&self.pool)
@@ -390,6 +392,7 @@ impl OpsStore for MysqlOps {
             number: x.get::<String, _>("number"),
             deed_type: x.get::<String, _>("deed_type"),
             state: x.get::<String, _>("state"),
+            created: x.get::<String, _>("created_at"),
         })
     }
     async fn conv_create(&self, org: &str, title: &str) -> Result<i64, StoreError> {

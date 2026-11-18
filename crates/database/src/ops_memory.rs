@@ -202,6 +202,7 @@ impl OpsStore for MemoryOps {
             number: number.into(),
             deed_type: deed_type.into(),
             state: "draft".into(),
+            created: chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
         };
         m.deeds.insert(id, d.clone());
         Ok(d)

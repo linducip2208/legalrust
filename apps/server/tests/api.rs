@@ -4324,6 +4324,62 @@ async fn trust_csv_export_returns_ledger() {
 }
 
 #[tokio::test]
+async fn deeds_csv_repertorium_export() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "deedcsv@x.id").await;
+    let did = mk_deed(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deeds.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(bytes.to_vec()).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(lines.next().unwrap(), "id,number,deed_type,state,created");
+    let row = lines.next().expect("one deed row");
+    assert!(row.contains("D-9"), "row was {row}");
+    // Today's date filters to the deed; an ancient date yields header only.
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/deeds.csv?date={today}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("D-9"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deeds.csv?date=2000-01-01", &tok))
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert!(!String::from_utf8(bytes.to_vec()).unwrap().contains("D-9"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deeds.csv?date=bogus", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let _ = did;
+}
+
+#[tokio::test]
 async fn uib_app_has_approvals_ui() {
     let (st, _, t) = page_get(&app(), "/app").await;
     assert_eq!(st, StatusCode::OK);
@@ -4356,6 +4412,9 @@ async fn uib_app_has_approvals_ui() {
         "wh-list",
         "wh-reload",
         "wh-msg",
+        "deed-rep-date",
+        "deed-csv",
+        "deed-csv-msg",
         "Persetujuan",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");

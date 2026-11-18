@@ -4243,10 +4243,15 @@
   "id": "F-D12-001",
   "domain": "D12",
   "title": "Repertorium (deed daily log)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs: DeedRow.created (YYYY-MM-DD HH:MM:SS)",
+   "apps/server/src/lib.rs: GET /api/v1/reports/deeds.csv?date= (Export-gated + audit report.deeds_csv_exported)",
+   "apps/server/src/lib.rs: /app akta panel repertorium card (deed-rep-date/deed-csv)",
+   "apps/server/static/site.js: deed-csv download handler",
+   "apps/server/tests/api.rs: deeds_csv_repertorium_export (header/row/today-filter/empty-date/422)"
+  ],
+  "audit_note": "Repertorium: deed daily log via date-filtered CSV + /app export UI + created timestamps on list/get. No printed protocol-book layout (manual process)."
  },
  {
   "id": "F-D12-002",
@@ -7282,10 +7287,15 @@
   "id": "F-D20-009",
   "domain": "D20",
   "title": "Deed-volume period report & export",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs: DeedRow.created (YYYY-MM-DD HH:MM:SS)",
+   "apps/server/src/lib.rs: GET /api/v1/reports/deeds.csv?date= (Export-gated + audit report.deeds_csv_exported)",
+   "apps/server/src/lib.rs: /app akta panel repertorium card (deed-rep-date/deed-csv)",
+   "apps/server/static/site.js: deed-csv download handler",
+   "apps/server/tests/api.rs: deeds_csv_repertorium_export (header/row/today-filter/empty-date/422)"
+  ],
+  "audit_note": "Deed-volume export per single day live; multi-day period ranges pending."
  },
  {
   "id": "F-D20-010",
