@@ -45,7 +45,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 31: flood guard jalur notifikasi (main)
 - Per-user cap 20/min + audit rate_limited; 25-create test (<=20, >=15, audit hit).
-- F-D18-029 51.8->68.1 PARTIAL (verified). Workspace 323/0; registry 19.2; mean 19.9 (47 v).
+- F-D18-029 51.8->68.1 PARTIAL (verified). Workspace 323/0; registry 19.2; mean 19.8 (47 v).
 
 ## Done wave 30: jejak audit keuangan (main)
 - trust.transfer audit + filter trust/report + trail assertions.
