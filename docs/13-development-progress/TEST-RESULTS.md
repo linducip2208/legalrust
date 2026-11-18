@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 36: token expiry (main)
+## 2026-11-18 — AUDIT-1000 wave 37: DPIA + breach (main)
+- Lifecycle + guards + unit + needles; workspace **330 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 36: token expiry (main)
 - Expiry API + enforcement unit + needles; workspace **328 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 35: matriks peran (main)

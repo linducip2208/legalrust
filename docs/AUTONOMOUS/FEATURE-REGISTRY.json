@@ -4720,19 +4720,29 @@
   "id": "F-D13-007",
   "domain": "D13",
   "title": "Tukar-menukar deed support",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0020_dpia.sql: dpia_assessments (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dpia CRUD + draft->review->approved",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dpia + /{id}/status (Create/View/Update + audit)",
+   "apps/server/static/site.js: DPIA card + advance wiring + boot/tab hooks",
+   "apps/server/tests/api.rs: dpia_breach_lifecycle_and_guards + memory unit + needles"
+  ],
+  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021)."
  },
  {
   "id": "F-D13-008",
   "domain": "D13",
   "title": "APHT (mortgage) drafting",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0021_breach.sql: breach_logs (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: breach CRUD + draft->assessing->notified->closed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/breach + /{id}/status (Create/View/Update + audit)",
+   "apps/server/static/site.js: breach card (72h) + advance wiring + boot/tab hooks",
+   "apps/server/tests/api.rs: breach lifecycle + audit entity trail + needles"
+  ],
+  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021)."
  },
  {
   "id": "F-D13-009",

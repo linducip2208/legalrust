@@ -42,6 +42,8 @@ struct Inner {
     consents: HashMap<i64, ConsentRow>,
     ropa: HashMap<i64, RopaRow>,
     ppat: HashMap<i64, PpatRow>,
+    dpia: HashMap<i64, DpiaRow>,
+    breach: HashMap<i64, BreachRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
 }
@@ -1175,6 +1177,124 @@ impl OpsStore for MemoryOps {
         r.status = to.into();
         Ok(())
     }
+    async fn dpia_create(
+        &self,
+        org: &str,
+        title: &str,
+        data_types: &str,
+        risk: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(risk, "low" | "medium" | "high") {
+            return Err(StoreError::Conflict("risk_level".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.dpia.insert(
+            id,
+            DpiaRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                data_types: data_types.trim().into(),
+                risk_level: risk.into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dpia_list(&self, org: &str) -> Result<Vec<DpiaRow>, StoreError> {
+        let mut v: Vec<DpiaRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dpia
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dpia_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dpia
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "review") | ("review", "approved")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn breach_create(
+        &self,
+        org: &str,
+        title: &str,
+        discovered: &str,
+        affected: i64,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if affected < 0 {
+            return Err(StoreError::Conflict("affected".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.breach.insert(
+            id,
+            BreachRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                discovered_at: discovered.trim().into(),
+                affected_count: affected,
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn breach_list(&self, org: &str) -> Result<Vec<BreachRow>, StoreError> {
+        let mut v: Vec<BreachRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .breach
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn breach_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .breach
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "assessing") | ("assessing", "notified") | ("notified", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
     async fn notif_pref_set(
         &self,
         user: &str,
@@ -2291,6 +2411,27 @@ mod compliance_tests {
         ops.ropa_delete("org2", id).await.unwrap_err();
         ops.ropa_delete("org1", id).await.unwrap();
         assert!(ops.ropa_list("org1").await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn dpia_breach_guards_and_isolation() {
+        let ops = MemoryOps::default();
+        assert!(ops.dpia_create("o1", "  ", "", "high").await.is_err());
+        assert!(ops.dpia_create("o1", "D", "", "extreme").await.is_err());
+        let d = ops.dpia_create("o1", "D", "nik", "high").await.unwrap();
+        assert!(ops.dpia_list("o2").await.unwrap().is_empty());
+        assert!(ops.dpia_set_status("o1", d, "approved").await.is_err());
+        assert!(ops.dpia_set_status("o2", d, "review").await.is_err());
+        ops.dpia_set_status("o1", d, "review").await.unwrap();
+        ops.dpia_set_status("o1", d, "approved").await.unwrap();
+        assert!(ops.breach_create("o1", "  ", "", 0).await.is_err());
+        assert!(ops.breach_create("o1", "B", "", -1).await.is_err());
+        let b = ops.breach_create("o1", "B", "2026-11-18", 5).await.unwrap();
+        assert!(ops.breach_set_status("o1", b, "closed").await.is_err());
+        for st in ["assessing", "notified", "closed"] {
+            ops.breach_set_status("o1", b, st).await.unwrap();
+        }
+        assert!(ops.breach_list("o2").await.unwrap().is_empty());
     }
 
     #[tokio::test]

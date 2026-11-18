@@ -1158,6 +1158,137 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dpia_create(
+        &self,
+        org: &str,
+        title: &str,
+        data_types: &str,
+        risk: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(risk, "low" | "medium" | "high") {
+            return Err(StoreError::Conflict("risk_level".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO dpia_assessments (org_id, title, data_types, risk_level) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(data_types.trim())
+        .bind(risk)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dpia_list(&self, org: &str) -> Result<Vec<DpiaRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, data_types, risk_level, status FROM dpia_assessments WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DpiaRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                data_types: x.get::<String, _>("data_types"),
+                risk_level: x.get::<String, _>("risk_level"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn dpia_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "review" | "approved") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let from = if to == "review" { "draft" } else { "review" };
+        let n = sqlx::query(
+            "UPDATE dpia_assessments SET status=? WHERE id=? AND org_id=? AND status=?",
+        )
+        .bind(to)
+        .bind(id as u64)
+        .bind(org)
+        .bind(from)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn breach_create(
+        &self,
+        org: &str,
+        title: &str,
+        discovered: &str,
+        affected: i64,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if affected < 0 {
+            return Err(StoreError::Conflict("affected".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO breach_logs (org_id, title, discovered_at, affected_count) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(discovered.trim())
+        .bind(affected)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn breach_list(&self, org: &str) -> Result<Vec<BreachRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, discovered_at, affected_count, status FROM breach_logs WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| {
+                let affected: i64 = x
+                    .try_get::<i64, _>("affected_count")
+                    .unwrap_or_else(|_| x.get::<u64, _>("affected_count") as i64);
+                BreachRow {
+                    id: x.get::<u64, _>("id") as i64,
+                    org: x.get::<String, _>("org_id"),
+                    title: x.get::<String, _>("title"),
+                    discovered_at: x.get::<String, _>("discovered_at"),
+                    affected_count: affected,
+                    status: x.get::<String, _>("status"),
+                }
+            })
+            .collect())
+    }
+    async fn breach_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "assessing" | "notified" | "closed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let from = match to {
+            "assessing" => "draft",
+            "notified" => "assessing",
+            _ => "notified",
+        };
+        let n = sqlx::query("UPDATE breach_logs SET status=? WHERE id=? AND org_id=? AND status=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .bind(from)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_set(
         &self,
         user: &str,

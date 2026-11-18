@@ -5859,6 +5859,124 @@ async fn webhook_failed_send_queues_retry() {
 }
 
 #[tokio::test]
+async fn dpia_breach_lifecycle_and_guards() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dpiabreach@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // RBAC: auditor cannot create either.
+    for uri in ["/api/v1/compliance/dpia", "/api/v1/compliance/breach"] {
+        let res = a
+            .clone()
+            .oneshot(post(uri, r#"{"title":"X"}"#, Some(&auditor)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::FORBIDDEN, "uri was {uri}");
+    }
+    // Bad risk rejected; valid DPIA walks draft -> review -> approved.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/dpia",
+            r#"{"title":"Dx","risk_level":"extreme"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/dpia",
+            r#"{"title":"DPIA vendor","data_types":"nik","risk_level":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/dpia/{did}/status"),
+            r#"{"status":"approved"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["review", "approved"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/dpia/{did}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "dpia to {st}");
+    }
+    // Breach: negative affected rejected; walks to closed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/breach",
+            r#"{"title":"Bx","affected":-1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/breach",
+            r#"{"title":"Kebocoran email","discovered":"2026-11-18","affected":120}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["assessing", "notified", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/breach/{bid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "breach to {st}");
+    }
+    // Lists are tenant-scoped and show final states.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/dpia", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(did) && r["status"] == "approved"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/breach", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(bid) && r["status"] == "closed"));
+}
+
+#[tokio::test]
 async fn compliance_ro_pa_crud_and_guards() {
     use tower::ServiceExt;
     let a = app();
@@ -6322,6 +6440,14 @@ async fn uib_app_has_approvals_ui() {
         "ropa-add",
         "ropa-reload",
         "ropa-list",
+        "dpia-title",
+        "dpia-add",
+        "dpia-reload",
+        "dpia-list",
+        "breach-title",
+        "breach-add",
+        "breach-reload",
+        "breach-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

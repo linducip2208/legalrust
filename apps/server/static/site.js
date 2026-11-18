@@ -1382,6 +1382,68 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ropaRefresh();
   });
   on('ropa-reload', 'click', ropaRefresh);
+  /* ---- compliance: DPIA assessments ---- */
+  var DPIA_NEXT = { draft: 'review', review: 'approved' };
+  async function dpiaRefresh() {
+    var box = document.getElementById('dpia-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/dpia');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DPIA_NEXT[x.status];
+      var act = nx ? '<button class="btn btn-sm" data-dpia-next="' + x.id + '" data-dpia-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">selesai</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.data_types) + '</td><td>' + badge(x.risk_level) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada asesmen DPIA.</td></tr>';
+    qsa('[data-dpia-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/dpia/' + b.getAttribute('data-dpia-next') + '/status', { status: b.getAttribute('data-dpia-to') });
+        if (!r.ok) { pmsg('dpia-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dpia-msg', '');
+        dpiaRefresh();
+      });
+    });
+  }
+  on('dpia-add', 'click', async function () {
+    if (!pval('dpia-title')) { pmsg('dpia-msg', 'Isi judul asesmen.'); return; }
+    var r = await ppost('/api/v1/compliance/dpia', { title: pval('dpia-title'), data_types: pval('dpia-types') || '', risk_level: pval('dpia-risk') || 'medium' });
+    if (!r.ok) { pmsg('dpia-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dpia-msg', '');
+    dpiaRefresh();
+  });
+  on('dpia-reload', 'click', dpiaRefresh);
+  /* ---- compliance: breach log (72h) ---- */
+  var BREACH_NEXT = { draft: 'assessing', assessing: 'notified', notified: 'closed' };
+  async function breachRefresh() {
+    var box = document.getElementById('breach-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/breach');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = BREACH_NEXT[x.status];
+      var act = nx ? '<button class="btn btn-sm" data-breach-next="' + x.id + '" data-breach-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">ditutup</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.discovered) + '</td><td>' + x.affected + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada insiden.</td></tr>';
+    qsa('[data-breach-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/breach/' + b.getAttribute('data-breach-next') + '/status', { status: b.getAttribute('data-breach-to') });
+        if (!r.ok) { pmsg('breach-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('breach-msg', '');
+        breachRefresh();
+      });
+    });
+  }
+  on('breach-add', 'click', async function () {
+    if (!pval('breach-title')) { pmsg('breach-msg', 'Isi judul insiden.'); return; }
+    var aff = parseInt(pval('breach-affected'), 10);
+    var r = await ppost('/api/v1/compliance/breach', { title: pval('breach-title'), discovered: pval('breach-date') || '', affected: isNaN(aff) ? 0 : aff });
+    if (!r.ok) { pmsg('breach-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('breach-msg', '');
+    breachRefresh();
+  });
+  on('breach-reload', 'click', breachRefresh);
+  qsa('.snav[data-tab="kepatuhan"]', function (a) {
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); });
+  });
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
     a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); });
   });
@@ -1450,5 +1512,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   kepRefresh();
   conRefresh();
   ropaRefresh();
+  dpiaRefresh();
+  breachRefresh();
   whDlRefresh();
 })();

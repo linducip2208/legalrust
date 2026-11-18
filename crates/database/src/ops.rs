@@ -113,6 +113,26 @@ pub struct PpatRow {
     pub object_desc: String,
     pub status: String,
 }
+/// UU PDP DPIA assessment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DpiaRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub data_types: String,
+    pub risk_level: String,
+    pub status: String,
+}
+/// UU PDP breach log entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BreachRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub discovered_at: String,
+    pub affected_count: i64,
+    pub status: String,
+}
 #[derive(Debug, Clone)]
 pub struct TrustAccountRow {
     pub id: i64,
@@ -625,6 +645,26 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError>;
     async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// UU PDP DPIA assessment register.
+    async fn dpia_create(
+        &self,
+        org: &str,
+        title: &str,
+        data_types: &str,
+        risk: &str,
+    ) -> Result<i64, StoreError>;
+    async fn dpia_list(&self, org: &str) -> Result<Vec<DpiaRow>, StoreError>;
+    async fn dpia_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// UU PDP breach log (72h notification tracking).
+    async fn breach_create(
+        &self,
+        org: &str,
+        title: &str,
+        discovered: &str,
+        affected: i64,
+    ) -> Result<i64, StoreError>;
+    async fn breach_list(&self, org: &str) -> Result<Vec<BreachRow>, StoreError>;
+    async fn breach_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)
