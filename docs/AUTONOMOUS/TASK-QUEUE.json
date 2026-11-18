@@ -247,9 +247,10 @@
     {
       "id": "B-WH-ALERT",
       "title": "Webhook failure alerting (dashboard/notify on dead-letter)",
-      "status": "PLANNED",
-      "owner": null,
-      "depends": []
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 wave 10: dead-letter audit + ?status filter + /app Dead letters card + needles"
     }
   ]
 }
