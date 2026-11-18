@@ -1,6 +1,6 @@
 # DOMAIN-SCORES (AUDIT-1000 wave 2026-11-18, updated wave 3)
 
-Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.8/100** (was 18.6; +repertorium + compliance slice + kepatuhan UI).
+Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.9/100** (was 18.6; +repertorium + compliance slice + kepatuhan UI).
 
 ## Rubric (explicit — no fake precision)
 
@@ -32,7 +32,7 @@ placeholders pending per-feature code reads, NOT final grades.
 | D05 OCR & Doc Intel | 31.3 | tesseract live, batch/PDF pending |
 | D06 Deed Generation | 21.8 | templates+transitions live, esign 501 |
 | D07 AI Legal | 29.6 | Ollama live, embeddings pending |
-| D08 Workflow | 12.9 | jobs + inbound triggers + delivery log; engine pending |
+| D08 Workflow | 13.0 | jobs + inbound/outbound webhooks + delivery log; engine pending |
 | D09 Approvals | 24.5 | engine + /app UI + tests; parallel/quorum remain |
 | D10 E-signature | 27.6 | PSrE adapter, provider blocked |
 | D11 Compliance | 11.2 | obligation register + consent lifecycle + /app UI; dashboards pending |
@@ -49,7 +49,7 @@ placeholders pending per-feature code reads, NOT final grades.
 | D22 Security | 23.7 | Argon2/RBAC/CORS/rate-limit, no pentest |
 | D23 Search | 20.6 | global+RAG keyword live, vectors pending |
 | D24 Mobile | 7.3 | outbox core only, offline UI pending |
-| D25 Enterprise Admin | 14.9 | jobs/audit viewers + live queue counts + webhook log; console pending |
+| D25 Enterprise Admin | 15.0 | jobs/audit viewers + live queue counts + webhook in/out log; console pending |
 
 ## Quality-gate mapping (Phase 20, honest)
 

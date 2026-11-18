@@ -1,7 +1,7 @@
 # RESUME (AUDIT-1000 — next session entry point)
 
 Date: 2026-11-18 (wave 5 done). HEAD: (record on commit — wave ends with commit).
-Workspace: 296 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0015.
+Workspace: 298 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
 Registry: IMPLEMENTED 54 / PARTIAL 102 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
 Scores: registry 17.4/100; 8-cat mean 18.8 (20 verified). Composite ≈ 45/100 — NOT 100.
 Server + Apache running detached via WMI (survives shell sessions); legalrust.test 200.
@@ -23,6 +23,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 6: compliance /app tab (panel kepatuhan + JS + needles)
 - F-D11-001/002 PARTIAL -> IMPLEMENTED. Scores: registry 17.4/100.
+
+## Done wave 6: outbound webhook endpoints + migration proof (main)
+- Migration 0016 (webhook_endpoints + direction); endpoints CRUD + signed test-send + delivery log + /app card + needles; delivery log covers in+out.
+- Migration 0001-0016 live-verified on Laragon MySQL; api_db stale-test fixed.
+- Registry 17.4 (54 impl); 8-cat mean 18.9 (20 verified). Workspace 298/0.
 
 ## Next executable tasks (priority order)
 1. **Mobile D24**: offline capture queue UI (large; split into capture-queue first).

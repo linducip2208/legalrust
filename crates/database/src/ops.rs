@@ -125,6 +125,15 @@ pub struct WebhookDeliveryRow {
     pub event: String,
     pub status: String,
     pub detail: String,
+    pub direction: String,
+}
+#[derive(Debug, Clone)]
+pub struct WebhookEndpointRow {
+    pub id: i64,
+    pub org: String,
+    pub url: String,
+    pub events: String,
+    pub active: bool,
 }
 #[derive(Debug, Clone)]
 pub struct PdpObligationRow {
@@ -511,6 +520,19 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         provider: Option<&str>,
     ) -> Result<Vec<WebhookDeliveryRow>, StoreError>;
+    /// Register an outbound webhook endpoint (URL allowlist: http/https only).
+    async fn webhook_ep_create(
+        &self,
+        org: &str,
+        url: &str,
+        secret: &str,
+        events: &str,
+    ) -> Result<i64, StoreError>;
+    async fn webhook_ep_list(&self, org: &str) -> Result<Vec<WebhookEndpointRow>, StoreError>;
+    async fn webhook_ep_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Endpoint secret for signing outbound test sends (server-side only,
+    /// never serialized to API responses).
+    async fn webhook_ep_secret(&self, org: &str, id: i64) -> Result<Option<String>, StoreError>;
     /// Create a UU PDP obligation (`open` initially).
     async fn pdp_obligation_create(
         &self,

@@ -4426,6 +4426,122 @@ async fn compliance_obligation_and_consent_lifecycle() {
 }
 
 #[tokio::test]
+async fn webhook_endpoints_crud_and_test_send() {
+    use std::io::{Read, Write};
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "whout@x.id").await;
+    // Validation: non-http(s) URL rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/webhooks/endpoints",
+            r#"{"url":"ftp://x/y"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Stub endpoint asserting the signed ping.
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind wh stub");
+    let addr = listener.local_addr().expect("stub addr");
+    let stub = std::thread::spawn(move || {
+        let (mut s, _) = listener.accept().expect("wh stub accept");
+        let mut buf = vec![0u8; 65536];
+        let n = s.read(&mut buf).expect("stub read");
+        let text = String::from_utf8_lossy(&buf[..n]).into_owned();
+        assert!(text.contains("x-webhook-signature"), "missing sig header");
+        let body = br#"{"ok":true}"#;
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        s.write_all(head.as_bytes()).expect("stub head");
+        s.write_all(body).expect("stub body");
+    });
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/webhooks/endpoints",
+            &format!(r#"{{"url":"http://{addr}/hook","secret":"topsecret","events":"*"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/endpoints", &tok))
+        .await
+        .unwrap();
+    let list = body_json(res).await;
+    assert_eq!(list.as_array().unwrap().len(), 1);
+    assert!(list[0].get("secret").is_none(), "secret must not leak");
+    // Test-send delivers signed ping; delivery logged as outbound/accepted.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/webhooks/endpoints/{eid}/test"),
+            r#"{"event":"ping"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    stub.join().expect("stub served");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries?provider=outbound", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["status"] == "accepted" && r["event"] == "ping"));
+    // Delete is Approve-gated (lawyer lacks it); owner deletes.
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let res = a
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/v1/webhooks/endpoints/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {lawyer}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(format!("/api/v1/webhooks/endpoints/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn trust_csv_export_returns_ledger() {
     use tower::ServiceExt;
     let a = app();
@@ -4574,6 +4690,12 @@ async fn uib_app_has_approvals_ui() {
         "wh-list",
         "wh-reload",
         "wh-msg",
+        "whe-url",
+        "whe-secret",
+        "whe-add",
+        "whe-reload",
+        "whe-msg",
+        "whe-list",
         "deed-rep-date",
         "deed-csv",
         "deed-csv-msg",

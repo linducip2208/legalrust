@@ -813,6 +813,40 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada webhook masuk.</td></tr>';
   }
   on('wh-reload', 'click', whRefresh);
+  async function wheRefresh() {
+    var box = document.getElementById('whe-list');
+    if (!box) return;
+    var v = await j('/api/v1/webhooks/endpoints');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.url) + '</td><td>' + esc(x.events) + '</td><td>' + (x.active ? 'aktif' : 'mati') + '</td><td><button class="btn btn-sm" data-whe-test="' + x.id + '" type="button">Uji</button> <button class="btn btn-sm" data-whe-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada endpoint.</td></tr>';
+    qsa('[data-whe-test]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/webhooks/endpoints/' + b.getAttribute('data-whe-test') + '/test', { event: 'ping' });
+        if (!r.ok) { pmsg('whe-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('whe-msg', '');
+        whRefresh();
+      });
+    });
+    qsa('[data-whe-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/webhooks/endpoints/' + b.getAttribute('data-whe-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('whe-msg', 'Gagal (' + r.status + '). Butuh hak Approve.'); return; }
+        pmsg('whe-msg', '');
+        wheRefresh();
+      });
+    });
+  }
+  on('whe-add', 'click', async function () {
+    if (!pval('whe-url')) { pmsg('whe-msg', 'Isi URL endpoint.'); return; }
+    var r = await ppost('/api/v1/webhooks/endpoints', { url: pval('whe-url'), secret: pval('whe-secret') || null, events: '*' });
+    if (!r.ok) { pmsg('whe-msg', 'Gagal (' + r.status + '). URL harus http(s).'); return; }
+    pmsg('whe-msg', '');
+    document.getElementById('whe-url').value = '';
+    wheRefresh();
+  });
+  on('whe-reload', 'click', wheRefresh);
   qsa('.snav[data-tab="audit"]', function (a) {
     a.addEventListener('click', function () { whRefresh(); });
   });

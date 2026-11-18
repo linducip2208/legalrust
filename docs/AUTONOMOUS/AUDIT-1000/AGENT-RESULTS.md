@@ -87,3 +87,4 @@
   route + UI button, job live counts; server API 107/107, workspace
   290/290, fmt+clippy clean; registry +13 → IMPLEMENTED
   (F-D09 ×8, F-D20-001/004/020, F-D25-009).
+- Wave 6: outbound webhook endpoints (migration 0016, CRUD + signed test-send + delivery log + /app card + needles); live MySQL migration proof 0001-0016; registry 17.4/100; workspace 298/0.

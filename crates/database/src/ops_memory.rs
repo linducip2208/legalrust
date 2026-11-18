@@ -35,6 +35,8 @@ struct Inner {
     apprs: HashMap<i64, ApprovalReqRow>,
     appr_steps: HashMap<i64, ApprovalStepRow>,
     webhooks: Vec<WebhookDeliveryRow>,
+    webhook_eps: HashMap<i64, WebhookEndpointRow>,
+    webhook_secrets: HashMap<i64, String>,
     obligations: HashMap<i64, PdpObligationRow>,
     consents: HashMap<i64, ConsentRow>,
     seq: i64,
@@ -767,6 +769,7 @@ impl OpsStore for MemoryOps {
             event: event.into(),
             status: status.into(),
             detail: detail.chars().take(255).collect(),
+            direction: "in".into(),
         });
         Ok(id)
     }
@@ -787,6 +790,69 @@ impl OpsStore for MemoryOps {
         v.sort_by_key(|r| -r.id);
         v.truncate(200);
         Ok(v)
+    }
+    async fn webhook_ep_create(
+        &self,
+        org: &str,
+        url: &str,
+        secret: &str,
+        events: &str,
+    ) -> Result<i64, StoreError> {
+        if !(url.starts_with("http://") || url.starts_with("https://")) || url.len() > 500 {
+            return Err(StoreError::Conflict("url".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.webhook_eps.insert(
+            id,
+            WebhookEndpointRow {
+                id,
+                org: org.into(),
+                url: url.trim().into(),
+                events: if events.trim().is_empty() {
+                    "*".into()
+                } else {
+                    events.trim().into()
+                },
+                active: true,
+            },
+        );
+        let _ = secret;
+        m.webhook_secrets.insert(id, secret.into());
+        Ok(id)
+    }
+    async fn webhook_ep_list(&self, org: &str) -> Result<Vec<WebhookEndpointRow>, StoreError> {
+        let mut v: Vec<WebhookEndpointRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .webhook_eps
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn webhook_ep_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .webhook_eps
+            .get(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let _ = r;
+        m.webhook_eps.remove(&id);
+        m.webhook_secrets.remove(&id);
+        Ok(())
+    }
+    async fn webhook_ep_secret(&self, org: &str, id: i64) -> Result<Option<String>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        m.webhook_eps
+            .get(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        Ok(m.webhook_secrets.get(&id).cloned())
     }
     async fn pdp_obligation_create(
         &self,

@@ -4968,16 +4968,16 @@
   "domain": "D08",
   "status": "PARTIAL",
   "scores": {
-   "backend": 78,
-   "database": 85,
-   "frontend": 70,
-   "business_logic": 65,
-   "security": 80,
-   "testing": 85,
-   "integration": 70,
+   "backend": 82,
+   "database": 88,
+   "frontend": 75,
+   "business_logic": 68,
+   "security": 85,
+   "testing": 88,
+   "integration": 75,
    "documentation": 68
   },
-  "overall_score": 76.0,
+  "overall_score": 79.8,
   "verified_8cat": true
  },
  {
@@ -16596,16 +16596,16 @@
   "domain": "D25",
   "status": "PARTIAL",
   "scores": {
-   "backend": 78,
+   "backend": 82,
    "database": 85,
-   "frontend": 70,
-   "business_logic": 65,
-   "security": 80,
+   "frontend": 78,
+   "business_logic": 68,
+   "security": 85,
    "testing": 85,
-   "integration": 70,
+   "integration": 75,
    "documentation": 68
   },
-  "overall_score": 76.0,
+  "overall_score": 79.5,
   "verified_8cat": true
  },
  {

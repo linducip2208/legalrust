@@ -3704,15 +3704,15 @@
   "domain": "D08",
   "status": "PARTIAL",
   "evidence": [
-   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
-   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
-   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
-   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
-   "apps/server/static/site.js: whRefresh()",
-   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
+   "migrations/0016_webhook_endpoints.sql (endpoints + direction on deliveries)",
+   "crates/database/src/ops.rs: webhook_ep_create/list/delete/secret + WebhookEndpointRow",
+   "crates/integrations/src/lib.rs: post_json (HMAC-signed test sends, rustls)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/webhooks/endpoints, DELETE /{id} (Approve), POST /{id}/test (signed ping, logged)",
+   "apps/server/src/lib.rs: /app audit-panel endpoint card + whe* JS + needle tests",
+   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send (signed stub, no-leak, RBAC, 422)"
   ],
-  "audit_note": "Inbound delivery log live (accepted/rejected/blocked per receipt, tenant-scoped list, /app panel). Outbound dispatch + retries remain NOT_STARTED.",
-  "overall_score": 76.0,
+  "audit_note": "Outbound endpoints CRUD + signed test-send + delivery log live; event-driven auto-dispatch + retry queue remain queued.",
+  "overall_score": 79.8,
   "verified_8cat": true,
   "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
@@ -12143,15 +12143,15 @@
   "domain": "D25",
   "status": "PARTIAL",
   "evidence": [
-   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
-   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
-   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
-   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
-   "apps/server/static/site.js: whRefresh()",
-   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
+   "migrations/0016_webhook_endpoints.sql (endpoints + direction on deliveries)",
+   "crates/database/src/ops.rs: webhook_ep_create/list/delete/secret + WebhookEndpointRow",
+   "crates/integrations/src/lib.rs: post_json (HMAC-signed test sends, rustls)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/webhooks/endpoints, DELETE /{id} (Approve), POST /{id}/test (signed ping, logged)",
+   "apps/server/src/lib.rs: /app audit-panel endpoint card + whe* JS + needle tests",
+   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send (signed stub, no-leak, RBAC, 422)"
   ],
-  "audit_note": "Delivery monitor = tenant-scoped list + /app panel + signed-callback attribution; no alerting on failures yet.",
-  "overall_score": 76.0,
+  "audit_note": "Monitor now covers inbound + outbound (tenant-scoped list + /app panel with counts); alerting on failures remains queued.",
+  "overall_score": 79.5,
   "verified_8cat": true,
   "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },

@@ -148,3 +148,5 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 6b: outbound webhook endpoints (main)
+- Endpoints CRUD + signed test-send (HMAC) + delivery log in+out + /app card; migrasi 0016 live-verified; registry 17.4; 8-cat mean 18.9; workspace 298/0.

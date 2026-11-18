@@ -112,6 +112,59 @@ pub fn verify_webhook(secret: &[u8], body: &[u8], ts: &str, sig: &str) -> Result
         Err(AppError::Unauthorized)
     }
 }
+
+/// POST a JSON payload to an outbound webhook endpoint. Optional HMAC-SHA256
+/// signature of the raw body sent as `X-Webhook-Signature` (empty secret =
+/// unsigned). Returns `(http_status, truncated_body)`. Transport failures
+/// and non-2xx answers are errors — but never include secrets.
+pub async fn post_json(
+    client: &reqwest::Client,
+    url: &str,
+    secret: &str,
+    body: &serde_json::Value,
+) -> Result<(u16, String), IntegrationError> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err(IntegrationError::Validation("url must be http(s)".into()));
+    }
+    let raw = serde_json::to_string(body)
+        .map_err(|e| IntegrationError::Validation(format!("body not JSON: {e}")))?;
+    let mut req = client
+        .post(url)
+        .header("content-type", "application/json")
+        .body(raw.clone());
+    if !secret.is_empty() {
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+        let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes()).expect("hmac key");
+        mac.update(raw.as_bytes());
+        req = req.header(
+            "x-webhook-signature",
+            hex::encode(mac.finalize().into_bytes()),
+        );
+    }
+    let resp = req.send().await.map_err(|e| {
+        if e.is_timeout() || e.is_connect() {
+            IntegrationError::Blocked(format!("endpoint unreachable: {e}"))
+        } else {
+            IntegrationError::Blocked(format!("transport error: {e}"))
+        }
+    })?;
+    let status = resp.status().as_u16();
+    let text: String = resp
+        .text()
+        .await
+        .unwrap_or_default()
+        .chars()
+        .take(500)
+        .collect();
+    if (200..300).contains(&status) {
+        Ok((status, text))
+    } else {
+        Err(IntegrationError::Blocked(format!(
+            "endpoint answered {status}: {text}"
+        )))
+    }
+}
 // ---------------------------------------------------------------------------
 // Provider adapter layer (no live network calls).
 //
@@ -511,6 +564,43 @@ mod tests {
         let err = parse_webhook_event("midtrans", b"not-json").unwrap_err();
         assert!(matches!(err, IntegrationError::InvalidSignature));
     }
+    #[tokio::test]
+    async fn post_json_ok_against_stub() {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind stub");
+        let addr = listener.local_addr().expect("stub addr");
+        let handle = tokio::task::spawn_blocking(move || {
+            let (mut s, _) = listener.accept().expect("accept");
+            let mut buf = vec![0u8; 8192];
+            let n = s.read(&mut buf).expect("read");
+            let text = String::from_utf8_lossy(&buf[..n]).into_owned();
+            assert!(text.contains("x-webhook-signature"), "missing sig header");
+            assert!(text.contains("ping"), "missing payload");
+            let body = br#"{"ok":true}"#;
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            s.write_all(head.as_bytes()).expect("head");
+            s.write_all(body).expect("body");
+        });
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .expect("client");
+        let (st, body) = post_json(
+            &client,
+            &format!("http://{addr}/hook"),
+            "s3cr3t",
+            &serde_json::json!({"event": "ping"}),
+        )
+        .await
+        .expect("stub ok");
+        assert_eq!(st, 200);
+        assert!(body.contains("ok"));
+        handle.await.expect("stub served");
+    }
+
     #[test]
     fn adapters_debug_redacts_secrets() {
         let env_name = "LEGALRUST_TEST_PSRE_KEY_REDACT_CASE";

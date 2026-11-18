@@ -750,10 +750,10 @@ impl OpsStore for MysqlOps {
         provider: Option<&str>,
     ) -> Result<Vec<WebhookDeliveryRow>, StoreError> {
         let rows = if let Some(p) = provider {
-            sqlx::query("SELECT id, org_id, provider, event, status, detail FROM webhook_deliveries WHERE org_id=? AND provider=? ORDER BY id DESC LIMIT 200")
+            sqlx::query("SELECT id, org_id, provider, event, status, detail, direction FROM webhook_deliveries WHERE org_id=? AND provider=? ORDER BY id DESC LIMIT 200")
                 .bind(org).bind(p).fetch_all(&self.pool).await.map_err(db_err)?
         } else {
-            sqlx::query("SELECT id, org_id, provider, event, status, detail FROM webhook_deliveries WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            sqlx::query("SELECT id, org_id, provider, event, status, detail, direction FROM webhook_deliveries WHERE org_id=? ORDER BY id DESC LIMIT 200")
                 .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
         };
         Ok(rows
@@ -765,8 +765,77 @@ impl OpsStore for MysqlOps {
                 event: x.get::<String, _>("event"),
                 status: x.get::<String, _>("status"),
                 detail: x.get::<String, _>("detail"),
+                direction: x
+                    .try_get::<Option<String>, _>("direction")
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| "in".into()),
             })
             .collect())
+    }
+    async fn webhook_ep_create(
+        &self,
+        org: &str,
+        url: &str,
+        secret: &str,
+        events: &str,
+    ) -> Result<i64, StoreError> {
+        if !(url.starts_with("http://") || url.starts_with("https://")) || url.len() > 500 {
+            return Err(StoreError::Conflict("url".into()));
+        }
+        let ev = if events.trim().is_empty() {
+            "*"
+        } else {
+            events.trim()
+        };
+        let r = sqlx::query(
+            "INSERT INTO webhook_endpoints (org_id, url, secret, events) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(url.trim())
+        .bind(secret)
+        .bind(ev)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn webhook_ep_list(&self, org: &str) -> Result<Vec<WebhookEndpointRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, url, events, active FROM webhook_endpoints WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| WebhookEndpointRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                url: x.get::<String, _>("url"),
+                events: x.get::<String, _>("events"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn webhook_ep_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM webhook_endpoints WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn webhook_ep_secret(&self, org: &str, id: i64) -> Result<Option<String>, StoreError> {
+        let x = sqlx::query("SELECT secret FROM webhook_endpoints WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        Ok(Some(x.get::<String, _>("secret")))
     }
     async fn pdp_obligation_create(
         &self,
