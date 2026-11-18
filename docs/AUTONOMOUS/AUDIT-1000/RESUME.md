@@ -45,7 +45,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 35: katalog matriks peran (main)
 - GET /api/v1/roles/matrix + tabel least-privilege di Pengaturan; 12 peran, owner 12 hak, auditor minimal.
-- F-D16-007 PARTIAL->IMPLEMENTED (75.6). Workspace 326/0; registry 19.6 (71 IMPLEMENTED); mean 20.0 (52 v).
+- F-D16-007 PARTIAL->IMPLEMENTED (75.6). Workspace 326/0; registry 19.6 (71 IMPLEMENTED); mean 19.9 (52 v).
 
 ## Done wave 34: konsol sesi aktif (main)
 - GET /api/v1/auth/sessions + revoke others (self->409, foreign->404) + kartu Sesi aktif.
