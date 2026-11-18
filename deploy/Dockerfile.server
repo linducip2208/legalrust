@@ -44,8 +44,11 @@ RUN cargo build --release -p legalrust-server
 
 # ---- runtime ----
 FROM debian:bookworm-slim AS runtime
+# tesseract native engine + Indonesian traineddata: OCR must stay live in
+# prod (without it POST /api/v1/ocr/jobs/{id}/process returns 501).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
+        tesseract-ocr tesseract-ocr-ind tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 RUN useradd --create-home --shell /usr/sbin/nologin --uid 10001 appuser
 COPY --from=builder /app/target/release/legalrust-server /usr/local/bin/legalrust-server

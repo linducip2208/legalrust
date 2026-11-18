@@ -145,6 +145,46 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ocr_store_result(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+        fields: &[OcrFieldRow],
+    ) -> Result<(), StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let n = sqlx::query("UPDATE ocr_jobs SET status=? WHERE id=? AND org_id=?")
+            .bind(status)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        sqlx::query("DELETE FROM ocr_fields WHERE job_id=?")
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        for f in fields {
+            sqlx::query(
+                "INSERT INTO ocr_fields (job_id, name, value, confidence, page) VALUES (?,?,?,?,?)",
+            )
+            .bind(id as u64)
+            .bind(&f.name)
+            .bind(&f.value)
+            .bind(f.confidence)
+            .bind(f.page as i32)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(())
+    }
     async fn ocr_review(
         &self,
         org: &str,
@@ -465,6 +505,14 @@ impl OpsStore for MysqlOps {
                 })
                 .collect(),
         ))
+    }
+    async fn inv_owner_org(&self, inv: i64) -> Result<Option<String>, StoreError> {
+        let x = sqlx::query("SELECT org_id FROM invoices WHERE id=?")
+            .bind(inv as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(x.map(|r| r.get::<String, _>("org_id")))
     }
     async fn pay_add(
         &self,

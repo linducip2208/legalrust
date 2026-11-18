@@ -1,60 +1,51 @@
-# 02 — Panduan Portal (Portal Guide)
+# 02 — Panduan Portal /app (Dashboard Guide)
 
-Halaman web LegalRust adalah **workspace shell** — komponen UI yang benar-benar
-ada didefinisikan di `apps/web/src/lib.rs` (`AppShell`, halaman-halaman, dan
-helper murni yang teruji). Tidak ada halaman lain yang didokumentasikan di sini.
+Portal utama adalah aplikasi server-rendered di route `/app` (bukan shell
+Leptos di `apps/web` — itu prototipe komponen yang teruji unit, bukan UI
+produksi). Semua data dimuat via `fetch` ke API dengan token JWT dari
+`localStorage`; tanpa token → redirect ke `/login`. Tidak ada logika bisnis
+di JavaScript — hanya fetch + render.
 
-## 1. Kerangka umum (`AppShell`)
+Login: tab **Masuk** / **Daftar organisasi**, tombol **Gunakan akun demo**
+mengisi kredensial demo, proteksi brute-force 5x/5 menit, link
+**Lupa kata sandi?** → `/faq`.
 
-Setiap halaman dibungkus `AppShell` dengan brand `LEGALRUST` dan navigasi atas:
+## 1. Tab aplikasi (`/app`, sidebar + tab atas)
 
-`Dashboard` · `Clients` · `Matters` · `Documents` · `Deeds` · `Finance`
+| Tab | Panel | Isi |
+|---|---|---|
+| Dashboard | `p-ringkas` | KPI + tabel Perkara Aktif + kalender |
+| Klien & Perkara | `p-klien` | Klien, perkara, tugas (transisi aman), proyek |
+| Dokumen | `p-dok` | Pustaka, versi, share 1–720 jam, ekspor CSV |
+| Verifikasi Identitas / OCR | `p-ocr` | Job OCR (KTP/KK/NPWP), review KYC approve/reject, ekstraksi |
+| Akta | `p-akta` | Template berversi, proses akta, e-sign (PSrE-gated) |
+| Keuangan | `p-keu` | Invoice, pembayaran manual, checkout Tripay, trust ledger |
+| Marketing | `p-mkt` | Pipeline leads (filter/advance/assign/notes), demo, kontak, newsletter, pricing toggle, FAQ add, articles publish, CSV export |
+| Pengaturan | `p-pengaturan` | Token API, ganti kata sandi, peran, ekspor CSV |
+| Audit | `p-audit` | Jejak audit (role-gated: Owner/Admin/Auditor) |
+| Jobs | `p-jobs` | Antrean job tahan lama + worker |
 
-Form login (`LoginForm`): field `email` + `password` (minimal 8 karakter,
-validasi sisi klien di `validate_login`), tombol **Sign in**.
+Navigasi keyboard: `Ctrl/⌘+K` fokus ke pencarian global (`/api/v1/search`,
+min. 2 huruf, hasil per klien/matter/dokumen); `Esc` menutup hasil/notifikasi.
+Sidebar responsif (hamburger di ≤960px). Header menampilkan organisasi aktif,
+lonceng notifikasi in-app, dan menu akun (Keluar mencabut sesi).
 
-> Catatan jujur: shell me-render `DashboardPage` secara default dengan teks
-> "Enterprise Legal Operations — workspace shell (Phase 5 builds full UI)".
-> Daftar navigasi "pending Phase 6 data" pada komponen `App` mencerminkan status
-> implementasi — data live tampil setelah backend terhubung.
-
-## 2. Halaman-halaman dan zero-state
-
-Semua halaman daftar memakai pola yang sama: bila data kosong, tampil
-zero-state **"hubungkan database untuk data live"**. Ini bukan error — artinya
-backend belum mengembalikan data (mis. dev store kosong atau DB belum
-terhubung).
-
-| Halaman (route UI) | Komponen | Data | Zero-state bila kosong |
-|---|---|---|---|
-| `/dashboard` | `DashboardPage` | 4 kartu statistik: Clients, Matters, Documents, Deeds (placeholder `—`) | "hubungkan database untuk data live" |
-| `/clients` | `ClientsPage` | Daftar `ClientRow { id, name }` ← `GET /api/v1/clients` | sama |
-| `/matters` | `MattersPage` | Daftar `MatterRow { id, title, status }` ← `GET /api/v1/matters` | sama |
-| `/documents` | `DocumentsPage` | Daftar `DocumentRow { id, title }` ← `GET /api/v1/documents` | sama |
-| `/deeds` | `DeedsPage` | Daftar `DeedRow { id, title, state }` + badge status ← `GET /api/v1/deeds` | sama |
-| `/finance` | `FinancePage` | Daftar `InvoiceRow { number, balance_minor, currency }`, format `format_minor` (cth. `IDR 1.500.000`) ← `GET /api/v1/matters/{mid}/invoices`, `GET /api/v1/invoices/{id}` | sama |
-| (review OCR) | `OcrReviewPage` | Kandidat `OcrCandidate { id, label, confidence }` dengan kelas `low (<0,7)` / `med (<0,9)` / `high` ← `GET /api/v1/ocr/jobs`, `GET /api/v1/ocr/jobs/{id}` | sama |
-
-Badge status akta (`deed_state_badge`, diuji unit): `draft`, `review`,
-`approved`, `signed`, `archived`, `rejected` → kelas CSS
-`badge-*`, selain itu `badge-unknown`.
-
-## 3. API di balik portal (route persis, `apps/server/src/lib.rs`)
+## 2. API di balik portal (route persis, `apps/server/src/lib.rs`)
 
 - `GET /api/v1/orgs/me` — profil org sesi berjalan.
 - `POST /api/v1/clients` / `GET /api/v1/clients` — buat & daftar klien.
 - `POST /api/v1/matters` / `GET /api/v1/matters` — buat & daftar matter.
 - `POST /api/v1/matters/{mid}/tasks` / `GET /api/v1/matters/{mid}/tasks` — tugas per matter.
 - `POST /api/v1/tasks/{tid}` — patch satu tugas.
+- `GET /api/v1/search?q=` — pencarian global tenant-scoped.
 - `GET /api/v1/notifications` — daftar notifikasi; `POST /api/v1/notifications/{id}/read` — tandai dibaca.
 - `GET /api/v1/audit` — jejak audit (lihat aktivitas portal).
 - `GET /api/v1/events` — Server-Sent Events; event pertama selalu `hello`, lalu event live.
-- `GET /api/v1/reports/matters-csv` dan `GET /api/v1/reports/matters.csv` — ekspor CSV matter (`id,number,title,status`; nama file via `csv_filename`, cth. `matters_2026-11-17.csv`).
+- `GET /api/v1/reports/matters-csv` dan `GET /api/v1/reports/matters.csv` — ekspor CSV matter (`id,number,title,status`).
 
-## 4. Yang BELUM ada di portal (jujur)
+## 3. Yang BELUM ada di portal (jujur)
 
-- Tidak ada halaman UI untuk: OCR jobs selain `OcrReviewPage`, template akta,
-  invoice detail, trust ledger, AI chat, RAG, webhook, integrasi, manajemen
-  token/role. Fungsi-fungsi itu hanya tersedia via API (lihat bab panduan
-  masing-masing).
-- Statistik dashboard masih placeholder `—` sampai data live terhubung.
+- AI chat, RAG, webhook, integrasi belum punya panel UI — hanya via API
+  (lihat bab panduan masing-masing).
+- Statistik dashboard memakai data live dari API; angka ilustrasi hanya ada
+  di halaman marketing (diberi label "ilustrasi tampilan").

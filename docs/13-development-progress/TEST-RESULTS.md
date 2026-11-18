@@ -8,3 +8,18 @@
 - DR restore drill (same day, local): mysqldump→`legalrust_staging` restore OK, counts match, dump deleted post-drill.
 - Benchmarks (same day, dev machine i.e. Ultra 7 155H, debug, ephemeral store, n=200/20, concurrency 1): /healthz p50 0.45ms p95 4.61ms; /version p50 0.30ms; 404 p50 0.29ms; register 486ms / login 587ms (argon2); full table in `docs/30-BENCHMARK-PROTOCOLS/BENCHMARKS.md`.
 - Ignored (CI live-DB): `api_db::live_mysql_register_and_matter` (run manually instead — PASS, see above). Blocked: engine-backed OCR/AI, production deploy.
+## 2026-11-18 — OCR native live (SQLX_OFFLINE=true, tesseract 5.4.0 + ind/eng/osd on PATH, TESSDATA_PREFIX=%LOCALAPPDATA%\tessdata)
+- `cargo fmt --all -- --check`: PASS. `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
+- `cargo test --workspace`: **268 passed, 0 failed** (server API 99 incl. `ocr_process_image_live_or_blocked` + `ocr_process_requires_content`; OCR crate 21 incl. TSV parser, magic sniff, blank-PNG live no-fabrication; full crate matrix).
+- Live engine proof: `tesseract hero-office.png stdout -l ind+eng tsv` runs on host (TSV header + word rows parsed; photo yields 0 text lines — honestly empty, nothing fabricated).
+- Host setup (per-host requirement, persisted to user env): winget `UB-Mannheim.TesseractOCR` + `ind.traineddata` (tessdata_fast) + `configs`/`tessconfigs` copied beside traineddata + PATH/TESSDATA_PREFIX.
+- Blocked (tersisa jujur): PSrE e-sign (tanpa provider), production deploy.
+## 2026-11-18 — AI live + hardening + manual (SQLX_OFFLINE=true, Ollama lokal qwen2.5:1.5b)
+- `cargo fmt --all -- --check`: PASS. `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
+- `cargo test --workspace`: **285 passed, 0 failed** (ai 19 incl. live-stub + unreachable-blocked; server API 102 incl. stub-200, gated-ollama-live, 501-unreachable; OCR 21; Tripay stub E2E).
+- Live proof: `POST /api/v1/ai/chat` → `{"reply":"4","model":"qwen2.5:1.5b","input_tokens":40,"output_tokens":2}` (Ollama lokal via endpoint).
+- Self-audit: grep secrets/TODO/unsafe/PII-log + CORS permissive→allowlist + .env ignored — temuan ditutup kecuali pentest eksternal (rekomendasi).
+## 2026-11-18 — Tripay gateway wired (SQLX_OFFLINE=true, stub HTTP lokal, tanpa kredensial asli)
+- `cargo fmt --all -- --check`: PASS. `cargo clippy --workspace --all-targets -- -D warnings`: PASS (zero warnings).
+- `cargo test --workspace`: **280 passed, 0 failed** (integrations 30 incl. HMAC vector + callback + stub create/reject; server API 100 incl. 501-tanpa-env + stub E2E checkout→PAID→duplikat→401; OCR 21; full matrix).
+- Kredensial: TIDAK ada hardcode — semua via `TRIPAY_*` env; rahasia tidak muncul di Debug/log/audit. Live sandbox menunggu kredensial merchant dari user.

@@ -1,6 +1,8 @@
 use legalrust_application::AppError;
 use std::fmt;
 
+pub mod tripay;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntegrationError {
     Blocked(String),

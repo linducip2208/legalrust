@@ -79,3 +79,38 @@
 ## 2026-11-18 — marketing admin UI + Wave 6 verify (main)
 - Tab Marketing ke-5 di /app: pipeline leads (filter/advance/assign/notes), demo, kontak, newsletter, pricing toggle, FAQ add, articles publish, CSV export — semua via /api/v1/admin/*, 401 → /login.
 - Workspace **203 passed, 0 failed** (server API 65). F-MKTADMIN DONE.
+
+## 2026-11-18 — premium UX pass (main, menuju 100/100 & 1000/100 UI)
+- Scope: hanya `apps/server/static/site.css` + `site.js` (CSP-safe, tanpa inline style/handler).
+- CSS: focus-visible 3px, ::selection brand, hover/active/disabled feedback, `user-invalid` error state, table-row hover, card lift, FAQ open state, sidenav slide, skip-link class, `prefers-reduced-motion` kill-switch, print stylesheet.
+- JS: `Escape` menutup hasil search + notifikasi; Ctrl/Cmd+K tetap fokus ke search.
+
+## 2026-11-18 — UI/UX visual audit + perbaikan (main, headless Chrome 1440px + 390px + CDP)
+- Verifikasi: landing/login rapi di desktop; CDP ukur viewport 390 → `docW=390`, nol overflow halaman (9 `<table>` di dalam `.mini`/`.table-responsive` scroll-container, by design).
+- Temuan diperbaiki: klaim `Dipercaya oleh Ribuan Profesional` (fabrikasi) → `Dirancang untuk Praktik Hukum Indonesia`; ikon huruf P/O/T/A/L/K → Tabler `ti-briefcase/files/scan/file-text/report/shield-check` (terverifikasi render, bukan tofu); duplikat `Kembali ke Beranda` di login dibuang; tombol demo `ghost` → `outline-secondary` (kontras); `.stat b` nowrap (`Rp 248 jt` tidak wrap); `html,body{overflow-x:clip}`; skip-link + `id=main` di 3 shell (public/auth/app).
+- Tes: server API 99/99, fmt+clippy clean. Catatan: teks "terpotong" di screenshot mobile adalah artefak downscale viewer — DOM + CDP membuktikan teks utuh.
+
+## 2026-11-18 — OCR native live via tesseract (main, pilihan user #1)
+- Host: `Tesseract-OCR 5.4.0` (UB-Mannheim) + traineddata `eng+ind+osd` di `%LOCALAPPDATA%\tessdata`; PATH+TESSDATA_PREFIX persisten (user env). `tesseract --list-langs` live-terverifikasi.
+- Kode: `crates/ocr` — `TesseractAdapter::recognize` real (temp file + `tesseract stdout -l ind+eng tsv`, watchdog 120s, parse TSV level-5 jadi baris+confidence); `image_extension` sniff png/jpg/webp/bmp/tif; tambah dep `anyhow` (cached, tanpa network).
+- Storage: `OpsStore::ocr_store_result` baru (memory single-lock, mysql single-tx: status+fields atomik, re-process idempoten). Tanpa migrasi (tabel `ocr_fields` ada sejak 0005).
+- Endpoint: `POST /api/v1/ocr/jobs/{id}/process` live — gambar jadi `processed`+fields+notif; tanpa konten 422; non-gambar 422; tanpa engine 501 (lama).
+- Tes: ocr crate 21/21; server API 99/99; workspace **268 passed, 0 failed**; fmt+clippy clean.
+- Landing jujur: 29/32, OCR live-bila-terinstall, sisa 501: ai/chat, esign, pay-gateway.
+
+## 2026-11-18 — payment gateway Tripay live-bila-dikonfigurasi (main, request user: tanpa hardcode)
+- Adapter baru `crates/integrations/src/tripay.rs`: `TripayConfig::default_env` (TRIPAY_MODE/BASE_URL/API_KEY/PRIVATE_KEY/MERCHANT_CODE/CALLBACK_URL/RETURN_URL — semua via env, rahasia tidak disimpan di struct/Debug/log).
+- Signature `HMAC-SHA256(merchant_code+merchant_ref+amount)` + vektor uji tetap; `verify_tripay_callback` (X-Callback-Signature); `build/parse_merchant_ref` (`LRINV{id}-{rand}` untuk mapping callback→invoice).
+- HTTPS via `reqwest` + `rustls-tls-native-roots` (pure Rust, tanpa OpenSSL; registry reachable jadi dep baru OK).
+- Endpoint: `POST /api/v1/invoices/{id}/pay-gateway` live — validasi channel/nama/expired, tolak invoice lunas (409), buat transaksi Tripay, audit+notif. Tanpa env → 501 lama (pesan baru `tripay not configured`).
+- Callback: `POST /api/v1/webhooks/incoming/tripay` — verifikasi signature, hanya `PAID` diproses, mapping via `inv_owner_org` baru (memory+mysql, tanpa migrasi), idempoten via marker `tripay:{reference}`, guard overpay existing, audit+notif.
+- Tes: integrations 30 (vektor HMAC, callback, resolve, stub HTTP create+rejection); server 100 (501-tanpa-env, stub E2E checkout→PAID→paid=balance 0→duplikat→401). Workspace **280 passed, 0 failed**; fmt+clippy clean.
+- Env didokumentasikan di `.env.example` + `.env.prod.example`; compose `env_file` + k8s `envFrom` teruskan otomatis tanpa perubahan manifest.
+- Skor tetap 29/32: gateway live-bila-kredensial-merchant-diisi; yang dibutuhkan dari user: TRIPAY_API_KEY + PRIVATE_KEY + MERCHANT_CODE (sandbox dulu untuk uji).
+
+## 2026-11-18 — AI chat live via Ollama + self-audit + manual refresh (main)
+- Host: `Ollama 0.40.16` + `qwen2.5:1.5b` (986MB) serve lokal. Kode: `legalrust-ai::complete` baru (reqwest/rustls, OpenAI-shape, env AI_BASE_URL/AI_MODEL/AI_API_KEY/AI_TIMEOUT_SECS, tanpa hardcode); `POST /api/v1/ai/chat` simpan jawaban asisten + output usage; 501 hanya bila endpoint tak menjawab. Live proof via endpoint: `{"reply":"4","model":"qwen2.5:1.5b","input_tokens":40,"output_tokens":2}`.
+- Tes: ai crate 19/19 (stub + unreachable-blocked + defaults); server API 102/102 (stub 200+usage, gated-ollama, 501-unreachable). Workspace **285 passed, 0 failed**; fmt+clippy clean.
+- Hardening: CORS permissive → allowlist env (`CORS_ORIGINS`, default same-origin-only); self-audit (no hardcoded secrets, no TODO non-test, .env ignored, no PII di log) → DONE (pentest eksternal tetap disarankan); tesseract masuk `deploy/Dockerfile.server` runtime.
+- Manual: 02-PORTAL ditulis ulang (/app 10 tab + search + notif), 04/06/07/08 diperbarui (OCR engine, Tripay, AI live, troubleshooting baru); env AI/CORS/Tripay di `.env.example` + `.env.prod.example`; `deploy/README` langkah 6-8.
+- Skor: 31/32 = 97/100. Sisa jujur: prod deploy + benchmarks + prod-DB + counsel sign-off.

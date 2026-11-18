@@ -269,7 +269,7 @@ async fn mk_matter(app: &axum::Router, tok: &str) -> i64 {
     body_json(res).await["id"].as_i64().unwrap()
 }
 #[tokio::test]
-async fn ocr_flow_review_and_blocked_process() {
+async fn ocr_process_requires_content() {
     use tower::ServiceExt;
     let a = app();
     let tok = reg(&a, "ocr@x.id").await;
@@ -318,7 +318,89 @@ async fn ocr_flow_review_and_blocked_process() {
         ))
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_IMPLEMENTED);
+    // No bytes were ever uploaded for this document: honest 422, and the
+    // job stays unprocessed (engine presence must not matter here).
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ocr/jobs/{jid}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["status"]
+        .as_str()
+        .unwrap()
+        .contains("reviewed"));
+}
+/// Live-gated end-to-end: real PNG bytes through the native engine.
+/// Hosts with tesseract installed get 200 + persisted fields; hosts
+/// without it (CI) get the honest 501. Either way no text is fabricated.
+#[tokio::test]
+async fn ocr_process_image_live_or_blocked() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ocrlive@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content: &[u8] = include_bytes!("../static/hero-office.png");
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"kantor.png","mime":"image/png","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ocr/jobs",
+            &format!(r#"{{"document_id":{did},"doc_type":"general"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let jid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ocr/jobs/{jid}/process"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    match res.status() {
+        StatusCode::NOT_IMPLEMENTED => {} // no tesseract on this host (CI): honest 501
+        StatusCode::OK => {
+            let v = body_json(res).await;
+            assert_eq!(v["status"].as_str().unwrap(), "processed");
+            let n = v["lines"].as_u64().unwrap();
+            assert_eq!(v["fields"].as_array().unwrap().len() as u64, n);
+            let res = a
+                .clone()
+                .oneshot(get(&format!("/api/v1/ocr/jobs/{jid}"), &tok))
+                .await
+                .unwrap();
+            let g = body_json(res).await;
+            assert_eq!(g["status"].as_str().unwrap(), "processed");
+            assert_eq!(g["fields"].as_array().unwrap().len() as u64, n);
+        }
+        other => panic!("unexpected process status: {other}"),
+    }
 }
 #[tokio::test]
 async fn deed_flow_from_template_with_guards() {
@@ -446,9 +528,18 @@ async fn rag_index_search_and_invoice_flow() {
     assert_eq!(j["paid"].as_i64().unwrap(), 400000);
     assert_eq!(j["balance"].as_i64().unwrap(), 600000);
 }
+static AI_ENV_GUARD: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+async fn ai_env_lock() -> tokio::sync::MutexGuard<'static, ()> {
+    AI_ENV_GUARD.lock().await
+}
+
 #[tokio::test]
 async fn ai_chat_blocked_with_estimate_and_usage() {
     use tower::ServiceExt;
+    let _env = ai_env_lock().await;
+    std::env::set_var("AI_BASE_URL", "http://127.0.0.1:1");
+    std::env::remove_var("AI_API_KEY");
     let a = app();
     let tok = reg(&a, "ai@x.id").await;
     let res = a
@@ -467,6 +558,103 @@ async fn ai_chat_blocked_with_estimate_and_usage() {
         .await
         .unwrap();
     assert!(body_json(res).await["input_tokens"].as_i64().unwrap() > 0);
+    std::env::remove_var("AI_BASE_URL");
+}
+
+#[tokio::test]
+async fn ai_chat_live_against_stub() {
+    use std::io::{Read, Write};
+    use tower::ServiceExt;
+    let _env = ai_env_lock().await;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind ai stub");
+    let addr = listener.local_addr().expect("ai stub addr");
+    let stub = std::thread::spawn(move || {
+        let (mut s, _) = listener.accept().expect("ai stub accept");
+        let mut buf = vec![0u8; 65536];
+        let n = s.read(&mut buf).expect("stub read");
+        assert!(String::from_utf8_lossy(&buf[..n]).contains("stub-model"));
+        let body = br#"{"id":"chatcmpl-x","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"ringkasan: akta jual beli"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":7,"total_tokens":19}}"#;
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        s.write_all(head.as_bytes()).expect("stub head");
+        s.write_all(body).expect("stub body");
+    });
+    std::env::set_var("AI_BASE_URL", format!("http://{addr}"));
+    std::env::set_var("AI_MODEL", "stub-model");
+    std::env::remove_var("AI_API_KEY");
+    let a = app();
+    let tok = reg(&a, "aistub@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ai/chat",
+            r#"{"messages":[{"role":"user","content":"ringkas dokumen ini"}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(v["reply"].as_str().unwrap().contains("ringkasan"));
+    assert_eq!(v["model"].as_str().unwrap(), "stub-model");
+    assert_eq!(v["output_tokens"].as_i64().unwrap(), 7);
+    stub.join().expect("stub served");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ai/usage", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["output_tokens"].as_i64().unwrap() > 0);
+    std::env::remove_var("AI_BASE_URL");
+    std::env::remove_var("AI_MODEL");
+}
+
+/// Live-gated: if a local Ollama gateway answers with the expected model,
+/// one small prompt runs for real. Otherwise passes vacuously (CI-safe).
+#[tokio::test]
+async fn ai_chat_live_ollama_gated() {
+    use tower::ServiceExt;
+    let _env = ai_env_lock().await;
+    if std::net::TcpStream::connect_timeout(
+        &"127.0.0.1:11434".parse().expect("addr"),
+        std::time::Duration::from_secs(1),
+    )
+    .is_err()
+    {
+        return;
+    }
+    std::env::set_var("AI_BASE_URL", "http://127.0.0.1:11434/v1");
+    std::env::set_var("AI_MODEL", "qwen2.5:1.5b");
+    std::env::remove_var("AI_API_KEY");
+    std::env::set_var("AI_TIMEOUT_SECS", "180");
+    let a = app();
+    let tok = reg(&a, "aiollama@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ai/chat",
+            r#"{"messages":[{"role":"user","content":"jawab hanya: 2+2"}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    // Model may be absent even when Ollama runs: 501 then, real reply otherwise.
+    match res.status() {
+        StatusCode::OK => {
+            assert!(!body_json(res).await["reply"]
+                .as_str()
+                .unwrap()
+                .trim()
+                .is_empty());
+        }
+        StatusCode::NOT_IMPLEMENTED => {}
+        other => panic!("unexpected ai status: {other}"),
+    }
+    std::env::remove_var("AI_BASE_URL");
+    std::env::remove_var("AI_MODEL");
+    std::env::remove_var("AI_TIMEOUT_SECS");
 }
 #[tokio::test]
 async fn webhook_verify_and_rate_limit() {
@@ -607,6 +795,15 @@ async fn deed_detail_returns_200() {
 #[tokio::test]
 async fn pay_gateway_stub_returns_501() {
     use tower::ServiceExt;
+    let _env = tripay_env_lock().await;
+    for v in [
+        "TRIPAY_API_KEY",
+        "TRIPAY_PRIVATE_KEY",
+        "TRIPAY_MERCHANT_CODE",
+        "TRIPAY_BASE_URL",
+    ] {
+        std::env::remove_var(v);
+    }
     let a = app();
     let tok = reg(&a, "paygw@x.id").await;
     let mid = mk_matter(&a, &tok).await;
@@ -625,7 +822,7 @@ async fn pay_gateway_stub_returns_501() {
         .clone()
         .oneshot(post(
             &format!("/api/v1/invoices/{iid}/pay-gateway"),
-            "{}",
+            r#"{"channel":"QRIS","customer_name":"Budi Santoso"}"#,
             Some(&tok),
         ))
         .await
@@ -635,7 +832,156 @@ async fn pay_gateway_stub_returns_501() {
     assert!(j["error"]["message"]
         .as_str()
         .unwrap()
-        .contains("billing gateway not configured"));
+        .contains("tripay not configured"));
+}
+
+/// Tripay end-to-end against a local stub: checkout 200, PAID callback posts
+/// the payment exactly once, bad signature is 401. Serialized with the 501
+/// test via an async mutex because both mutate `TRIPAY_*` env vars.
+static TRIPAY_ENV_GUARD: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+async fn tripay_env_lock() -> tokio::sync::MutexGuard<'static, ()> {
+    TRIPAY_ENV_GUARD.lock().await
+}
+
+#[tokio::test]
+async fn tripay_gateway_and_callback_against_stub() {
+    use std::io::{Read, Write};
+    use tower::ServiceExt;
+    let _env = tripay_env_lock().await;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind tripay stub");
+    let addr = listener.local_addr().expect("stub addr");
+    let stub = std::thread::spawn(move || {
+        let (mut s, _) = listener.accept().expect("tripay stub accept");
+        let mut buf = vec![0u8; 65536];
+        let n = s.read(&mut buf).expect("stub read");
+        let text = String::from_utf8_lossy(&buf[..n]).into_owned();
+        assert!(text.contains("QRIS"), "stub saw channel");
+        assert!(text.contains("LRINV"), "stub saw merchant_ref");
+        let body = br#"{"success":true,"message":"ok","data":{"reference":"T-STUB-1","amount":250000,"checkout_url":"https://tripay.co.id/checkout/T-STUB-1"}}"#;
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        s.write_all(head.as_bytes()).expect("stub head");
+        s.write_all(body).expect("stub body");
+    });
+    std::env::set_var("TRIPAY_API_KEY", "stub-api-key");
+    std::env::set_var("TRIPAY_PRIVATE_KEY", "stub-private-key");
+    std::env::set_var("TRIPAY_MERCHANT_CODE", "STUBCODE");
+    std::env::set_var("TRIPAY_MODE", "sandbox");
+    std::env::set_var("TRIPAY_BASE_URL", format!("http://{addr}"));
+    let a = app();
+    let tok = reg(&a, "tripay@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":250000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/pay-gateway"),
+            r#"{"channel":"qris","customer_name":"Budi Santoso","customer_email":"budi@x.id","expired_hours":24}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["reference"].as_str().unwrap(), "T-STUB-1");
+    assert!(v["checkout_url"].as_str().unwrap().contains("T-STUB-1"));
+    assert_eq!(v["amount"].as_i64().unwrap(), 250000);
+    let merchant_ref = v["merchant_ref"].as_str().unwrap().to_string();
+    stub.join().expect("stub served");
+    // PAID callback posts the payment.
+    let cb = format!(
+        r#"{{"reference":"T-STUB-1","merchant_ref":"{merchant_ref}","status":"PAID","amount_received":250000}}"#
+    );
+    let sig = {
+        use hmac::{Hmac, Mac};
+        use sha2::Sha256;
+        let mut mac = Hmac::<Sha256>::new_from_slice(b"stub-private-key").expect("hmac key");
+        mac.update(cb.as_bytes());
+        hex::encode(mac.finalize().into_bytes())
+    };
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/webhooks/incoming/tripay")
+                .method("POST")
+                .header("x-callback-signature", sig)
+                .header("content-type", "application/json")
+                .body(Body::from(cb.clone()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(v["accepted"].as_bool().unwrap());
+    assert_eq!(v["amount"].as_i64().unwrap(), 250000);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/invoices/{iid}"), &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert_eq!(v["paid"].as_i64().unwrap(), 250000);
+    assert_eq!(v["balance"].as_i64().unwrap(), 0);
+    // Repeat callback is a harmless duplicate; bad signature is 401.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/webhooks/incoming/tripay")
+                .method("POST")
+                .header("x-callback-signature", {
+                    use hmac::{Hmac, Mac};
+                    use sha2::Sha256;
+                    let mut mac =
+                        Hmac::<Sha256>::new_from_slice(b"stub-private-key").expect("hmac key");
+                    mac.update(cb.as_bytes());
+                    hex::encode(mac.finalize().into_bytes())
+                })
+                .header("content-type", "application/json")
+                .body(Body::from(cb))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert!(body_json(res).await["duplicate"].as_bool().unwrap());
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/webhooks/incoming/tripay")
+                .method("POST")
+                .header("x-callback-signature", "deadbeef")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"reference":"T-X"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    for v in [
+        "TRIPAY_API_KEY",
+        "TRIPAY_PRIVATE_KEY",
+        "TRIPAY_MERCHANT_CODE",
+        "TRIPAY_MODE",
+        "TRIPAY_BASE_URL",
+    ] {
+        std::env::remove_var(v);
+    }
 }
 
 #[tokio::test]
@@ -1649,7 +1995,7 @@ async fn pub_site_fitur_ocr_badge_and_endpoints() {
 async fn pub_site_fitur_ai_badge() {
     let (st, _, t) = page_get(&app(), "/fitur/ai-legal-assistant").await;
     assert_eq!(st, StatusCode::OK);
-    assert!(t.contains("BUTUH KONFIGURASI"));
+    assert!(t.contains("TERSEDIA"));
     assert!(t.contains("/api/v1/ai/chat"));
 }
 
@@ -1932,7 +2278,7 @@ async fn landing_faq_details_and_roadmap() {
     assert!(t.contains("id=\"faq\""));
     assert!(t.contains("<details>"), "no faq accordions");
     assert!(t.contains("/faq"), "no /faq link");
-    assert!(t.contains("28/32"), "no honest 28/32 status");
+    assert!(t.contains("31/32"), "no honest 31/32 status");
     assert!(t.contains("counsel"), "no counsel roadmap item");
     assert!(
         t.contains("production-ready"),

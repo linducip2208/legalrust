@@ -94,6 +94,22 @@ impl OpsStore for MemoryOps {
             .map(|j| j.status = status.into())
             .ok_or(StoreError::NotFound)
     }
+    async fn ocr_store_result(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+        fields: &[OcrFieldRow],
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        m.jobs
+            .get_mut(&id)
+            .filter(|j| j.org == org)
+            .map(|j| j.status = status.into())
+            .ok_or(StoreError::NotFound)?;
+        m.fields.insert(id, fields.to_vec());
+        Ok(())
+    }
     async fn ocr_review(
         &self,
         org: &str,
@@ -551,6 +567,15 @@ impl OpsStore for MemoryOps {
         };
         m.pays.entry(inv).or_default().push(p.clone());
         Ok(p)
+    }
+    async fn inv_owner_org(&self, inv: i64) -> Result<Option<String>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .invs
+            .get(&inv)
+            .map(|v| v.org.clone()))
     }
     async fn trust_create_account(
         &self,

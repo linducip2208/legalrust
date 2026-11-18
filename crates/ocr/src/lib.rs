@@ -317,23 +317,202 @@ pub trait OcrEngine: Send + Sync {
 pub struct TesseractAdapter;
 impl OcrEngine for TesseractAdapter {
     fn name(&self) -> &'static str {
-        "tesseract-bindings"
+        "tesseract-cli"
     }
     fn supports(&self, _: DocType) -> bool {
         true
     }
     fn recognize(
         &self,
-        _image: &[u8],
+        image: &[u8],
         _doc: DocType,
     ) -> Result<Vec<OcrField>, legalrust_application::AppError> {
-        // Honest BLOCKED path: no fake extraction. Probe detail is wired
-        // into the message (same error variant, no API breakage) so
-        // operators see host evidence without a code change.
-        Err(legalrust_application::AppError::BlockedExternal(
-            blocked_reason(),
-        ))
+        recognize_image(image)
     }
+}
+
+/// Languages reported by `tesseract --list-langs` (stdout+stderr combined;
+/// first header line skipped). Empty when the binary is missing/failing.
+pub fn available_langs() -> Vec<String> {
+    let out = match std::process::Command::new("tesseract")
+        .arg("--list-langs")
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return Vec::new(),
+    };
+    let mut combined = String::from_utf8_lossy(&out.stdout).into_owned();
+    combined.push_str(&String::from_utf8_lossy(&out.stderr));
+    combined
+        .lines()
+        .skip(1)
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+/// Pick OCR languages: `ind+eng` when both traineddata exist, else `eng`,
+/// else the first available language. `None` when no traineddata found.
+fn pick_langs() -> Option<String> {
+    let langs = available_langs();
+    if langs.iter().any(|l| l == "ind") && langs.iter().any(|l| l == "eng") {
+        Some("ind+eng".into())
+    } else if langs.iter().any(|l| l == "eng") {
+        Some("eng".into())
+    } else {
+        langs.into_iter().next()
+    }
+}
+
+/// Sniff a supported raster-image extension from magic bytes.
+/// Tesseract CLI handles PNG/JPEG/WEBP/BMP/TIFF; anything else (incl. PDF)
+/// is rejected honestly by the caller.
+pub fn image_extension(bytes: &[u8]) -> Option<&'static str> {
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]) {
+        Some("png")
+    } else if bytes.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        Some("jpg")
+    } else if bytes.len() >= 12 && &bytes[0..4] == b"RIFF" && &bytes[8..12] == b"WEBP" {
+        Some("webp")
+    } else if bytes.starts_with(b"BM") {
+        Some("bmp")
+    } else if bytes.starts_with(&[0x49, 0x49, 0x2A, 0x00])
+        || bytes.starts_with(&[0x4D, 0x4D, 0x00, 0x2A])
+    {
+        Some("tif")
+    } else {
+        None
+    }
+}
+
+/// Parse Tesseract TSV output (word rows, `level == 5`) into line fields.
+///
+/// Groups words by `(page, block, par, line)`, joins text with spaces, and
+/// averages word confidences (`conf` is 0-100, `-1` for non-text → 0).
+/// Empty output yields an empty vec — never fabricated.
+pub fn parse_tsv(tsv: &str) -> Vec<OcrField> {
+    /// Per-line accumulator: grouped words, joined text, confidence sum.
+    struct LineAcc {
+        page: u32,
+        block: u32,
+        par: u32,
+        line: u32,
+        text: String,
+        conf_sum: f32,
+        n: u32,
+    }
+    let mut out: Vec<LineAcc> = Vec::new();
+    for line in tsv.lines().skip(1) {
+        let c: Vec<&str> = line.split('\t').collect();
+        if c.len() < 12 || c[0] != "5" {
+            continue;
+        }
+        let num = |i: usize| c.get(i).and_then(|v| v.parse::<u32>().ok()).unwrap_or(0);
+        let conf: f32 = c
+            .get(10)
+            .and_then(|v| v.parse::<f32>().ok())
+            .map(|v| if v < 0.0 { 0.0 } else { v / 100.0 })
+            .unwrap_or(0.0);
+        let text = c.get(11).unwrap_or(&"").trim();
+        if text.is_empty() {
+            continue;
+        }
+        let (page, block, par, lineno) = (num(1).max(1), num(2), num(3), num(4));
+        match out
+            .iter_mut()
+            .find(|e: &&mut LineAcc| (e.page, e.block, e.par, e.line) == (page, block, par, lineno))
+        {
+            Some(e) => {
+                e.text.push(' ');
+                e.text.push_str(text);
+                e.conf_sum += conf;
+                e.n += 1;
+            }
+            None => out.push(LineAcc {
+                page,
+                block,
+                par,
+                line: lineno,
+                text: text.to_owned(),
+                conf_sum: conf,
+                n: 1,
+            }),
+        }
+    }
+    out.into_iter()
+        .map(|e| OcrField {
+            name: format!("page{}_line{}", e.page, e.line),
+            value: e.text,
+            confidence: (e.conf_sum / e.n as f32).clamp(0.0, 1.0),
+            page: e.page,
+        })
+        .collect()
+}
+
+/// Run the native `tesseract` CLI on image bytes and return line fields.
+///
+/// Pure-`std`: temp file + `tesseract <tmp> stdout -l <langs> tsv` with a
+/// 120s watchdog. Missing binary → `BlockedExternal` (501); unsupported
+/// bytes → `Validation` (422); engine failure → `Internal` with truncated
+/// stderr. Never fabricates text.
+pub fn recognize_image(image: &[u8]) -> Result<Vec<OcrField>, legalrust_application::AppError> {
+    use legalrust_application::AppError;
+    if image.is_empty() {
+        return Err(AppError::Validation("empty image".into()));
+    }
+    if !probe().tesseract_found {
+        return Err(AppError::BlockedExternal(blocked_reason()));
+    }
+    let ext = image_extension(image).ok_or_else(|| {
+        AppError::Validation(
+            "unsupported image format (png/jpg/webp/bmp/tif only; pdf pending)".into(),
+        )
+    })?;
+    let langs = pick_langs().ok_or_else(|| {
+        AppError::BlockedExternal("tesseract has no traineddata (install ind+eng)".into())
+    })?;
+    let tmp = std::env::temp_dir().join(format!(
+        "lr_ocr_{}_{}.{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0),
+        ext
+    ));
+    std::fs::write(&tmp, image)
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("temp write: {e}")))?;
+    let run = || -> Result<String, AppError> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let path = tmp.clone();
+        let langs = langs.clone();
+        std::thread::spawn(move || {
+            let r = std::process::Command::new("tesseract")
+                .arg(&path)
+                .arg("stdout")
+                .arg("-l")
+                .arg(&langs)
+                .arg("tsv")
+                .output();
+            let _ = tx.send(r);
+        });
+        let child = rx
+            .recv_timeout(std::time::Duration::from_secs(120))
+            .map_err(|_| AppError::Internal(anyhow::anyhow!("tesseract timed out after 120s")))?
+            .map_err(|e| AppError::Internal(anyhow::anyhow!("tesseract spawn: {e}")))?;
+        if !child.status.success() {
+            let err = String::from_utf8_lossy(&child.stderr);
+            let short: String = err.chars().take(300).collect();
+            return Err(AppError::Internal(anyhow::anyhow!(
+                "tesseract failed: {short}"
+            )));
+        }
+        Ok(String::from_utf8_lossy(&child.stdout).into_owned())
+    };
+    let tsv = run()?;
+    let _ = std::fs::remove_file(&tmp);
+    Ok(parse_tsv(&tsv))
 }
 /// Cloud OCR fallback client (plumbing only, no extraction logic).
 ///
@@ -701,8 +880,100 @@ mod tests {
         assert_eq!(confidence_band(0.10), ReviewBand::Reject);
     }
     #[test]
-    fn adapter_is_blocked_without_native_lib() {
+    fn adapter_rejects_garbage_bytes() {
+        // b"x" is not image magic: Validation when the engine is present,
+        // BlockedExternal when it is absent. Either way: honest error.
         assert!(TesseractAdapter.recognize(b"x", DocType::Ktp).is_err());
+    }
+    #[test]
+    fn recognize_empty_is_validation_err() {
+        assert!(recognize_image(&[]).is_err());
+    }
+    #[test]
+    fn image_extension_sniffs_magic() {
+        assert_eq!(
+            image_extension(&[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0]),
+            Some("png")
+        );
+        assert_eq!(image_extension(&[0xFF, 0xD8, 0xFF, 0xE0]), Some("jpg"));
+        assert_eq!(image_extension(b"RIFF\x00\x00\x00\x00WEBP"), Some("webp"));
+        assert_eq!(image_extension(b"BMxx"), Some("bmp"));
+        assert_eq!(image_extension(&[0x49, 0x49, 0x2A, 0x00]), Some("tif"));
+        assert_eq!(image_extension(&[0x4D, 0x4D, 0x00, 0x2A]), Some("tif"));
+        assert_eq!(image_extension(b"%PDF-1.7"), None);
+        assert_eq!(image_extension(b""), None);
+    }
+    #[test]
+    fn parse_tsv_groups_words_into_lines() {
+        let tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n\
+             1\t1\t0\t0\t0\t0\t0\t0\t10\t10\t-1\t\n\
+             5\t1\t0\t0\t1\t1\t0\t0\t5\t10\t95\tHello\n\
+             5\t1\t0\t0\t1\t2\t5\t0\t5\t10\t90\tWorld\n\
+             5\t1\t0\t0\t2\t1\t0\t0\t5\t10\t-100\tKTP\n";
+        let fs = parse_tsv(tsv);
+        assert_eq!(fs.len(), 2);
+        assert_eq!(fs[0].name, "page1_line1");
+        assert_eq!(fs[0].value, "Hello World");
+        assert!((fs[0].confidence - 0.925).abs() < 1e-6);
+        assert_eq!(fs[1].value, "KTP");
+        assert_eq!(fs[1].confidence, 0.0);
+    }
+    #[test]
+    fn parse_tsv_empty_yields_no_fields() {
+        let tsv = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n";
+        assert!(parse_tsv(tsv).is_empty());
+    }
+    /// Live-gated: on hosts with tesseract installed, a blank 1x1 PNG must
+    /// run the full pipeline and yield zero fabricated fields. Without the
+    /// binary the test passes vacuously (CI stays green).
+    #[test]
+    fn live_blank_png_yields_no_fabrication() {
+        if !probe().tesseract_found {
+            return;
+        }
+        let png = white_png_1x1();
+        let fs = recognize_image(&png).expect("tesseract must run on blank png");
+        assert!(
+            fs.is_empty(),
+            "blank image must yield no fields, got {fs:?}"
+        );
+    }
+    /// Minimal 1x1 white grayscale PNG, CRC/Adler computed inline so the
+    /// fixture needs no external asset.
+    fn white_png_1x1() -> Vec<u8> {
+        fn crc(data: &[u8]) -> u32 {
+            let mut c = 0xFFFF_FFFFu32;
+            for &b in data {
+                c ^= b as u32;
+                for _ in 0..8 {
+                    c = if c & 1 == 1 {
+                        0xEDB8_8320 ^ (c >> 1)
+                    } else {
+                        c >> 1
+                    };
+                }
+            }
+            !c
+        }
+        fn chunk(out: &mut Vec<u8>, tag: &[u8; 4], body: &[u8]) {
+            out.extend_from_slice(&(body.len() as u32).to_be_bytes());
+            out.extend_from_slice(tag);
+            out.extend_from_slice(body);
+            let mut mac = tag.to_vec();
+            mac.extend_from_slice(body);
+            out.extend_from_slice(&crc(&mac).to_be_bytes());
+        }
+        let mut png = vec![0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A];
+        chunk(&mut png, b"IHDR", &[0, 0, 0, 1, 0, 0, 0, 1, 8, 0, 0, 0, 0]);
+        chunk(
+            &mut png,
+            b"IDAT",
+            &[
+                0x78, 0x01, 0x01, 0x02, 0x00, 0xFD, 0xFF, 0x00, 0xFF, 0x01, 0x01, 0x01, 0x00,
+            ],
+        );
+        chunk(&mut png, b"IEND", &[]);
+        png
     }
     #[test]
     fn probe_returns_struct_with_nonempty_detail() {

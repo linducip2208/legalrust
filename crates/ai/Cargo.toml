@@ -12,6 +12,10 @@ legalrust-application = { path = "../application" }
 validator = { version = "0.20", features = ["derive"] }
 async-trait = "0.1"
 anyhow = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls-native-roots",
+] }
 bytes = "1"
 http = "1"
 http-body-util = "0.1"

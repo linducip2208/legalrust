@@ -38,16 +38,29 @@ curl -X POST http://localhost:3000/api/v1/invoices/4/payments `
   Tidak ada pembayaran yang tercatat saat guard menolak — aman untuk dicoba
   ulang dengan nominal yang benar.
 
-## 3. Gateway pembayaran — BLOCKED (`501`)
+## 3. Gateway pembayaran Tripay — LIVE bila kredensial dikonfigurasi
+
+Tanpa hardcode: semua kredensial via env (`TRIPAY_API_KEY`,
+`TRIPAY_PRIVATE_KEY`, `TRIPAY_MERCHANT_CODE`, `TRIPAY_MODE=sandbox|production`,
+opsional `TRIPAY_BASE_URL`, `TRIPAY_CALLBACK_URL`, `TRIPAY_RETURN_URL`).
+Tanpa env → 501 `tripay not configured`. Mulai dari **sandbox**.
 
 ```powershell
-curl -X POST http://localhost:3000/api/v1/invoices/4/pay-gateway -H "Authorization: Bearer TOKEN"
-# → 501 EXTERNAL_BLOCKED: "billing gateway not configured"
+# 1. Buat checkout (channel: QRIS, BRIVA, MANDIRI, dsb; expired 1..168 jam)
+curl -X POST http://localhost:3000/api/v1/invoices/4/pay-gateway `
+  -H "Authorization: Bearer TOKEN" -H 'Content-Type: application/json' `
+  -d '{"channel":"QRIS","customer_name":"Budi Santoso","expired_hours":24}'
+# → {"reference":"Txxx","merchant_ref":"LRINV4-...","checkout_url":"https://...","amount":...}
+# Invoice lunas → 409 "invoice already settled".
+
+# 2. Daftarkan callback di panel Tripay:
+#    https://<host-anda>/api/v1/webhooks/incoming/tripay
+#    Payload PAID terverifikasi (HMAC) otomatis mencatat pembayaran
+#    (method "tripay:{reference}", idempoten, guard overpay tetap berlaku).
 ```
 
-- `POST /api/v1/invoices/{id}/pay-gateway` — **selalu 501** sampai billing
-  gateway dikonfigurasi. Pembayaran online belum tersedia; gunakan pembayaran
-  manual di atas.
+- `POST /api/v1/webhooks/incoming/tripay` — tanpa auth header (verifikasi
+  `X-Callback-Signature`); status selain PAID diterima tanpa pembukuan.
 
 ## 4. Trust ledger (rekening titipan klien)
 

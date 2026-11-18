@@ -1,8 +1,18 @@
 # 04 — Panduan OCR (OCR Guide)
 
-Alur OCR: cek tipe didukung → buat job → (pemrosesan engine) → review manusia.
-**Engine OCR belum terkonfigurasi** — panduan ini menandai dengan jelas mana
-yang berfungsi dan mana yang mengembalikan `501`.
+Alur OCR: cek tipe didukung → buat job → **proses via engine native**
+→ review manusia. Engine **live bila tesseract terinstall di host**,
+501 bila tidak (tidak ada fabrikasi hasil).
+
+## 0. Prasyarat engine (per host!)
+
+- Windows dev: `winget install UB-Mannheim.TesseractOCR` + `ind.traineddata`
+  (tessdata_fast) + `configs`/`tessconfigs` ke `%LOCALAPPDATA%\tessdata`;
+  tambah `C:\Program Files\Tesseract-OCR` ke PATH (user) dan
+  `TESSDATA_PREFIX=%LOCALAPPDATA%\tessdata`.
+- Prod (image Debian): paket `tesseract-ocr tesseract-ocr-ind tesseract-ocr-eng`
+  sudah termasuk di `deploy/Dockerfile.server`.
+- Verifikasi: `tesseract --list-langs` harus memuat `eng`, `ind`, `osd`.
 
 ## 1. Tipe dokumen yang didukung
 
@@ -43,16 +53,20 @@ curl -X POST http://localhost:3000/api/v1/ocr/jobs/7/review `
   kelas confidence `low (<0,7)` / `med (<0,9)` / `high`, dan zero-state
   "hubungkan database untuk data live" bila belum ada kandidat.
 
-## 4. Pemrosesan engine — BLOCKED (`501`)
+## 4. Pemrosesan engine — LIVE bila tesseract terinstall
 
 ```powershell
+# Dokumen WAJIB punya konten gambar (PUT /content dulu; tanpa konten → 422).
+# Hanya gambar (png/jpg/webp/bmp/tif); PDF → 422. Tanpa engine di host → 501.
 curl -X POST http://localhost:3000/api/v1/ocr/jobs/7/process -H "Authorization: Bearer TOKEN"
-# → 501 EXTERNAL_BLOCKED: "ocr engine unavailable (job 7, type ktp, ~12345 bytes not processed);
-#    native libtesseract missing, cloud fallback unconfigured"
-#    Job tetap berstatus queued; tidak ada yang diproses.
+# → {"status":"processed","lines":N,"fields":[{"name":"page1_line1","value":"...","confidence":0.95,"page":1}]}
+#    Job berstatus processed; fields tersimpan dan terlihat di GET job.
+#    Confidence = rata-rata kata per baris (TSV tesseract); re-process menimpa
+#    fields lama (idempoten).
 ```
 
-- `POST /api/v1/ocr/jobs/{id}/process` — **selalu 501** sampai engine OCR
-  eksternal (native libtesseract / cloud fallback) dikonfigurasi dan
-  diverifikasi live. Jangan menjanjikan hasil OCR otomatis kepada pengguna
-  akhir sebelum itu.
+- `POST /api/v1/ocr/jobs/{id}/process` — butuh izin Create. Urutan cek:
+  konten dulu (422 bila kosong), mime gambar (422 bila bukan gambar),
+  lalu engine (501 bila tesseract tidak ditemukan di host).
+- Review (`approve`/`reject`, izin Verify) tetap wajib oleh manusia setelah
+  proses — engine tidak pernah auto-approve.

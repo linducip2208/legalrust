@@ -321,6 +321,16 @@ pub trait OpsStore: Send + Sync {
         id: i64,
     ) -> Result<(OcrJobRow, Vec<OcrFieldRow>), StoreError>;
     async fn ocr_set_status(&self, org: &str, id: i64, status: &str) -> Result<(), StoreError>;
+    /// Store engine-extracted fields and set the final job status atomically
+    /// (single lock / single DB transaction — no half-written results).
+    /// Re-processing a job replaces its previous fields (idempotent).
+    async fn ocr_store_result(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+        fields: &[OcrFieldRow],
+    ) -> Result<(), StoreError>;
     async fn ocr_review(
         &self,
         org: &str,
@@ -375,6 +385,9 @@ pub trait OpsStore: Send + Sync {
         amount: i64,
         method: &str,
     ) -> Result<PaymentRow, StoreError>;
+    /// Owner organization of an invoice (for unauthenticated callbacks that
+    /// only carry the invoice id). Returns `Ok(None)` when unknown.
+    async fn inv_owner_org(&self, inv: i64) -> Result<Option<String>, StoreError>;
     async fn notify(
         &self,
         org: &str,

@@ -16,7 +16,7 @@ saat melapor.
 | 422 | `VALIDATION` | `Validation(...)` | Input gagal validasi: password < 8, `name`/`body` template, `sha256`/`size mismatch`, `mime`, `doc_type`, `decision` kosong, `messages` kosong, `q` kosong, `binary parsing not supported`, `not utf8`, `no content`, `to`, `role`, dsb. |
 | 423 | `LOCKED` | `Locked(...)` | Terkunci (dipetakan, jarang ditemui dari endpoint saat ini). |
 | 429 | `RATE_LIMITED` | `RateLimited` | Rate limiter auth (`register`/`login`, guard per email). Tunggu jendela waktu lalu coba lagi. |
-| 501 | `EXTERNAL_BLOCKED` | `BlockedExternal(...)` | **Bukan bug** — dependensi eksternal belum live. Pesan selalu menyebut buktinya: `database unreachable` (`GET /readyz`), `ocr engine unavailable...` (`POST /api/v1/ocr/jobs/{id}/process`), `PSrE provider not configured` (`POST /api/v1/deeds/{id}/esign`), `billing gateway not configured` (`POST /api/v1/invoices/{id}/pay-gateway`), `no AI provider configured...` (`POST /api/v1/ai/chat`). |
+| 501 | `EXTERNAL_BLOCKED` | `BlockedExternal(...)` | **Bukan bug** — dependensi eksternal belum live. Pesan selalu menyebut buktinya: `database unreachable` (`GET /readyz`), `tesseract ...` (`POST /api/v1/ocr/jobs/{id}/process` tanpa engine di host), `PSrE provider not configured` (`POST /api/v1/deeds/{id}/esign`), `tripay not configured` (`POST /api/v1/invoices/{id}/pay-gateway` tanpa env Tripay), `no AI provider ... at <base>` (`POST /api/v1/ai/chat` bila endpoint tidak menjawab). |
 | 500 | `INTERNAL` | `Internal(...)` | Error server tak terduga — sertakan `x-request-id` saat melapor. |
 
 ## 2. Cara melapor yang baik
@@ -39,3 +39,14 @@ Sertakan: (1) `x-request-id`, (2) method + path persis, (3) `code` + message,
 - **Share link 404 `"share"`** → token salah atau sudah dicabut (`DELETE /api/v1/shares/{id}`).
 - **Upload 422 `sha256 mismatch`** → hitung ulang SHA-256 dari file yang persis diunggah (bukan hasil edit) dan samakan `size`.
 - **SSE sepi** → `GET /api/v1/events` selalu mengirim `hello` pertama; jika tidak ada `hello`, masalahnya di koneksi, bukan di data.
+- **OCR 501 `tesseract ...`** → install tesseract + traineddata di host itu
+  (lihat 04-OCR-GUIDE §0); prod image sudah termasuk paketnya.
+- **AI 501 `no AI provider ... at <base>`** → jalankan `ollama serve` +
+  `ollama pull qwen2.5:1.5b`, atau isi `AI_BASE_URL/AI_MODEL` ke provider
+  HTTPS (lihat 07-AI-RAG-GUIDE §2).
+- **Tripay 501 `tripay not configured`** → isi `TRIPAY_API_KEY`,
+  `TRIPAY_PRIVATE_KEY`, `TRIPAY_MERCHANT_CODE` (sandbox dulu), dan daftarkan
+  callback URL di panel Tripay (lihat 06-FINANCE-GUIDE §3).
+- **CORS ditolak browser** → API kini same-origin-only secara default; isi
+  `CORS_ORIGINS` (daftar origin dipisah koma) bila klien browser eksternal
+  dibutuhkan.

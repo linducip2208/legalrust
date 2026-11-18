@@ -858,7 +858,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }, 15000);
   /* ---- command palette: Ctrl+K / Cmd+K focuses global search ---- */
   document.addEventListener('keydown', function (ev) {
-    if (!(ev.ctrlKey || ev.metaKey) || (ev.key !== 'k' && ev.key !== 'K')) return;
+    if (!(ev.ctrlKey || ev.metaKey) || (ev.key !== 'k' && ev.key !== 'K')) {
+      if (ev.key === 'Escape') {
+        var qr = document.getElementById('qres');
+        if (qr) qr.textContent = '';
+        var bl = document.getElementById('bell-list');
+        if (bl) bl.classList.remove('show');
+      }
+      return;
+    }
     var q = document.getElementById('q');
     if (!q) return;
     ev.preventDefault();

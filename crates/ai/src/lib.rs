@@ -506,6 +506,146 @@ impl AiProvider for ChatClient {
     }
 }
 
+// ---------------------------------------------------------------------------
+// TLS-capable chat completion (reqwest + rustls, OS cert store).
+//
+// Works for `https://` providers AND local `http://` gateways (Ollama).
+// Endpoint, key, and model come from the environment — nothing hardcoded:
+// - `AI_BASE_URL` (default `http://127.0.0.1:11434/v1`, Ollama-compatible)
+// - `AI_API_KEY` (default empty: Bearer header omitted for keyless gateways)
+// - `AI_MODEL` (default `qwen2.5:1.5b`)
+// - `AI_TIMEOUT_SECS` (default 120, clamped 5..=600)
+// Unreachable/refusing endpoints surface as [`AiError::Blocked`] so callers
+// return 501 instead of fake content. The key never appears in errors.
+// ---------------------------------------------------------------------------
+
+/// Env-driven endpoint for [`complete`].
+#[derive(Debug, Clone)]
+pub struct LiveEndpoint {
+    pub base_url: String,
+    pub api_key: String,
+    pub model: String,
+    pub timeout_secs: u64,
+}
+
+impl LiveEndpoint {
+    /// Read `AI_*` env vars with local-Ollama defaults. Never fails: a
+    /// missing/unreachable gateway surfaces at call time as `Blocked`.
+    pub fn resolve_from_env() -> Self {
+        let base_url = std::env::var("AI_BASE_URL")
+            .ok()
+            .map(|v| v.trim().trim_end_matches('/').to_owned())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| "http://127.0.0.1:11434/v1".into());
+        let api_key = std::env::var("AI_API_KEY").unwrap_or_default();
+        let model = std::env::var("AI_MODEL")
+            .ok()
+            .map(|v| v.trim().to_owned())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| "qwen2.5:1.5b".into());
+        let timeout_secs = std::env::var("AI_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(120)
+            .clamp(5, 600);
+        Self {
+            base_url,
+            api_key,
+            model,
+            timeout_secs,
+        }
+    }
+
+    /// HTTPS-capable client (rustls, OS cert store).
+    pub fn http_client(&self) -> Result<reqwest::Client, AiError> {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(self.timeout_secs))
+            .build()
+            .map_err(|e| AiError::Blocked(format!("ai client build: {e}")))
+    }
+}
+
+/// Assistant completion with token accounting.
+#[derive(Debug, Clone)]
+pub struct LiveCompletion {
+    pub content: String,
+    pub model: String,
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+}
+
+/// Call an OpenAI-compatible `/chat/completions` endpoint.
+pub async fn complete(
+    client: &reqwest::Client,
+    ep: &LiveEndpoint,
+    system: Option<&str>,
+    messages: &[ChatMessage],
+) -> Result<LiveCompletion, AiError> {
+    if ep.model.trim().is_empty() {
+        return Err(AiError::Blocked("ai model is empty".into()));
+    }
+    let mut wire: Vec<serde_json::Value> = Vec::with_capacity(messages.len() + 1);
+    if let Some(s) = system.filter(|s| !s.trim().is_empty()) {
+        wire.push(serde_json::json!({"role": "system", "content": s}));
+    }
+    for m in messages {
+        wire.push(serde_json::json!({"role": m.role, "content": m.content}));
+    }
+    if wire.is_empty() {
+        return Err(AiError::Blocked("ai messages must not be empty".into()));
+    }
+    let url = format!("{}/chat/completions", ep.base_url.trim_end_matches('/'));
+    let mut req = client.post(&url).json(&serde_json::json!({
+        "model": ep.model,
+        "messages": wire,
+        "stream": false,
+    }));
+    if !ep.api_key.trim().is_empty() {
+        req = req.bearer_auth(ep.api_key.trim());
+    }
+    let resp = req.send().await.map_err(|e| {
+        if e.is_timeout() || e.is_connect() {
+            AiError::Blocked(format!(
+                "ai endpoint unreachable: {}",
+                redact_pii(&e.to_string())
+            ))
+        } else {
+            AiError::Blocked(format!(
+                "ai transport error: {}",
+                redact_pii(&e.to_string())
+            ))
+        }
+    })?;
+    let status = resp.status();
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| AiError::Transport(redact_pii(&truncate(&e.to_string(), 500))))?;
+    if !status.is_success() {
+        let short = redact_pii(&truncate(&text, 500));
+        return Err(AiError::Blocked(format!("ai rejected ({status}): {short}")));
+    }
+    let v: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| AiError::Transport(redact_pii(&truncate(&e.to_string(), 500))))?;
+    let content = parse_completion(&text)?;
+    let usage = v.get("usage");
+    let input_tokens = usage
+        .and_then(|u| u.get("prompt_tokens").and_then(serde_json::Value::as_i64))
+        .unwrap_or_else(|| estimate_tokens("", messages).input as i64);
+    let output_tokens = usage
+        .and_then(|u| {
+            u.get("completion_tokens")
+                .and_then(serde_json::Value::as_i64)
+        })
+        .unwrap_or_else(|| ((content.chars().count() as i64 + 3) / 4).max(1));
+    Ok(LiveCompletion {
+        content,
+        model: ep.model.clone(),
+        input_tokens,
+        output_tokens,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -850,6 +990,51 @@ mod client_tests {
         let err = client.chat(&msgs()).await.expect_err("500s must fail");
         let dbg = format!("{err:?} {err}");
         assert!(!dbg.contains(sentinel), "key leaked: {dbg}");
+    }
+
+    #[tokio::test]
+    async fn live_complete_ok_against_stub() {
+        let (addr, _seen) = spawn_stub(vec![ok_plan()]).await;
+        let ep = LiveEndpoint {
+            base_url: format!("http://{addr}"),
+            api_key: "stub-key".into(),
+            model: "stub-model".into(),
+            timeout_secs: 5,
+        };
+        let client = ep.http_client().expect("client");
+        let out = complete(&client, &ep, Some("sys"), &msgs())
+            .await
+            .expect("stub ok");
+        assert_eq!(out.content, "hello from stub");
+        assert_eq!(out.model, "stub-model");
+        assert!(out.output_tokens > 0);
+    }
+
+    #[tokio::test]
+    async fn live_complete_unreachable_is_blocked() {
+        let ep = LiveEndpoint {
+            base_url: "http://127.0.0.1:1".into(),
+            api_key: String::new(),
+            model: "m".into(),
+            timeout_secs: 5,
+        };
+        let client = ep.http_client().expect("client");
+        let err = complete(&client, &ep, None, &msgs())
+            .await
+            .expect_err("refused port must block");
+        assert!(matches!(err, AiError::Blocked(_)));
+    }
+
+    #[test]
+    fn live_endpoint_local_defaults() {
+        for v in ["AI_BASE_URL", "AI_API_KEY", "AI_MODEL", "AI_TIMEOUT_SECS"] {
+            // SAFETY: no other test reads these fixed names.
+            unsafe { std::env::remove_var(v) };
+        }
+        let ep = LiveEndpoint::resolve_from_env();
+        assert_eq!(ep.base_url, "http://127.0.0.1:11434/v1");
+        assert_eq!(ep.model, "qwen2.5:1.5b");
+        assert_eq!(ep.timeout_secs, 120);
     }
 
     #[test]

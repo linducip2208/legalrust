@@ -1,9 +1,9 @@
 # 07 — Panduan AI & RAG (AI/RAG Guide)
 
 Fitur AI terbagi dua: **RAG lokal (berfungsi)** untuk pencarian dokumen
-`text/*`, dan **chat AI (terblokir `501`)** karena belum ada provider yang
-dikonfigurasi. Penggunaan token tetap dicatat secara jujur meski chat
-terblokir.
+`text/*`, dan **chat AI (live via endpoint OpenAI-compatible)** — lokal
+(Ollama) atau HTTPS provider. Tanpa endpoint yang menjawab → 501 jujur,
+tidak ada konten yang difabrikasi. Penggunaan token tetap dicatat.
 
 ## 1. RAG index & search (berfungsi, lokal)
 
@@ -24,14 +24,25 @@ curl "http://localhost:3000/api/v1/rag/search?q=hak+milik&limit=5" -H "Authoriza
 - RAG berjalan lokal tanpa provider eksternal; tidak ada klaim embedding
   cloud di sini.
 
-## 2. Chat AI — BLOCKED (`501`), tetapi usage TETAP dicatat
+## 2. Chat AI — LIVE via endpoint (Ollama lokal default)
+
+Env (tanpa hardcode): `AI_BASE_URL` (default `http://127.0.0.1:11434/v1`),
+`AI_API_KEY` (default kosong — cocok untuk Ollama tanpa key),
+`AI_MODEL` (default `qwen2.5:1.5b`), `AI_TIMEOUT_SECS` (default 120).
+Provider HTTPS (OpenAI dkk.) bisa dipakai dengan mengisi ketiga env pertama.
 
 ```powershell
+# Jalankan Ollama lokal sekali saja:
+ollama serve
+ollama pull qwen2.5:1.5b
+
 curl -X POST http://localhost:3000/api/v1/ai/chat `
   -H "Authorization: Bearer TOKEN" -H 'Content-Type: application/json' `
   -d '{"messages":[{"role":"user","content":"Ringkas kontrak ini"}]}'
-# → 501 EXTERNAL_BLOCKED: "no AI provider configured; estimated input tokens: N
-#    (logged, zero output)"
+# → {"reply":"...","model":"qwen2.5:1.5b","input_tokens":N,"output_tokens":M}
+#    Jawaban asisten + pemakaian output ikut tersimpan (conversation tetap
+#    teraudit). Bila endpoint tidak menjawab → 501 EXTERNAL_BLOCKED dengan
+#    pesan lokasi endpoint (input tetap tercatat seperti sebelumnya).
 ```
 
 Perilaku jujur yang perlu dipahami pengguna:
@@ -61,5 +72,5 @@ curl http://localhost:3000/api/v1/ai/usage -H "Authorization: Bearer TOKEN"
 | Fitur | Status | Bukti |
 |---|---|---|
 | RAG index/search dokumen teks | Berfungsi | `rag_index`, `rag_search` nyata di router |
-| Chat AI generatif | BLOCKED 501 | `ai_chat` selalu `BlockedExternal` tanpa provider |
-| Pencatatan usage | Berfungsi | `ai_usage` + `usage_add` tercatat walau chat 501 |
+| Chat AI generatif | Live bila endpoint menjawab (default Ollama lokal) | `ai_chat` → `legalrust_ai::complete`; 501 hanya bila endpoint tidak menjawab |
+| Pencatatan usage | Berfungsi | `ai_usage` + `usage_add` input dan output |

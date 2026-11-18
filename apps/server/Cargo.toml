@@ -33,6 +33,8 @@ legalrust-domain = { path = "../../crates/domain" }
 legalrust-authorization = { path = "../../crates/authorization" }
 legalrust-workflow = { path = "../../crates/workflow" }
 legalrust-rag = { path = "../../crates/rag" }
+legalrust-ocr = { path = "../../crates/ocr" }
+legalrust-ai = { path = "../../crates/ai" }
 legalrust-integrations = { path = "../../crates/integrations" }
 legalrust-reporting = { path = "../../crates/reporting" }
 legalrust-document = { path = "../../crates/document" }
@@ -42,4 +44,7 @@ legalrust-audit = { path = "../../crates/audit" }
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 uuid = { version = "1", features = ["v4"] }
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
 
