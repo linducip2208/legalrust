@@ -47,7 +47,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - deeds.csv ?compare=1 summary (delta math + guards) + tombol Bandingkan.
 - Task due API + kolom Tenggat + setter per baris + kalender bertitik + upcoming.
 - F-D20-024 PLANNED->PARTIAL (67.2); F-D03-010 NOT_STARTED->PARTIAL (64.8).
-- Workspace 335/0; registry 19.9 (75 IMPLEMENTED); 8-cat mean 20.4 (59 v).
+- Workspace 335/0; registry 19.9 (75 IMPLEMENTED); 8-cat mean 20.4 (60 v).
 
 ## Done wave 40: delegasi approval pengganti (main)
 - Migration 0023; decide honors active delegation + audit; guard/UI tests.
