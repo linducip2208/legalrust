@@ -4195,6 +4195,63 @@ async fn ui5_role_assign_invalid_422() {
 }
 
 #[tokio::test]
+async fn token_expiry_set_and_validated() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "tokexp@x.id").await;
+    // Explicit 30-day expiry lands ~30 days out.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/tokens",
+            r#"{"name":"ci30","expires_in_days":30}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let exp = body_json(res).await["expires_at"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(exp.len() >= 10);
+    // Out-of-range windows rejected; default is 90 days.
+    for bad in [0, -5, 400] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/auth/tokens",
+                &format!(r#"{{"name":"bad{bad}","expires_in_days":{bad}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/tokens",
+            r#"{"name":"nodefault"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["expires_at"].as_str().is_some());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/tokens", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["name"] == "ci30" && t["expires_at"].as_str() == Some(exp.as_str())));
+}
+
+#[tokio::test]
 async fn session_console_lists_and_revokes_others() {
     use tower::ServiceExt;
     let a = app();
@@ -4450,6 +4507,7 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
         "tok-name",
         "tok-btn",
         "tok-list",
+        "tok-days",
         "role-matrix",
         "sess-list",
         "sess-reload",

@@ -13,7 +13,7 @@ struct Inner {
     docs: HashMap<i64, DocRow>,
     versions: HashMap<i64, Vec<DocVersionRow>>,
     roles: HashMap<String, Vec<String>>,
-    tokens: HashMap<String, (String, String, String)>,
+    tokens: HashMap<String, (String, String, String, Option<chrono::NaiveDateTime>)>,
     seq: i64,
     org_seq: u64,
 }
@@ -150,41 +150,55 @@ impl UserStore for MemoryStores {
         user_id: &str,
         name: &str,
         hash: &str,
+        expires_at: Option<chrono::NaiveDateTime>,
     ) -> Result<String, StoreError> {
         let mut m = self.inner.lock().unwrap();
         if !m.users.contains_key(user_id) {
             return Err(StoreError::NotFound);
         }
         let id = uuid::Uuid::new_v4().to_string();
-        m.tokens
-            .insert(hash.into(), (id.clone(), user_id.into(), name.into()));
+        m.tokens.insert(
+            hash.into(),
+            (id.clone(), user_id.into(), name.into(), expires_at),
+        );
         Ok(id)
     }
-    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError> {
-        Ok(self
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<TokenRow>, StoreError> {
+        let mut v: Vec<TokenRow> = self
             .inner
             .lock()
             .unwrap()
             .tokens
             .iter()
-            .filter(|(_, (_, u, _))| u == user_id)
-            .map(|(_, (id, _, n))| (id.clone(), n.clone()))
-            .collect())
+            .filter(|(_, (_, u, _, _))| u == user_id)
+            .map(|(_, (id, _, n, exp))| TokenRow {
+                id: id.clone(),
+                name: n.clone(),
+                expires_at: exp.map(|e| e.format("%Y-%m-%d %H:%M:%S").to_string()),
+            })
+            .collect();
+        v.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(v)
     }
     async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
         let k = m
             .tokens
             .iter()
-            .find(|(_, (i, u, _))| i == id && u == user_id)
+            .find(|(_, (i, u, _, _))| i == id && u == user_id)
             .map(|(k, _)| k.clone())
             .ok_or(StoreError::NotFound)?;
         m.tokens.remove(&k);
         Ok(())
     }
     async fn token_owner(&self, hash: &str) -> Result<Option<(String, String)>, StoreError> {
+        let now = chrono::Utc::now().naive_utc();
         let m = self.inner.lock().unwrap();
-        let hit = m.tokens.get(hash).map(|(_, u, _)| u.clone());
+        let hit = m
+            .tokens
+            .get(hash)
+            .filter(|(_, _, _, exp)| exp.is_none_or(|e| e > now))
+            .map(|(_, u, _, _)| u.clone());
         Ok(hit.and_then(|u| m.users.get(&u).map(|x| (u.clone(), x.org_id.clone()))))
     }
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError> {
@@ -627,5 +641,38 @@ mod deadlines_tests {
             assert!(matches!(err, StoreError::NotFound));
         }
         assert_eq!(s.saved_search_list("org1", "u1").await.unwrap().len(), 1);
+    }
+}
+
+#[cfg(test)]
+mod token_tests {
+    use super::*;
+    use crate::store::UserStore;
+
+    #[tokio::test]
+    async fn expired_token_has_no_owner() {
+        let s = MemoryStores::default();
+        let (_org, uid) = s
+            .create_org_owner("Acme", "a@x.id", "A", "hash")
+            .await
+            .unwrap();
+        let past = chrono::Utc::now().naive_utc() - chrono::Duration::days(1);
+        s.create_token(&uid, "old", "h-expired", Some(past))
+            .await
+            .unwrap();
+        assert!(s.token_owner("h-expired").await.unwrap().is_none());
+        let future = chrono::Utc::now().naive_utc() + chrono::Duration::days(30);
+        s.create_token(&uid, "fresh", "h-fresh", Some(future))
+            .await
+            .unwrap();
+        let own = s.token_owner("h-fresh").await.unwrap().expect("owner");
+        assert_eq!(own.0, uid);
+        let listed = s.list_tokens(&uid).await.unwrap();
+        assert_eq!(listed.len(), 2);
+        assert!(listed
+            .iter()
+            .any(|t| t.name == "old" && t.expires_at.is_some()));
+        // Unknown user cannot mint.
+        assert!(s.create_token("nobody", "x", "h-x", None).await.is_err());
     }
 }

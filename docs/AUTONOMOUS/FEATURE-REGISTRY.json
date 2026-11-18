@@ -5924,11 +5924,15 @@
   "id": "F-D16-013",
   "domain": "D16",
   "title": "API service-account management",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:3487-3488 token routes; :1382 token_create (revocable)",
-   "migrations/0001_foundation.sql: api_tokens"
-  ]
+   "crates/database/src/store.rs + memory.rs + mysql.rs: create_token expiry + token_owner enforcement",
+   "apps/server/src/lib.rs: expires_in_days 1..365 (default 90) + expiry column in UI",
+   "apps/server/tests/api.rs: token_expiry_set_and_validated (30d/out-of-range/default)",
+   "crates/database/src/memory.rs: expired_token_has_no_owner unit test",
+   "apps/server/static/site.js: tok-days input + expiry display + needles"
+  ],
+  "audit_note": "Wave 36: API token lifecycle (expiry enforced) live."
  },
  {
   "id": "F-D16-014",

@@ -245,21 +245,25 @@ impl UserStore for MysqlStores {
         user_id: &str,
         name: &str,
         hash: &str,
+        expires_at: Option<chrono::NaiveDateTime>,
     ) -> Result<String, StoreError> {
         let id = uuid::Uuid::new_v4().to_string();
-        sqlx::query("INSERT INTO api_tokens (id, user_id, name, token_hash) VALUES (?,?,?,?)")
-            .bind(&id)
-            .bind(user_id)
-            .bind(name)
-            .bind(hash)
-            .execute(&self.pool)
-            .await
-            .map_err(db_err)?;
+        sqlx::query(
+            "INSERT INTO api_tokens (id, user_id, name, token_hash, expires_at) VALUES (?,?,?,?,?)",
+        )
+        .bind(&id)
+        .bind(user_id)
+        .bind(name)
+        .bind(hash)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
         Ok(id)
     }
-    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError> {
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<TokenRow>, StoreError> {
         let rows = sqlx::query(
-            "SELECT id, name FROM api_tokens WHERE user_id=? AND revoked=0 ORDER BY created_at DESC",
+            "SELECT id, name, DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%S') AS exp_s FROM api_tokens WHERE user_id=? AND revoked=0 ORDER BY created_at DESC",
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -267,7 +271,11 @@ impl UserStore for MysqlStores {
         .map_err(db_err)?;
         Ok(rows
             .into_iter()
-            .map(|x| (x.get::<String, _>("id"), x.get::<String, _>("name")))
+            .map(|x| TokenRow {
+                id: x.get::<String, _>("id"),
+                name: x.get::<String, _>("name"),
+                expires_at: x.get::<Option<String>, _>("exp_s"),
+            })
             .collect())
     }
     async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError> {

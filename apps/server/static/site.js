@@ -469,8 +469,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await j('/api/v1/auth/tokens');
     if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
     box.innerHTML = v.map(function (x) {
-      return '<tr><td>' + esc(x.id) + '</td><td>' + esc(x.name) + '</td><td><button class="btn btn-sm btn-outline-danger trev" data-id="' + esc(x.id) + '">Cabut</button></td></tr>';
-    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada token.</td></tr>';
+      return '<tr><td>' + esc(x.id) + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.expires_at || '-') + '</td><td><button class="btn btn-sm btn-outline-danger trev" data-id="' + esc(x.id) + '">Cabut</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada token.</td></tr>';
     qsa('.trev', function (b) {
       b.addEventListener('click', async function () {
         var r = await fetch('/api/v1/auth/tokens/' + encodeURIComponent(b.dataset.id), { method: 'DELETE', headers: H });
@@ -504,12 +504,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('tok-btn', 'click', async function () {
     var nm = pval('tok-name');
     if (nm.length < 2) { pmsg('tok-msg', 'Nama minimal 2 huruf.'); return; }
-    var r = await ppost('/api/v1/auth/tokens', { name: nm });
-    if (!r.ok) { pmsg('tok-msg', 'Gagal (' + r.status + ').'); return; }
+    var dd = parseInt(pval('tok-days'), 10);
+    var body = { name: nm };
+    if (!isNaN(dd)) body.expires_in_days = dd;
+    var r = await ppost('/api/v1/auth/tokens', body);
+    if (!r.ok) { pmsg('tok-msg', 'Gagal (' + r.status + '). Masa 1–365 hari.'); return; }
     var v = await r.json();
     pmsg('tok-msg', '');
     var pl = document.getElementById('tok-plain');
-    if (pl) { pl.textContent = 'Token (sekali tampil): ' + v.token; pl.classList.remove('hidden'); }
+    if (pl) { pl.textContent = 'Token (sekali tampil): ' + v.token + ' — kedaluwarsa ' + (v.expires_at || '-'); pl.classList.remove('hidden'); }
     var ni = document.getElementById('tok-name'); if (ni) ni.value = '';
     loadTokens();
   });

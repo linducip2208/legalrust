@@ -24,6 +24,12 @@ pub struct SessionRow {
     pub revoked: bool,
 }
 #[derive(Debug, Clone)]
+pub struct TokenRow {
+    pub id: String,
+    pub name: String,
+    pub expires_at: Option<String>,
+}
+#[derive(Debug, Clone)]
 pub struct DocRow {
     pub id: i64,
     pub org_id: String,
@@ -134,8 +140,9 @@ pub trait UserStore: Send + Sync {
         user_id: &str,
         name: &str,
         hash: &str,
+        expires_at: Option<chrono::NaiveDateTime>,
     ) -> Result<String, StoreError>;
-    async fn list_tokens(&self, user_id: &str) -> Result<Vec<(String, String)>, StoreError>;
+    async fn list_tokens(&self, user_id: &str) -> Result<Vec<TokenRow>, StoreError>;
     async fn revoke_token(&self, user_id: &str, id: &str) -> Result<(), StoreError>;
     async fn token_owner(&self, hash: &str) -> Result<Option<(String, String)>, StoreError>;
 }
