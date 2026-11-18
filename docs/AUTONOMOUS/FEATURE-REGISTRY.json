@@ -2827,10 +2827,16 @@
   "id": "F-D08-013",
   "domain": "D08",
   "title": "Outbound webhook actions",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
+   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
+   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
+   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
+   "apps/server/static/site.js: whRefresh()",
+   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
+  ],
+  "audit_note": "Inbound delivery log live (accepted/rejected/blocked per receipt, tenant-scoped list, /app panel). Outbound dispatch + retries remain NOT_STARTED."
  },
  {
   "id": "F-D08-014",
@@ -9207,10 +9213,16 @@
   "id": "F-D25-017",
   "domain": "D25",
   "title": "Webhook delivery monitor",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
+   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
+   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
+   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
+   "apps/server/static/site.js: whRefresh()",
+   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
+  ],
+  "audit_note": "Delivery monitor = tenant-scoped list + /app panel + signed-callback attribution; no alerting on failures yet."
  },
  {
   "id": "F-D25-018",

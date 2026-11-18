@@ -4966,19 +4966,19 @@
  {
   "feature_id": "F-D08-013",
   "domain": "D08",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 78,
+   "database": 85,
+   "frontend": 70,
+   "business_logic": 65,
+   "security": 80,
+   "testing": 85,
+   "integration": 70,
+   "documentation": 68
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 76.0,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D08-014",
@@ -16594,19 +16594,19 @@
  {
   "feature_id": "F-D25-017",
   "domain": "D25",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 78,
+   "database": 85,
+   "frontend": 70,
+   "business_logic": 65,
+   "security": 80,
+   "testing": 85,
+   "integration": 70,
+   "documentation": 68
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 76.0,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D25-018",

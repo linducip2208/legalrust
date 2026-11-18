@@ -719,6 +719,52 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn webhook_log(
+        &self,
+        org: Option<&str>,
+        provider: &str,
+        event: &str,
+        status: &str,
+        detail: &str,
+    ) -> Result<i64, StoreError> {
+        let detail: String = detail.chars().take(255).collect();
+        let r = sqlx::query(
+            "INSERT INTO webhook_deliveries (org_id, provider, event, status, detail) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(provider)
+        .bind(event)
+        .bind(status)
+        .bind(detail)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn webhook_list(
+        &self,
+        org: &str,
+        provider: Option<&str>,
+    ) -> Result<Vec<WebhookDeliveryRow>, StoreError> {
+        let rows = if let Some(p) = provider {
+            sqlx::query("SELECT id, org_id, provider, event, status, detail FROM webhook_deliveries WHERE org_id=? AND provider=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(p).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, provider, event, status, detail FROM webhook_deliveries WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| WebhookDeliveryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.try_get::<Option<String>, _>("org_id").ok().flatten(),
+                provider: x.get::<String, _>("provider"),
+                event: x.get::<String, _>("event"),
+                status: x.get::<String, _>("status"),
+                detail: x.get::<String, _>("detail"),
+            })
+            .collect())
+    }
     async fn pay_add(
         &self,
         org: &str,

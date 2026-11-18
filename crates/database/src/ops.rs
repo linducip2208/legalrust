@@ -116,6 +116,15 @@ pub struct RagHit {
     pub text: String,
 }
 #[derive(Debug, Clone)]
+pub struct WebhookDeliveryRow {
+    pub id: i64,
+    pub org: Option<String>,
+    pub provider: String,
+    pub event: String,
+    pub status: String,
+    pub detail: String,
+}
+#[derive(Debug, Clone)]
 pub struct NotifRow {
     pub id: i64,
     pub kind: String,
@@ -467,6 +476,22 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<ApprovalStepRow, StoreError>;
     /// Revoke a non-terminal request (`pending`/`needs_rework` only).
     async fn appr_revoke(&self, org: &str, id: i64, user: &str) -> Result<(), StoreError>;
+    /// Record an inbound webhook receipt (observability; never fails the
+    /// webhook itself — callers ignore the result).
+    async fn webhook_log(
+        &self,
+        org: Option<&str>,
+        provider: &str,
+        event: &str,
+        status: &str,
+        detail: &str,
+    ) -> Result<i64, StoreError>;
+    /// Tenant-scoped delivery log, newest first (cap 200).
+    async fn webhook_list(
+        &self,
+        org: &str,
+        provider: Option<&str>,
+    ) -> Result<Vec<WebhookDeliveryRow>, StoreError>;
     async fn notify(
         &self,
         org: &str,

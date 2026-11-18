@@ -126,7 +126,13 @@
 - Penyebab ganda: (1) backend :8080 mati (dimatikan saat bersih-bersih sesi) → proxy tanpa tujuan; (2) Laragon menimpa `auto.legalrust.test.conf` (ProxyPass manual hilang) → vhost jadi DocumentRoot repo = terlihat seperti file manager.
 - Perbaikan: `D:/laragon/etc/apache2/sites-enabled/00-legalrust-proxy.conf` (prefix `00-`, bukan `auto.*` agar tidak ditimpa; dimuat duluan sehingga menang untuk ServerName sama) + restart Apache (kill tree + start ulang dengan `-d` ServerRoot yang sama; `-k restart` gagal karena Apache jalan sebagai proses biasa, bukan service) + backend dijalankan ulang (`target-ui5/debug/legalrust-server.exe`, JWT 32+, DB Laragon `legalrust`).
 - Verifikasi: `legalrust.test/healthz` → backend JSON ok; `/`, `/login`, `/app` → 200.
-- Catatan operasional: backend berjalan sebagai proses latar (bukan service); bila mati, jalankan ulang perintah di atas lalu cek `:8080/healthz`. Jangan edit `auto.*` (ditimpa Laragon) — edit `00-legalrust-proxy.conf`.
+- Catatan operasional: backend berjalan sebagai proses latar (bukan service); bila mati, jalankan ulang perintah di atas lalu cek `:8080/healthz`. Jangan edit `auto.*` (ditimpa Laragon) 
+
+## 2026-11-18 — AUDIT-1000 wave 3: webhook delivery log (main)
+- Migration `0014_webhook_deliveries` (org nullable, provider/event/status); `OpsStore::webhook_log/list` (memory+MySQL); setiap receipt tercatat (accepted/rejected/blocked).
+- `GET /api/v1/webhooks/deliveries` (View-gated, tenant-scoped) + kartu /app di panel audit + JS `whRefresh()` + needle test.
+- Tes: workspace **292 passed, 0 failed**; fmt+clippy+node --check clean.
+- Registry: F-D08-013, F-D25-017 → PARTIAL; skor 16.9 → **17.0/100**; 8-cat mean 18.6 (16 verified). — edit `00-legalrust-proxy.conf`.
 
 ## 2026-11-18 — AUDIT-1000 wave 2: approvals UI + report center (main)
 - /app: panel `p-appr` (compose/list/detail/decide/revoke), tab Persetujuan + sidenav Alur Kerja rewired, TABS/TABLBL, `appr*` JS + job live counts + trust-CSV download; node --check + needle test hijau; HTML live-terverifikasi via curl (:8080 + legalrust.test 200).

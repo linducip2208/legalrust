@@ -931,6 +931,17 @@ async fn tripay_gateway_and_callback_against_stub() {
     assert_eq!(v["amount"].as_i64().unwrap(), 250000);
     let res = a
         .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries?provider=tripay", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["provider"] == "tripay" && r["status"] == "accepted"));
+    let res = a
+        .clone()
         .oneshot(get(&format!("/api/v1/invoices/{iid}"), &tok))
         .await
         .unwrap();
@@ -4086,6 +4097,84 @@ async fn approvals_rework_revoke_roundtrip() {
 }
 
 #[tokio::test]
+async fn webhook_deliveries_logged_and_listed() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "whlog@x.id").await;
+    let body = br#"{"event":"signed","deed":"D-1"}"#;
+    let sig = legalrust_integrations::sign_webhook(b"test-integration", body, "t9");
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/webhooks/incoming/psre")
+                .method("POST")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .header("x-signature", sig)
+                .header("x-ts", "t9")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Tenant-scoped list: the HMAC-shared-secret receipt has unknown org,
+    // so only shape is asserted here (attributed tripay rows are covered
+    // in tripay_gateway_and_callback_against_stub).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.is_array());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries?provider=tripay", &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await.as_array().unwrap().len(),
+        0,
+        "tripay filter must be empty here"
+    );
+    // Bad signature is rejected (401); delivery log keeps the rejection.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/webhooks/incoming/psre")
+                .method("POST")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .header("x-signature", "bad")
+                .header("x-ts", "t9")
+                .header("content-type", "application/json")
+                .body(Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approvals_validation_and_rbac() {
     use tower::ServiceExt;
     let a = app();
@@ -4264,6 +4353,9 @@ async fn uib_app_has_approvals_ui() {
         "trust-csv-acct",
         "trust-csv-btn",
         "trust-csv-msg",
+        "wh-list",
+        "wh-reload",
+        "wh-msg",
         "Persetujuan",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");

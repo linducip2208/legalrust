@@ -9,7 +9,7 @@
 | D05 | OCR & Doc Intel | 0 | 6 | 6 | 25 | 4 | 5 | 6 live, 9 no-evidence |
 | D06 | Deed Generation | 2 | 10 | 12 | 2 | 11 | 15 | 12 live, 26 no-evidence |
 | D07 | AI Legal Assistant | 1 | 1 | 2 | 28 | 4 | 6 | 2 live, 10 no-evidence |
-| D08 | Workflow Automation | 0 | 3 | 3 | 4 | 14 | 19 | 3 live, 33 no-evidence |
+| D08 | Workflow Automation | 0 | 4 | 4 | 4 | 14 | 18 | 4 live, 32 no-evidence |
 | D09 | Approval Mgmt | 9 | 0 | 9 | 1 | 17 | 13 | 9 live, 30 no-evidence |
 | D10 | Electronic Signature | 0 | 2 | 2 | 27 | 3 | 8 | 2 live, 11 no-evidence |
 | D11 | Compliance & Risk | 0 | 1 | 1 | 3 | 13 | 23 | 1 live, 36 no-evidence |
@@ -26,4 +26,4 @@
 | D22 | Security & Data Protection | 6 | 4 | 10 | 3 | 12 | 15 | 10 live, 27 no-evidence |
 | D23 | Search & Discovery | 0 | 9 | 9 | 8 | 7 | 16 | 9 live, 23 no-evidence |
 | D24 | Mobile & Field Ops | 0 | 0 | 0 | 2 | 22 | 16 | 0 live, 38 no-evidence |
-| D25 | Enterprise Administration | 1 | 4 | 5 | 3 | 12 | 20 | 5 live, 32 no-evidence |
+| D25 | Enterprise Administration | 1 | 5 | 6 | 3 | 12 | 19 | 6 live, 31 no-evidence |

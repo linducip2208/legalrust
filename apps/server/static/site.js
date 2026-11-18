@@ -803,6 +803,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
   on('keu-csv', 'click', function () { dlCsv('/api/v1/reports/matters-csv', 'matters.csv', 'keu-msg'); });
+  async function whRefresh() {
+    var box = document.getElementById('wh-list');
+    if (!box) return;
+    var v = await j('/api/v1/webhooks/deliveries');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.provider) + '</td><td>' + esc(x.event) + '</td><td>' + badge(x.status) + '</td><td>' + esc(x.detail) + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada webhook masuk.</td></tr>';
+  }
+  on('wh-reload', 'click', whRefresh);
+  qsa('.snav[data-tab="audit"]', function (a) {
+    a.addEventListener('click', function () { whRefresh(); });
+  });
   async function loadAudit() {
     var box = document.getElementById('audit-rows');
     if (!box) return;
@@ -960,4 +973,5 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   loadAudit();
   loadJobs();
   apprRefresh();
+  whRefresh();
 })();

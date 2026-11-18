@@ -3702,14 +3702,19 @@
  {
   "feature_id": "F-D08-013",
   "domain": "D08",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
+   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
+   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
+   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
+   "apps/server/static/site.js: whRefresh()",
+   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
   ],
-  "audit_note": "",
-  "overall_score": 0.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Inbound delivery log live (accepted/rejected/blocked per receipt, tenant-scoped list, /app panel). Outbound dispatch + retries remain NOT_STARTED.",
+  "overall_score": 76.0,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D08-014",
@@ -12120,14 +12125,19 @@
  {
   "feature_id": "F-D25-017",
   "domain": "D25",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "migrations/0014_webhook_deliveries.sql (org nullable, provider/event/status)",
+   "crates/database/src/ops.rs: webhook_log/list trait + WebhookDeliveryRow",
+   "apps/server/src/lib.rs: webhook_in logs every receipt; GET /api/v1/webhooks/deliveries (View-gated, tenant-scoped)",
+   "apps/server/src/lib.rs: /app audit panel webhook card (wh-list/wh-reload)",
+   "apps/server/static/site.js: whRefresh()",
+   "tests: webhook_deliveries_logged_and_listed + tripay attributed row + memory store tenant test + UI needles"
   ],
-  "audit_note": "",
-  "overall_score": 0.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Delivery monitor = tenant-scoped list + /app panel + signed-callback attribution; no alerting on failures yet.",
+  "overall_score": 76.0,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D25-018",

@@ -34,6 +34,7 @@ struct Inner {
     crm_links: HashSet<(i64, i64)>,
     apprs: HashMap<i64, ApprovalReqRow>,
     appr_steps: HashMap<i64, ApprovalStepRow>,
+    webhooks: Vec<WebhookDeliveryRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -745,6 +746,44 @@ impl OpsStore for MemoryOps {
         }
         r.status = "revoked".into();
         Ok(())
+    }
+    async fn webhook_log(
+        &self,
+        org: Option<&str>,
+        provider: &str,
+        event: &str,
+        status: &str,
+        detail: &str,
+    ) -> Result<i64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.webhooks.push(WebhookDeliveryRow {
+            id,
+            org: org.map(str::to_string),
+            provider: provider.into(),
+            event: event.into(),
+            status: status.into(),
+            detail: detail.chars().take(255).collect(),
+        });
+        Ok(id)
+    }
+    async fn webhook_list(
+        &self,
+        org: &str,
+        provider: Option<&str>,
+    ) -> Result<Vec<WebhookDeliveryRow>, StoreError> {
+        let mut v: Vec<WebhookDeliveryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .webhooks
+            .iter()
+            .filter(|r| r.org.as_deref() == Some(org) && provider.is_none_or(|p| r.provider == p))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(200);
+        Ok(v)
     }
     async fn trust_create_account(
         &self,
@@ -1807,5 +1846,28 @@ mod crm_tests {
         // Cross-org attach is rejected.
         let err = ops.tag_attach("org2", t.id, 7).await.unwrap_err();
         assert!(matches!(err, StoreError::NotFound));
+    }
+}
+
+#[cfg(test)]
+mod webhook_tests {
+    use super::*;
+    use crate::ops::OpsStore;
+
+    #[tokio::test]
+    async fn log_and_list_is_tenant_scoped() {
+        let ops = MemoryOps::default();
+        ops.webhook_log(Some("org1"), "tripay", "PAID", "accepted", "T-1")
+            .await
+            .unwrap();
+        ops.webhook_log(None, "psre", "signed", "accepted", "")
+            .await
+            .unwrap();
+        let v = ops.webhook_list("org1", None).await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].provider, "tripay");
+        let v = ops.webhook_list("org1", Some("psre")).await.unwrap();
+        assert!(v.is_empty(), "unattributed rows stay invisible");
+        assert!(ops.webhook_list("org2", None).await.unwrap().is_empty());
     }
 }

@@ -200,13 +200,29 @@
     {
       "id": "B-APPR-UI",
       "title": "Approvals /app tab UI (compose/list/decide/history)",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18: /app p-appr panel + Persetujuan tab + wh-* needles green"
+    },
+    {
+      "id": "B-REPORT-UI",
+      "title": "Report center UI + trust CSV wiring",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18: trust-ledger CSV route + /app button + job live counts"
+    },
+    {
+      "id": "B-WH-OUT",
+      "title": "Outbound webhook dispatch (retry queue + HMAC + log update)",
       "status": "PLANNED",
       "owner": null,
       "depends": []
     },
     {
-      "id": "B-REPORT-UI",
-      "title": "Report center UI + trust CSV wiring",
+      "id": "B-D12-REP",
+      "title": "Notary repertorium (deed daily log + CSV)",
       "status": "PLANNED",
       "owner": null,
       "depends": []
