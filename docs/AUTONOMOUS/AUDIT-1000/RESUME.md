@@ -46,7 +46,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 ## Done wave 22: notification filter control + manual (main)
 - appr-notif "Hanya belum dibaca" checkbox + manual section 4 Notifikasi; F-D18-038 PARTIAL->IMPLEMENTED (74.4).
 - Note: 1 transient api failure seen once, green on 4 reruns (name not captured; watchlist).
-- Workspace 315/0; registry 18.6 (64 IMPLEMENTED); 8-cat mean 19.5 (35 verified).
+- Workspace 315/0; registry 18.6 (64 IMPLEMENTED); 8-cat mean 19.4 (34 verified).
 
 ## Done wave 21: notification audit trail (main)
 - notify_user audits notify.{kind}.sent; notify_read audits notification.read; ?entity=notification assertions.
