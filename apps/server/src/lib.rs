@@ -2803,6 +2803,23 @@ async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &s
         .await;
         return;
     }
+    // Flood guard (F-D18-029): per-user cap on the notify path (20/min).
+    if !s.stores.limiter.check(&format!("notify:{user}")) {
+        audit(
+            &s.pool,
+            &s.stores,
+            AuditEvent {
+                tenant_id: org.to_string(),
+                actor_id: Some(user.to_string()),
+                action: format!("notify.{kind}.rate_limited"),
+                entity: "notification".into(),
+                entity_id: 0,
+                ip: None,
+            },
+        )
+        .await;
+        return;
+    }
     let nid = s
         .stores
         .ops

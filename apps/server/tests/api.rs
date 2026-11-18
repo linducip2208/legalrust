@@ -1403,6 +1403,36 @@ async fn notification_prefs_opt_out_suppresses() {
 }
 
 #[tokio::test]
+async fn notification_flood_guard_caps_per_user() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "notifflood@x.id").await;
+    // 25 rapid matter creations: at most 20 notify, rest rate-limited.
+    for _ in 0..25 {
+        let _ = mk_matter(&a, &tok).await;
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=matter", &tok))
+        .await
+        .unwrap();
+    let n = body_json(res).await.as_array().unwrap().len();
+    assert!(n <= 20, "flood guard failed: {n} matter notifs");
+    assert!(n >= 15, "guard too aggressive: only {n} matter notifs");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=notification", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "notify.matter.rate_limited"));
+}
+
+#[tokio::test]
 async fn notifications_unread_only_and_limit() {
     use tower::ServiceExt;
     let a = app();

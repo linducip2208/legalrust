@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 31: flood guard jalur notifikasi (main)
+- Per-user cap 20/min + audit rate_limited; 25-create test (<=20, >=15, audit hit).
+- F-D18-029 51.8->68.1 PARTIAL (verified). Workspace 323/0; registry 19.2; mean 19.9 (47 v).
+
 ## Done wave 30: jejak audit keuangan (main)
 - trust.transfer audit + filter trust/report + trail assertions.
 - F-D14-037 PARTIAL->IMPLEMENTED (75.6). Workspace 322/0; registry 19.2 (68 IMPLEMENTED); mean 19.8 (46 v).

@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 31: flood guard notifikasi (main)
+- Cap 20/mnt per user + audit; workspace **323 passed, 0 failed**; F-D18-029 68.1.
+
 ## 2026-11-18 AUDIT-1000 wave 30: audit keuangan (main)
 - Transfer + ekspor teraudit per entitas; workspace **322 passed, 0 failed**; F-D14-037 IMPLEMENTED (75.6).
 

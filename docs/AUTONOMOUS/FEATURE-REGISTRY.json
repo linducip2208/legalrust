@@ -6814,9 +6814,10 @@
   "title": "Notification rate limiting",
   "status": "PARTIAL",
   "evidence": [
-   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
-   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
-  ]
+   "apps/server/src/lib.rs: notify_user per-user flood cap (notify:{user}, 20/min) + rate_limited audit",
+   "apps/server/tests/api.rs: notification_flood_guard_caps_per_user (25 creates -> <=20, audit hit)"
+  ],
+  "audit_note": "Wave 31: notify-path guard live; stays PARTIAL (no digest/coalescing, in-memory window)."
  },
  {
   "id": "F-D18-030",

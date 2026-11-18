@@ -267,6 +267,23 @@
       "owner": "main",
       "depends": [],
       "evidence": "2026-11-18 wave 17: GET /api/v1/features/scores + /skor + sidebar link; 311 tests green"
+    },
+    {
+      "id": "B-100X100",
+      "title": "PROGRAM 100/100: semua 1000 fitur wajib 100/100 via implementasi nyata + bukti (tanpa pemalsuan skor)",
+      "status": "IN_PROGRESS",
+      "owner": "main",
+      "depends": [],
+      "evidence": "Aturan main: skor berubah HANYA oleh (1) kode+tes hijau, (2) verifikasi live, (3) blokir eksternal didokumentasikan. Setiap wave menaikkan skor riil; /skor menampilkan progres jujur."
+    },
+    {
+      "id": "B-W29-FOLLOW",
+      "title": "Follow-up wave 29: AJB template drafting + price worksheet (F-D13-005 -> IMPLEMENTED)",
+      "status": "PLANNED",
+      "owner": null,
+      "depends": [
+        "B-100X100"
+      ]
     }
   ]
 }

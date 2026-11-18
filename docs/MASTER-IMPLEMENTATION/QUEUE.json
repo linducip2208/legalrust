@@ -1,1 +1,64 @@
-{"active":[{"id":"W14-BENCH","features":["F-D20-xxx"],"status":"PLANNED","next":"Benchmark new endpoints on dev machine (RESUME task 5)"},{"id":"W14-D08","features":["F-D08-xxx"],"status":"ANALYZING","owner":"explore-agent ses_e120ff8efffeN8Ml89sN5h0y8n","next":"Await gap report, then smallest slice to IMPLEMENTED"},{"id":"W14-D14","features":["F-D14-xxx"],"status":"ANALYZING","owner":"explore-agent ses_e120ff8e0ffehQucIPGjUPOviZ","next":"Await gap report"},{"id":"W14-D23","features":["F-D23-xxx"],"status":"ANALYZING","owner":"explore-agent ses_e120ff8deffergBDLMXnycdmTP","next":"Await gap report"},{"id":"W14-D18D20","features":["F-D18-xxx","F-D20-xxx"],"status":"ANALYZING","owner":"explore-agent ses_e120ff8d8ffe4bxbnrxURW36T3","next":"Await ranking + slice proposal"}],"completed":["W11-ROPA","W12-ROPA-UI","W13-PERIOD-REPORT"],"note":"Canonical queue remains docs/AUTONOMOUS/TASK-QUEUE.json; this file tracks master-brief wave execution only."}
+{
+  "active": [
+    {
+      "id": "W14-BENCH",
+      "features": [
+        "F-D20-xxx"
+      ],
+      "status": "PLANNED",
+      "next": "Benchmark new endpoints on dev machine (RESUME task 5)"
+    },
+    {
+      "id": "W14-D08",
+      "features": [
+        "F-D08-xxx"
+      ],
+      "status": "ANALYZING",
+      "owner": "explore-agent ses_e120ff8efffeN8Ml89sN5h0y8n",
+      "next": "Await gap report, then smallest slice to IMPLEMENTED"
+    },
+    {
+      "id": "W14-D14",
+      "features": [
+        "F-D14-xxx"
+      ],
+      "status": "ANALYZING",
+      "owner": "explore-agent ses_e120ff8e0ffehQucIPGjUPOviZ",
+      "next": "Await gap report"
+    },
+    {
+      "id": "W14-D23",
+      "features": [
+        "F-D23-xxx"
+      ],
+      "status": "ANALYZING",
+      "owner": "explore-agent ses_e120ff8deffergBDLMXnycdmTP",
+      "next": "Await gap report"
+    },
+    {
+      "id": "W14-D18D20",
+      "features": [
+        "F-D18-xxx",
+        "F-D20-xxx"
+      ],
+      "status": "ANALYZING",
+      "owner": "explore-agent ses_e120ff8d8ffe4bxbnrxURW36T3",
+      "next": "Await ranking + slice proposal"
+    },
+    {
+      "id": "W31-RATELIMIT",
+      "features": [
+        "F-D18-029"
+      ],
+      "status": "IN_PROGRESS",
+      "owner": "main",
+      "next": "Notify-path flood guard + tests"
+    }
+  ],
+  "completed": [
+    "W11-ROPA",
+    "W12-ROPA-UI",
+    "W13-PERIOD-REPORT"
+  ],
+  "note": "Target tetap 100/100 untuk semua fitur; skor hanya naik lewat implementasi nyata + bukti. Canonical queue tetap docs/AUTONOMOUS/TASK-QUEUE.json."
+}
