@@ -19,6 +19,10 @@
 - `cargo test --workspace`: **285 passed, 0 failed** (ai 19 incl. live-stub + unreachable-blocked; server API 102 incl. stub-200, gated-ollama-live, 501-unreachable; OCR 21; Tripay stub E2E).
 - Live proof: `POST /api/v1/ai/chat` → `{"reply":"4","model":"qwen2.5:1.5b","input_tokens":40,"output_tokens":2}` (Ollama lokal via endpoint).
 - Self-audit: grep secrets/TODO/unsafe/PII-log + CORS permissive→allowlist + .env ignored — temuan ditutup kecuali pentest eksternal (rekomendasi).
+## 2026-11-18 — migrasi 0013/0014 live-verified + api_db diperbaiki
+- Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
+- `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
+
 ## 2026-11-18 — AUDIT-1000 wave 3: webhook delivery log
 - Gates: fmt PASS, clippy `-D warnings` PASS, node --check PASS.
 - `cargo test --workspace`: **292 passed, 0 failed** (webhook deliveries + store tenant test; server API 108; OCR 21; AI 19; full matrix).

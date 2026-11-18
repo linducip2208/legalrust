@@ -128,6 +128,9 @@
 - Verifikasi: `legalrust.test/healthz` → backend JSON ok; `/`, `/login`, `/app` → 200.
 - Catatan operasional: backend berjalan sebagai proses latar (bukan service); bila mati, jalankan ulang perintah di atas lalu cek `:8080/healthz`. Jangan edit `auto.*` (ditimpa Laragon) 
 
+## 2026-11-18 — migrasi 0013/0014 live-verified + api_db diperbaiki (main)
+- Terapkan 0001‒0014 ke DB scratch Laragon MySQL 8.4.9: OK; tabel approvals + webhook_deliveries ada. Test `api_db` yang basi (password/JWT pendek) diperbaiki → PASS. DB scratch dihapus.
+
 ## 2026-11-18 — AUDIT-1000 wave 3: webhook delivery log (main)
 - Migration `0014_webhook_deliveries` (org nullable, provider/event/status); `OpsStore::webhook_log/list` (memory+MySQL); setiap receipt tercatat (accepted/rejected/blocked).
 - `GET /api/v1/webhooks/deliveries` (View-gated, tenant-scoped) + kartu /app di panel audit + JS `whRefresh()` + needle test.

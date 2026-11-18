@@ -21,7 +21,7 @@ async fn live_mysql_register_and_matter() {
             std::sync::Arc::new(legalrust_storage::LocalStore::new(
                 std::env::temp_dir().join("lr-db-test"),
             )),
-            b"ci-secret".to_vec(),
+            b"ci-secret-0123456789abcdef01234567".to_vec(),
         ),
     };
     let app = legalrust_server::build_router(state);
@@ -33,7 +33,7 @@ async fn live_mysql_register_and_matter() {
                 .method("POST")
                 .header("content-type", "application/json")
                 .body(Body::from(format!(
-                    r#"{{"org_name":"CI","email":"{email}","name":"CI","password":"password1"}}"#
+                    r#"{{"org_name":"CI","email":"{email}","name":"CI","password":"password1-2-3"}}"#
                 )))
                 .unwrap(),
         )
