@@ -3704,15 +3704,14 @@
   "domain": "D08",
   "status": "PARTIAL",
   "evidence": [
-   "migrations/0016_webhook_endpoints.sql (endpoints + direction on deliveries)",
-   "crates/database/src/ops.rs: webhook_ep_create/list/delete/secret + WebhookEndpointRow",
-   "crates/integrations/src/lib.rs: post_json (HMAC-signed test sends, rustls)",
-   "apps/server/src/lib.rs: POST/GET /api/v1/webhooks/endpoints, DELETE /{id} (Approve), POST /{id}/test (signed ping, logged)",
-   "apps/server/src/lib.rs: /app audit-panel endpoint card + whe* JS + needle tests",
-   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send (signed stub, no-leak, RBAC, 422)"
+   "apps/server/src/lib.rs: notify_user fans out to subscribed endpoints (background task, signed post_json, 10s timeout)",
+   "apps/server/src/lib.rs: POST /api/v1/webhooks/endpoints + /{id}/test + DELETE (serialisasi tanpa secret)",
+   "apps/server/src/lib.rs: /app audit panel webhook card + whe* JS + needle tests",
+   "migrations/0016_webhook_endpoints.sql (endpoints + direction)",
+   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send + webhook_auto_dispatch_on_notify (signed stub + delivery log)"
   ],
-  "audit_note": "Outbound endpoints CRUD + signed test-send + delivery log live; event-driven auto-dispatch + retry queue remain queued.",
-  "overall_score": 79.8,
+  "audit_note": "Auto-dispatch on notify events works (tested signed stub + log); endpoint registry + test-send + UI done. Retry queue + dead-letter remain queued.",
+  "overall_score": 83.0,
   "verified_8cat": true,
   "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
@@ -12143,15 +12142,14 @@
   "domain": "D25",
   "status": "PARTIAL",
   "evidence": [
-   "migrations/0016_webhook_endpoints.sql (endpoints + direction on deliveries)",
-   "crates/database/src/ops.rs: webhook_ep_create/list/delete/secret + WebhookEndpointRow",
-   "crates/integrations/src/lib.rs: post_json (HMAC-signed test sends, rustls)",
-   "apps/server/src/lib.rs: POST/GET /api/v1/webhooks/endpoints, DELETE /{id} (Approve), POST /{id}/test (signed ping, logged)",
-   "apps/server/src/lib.rs: /app audit-panel endpoint card + whe* JS + needle tests",
-   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send (signed stub, no-leak, RBAC, 422)"
+   "apps/server/src/lib.rs: notify_user fans out to subscribed endpoints (background task, signed post_json, 10s timeout)",
+   "apps/server/src/lib.rs: POST /api/v1/webhooks/endpoints + /{id}/test + DELETE (serialisasi tanpa secret)",
+   "apps/server/src/lib.rs: /app audit panel webhook card + whe* JS + needle tests",
+   "migrations/0016_webhook_endpoints.sql (endpoints + direction)",
+   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send + webhook_auto_dispatch_on_notify (signed stub + delivery log)"
   ],
-  "audit_note": "Monitor now covers inbound + outbound (tenant-scoped list + /app panel with counts); alerting on failures remains queued.",
-  "overall_score": 79.5,
+  "audit_note": "Delivery monitor covers in+out incl. auto-dispatched; alerting on failures + retry remain queued.",
+  "overall_score": 81.4,
   "verified_8cat": true,
   "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },

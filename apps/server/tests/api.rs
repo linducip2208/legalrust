@@ -4442,7 +4442,7 @@ async fn webhook_endpoints_crud_and_test_send() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
-    // Stub endpoint asserting the signed ping.
+    // Local stub asserting the signed test ping (synchronous in-request send).
     let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind wh stub");
     let addr = listener.local_addr().expect("stub addr");
     let stub = std::thread::spawn(move || {
@@ -4539,6 +4539,83 @@ async fn webhook_endpoints_crud_and_test_send() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn webhook_auto_dispatch_on_notify() {
+    use std::io::{Read, Write};
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "whout@x.id").await;
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind wh stub");
+    let addr = listener.local_addr().expect("stub addr");
+    // No join() on the stub thread: a blocking join inside a current-thread
+    // test runtime starves the background dispatch task. The polling loop
+    // below bounds the wait; the thread exits on its own.
+    let _stub = std::thread::spawn(move || {
+        let (mut s, _) = listener.accept().expect("wh stub accept");
+        let mut buf = vec![0u8; 65536];
+        let n = s.read(&mut buf).expect("stub read");
+        let text = String::from_utf8_lossy(&buf[..n]).into_owned();
+        assert!(
+            text.contains("x-webhook-signature"),
+            "dispatch must be signed"
+        );
+        assert!(
+            text.contains("notify:matter") || text.contains("matter"),
+            "wrong event"
+        );
+        let body = br#"{"ok":true}"#;
+        let head = format!(
+            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+            body.len()
+        );
+        s.write_all(head.as_bytes()).expect("stub head");
+        s.write_all(body).expect("stub body");
+    });
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/webhooks/endpoints",
+            &format!(r#"{{"url":"http://{addr}/hook","secret":"s3cr3t","events":"matter"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Creating a matter fires notify_user(kind=matter) -> background dispatch.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            r#"{"title":"Dispatch me"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // No join here (see stub comment): poll for the background delivery.
+    // Delivery log eventually shows the accepted outbound attempt.
+    let mut found = false;
+    for _ in 0..50 {
+        let res = a
+            .clone()
+            .oneshot(get("/api/v1/webhooks/deliveries?provider=outbound", &tok))
+            .await
+            .unwrap();
+        if body_json(res)
+            .await
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["status"] == "accepted" && r["event"] == "matter")
+        {
+            found = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert!(found, "outbound delivery not logged");
 }
 
 #[tokio::test]

@@ -2231,6 +2231,72 @@ async fn integrations(
 async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &str) {
     let _ = s.stores.ops.notify(org, user, kind, title, None).await;
     let _ = s.stores.events.send(format!("notify:{kind}"));
+    // Outbound webhook fan-out (best-effort, never blocks the request):
+    // endpoints subscribed to this kind (or '*') get a signed JSON ping,
+    // and every attempt is recorded in the delivery log.
+    let st = s.clone();
+    let org = org.to_string();
+    let kind = kind.to_string();
+    let title = title.to_string();
+    tokio::spawn(async move {
+        let eps = match st.stores.ops.webhook_ep_list(&org).await {
+            Ok(v) => v,
+            Err(_) => return,
+        };
+        let targets: Vec<_> = eps
+            .into_iter()
+            .filter(|e| {
+                e.active
+                    && (e.events.trim() == "*"
+                        || e.events.split(',').map(str::trim).any(|x| x == kind))
+            })
+            .collect();
+        if targets.is_empty() {
+            return;
+        }
+        let client = match legalrust_integrations::tripay::http_client(10) {
+            Ok(c) => c,
+            Err(_) => return,
+        };
+        for ep in targets {
+            let secret = st
+                .stores
+                .ops
+                .webhook_ep_secret(&org, ep.id)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or_default();
+            let payload = serde_json::json!({
+                "event": kind,
+                "endpoint_id": ep.id,
+                "title": title,
+            });
+            match legalrust_integrations::post_json(&client, &ep.url, &secret, &payload).await {
+                Ok((code, _)) => {
+                    let _ = st
+                        .stores
+                        .ops
+                        .webhook_log(
+                            Some(&org),
+                            "outbound",
+                            &kind,
+                            "accepted",
+                            &format!("HTTP {code}"),
+                        )
+                        .await;
+                }
+                Err(e) => {
+                    let detail: String = e.to_string().chars().take(200).collect();
+                    let _ = st
+                        .stores
+                        .ops
+                        .webhook_log(Some(&org), "outbound", &kind, "rejected", &detail)
+                        .await;
+                }
+            }
+        }
+    });
 }
 
 #[derive(Debug, Deserialize, Validate)]
