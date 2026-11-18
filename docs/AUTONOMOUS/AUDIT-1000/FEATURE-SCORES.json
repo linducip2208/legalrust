@@ -12023,17 +12023,17 @@
   "domain": "D18",
   "status": "PARTIAL",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 75,
+   "database": 70,
+   "frontend": 55,
+   "business_logic": 70,
+   "security": 80,
+   "testing": 78,
+   "integration": 65,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 68.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D18-029",

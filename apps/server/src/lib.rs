@@ -2629,7 +2629,27 @@ async fn integrations(
 
 // ---------- Phase 11/12 final handlers ----------
 async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &str) {
-    let _ = s.stores.ops.notify(org, user, kind, title, None).await;
+    let nid = s
+        .stores
+        .ops
+        .notify(org, user, kind, title, None)
+        .await
+        .unwrap_or(0);
+    // Notification audit trail: every emitted notification is recorded so
+    // delivery can be traced per tenant (F-D18-028).
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: org.to_string(),
+            actor_id: Some(user.to_string()),
+            action: format!("notify.{kind}.sent"),
+            entity: "notification".into(),
+            entity_id: nid,
+            ip: None,
+        },
+    )
+    .await;
     let _ = s.stores.events.send(format!("notify:{kind}"));
     // Outbound webhook fan-out (best-effort, never blocks the request):
     // endpoints subscribed to this kind (or '*') get a signed JSON ping
@@ -2880,6 +2900,19 @@ async fn notify_read(
         .notify_read(&u.claims.sub, id)
         .await
         .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "notification.read".into(),
+            entity: "notification".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
     Ok(Json(json!({"read": true})))
 }
 

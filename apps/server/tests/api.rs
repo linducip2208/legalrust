@@ -1418,6 +1418,29 @@ async fn notifications_unread_only_and_limit() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Notification audit trail: send + read events queryable per tenant.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=notification", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let trail = body_json(res).await;
+    let acts: Vec<&str> = trail
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|e| e["action"].as_str())
+        .collect();
+    assert!(
+        acts.iter()
+            .any(|x| x.starts_with("notify.") && x.ends_with(".sent")),
+        "missing notify.*.sent in {acts:?}"
+    );
+    assert!(
+        acts.contains(&"notification.read"),
+        "missing notification.read in {acts:?}"
+    );
 }
 
 #[tokio::test]

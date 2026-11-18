@@ -6761,8 +6761,11 @@
   "status": "PARTIAL",
   "evidence": [
    "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
-   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
-  ]
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)",
+   "apps/server/src/lib.rs: notify_user audits notify.{kind}.sent; notify_read audits notification.read",
+   "apps/server/tests/api.rs: notification audit trail assertions (?entity=notification)"
+  ],
+  "audit_note": " Wave 21: send+read audit live; stays PARTIAL (no dedicated audit-surface UI)."
  },
  {
   "id": "F-D18-029",
