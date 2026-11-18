@@ -65,6 +65,7 @@
   };
   qsa('.snav', function (a) {
     a.addEventListener('click', function (ev) {
+      if (!a.dataset.tab) return; // plain link (e.g. /skor): follow href normally
       ev.preventDefault();
       window.apptab(a.dataset.tab);
       var f = a.dataset.focus;
@@ -1154,6 +1155,47 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   qsa('.snav[data-tab="jobs"]', function (a) {
     a.addEventListener('click', function () { whDlRefresh(); });
   });
+  /* ---- transparent 1000-feature scoreboard (/skor) ---- */
+  var skorPage = 1;
+  async function skorRefresh() {
+    var box = document.getElementById('skor-list');
+    if (!box) return;
+    var qs = ['page=' + skorPage];
+    var q = pval('skor-q'), d = pval('skor-domain'), st = pval('skor-status');
+    if (q) qs.push('q=' + encodeURIComponent(q));
+    if (d) qs.push('domain=' + encodeURIComponent(d));
+    if (st) qs.push('status=' + encodeURIComponent(st));
+    var v = await j('/api/v1/features/scores?' + qs.join('&'));
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var s = v.summary || {};
+    var chips = document.getElementById('skor-chips');
+    if (chips) {
+      var bs = s.by_status || {};
+      chips.innerHTML = '<span class="badge">total ' + (s.features || 0) + ' fitur</span> '
+        + '<span class="badge">implemented ' + (s.implemented || 0) + '</span> '
+        + '<span class="badge">rerata ' + (s.mean_score || 0) + '</span> '
+        + Object.keys(bs).map(function (k) { return '<span class="badge">' + esc(k) + ' ' + bs[k] + '</span>'; }).join(' ');
+    }
+    var dsel = document.getElementById('skor-domain');
+    if (dsel && dsel.options.length <= 1) {
+      for (var i = 1; i <= 25; i++) {
+        var dd = 'D' + (i < 10 ? '0' + i : i);
+        var o = document.createElement('option');
+        o.value = dd; o.textContent = dd;
+        dsel.appendChild(o);
+      }
+      if (d) dsel.value = d;
+    }
+    box.innerHTML = (v.items || []).map(function (x) {
+      return '<tr><td>' + esc(x.id) + '</td><td>' + esc(x.domain) + '</td><td>' + esc(x.title) + '</td><td>' + badge(x.status) + '</td><td>' + x.overall_score + '</td><td>' + (x.verified ? 'ya' : '—') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Tidak ada fitur cocok.</td></tr>';
+    var pg = document.getElementById('skor-page');
+    if (pg) pg.textContent = 'Halaman ' + (v.page || 1) + ' dari ' + Math.max(1, Math.ceil((v.total || 0) / (v.per_page || 50))) + ' (' + (v.total || 0) + ' cocok)';
+  }
+  on('skor-reload', 'click', function () { skorPage = 1; skorRefresh(); });
+  on('skor-prev', 'click', function () { if (skorPage > 1) { skorPage -= 1; skorRefresh(); } });
+  on('skor-next', 'click', function () { skorPage += 1; skorRefresh(); });
+  skorRefresh();
   mktRefresh();
   loadAudit();
   loadJobs();

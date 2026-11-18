@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 17: papan skor 1000 fitur (main)
+- Semua 1000 fitur tampil di /skor + API dengan skor jujur; workspace **311 passed, 0 failed**.
+
 ## 2026-11-18 AUDIT-1000 wave 16: sidebar dedup 1:1 (main)
 - Hilangkan menu ganda aktif; tambah link Keuangan; workspace **309 passed, 0 failed**.
 

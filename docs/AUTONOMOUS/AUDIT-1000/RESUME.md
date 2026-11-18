@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 17: papan skor transparan 1000 fitur (main)
+- GET /api/v1/features/scores (auth+View, filter domain/status/q, page/per_page, summary jujur) + halaman /skor (chips, filter, tabel, pager) + link sidebar.
+- Skor TETAP jujur: hanya kerja nyata yang bernilai; tidak ada fitur yang dipalsukan 100.
+- Workspace 311/0; registry 18.4 (62 IMPLEMENTED); 8-cat mean 19.3 (30 verified).
+
 ## Done wave 16: sidebar 1:1 per tab, menu ganda hilang (main)
 - 25 snav duplikat (ocr x4, klien x4, dok x3, akta x4, ...) -> 12 link 1:1 per tab; tiap klik kini 1 item aktif.
 - Tab Keuangan (p-keu) kini reachable dari sidebar (sebelumnya hanya via quick-action).

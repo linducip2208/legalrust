@@ -259,6 +259,14 @@
       "owner": "main",
       "depends": [],
       "evidence": "2026-11-18 wave 16: 25 snav duplikat -> 12 link 1:1; uniqueness test tiap data-tab tepat 1x; 309 tests green"
+    },
+    {
+      "id": "B-SCOREBOARD",
+      "title": "Papan skor transparan 1000 fitur (/skor + API)",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 wave 17: GET /api/v1/features/scores + /skor + sidebar link; 311 tests green"
     }
   ]
 }

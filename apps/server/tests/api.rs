@@ -2526,6 +2526,114 @@ async fn search_isolates_tenants() {
         .any(|c| c["id"].as_i64() == Some(cid)));
 }
 #[tokio::test]
+async fn feature_scores_full_catalog_transparent() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "skor@x.id").await;
+    // Unauthenticated callers cannot see the catalog.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/features/scores")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Full catalog: 1000 features, honest summary math.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/features/scores", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert_eq!(j["summary"]["features"].as_u64().unwrap(), 1000);
+    assert_eq!(j["total"].as_u64().unwrap(), 1000);
+    assert_eq!(j["items"].as_array().unwrap().len(), 50);
+    let by = j["summary"]["by_status"].as_object().unwrap();
+    let sum: u64 = by.values().map(|v| v.as_u64().unwrap()).sum();
+    assert_eq!(sum, 1000);
+    assert!(j["summary"]["implemented"].as_u64().unwrap() >= 1);
+    assert!(j["summary"]["implemented"].as_u64().unwrap() < 1000);
+    // Domain + status filters narrow; unknown values rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/features/scores?domain=D11", &tok))
+        .await
+        .unwrap();
+    let j = body_json(res).await;
+    assert!(!j["items"].as_array().unwrap().is_empty());
+    assert!(j["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|x| x["domain"] == "D11"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/features/scores?status=implemented", &tok))
+        .await
+        .unwrap();
+    let j = body_json(res).await;
+    assert!(j["total"].as_u64().unwrap() >= 1);
+    assert!(j["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|x| x["status"] == "IMPLEMENTED"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/features/scores?q=ropa", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["id"] == "F-D11-006"));
+    // Oversized page clamps to 100; bad domain/status rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/features/scores?per_page=200", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["items"].as_array().unwrap().len(), 100);
+    for uri in [
+        "/api/v1/features/scores?status=bogus",
+        "/api/v1/features/scores?domain=XX",
+    ] {
+        let res = a.clone().oneshot(get(uri, &tok)).await.unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "uri was {uri}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn skor_page_renders_scoreboard() {
+    let (st, _, t) = page_get(&app(), "/skor").await;
+    assert_eq!(st, StatusCode::OK);
+    for n in [
+        "Transparansi skor 1000 fitur",
+        "skor-chips",
+        "skor-q",
+        "skor-domain",
+        "skor-status",
+        "skor-reload",
+        "skor-list",
+        "skor-prev",
+        "skor-next",
+        "Skor 1000 Fitur",
+    ] {
+        assert!(t.contains(n), "/skor missing {n}");
+    }
+}
+
+#[tokio::test]
 async fn search_pagination_totals_and_types() {
     use tower::ServiceExt;
     let a = app();
