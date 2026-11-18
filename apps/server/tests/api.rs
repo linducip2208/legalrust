@@ -6556,6 +6556,108 @@ async fn trust_csv_export_returns_ledger() {
 }
 
 #[tokio::test]
+async fn reports_bottleneck_and_profitability() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "reps@x.id").await;
+    // Client + matter + open invoice.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Rep Co","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"M1","client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let _ = mk_invoice(&a, &tok, mid, 800000).await;
+    // Pending approval stuck at step 1.
+    let aid = mk_approval(
+        &a,
+        &tok,
+        mid,
+        r#"[{"step_no":1,"role":"office_admin"},{"step_no":2,"role":"finance_officer"}]"#,
+    )
+    .await;
+    // Bottleneck CSV names the blocking step.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals-bottleneck.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("id,title,entity,stuck_step,stuck_role,pending_steps\n"),
+        "was {text}"
+    );
+    assert!(
+        text.contains(&format!("{aid}")) && text.contains(",1,office_admin,2"),
+        "was {text}"
+    );
+    // Profitability CSV aggregates the client row.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/profitability.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("client_id,client_name,matters,open_balance\n"),
+        "was {text}"
+    );
+    assert!(
+        text.contains(&format!("{cid},Rep Co,1,800000")),
+        "was {text}"
+    );
+    // Both exports are audit-trailed.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    let acts: Vec<String> = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|e| e["action"].as_str().map(str::to_string))
+        .collect();
+    assert!(
+        acts.contains(&"report.approvals_exported".to_string()),
+        "missing approvals trail"
+    );
+    assert!(
+        acts.contains(&"report.profitability_exported".to_string()),
+        "missing profitability trail"
+    );
+}
+
+#[tokio::test]
 async fn ar_aging_csv_lists_only_open_invoices() {
     use tower::ServiceExt;
     let a = app();
@@ -6783,6 +6885,8 @@ async fn uib_app_has_approvals_ui() {
         "trust-entry-add",
         "ar-csv",
         "ar-msg",
+        "appr-csv",
+        "prof-csv",
         "Piutang terbuka",
         "il-msg",
         "wh-list",

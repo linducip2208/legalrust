@@ -7467,10 +7467,13 @@
   "id": "F-D20-012",
   "domain": "D20",
   "title": "Approval bottleneck report",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/approvals-bottleneck.csv (Export + audit)",
+   "apps/server/static/site.js: appr-csv button",
+   "apps/server/tests/api.rs: bottleneck stuck-step assertions + trail"
+  ],
+  "audit_note": "Wave 43: bottleneck report live; timing/SLA math pending."
  },
  {
   "id": "F-D20-013",
@@ -7485,10 +7488,13 @@
   "id": "F-D20-014",
   "domain": "D20",
   "title": "Client profitability report",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/profitability.csv (Export + audit)",
+   "apps/server/static/site.js: prof-csv button",
+   "apps/server/tests/api.rs: per-client aggregation + trail"
+  ],
+  "audit_note": "Wave 43: profitability report live; cost allocation pending."
  },
  {
   "id": "F-D20-015",
