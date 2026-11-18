@@ -45,7 +45,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 34: konsol sesi aktif (main)
 - GET /api/v1/auth/sessions + revoke others (self->409, foreign->404) + kartu Sesi aktif.
-- F-D16-019 PARTIAL->IMPLEMENTED (76.9). Workspace 325/0; registry 19.5 (70 IMPLEMENTED); mean 20.0 (51 v).
+- F-D16-019 PARTIAL->IMPLEMENTED (76.9). Workspace 325/0; registry 19.5 (70 IMPLEMENTED); mean 19.9 (51 v).
 
 ## Done wave 33: kuitansi pembayaran (main)
 - GET /api/v1/invoices/{id}/receipt + tombol Kuitansi + print view; receipt_viewed audit.
