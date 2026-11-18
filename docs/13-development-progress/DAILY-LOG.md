@@ -153,3 +153,7 @@
 - 1 transient failure (stub timing) terlihat sekali, tidak terulang di 3 run penuh; dicatat.
 - Registry 54 IMPLEMENTED (tetap); 8-cat mean 18.9 (20 verified).
 - Endpoints CRUD + signed test-send (HMAC) + delivery log in+out + /app card; migrasi 0016 live-verified; registry 17.4; 8-cat mean 18.9; workspace 298/0.
+
+## 2026-11-18 - benchmarks wave 8 + B-WH-RETRY queued (main)
+- Dev benchmarks live-DB (Laragon MySQL): healthz p50 5.9-19.1ms; matters POST p50 20.4ms; approvals POST p50 27.5ms / list p50 8.9ms; webhooks deliveries p50 8.4ms; consents p50 7.5ms; deeds.csv p50 13.2ms (n=5-10, debug build, smoke only).
+- B-WH-RETRY queued (retry queue + dead-letter + failure alerting); B-BENCH partial (dev numbers recorded, prod thresholds pending).

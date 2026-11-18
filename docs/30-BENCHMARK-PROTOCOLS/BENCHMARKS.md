@@ -68,3 +68,15 @@ Notes:
   target assumes c=10/release/seeded DB, so this is a smoke signal only, NOT a PASS verdict.
 - `scripts/bench.sh` unchanged (bash/k6-less loop still valid for Linux/CI; Windows run above used
   an equivalent throwaway client, since deleted).
+
+## 2026-11-18 - wave 8: approvals + compliance + webhooks endpoints (live Laragon MySQL, debug build)
+- Method: throwaway python client (10-20 req, pauses to respect auth rate-limit), Ultra 7 155H, Laragon MySQL 8.4.9 live-DB, server :8080.
+- GET /healthz: n=10 min=4.9ms p50=19.1ms p95=27.4ms max=114.5ms (run 1 incl. warmup); repeat run p50=5.9ms p95=27.9ms (tail varies, shared desktop).
+- POST /api/v1/matters: n=5 min=17.6ms p50=20.4ms p95=22.5ms max=42.8ms.
+- POST /api/v1/approvals: n=5 min=15.7ms p50=27.5ms p95=31.4ms max=33.7ms.
+- GET /api/v1/approvals: n=5 min=8.3ms p50=8.9ms p95=9.0ms max=25.7ms.
+- GET /api/v1/webhooks/deliveries: n=5 min=7.7ms p50=8.4ms p95=8.9ms max=27.9ms.
+- GET /api/v1/consents: n=5 min=7.1ms p50=7.5ms p95=8.3ms max=12.6ms.
+- GET /api/v1/reports/deeds.csv: n=5 min=11.0ms p50=13.2ms p95=17.1ms max=35.1ms.
+- Note: auth register/login intentionally unbenchmarked per-request (Argon2 ~500ms + rate-limit); first burst hit 429 as designed.
+- Verdict: smoke signals only (debug build, n small, shared desktop) — NOT a prod PASS; thresholds in protocol require c=10/release/seeded DB.
