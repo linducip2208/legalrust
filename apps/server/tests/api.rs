@@ -5489,6 +5489,7 @@ async fn uib_app_has_approvals_ui() {
         "appr-notif-list",
         "appr-notif-reload",
         "appr-notif-unread",
+        "appr-notif-unread-only",
         "job-summary",
         "trust-csv-acct",
         "trust-csv-btn",

@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 22: notification filter control + manual (main)
+- appr-notif "Hanya belum dibaca" checkbox + manual section 4 Notifikasi; F-D18-038 PARTIAL->IMPLEMENTED (74.4).
+- Note: 1 transient api failure seen once, green on 4 reruns (name not captured; watchlist).
+- Workspace 315/0; registry 18.6 (64 IMPLEMENTED); 8-cat mean 19.5 (35 verified).
+
 ## Done wave 21: notification audit trail (main)
 - notify_user audits notify.{kind}.sent; notify_read audits notification.read; ?entity=notification assertions.
 - F-D18-028 51.8->68.5 (stays PARTIAL: no dedicated audit-surface UI).

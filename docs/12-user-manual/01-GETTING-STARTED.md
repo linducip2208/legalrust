@@ -97,6 +97,18 @@ Semua request terautentikasi memakai header `Authorization: Bearer <token>`.
 Setiap respons membawa header `x-request-id` — catat nilainya saat melapor
 masalah (lihat `08-TROUBLESHOOTING.md`).
 
+## 4. Notifikasi
+
+- Ikon lonceng di bar atas menampilkan 5 notifikasi terbaru; angka badge
+  menghitung yang belum dibaca (`GET /api/v1/notifications?limit=5` dan
+  `?unread_only=true`).
+- Klik "Tandai dibaca" pada item untuk menandainya; badge terhitung ulang.
+- Tab Persetujuan memuat kartu "Notifikasi approval" (`?kind=approval`)
+  dengan badge belum-dibaca, tombol tandai-dibaca per baris, dan kotak
+  centang "Hanya belum dibaca" (`&unread_only=true`).
+- Jejak pengiriman + pembacaan tercatat di audit
+  (`GET /api/v1/audit?entity=notification`, perlu peran pemilik/admin/auditor).
+
 ## 5. Langkah berikut
 
 - Portal & halaman UI → `02-PORTAL-GUIDE.md`

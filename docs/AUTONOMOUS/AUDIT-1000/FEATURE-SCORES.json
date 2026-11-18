@@ -12191,18 +12191,18 @@
  {
   "feature_id": "F-D18-038",
   "domain": "D18",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
    "backend": 80,
    "database": 70,
-   "frontend": 60,
-   "business_logic": 65,
+   "frontend": 75,
+   "business_logic": 75,
    "security": 75,
-   "testing": 78,
-   "integration": 60,
-   "documentation": 55
+   "testing": 80,
+   "integration": 65,
+   "documentation": 75
   },
-  "overall_score": 67.9,
+  "overall_score": 74.4,
   "verified_8cat": true
  },
  {

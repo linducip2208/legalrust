@@ -6853,16 +6853,19 @@
   "id": "F-D18-038",
   "domain": "D18",
   "title": "Notification API",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
    "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)",
    "apps/server/src/lib.rs: notify_list ?unread_only=&limit= (clamped 1..100)",
    "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: unread filter + limit + DESC order",
    "apps/server/static/site.js: bell dropdown uses ?limit=5 + ?unread_only=true count",
-   "apps/server/tests/api.rs: notifications_unread_only_and_limit (isolation, clamp, 400, 401)"
+   "apps/server/tests/api.rs: notifications_unread_only_and_limit (isolation, clamp, 400, 401)",
+   "apps/server/static/site.js: appr-notif-unread-only checkbox -> &unread_only=true",
+   "docs/12-user-manual/01-GETTING-STARTED.md: section 4 Notifikasi (bell, approval card, audit)",
+   "apps/server/tests/api.rs: appr-notif-unread-only needle"
   ],
-  "audit_note": " Wave 19: unread/limit query polish live; stays PARTIAL pending visible filter UI + docs."
+  "audit_note": " Wave 19: unread/limit query polish live; stays PARTIAL pending visible filter UI + docs. Wave 22: filter control + manual; flipped to IMPLEMENTED."
  },
  {
   "id": "F-D18-039",

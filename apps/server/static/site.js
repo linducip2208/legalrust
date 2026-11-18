@@ -1029,7 +1029,9 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   async function apprNotifRefresh() {
     var box = document.getElementById('appr-notif-list');
     if (!box) return;
-    var v = await j('/api/v1/notifications?kind=approval');
+    var onlyUnread = document.getElementById('appr-notif-unread-only');
+    var qs = '/api/v1/notifications?kind=approval' + ((onlyUnread && onlyUnread.checked) ? '&unread_only=true' : '');
+    var v = await j(qs);
     if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
     var unread = v.filter(function (x) { return !x.read; }).length;
     var badge = document.getElementById('appr-notif-unread');
@@ -1046,6 +1048,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     });
   }
   on('appr-notif-reload', 'click', apprNotifRefresh);
+  on('appr-notif-unread-only', 'change', apprNotifRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
     a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); });
   });
