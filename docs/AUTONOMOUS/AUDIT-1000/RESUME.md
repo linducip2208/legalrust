@@ -1,7 +1,7 @@
 # RESUME (AUDIT-1000 — next session entry point)
 
 Date: 2026-11-18 (wave 5 done). HEAD: (record on commit — wave ends with commit).
-Workspace: 298 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
+Workspace: 299 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
 Registry: IMPLEMENTED 54 / PARTIAL 102 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
 Scores: registry 17.4/100; 8-cat mean 18.8 (20 verified). Composite ≈ 45/100 — NOT 100.
 Server + Apache running detached via WMI (survives shell sessions); legalrust.test 200.
@@ -29,13 +29,17 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Migration 0001-0016 live-verified on Laragon MySQL; api_db stale-test fixed.
 - Registry 17.4 (54 impl); 8-cat mean 18.9 (20 verified). Workspace 298/0.
 
+## Done wave 7: auto-dispatch on notify events (main)
+- Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected).
+- Tes signed-stub E2E (matter create -> dispatch -> log); 1 transient stub-timing failure seen once, unreproduced in 3 full reruns.
+- Registry tetap 54 IMPLEMENTED; 8-cat mean 18.9 (20 verified, F-D08-013/F-D25-017 re-scored). Workspace 299/0.
+
 ## Next executable tasks (priority order)
-1. **Mobile D24**: offline capture queue UI (large; split into capture-queue first).
-2. **Outbound webhook dispatch** (retry queue + HMAC sign + delivery log update) -> F-D08-013 -> IMPLEMENTED, F-D25-017 up.
+1. **Outbound auto-dispatch** -> DONE wave 7 (signed fan-out; retry remains queued).
+2. **Webhook retry queue + dead-letter + failure alerts** (B-WH-RETRY) -> F-D08-013/F-D25-017 up.
 3. **Mobile D24**: offline capture queue UI on top of existing outbox (large; split).
-3. **Mobile D24**: offline capture queue UI on top of existing outbox (large; split).
-4. **External blockers** (do not fake): PSrE creds, prod deploy + benchmarks + prod-DB run, counsel sign-off, external pentest, Dukcapil/BPN creds.
-5. Performance benchmarks on dev machine for new endpoints (approvals, repertorium).
+4. **External blockers** (do not fake): PSrE creds, prod deploy + benchmarks + prod-DB run, counsel sign-off, external pentest.
+5. Performance benchmarks on dev machine for new endpoints.
 
 ## Constraints to preserve
 - One workstream per file set; update FILE-OWNERSHIP.md before editing.

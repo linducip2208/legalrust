@@ -42,7 +42,7 @@
 - Wave 2: approvals /app UI (panel+TABS+JS+needles), trust-ledger CSV
   route + UI button, job live counts; server API 107/107, workspace
   290/290, fmt+clippy clean; registry +13 → IMPLEMENTED
-  (F-D09 ×8, F-D20-001/004/020, F-D25-009).- Registry wave 1: 10 features updated (F-D09 approvals backend -> PARTIAL, F-D20-034 report audit -> IMPLEMENTED). Wave 2: +13 -> IMPLEMENTED (F-D09 x8 UI, F-D20-001/004/020, F-D25-009). Wave 3: F-D08-013 + F-D25-017 -> PARTIAL (delivery log).LTS (AUDIT-1000 wave 2026-11-18 + wave 2)
+  (F-D09 ×8, F-D20-001/004/020, F-D25-009).- Registry wave 1: 10 features updated (F-D09 approvals backend -> PARTIAL, F-D20-034 report audit -> IMPLEMENTED). Wave 2: +13 -> IMPLEMENTED (F-D09 x8 UI, F-D20-001/004/020, F-D25-009). Wave 3: F-D08-013 + F-D25-017 -> PARTIAL (wave 7: auto-dispatch live) (delivery log).LTS (AUDIT-1000 wave 2026-11-18 + wave 2)
 
 ## W1-backend-inventory (explore)
 - 16 lib crates + 4 apps inventoried with purposes.

@@ -148,5 +148,8 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
-## 2026-11-18 AUDIT-1000 wave 6b: outbound webhook endpoints (main)
+## 2026-11-18 AUDIT-1000 wave 7: auto-dispatch on notify (main)
+- Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected); tes E2E signed-stub; /app unchanged (panel deliveries sudah ada).
+- 1 transient failure (stub timing) terlihat sekali, tidak terulang di 3 run penuh; dicatat.
+- Registry 54 IMPLEMENTED (tetap); 8-cat mean 18.9 (20 verified).
 - Endpoints CRUD + signed test-send (HMAC) + delivery log in+out + /app card; migrasi 0016 live-verified; registry 17.4; 8-cat mean 18.9; workspace 298/0.

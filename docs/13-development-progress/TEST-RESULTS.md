@@ -23,6 +23,12 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
+## 2026-11-18 — AUDIT-1000 wave 7: auto-dispatch on notify (main)
+- Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected).
+- Tes signed-stub E2E (matter create -> dispatch -> log); 1 transient stub-timing failure seen once, unreproduced in 3 full reruns.
+- Registry tetap 54 IMPLEMENTED; 8-cat mean 18.9 (20 verified).
+- `cargo test --workspace`: **299 passed, 0 failed**.
+
 ## 2026-11-18 — AUDIT-1000 wave 6: outbound webhook endpoints
 - Migration 0016 (webhook_endpoints + direction); endpoints CRUD + signed test-send + /app card + needles; delivery log covers in+out.
 - Migration 0001-0016 live-verified on Laragon MySQL; api_db stale-test fixed.

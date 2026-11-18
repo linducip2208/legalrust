@@ -216,9 +216,10 @@
     {
       "id": "B-WH-OUT",
       "title": "Outbound webhook dispatch (retry queue + HMAC + log update)",
-      "status": "PLANNED",
-      "owner": null,
-      "depends": []
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 waves 3+6+7: delivery log + endpoints CRUD + signed test-send + auto-dispatch fan-out; retry queue -> B-WH-RETRY"
     },
     {
       "id": "B-D12-REP",
