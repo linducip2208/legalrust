@@ -3981,6 +3981,38 @@ async fn invoice_list_shows_paid_balance_and_records_payment() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Receipt carries totals + payment lines + audited view.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/invoices/{iid}/receipt"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let r = body_json(res).await;
+    assert_eq!(r["total"].as_i64().unwrap(), 1000000);
+    assert_eq!(r["paid"].as_i64().unwrap(), 250000);
+    assert_eq!(r["balance"].as_i64().unwrap(), 750000);
+    assert_eq!(r["status"], "belum_lunas");
+    assert_eq!(r["payments"].as_array().unwrap().len(), 1);
+    assert!(r["issued_at"].as_str().unwrap().len() >= 10);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.receipt_viewed"));
+    // Unknown invoice is a clean 404.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/invoices/999999999/receipt", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]

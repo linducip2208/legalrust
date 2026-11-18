@@ -339,6 +339,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         + '<select class="form-control form-control-sm" style="width:auto;display:inline-block" id="pay-method-' + x.id + '"><option value="transfer">transfer</option><option value="cash">cash</option><option value="qris">qris</option></select> '
         + '<button class="btn btn-sm btn-primary" data-pay="' + x.id + '" type="button">Catat bayar</button>'
         : '<span class="text-muted">lunas</span>';
+      payForm += ' <button class="btn btn-sm btn-outline-secondary" data-receipt="' + x.id + '" type="button">Kuitansi</button>';
       return '<tr><td>#' + esc(x.number) + '</td><td>' + fmtRp(x.total) + '</td><td>' + fmtRp(paid) + '</td><td>' + fmtRp(bal) + '</td><td>' + payForm + '</td></tr>';
     }).join('') + '</tbody></table></div>' || '<p class="text-muted">Belum ada invoice.</p>';
     qsa('[data-pay]', function (b) {
@@ -351,6 +352,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         if (!r.ok) { pmsg('il-msg', r.status === 409 ? 'Gagal: nominal melebihi sisa.' : 'Gagal catat bayar (' + r.status + ').'); return; }
         pmsg('il-msg', '');
         invRefresh(document.getElementById('km').value);
+      });
+    });
+    qsa('[data-receipt]', function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-receipt');
+        var v = await j('/api/v1/invoices/' + id + '/receipt');
+        var box = document.getElementById('il');
+        if (!v) { pmsg('il-msg', 'Gagal memuat kuitansi.'); return; }
+        pmsg('il-msg', '');
+        box.innerHTML = '<div class="card"><div class="card-body" id="receipt-print">'
+          + '<h2 class="card-title">Kuitansi #' + esc(v.number) + '</h2>'
+          + '<p class="text-muted">Diterbitkan: ' + esc(v.issued_at) + ' · Status: ' + badge(v.status) + '</p>'
+          + '<p>Total: <strong>' + fmtRp(v.total) + '</strong> · Terbayar: <strong>' + fmtRp(v.paid) + '</strong> · Sisa: <strong>' + fmtRp(v.balance) + '</strong></p>'
+          + '<div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Nominal</th><th>Metode</th></tr></thead><tbody>'
+          + ((v.payments || []).map(function (p) {
+            return '<tr><td>' + p.id + '</td><td>' + fmtRp(p.amount) + '</td><td>' + esc(p.method) + '</td></tr>';
+          }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada pembayaran.</td></tr>')
+          + '</tbody></table></div>'
+          + '<button class="btn btn-sm" id="receipt-back" type="button">Kembali</button> '
+          + '<button class="btn btn-sm btn-outline-secondary" id="receipt-print-btn" type="button">Cetak</button></div></div>';
+        on('receipt-back', 'click', function () { invRefresh(document.getElementById('km').value); });
+        on('receipt-print-btn', 'click', function () { window.print(); });
       });
     });
   }

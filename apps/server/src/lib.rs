@@ -1558,8 +1558,44 @@ async fn inv_get(
         .map_err(map_store)?;
     let paid: i64 = ps.iter().map(|p| p.amount).sum();
     Ok(Json(
-        json!({"id": v.id, "total": v.total, "paid": paid, "balance": v.total - paid, "payments": ps.iter().map(|p| json!({"id": p.id, "amount": p.amount})).collect::<Vec<_>>()}),
+        json!({"id": v.id, "total": v.total, "paid": paid, "balance": v.total - paid, "payments": ps.iter().map(|p| json!({"id": p.id, "amount": p.amount})).collect::<Vec<_>>() }),
     ))
+}
+/// Printable payment receipt for an invoice (F-D15-036). View-gated.
+async fn inv_receipt(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let (v, ps) = s
+        .stores
+        .ops
+        .inv_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    let paid: i64 = ps.iter().map(|p| p.amount).sum();
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "report.receipt_viewed".into(),
+            entity: "report".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({
+        "id": v.id, "number": v.number, "matter_id": v.matter_id,
+        "total": v.total, "paid": paid, "balance": v.total - paid,
+        "currency": v.currency, "status": if v.total - paid == 0 { "lunas" } else { "belum_lunas" },
+        "issued_at": chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        "payments": ps.iter().map(|p| json!({"id": p.id, "amount": p.amount, "method": p.method})).collect::<Vec<_>>(),
+    })))
 }
 #[derive(Debug, Deserialize, Validate)]
 struct PayReq {
@@ -5729,6 +5765,7 @@ pub fn build_router(state: FullState) -> Router {
             post(inv_create).get(inv_list),
         )
         .route("/api/v1/invoices/{id}", get(inv_get))
+        .route("/api/v1/invoices/{id}/receipt", get(inv_receipt))
         .route("/api/v1/invoices/{id}/payments", post(pay_add))
         .route("/api/v1/invoices/{id}/pay-gateway", post(pay_gateway))
         .route("/api/v1/reports/matters-csv", get(matters_csv))

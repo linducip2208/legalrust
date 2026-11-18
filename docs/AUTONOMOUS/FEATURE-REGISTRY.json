@@ -5757,10 +5757,13 @@
   "id": "F-D15-036",
   "domain": "D15",
   "title": "Payment receipt rendering",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/invoices/{id}/receipt (View + report.receipt_viewed audit)",
+   "apps/server/static/site.js: Kuitansi button per row + receipt-print view + Cetak",
+   "apps/server/tests/api.rs: receipt totals/lines/status/audit + 404 assertions"
+  ],
+  "audit_note": "Wave 33: payment receipt live (view + print)."
  },
  {
   "id": "F-D15-037",
