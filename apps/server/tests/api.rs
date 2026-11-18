@@ -4488,6 +4488,47 @@ async fn role_matrix_lists_least_privilege_sets() {
 }
 
 #[tokio::test]
+async fn public_pages_all_render_200() {
+    use tower::ServiceExt;
+    let a = app();
+    for uri in [
+        "/",
+        "/fitur",
+        "/fitur/manajemen-perkara",
+        "/fitur/manajemen-dokumen",
+        "/fitur/ocr",
+        "/fitur/ai-legal-assistant",
+        "/fitur/generasi-akta",
+        "/fitur/tanda-tangan",
+        "/solusi",
+        "/solusi/notaris",
+        "/solusi/ppat",
+        "/solusi/firma-hukum",
+        "/solusi/legal-corporate",
+        "/harga",
+        "/tentang",
+        "/artikel",
+        "/kontak",
+        "/demo",
+        "/faq",
+        "/kebijakan-privasi",
+        "/syarat-ketentuan",
+        "/login",
+        "/sitemap.xml",
+        "/robots.txt",
+        "/app",
+        "/skor",
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "page {uri} must render");
+    }
+}
+
+#[tokio::test]
 async fn users_list_scoped_and_cross_org_assign_blocked() {
     use tower::ServiceExt;
     let a = app();
