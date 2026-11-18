@@ -243,6 +243,13 @@
       "owner": "main",
       "depends": [],
       "evidence": "2026-11-18 wave 6: p-kepatuhan panel + tab + JS + needles"
+    },
+    {
+      "id": "B-WH-ALERT",
+      "title": "Webhook failure alerting (dashboard/notify on dead-letter)",
+      "status": "PLANNED",
+      "owner": null,
+      "depends": []
     }
   ]
 }

@@ -1,10 +1,10 @@
-# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 8: durable retry queue)
+# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 9: retry queue + mobile re-audit + benchmarks)
 
 Gates (SQLX_OFFLINE=true):
 - `cargo fmt --all -- --check`: PASS
 - `cargo clippy --workspace --all-targets -- -D warnings`: PASS
 - node --check site.js: PASS
-- `cargo test --workspace`: **299 passed, 0 failed** (noted: 1 transient stub-timing failure seen once, unreproduced in 3 full reruns) (server API incl. compliance lifecycle + store tests; webhook deliveries + store tenant test;
+- `cargo test --workspace`: **304 passed, 0 failed** (auto-dispatch E2E + 4 dispatch/retry unit tests + 12 mobile unit tests; noted: 1 transient stub-timing failure seen once, unreproduced in 3 full reruns) (server API incl. compliance lifecycle + store tests; webhook deliveries + store tenant test;
   3 approvals + trust CSV + approvals UI needles; integrations 30; OCR 21;
   AI 19; full matrix)
 

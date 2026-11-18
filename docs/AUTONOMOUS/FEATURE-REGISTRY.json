@@ -8740,10 +8740,13 @@
   "id": "F-D24-003",
   "domain": "D24",
   "title": "Offline-first task queue",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
+  ],
+  "audit_note": "Offline-first queue core exists + tested (generic kinds incl. tasks); no mobile UI shell wiring."
  },
  {
   "id": "F-D24-004",
@@ -8776,10 +8779,13 @@
   "id": "F-D24-007",
   "domain": "D24",
   "title": "Deferred upload & retry",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
+  ],
+  "audit_note": "Deferred retry with capped exponential backoff exists + tested; no capture/upload UI."
  },
  {
   "id": "F-D24-008",
@@ -8848,10 +8854,13 @@
   "id": "F-D24-015",
   "domain": "D24",
   "title": "Offline approval queue with deferred sync",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
+  ],
+  "audit_note": "Generic outbox can carry approval payloads; no mobile approval inbox UI."
  },
  {
   "id": "F-D24-016",
@@ -8940,10 +8949,13 @@
   "id": "F-D24-025",
   "domain": "D24",
   "title": "Conflict resolution (offline edits)",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
+  ],
+  "audit_note": "LWW conflict resolver exists + tested; no sync-conflict UI."
  },
  {
   "id": "F-D24-026",

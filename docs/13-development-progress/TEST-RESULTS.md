@@ -23,7 +23,12 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 7: auto-dispatch on notify (main)
+## 2026-11-18 — AUDIT-1000 wave 9: retry queue live + mobile re-audit + benchmarks (main)
+- job_enqueue_at + process_webhook_job + worker arm + dead-letter audit; 4 tes baru; workspace **304 passed, 0 failed**.
+- Registry: 55 IMPLEMENTED (tetap); 8-cat mean 19.0 (24 verified); skor registry 17.6/100.
+- Benchmarks: matters p50 20.4ms, approvals POST p50 27.5ms, deeds.csv p50 13.2ms (dev, live-DB, smoke only).
+
+## 2026-11-18 AUDIT-1000 wave 7: auto-dispatch on notify (main)
 - Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected).
 - Tes signed-stub E2E (matter create -> dispatch -> log); 1 transient stub-timing failure seen once, unreproduced in 3 full reruns.
 - Registry tetap 54 IMPLEMENTED; 8-cat mean 18.9 (20 verified).

@@ -3713,9 +3713,9 @@
    "apps/server/src/lib.rs: /app audit panel (endpoints CRUD, test-send, deliveries log)"
   ],
   "audit_note": "Outbound loop complete and tested: register/list/delete endpoints, signed test-send, auto-dispatch on notify events, retry with backoff, dead-letter after 5 attempts, full delivery log. Remaining: failure alerting, event-type routing UI beyond exact-match/*.",
-  "overall_score": 86.5,
+  "overall_score": 85.3,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D08-014",
@@ -11487,14 +11487,16 @@
  {
   "feature_id": "F-D24-003",
   "domain": "D24",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
   ],
-  "audit_note": "",
-  "overall_score": 10.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Offline-first queue core exists + tested (generic kinds incl. tasks); no mobile UI shell wiring.",
+  "overall_score": 46.5,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D24-004",
@@ -11535,14 +11537,16 @@
  {
   "feature_id": "F-D24-007",
   "domain": "D24",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
   ],
-  "audit_note": "",
-  "overall_score": 0.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Deferred retry with capped exponential backoff exists + tested; no capture/upload UI.",
+  "overall_score": 46.5,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D24-008",
@@ -11631,14 +11635,16 @@
  {
   "feature_id": "F-D24-015",
   "domain": "D24",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
   ],
-  "audit_note": "",
-  "overall_score": 0.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Generic outbox can carry approval payloads; no mobile approval inbox UI.",
+  "overall_score": 43.2,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D24-016",
@@ -11753,14 +11759,16 @@
  {
   "feature_id": "F-D24-025",
   "domain": "D24",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "apps/mobile/src/lib.rs: OutboxOp/SyncQueue (1 MiB guard, FIFO, retries, backoff 5*2^n capped 160s, dead-letter)",
+   "apps/mobile/src/lib.rs: resolve_conflict (last-writer-wins, tested)",
+   "apps/mobile: 12 unit tests green (queue/backoff/conflict/size guards)"
   ],
-  "audit_note": "",
-  "overall_score": 10.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "LWW conflict resolver exists + tested; no sync-conflict UI.",
+  "overall_score": 46.5,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D24-026",
@@ -12151,9 +12159,9 @@
    "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send + webhook_auto_dispatch_on_notify (signed stub + delivery log)"
   ],
   "audit_note": "Delivery monitor covers in+out incl. auto-dispatched; alerting on failures + retry remain queued.",
-  "overall_score": 81.4,
+  "overall_score": 81.5,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (mobile: in-crate unit tests only, no device run)"
  },
  {
   "feature_id": "F-D25-018",

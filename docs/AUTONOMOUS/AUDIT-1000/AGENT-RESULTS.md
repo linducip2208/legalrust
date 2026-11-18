@@ -89,4 +89,5 @@
   (F-D09 ×8, F-D20-001/004/020, F-D25-009).
 - Wave 6: outbound webhook endpoints (migration 0016, CRUD + signed test-send + delivery log + /app card + needles); live MySQL migration proof 0001-0016; registry 17.4/100; workspace 298/0.
 - Wave 7: auto-dispatch on notify_user (background signed fan-out + delivery log; 8-cat re-score F-D08-013/F-D25-017); workspace 292.
-- Wave 8: durable retry queue (job_enqueue_at lease, process_webhook_job, worker arm, fan-out retry-on-failure, dead-letter after 5, 4 new tests). F-D08-013 -> IMPLEMENTED (55 total); left: failure alerting. Workspace 299/0.
+- Wave 8: durable retry queue (job_enqueue_at lease, process_webhook_job, worker arm, fan-out retry-on-failure, dead-letter after 5, 4 new tests). F-D08-013 -> IMPLEMENTED (55 total); left: failure alerting.
+- Wave 9: enqueue_at lease + process_webhook_job tests (deliver/retry/dead-letter+audit); mobile crate re-audit (F-D24 x4 PARTIAL, 12 unit tests); dev benchmarks recorded. Workspace 299/0.

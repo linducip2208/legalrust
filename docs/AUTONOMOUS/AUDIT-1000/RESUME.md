@@ -1,9 +1,9 @@
 # RESUME (AUDIT-1000— next session entry point)
 
 Date: 2026-11-18 (wave 8 done). HEAD: (record on commit — wave ends with commit).
-Workspace: 299 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
-Registry: IMPLEMENTED 55 / PARTIAL 101 / NOT_STARTED 368 / PLANNED 317 / CONFIG 159.
-Scores: registry 17.4/100; 8-cat mean 18.9 (20 verified). Composite ~45/100 — NOT 100.
+Workspace: 304 passed / 0 failed; fmt+clippy clean; node --check clean; live MySQL migration proof 0001-0016.
+Registry: IMPLEMENTED 55 / PARTIAL 105 / NOT_STARTED 366 / PLANNED 315 / CONFIG 159.
+Scores: registry 17.4/100; 8-cat mean 19.0 (24 verified). Composite ~45/100 — NOT 100.
 Server + Apache running detached via WMI (survives shell sessions); legalrust.test 200.
 
 ## Done wave 8: durable webhook retry queue (main)
@@ -37,6 +37,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected).
 - Tes signed-stub E2E (matter create -> dispatch -> log); 1 transient stub-timing failure seen once, unreproduced in 3 full reruns.
 - Registry tetap 54 IMPLEMENTED; 8-cat mean 18.9 (20 verified, F-D08-013/F-D25-017 re-scored). Workspace 299/0.
+
+## Done wave 9: durable retry queue live + mobile re-audit + benchmarks (main)
+- OpsStore::job_enqueue_at (memory run_at lease + MySQL DATE_ADD); integrations::process_webhook_job (send/requeue/dead-letter+audit); worker webhook.dispatch arm; notify fan-out queues retry on failure.
+- 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
+- Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
 ## Next executable tasks (priority order)
 1. **Outbound auto-dispatch** -> DONE wave 7 (signed fan-out; retry remains queued).

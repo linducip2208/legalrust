@@ -148,6 +148,10 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 9: durable retry queue + mobile re-audit + benchmarks (main)
+- job_enqueue_at (memory lease + MySQL DATE_ADD) + process_webhook_job + worker arm; dead-letter audit; 4 tes baru; workspace 304/0.
+- Registry 54 -> **55 IMPLEMENTED** (F-D08-013); 8-cat mean 19.0 (24 verified).
+
 ## 2026-11-18 AUDIT-1000 wave 7: auto-dispatch on notify (main)
 - Fan-out background di notify_user ke endpoint terdaftar (signed post_json, timeout 10s, delivery log accepted/rejected); tes E2E signed-stub; /app unchanged (panel deliveries sudah ada).
 - 1 transient failure (stub timing) terlihat sekali, tidak terulang di 3 run penuh; dicatat.

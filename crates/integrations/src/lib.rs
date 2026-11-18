@@ -264,6 +264,10 @@ pub async fn process_webhook_job(
                         "dead-letter: max attempts",
                     )
                     .await;
+                // Dead-letter alert: lands in the tenant audit trail.
+                let _ = ops
+                    .audit_add(&org, None, "webhook.dead_letter", "webhook", ep.id)
+                    .await;
                 Ok(DispatchOutcome::DeadLetter(format!("max attempts: {e}")))
             } else {
                 let delay = webhook_backoff_secs(job.attempts.max(1));
@@ -814,6 +818,9 @@ mod tests {
             .all(|j| j.kind != "webhook.dispatch" || j.status != "queued"));
         let v = ops.webhook_list("org1", Some("outbound")).await.unwrap();
         assert!(v.iter().any(|r| r.status == "rejected"));
+        // Dead-letter alert lands in the tenant audit trail.
+        let audits = ops.audit_list("org1", Some("webhook"), 50).await.unwrap();
+        assert!(audits.iter().any(|a| a.action == "webhook.dead_letter"));
     }
 
     #[tokio::test]

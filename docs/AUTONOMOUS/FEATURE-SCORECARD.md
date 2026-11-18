@@ -2,7 +2,7 @@
 
 Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_STARTED 0.
 
-## Skor keseluruhan: 17.4/100 (grade E)
+## Skor keseluruhan: 17.6/100 (grade E)
 
 | Domain | Nama | Skor | Grade |
 |---|---|---|---|---|
@@ -13,7 +13,7 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 | D05 | OCR & Doc Intel | 27.5 | E |
 | D06 | Deed Generation | 21.6 | E |
 | D07 | AI Legal Assistant | 25.4 | E |
-| D08 | Workflow Automation | 10.2 | E |
+| D08 | Workflow Automation | 11.4 | E |
 | D09 | Approval Mgmt | 25.4 | E |
 | D10 | Electronic Signature | 23.4 | E |
 | D11 | Compliance & Risk | 10.1 | E |
@@ -29,5 +29,5 @@ Skor = IMPLEMENTED 100 / PARTIAL 55 / CONFIG_REQUIRED 30 / PLANNED 5 / NOT_START
 | D21 | API & Integration | 27.2 | E |
 | D22 | Security & Data Protection | 24.2 | E |
 | D23 | Search & Discovery | 19.2 | E |
-| D24 | Mobile & Field Ops | 4.2 | E |
+| D24 | Mobile & Field Ops | 9.5 | E |
 | D25 | Enterprise Administration | 13.1 | E |

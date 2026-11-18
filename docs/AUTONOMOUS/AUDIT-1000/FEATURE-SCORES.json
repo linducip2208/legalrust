@@ -4970,14 +4970,14 @@
   "scores": {
    "backend": 90,
    "database": 90,
-   "frontend": 82,
-   "business_logic": 85,
+   "frontend": 80,
+   "business_logic": 80,
    "security": 88,
    "testing": 90,
    "integration": 80,
-   "documentation": 75
+   "documentation": 72
   },
-  "overall_score": 86.5,
+  "overall_score": 85.3,
   "verified_8cat": true
  },
  {
@@ -15676,19 +15676,19 @@
  {
   "feature_id": "F-D24-003",
   "domain": "D24",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 10,
-   "database": 10,
+   "backend": 55,
+   "database": 40,
    "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "business_logic": 55,
+   "security": 50,
+   "testing": 70,
+   "integration": 20,
+   "documentation": 55
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 46.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D24-004",
@@ -15744,19 +15744,19 @@
  {
   "feature_id": "F-D24-007",
   "domain": "D24",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 55,
+   "database": 40,
+   "frontend": 10,
+   "business_logic": 55,
+   "security": 50,
+   "testing": 70,
+   "integration": 20,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 46.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D24-008",
@@ -15880,19 +15880,19 @@
  {
   "feature_id": "F-D24-015",
   "domain": "D24",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 50,
+   "database": 40,
+   "frontend": 10,
+   "business_logic": 50,
+   "security": 50,
+   "testing": 60,
+   "integration": 20,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 43.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D24-016",
@@ -16050,19 +16050,19 @@
  {
   "feature_id": "F-D24-025",
   "domain": "D24",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 10,
-   "database": 10,
+   "backend": 55,
+   "database": 40,
    "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "business_logic": 55,
+   "security": 50,
+   "testing": 70,
+   "integration": 20,
+   "documentation": 55
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 46.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D24-026",
@@ -16600,12 +16600,12 @@
    "database": 85,
    "frontend": 82,
    "business_logic": 70,
-   "security": 85,
    "testing": 85,
    "integration": 78,
-   "documentation": 70
+   "documentation": 72,
+   "security": 85
   },
-  "overall_score": 81.4,
+  "overall_score": 81.5,
   "verified_8cat": true
  },
  {
