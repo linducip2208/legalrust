@@ -45,6 +45,7 @@ struct Inner {
     ppat: HashMap<i64, PpatRow>,
     dpia: HashMap<i64, DpiaRow>,
     breach: HashMap<i64, BreachRow>,
+    delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
 }
@@ -1361,6 +1362,67 @@ impl OpsStore for MemoryOps {
         r.status = to.into();
         Ok(())
     }
+    async fn delegation_set(
+        &self,
+        org: &str,
+        delegator: &str,
+        delegate: &str,
+        active: bool,
+    ) -> Result<i64, StoreError> {
+        if delegator == delegate {
+            return Err(StoreError::Conflict("self delegation".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        // Upsert on the org pair (idempotent toggle).
+        if let Some((id, r)) = m
+            .delegs
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.delegator == delegator && r.delegate == delegate)
+        {
+            r.active = active;
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.delegs.insert(
+            id,
+            DelegationRow {
+                id,
+                org: org.into(),
+                delegator: delegator.into(),
+                delegate: delegate.into(),
+                active,
+            },
+        );
+        Ok(id)
+    }
+    async fn delegation_list(&self, org: &str) -> Result<Vec<DelegationRow>, StoreError> {
+        let mut v: Vec<DelegationRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .delegs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn delegation_delegators(
+        &self,
+        org: &str,
+        user: &str,
+    ) -> Result<Vec<String>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .delegs
+            .values()
+            .filter(|r| r.org == org && r.delegate == user && r.active)
+            .map(|r| r.delegator.clone())
+            .collect())
+    }
     async fn notif_pref_set(
         &self,
         user: &str,
@@ -2498,6 +2560,36 @@ mod compliance_tests {
             ops.breach_set_status("o1", b, st).await.unwrap();
         }
         assert!(ops.breach_list("o2").await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn delegation_upsert_and_resolve() {
+        let ops = MemoryOps::default();
+        assert!(ops.delegation_set("o1", "u1", "u1", true).await.is_err());
+        let id = ops.delegation_set("o1", "u1", "u2", true).await.unwrap();
+        assert_eq!(
+            ops.delegation_delegators("o1", "u2").await.unwrap(),
+            vec!["u1".to_string()]
+        );
+        assert!(ops
+            .delegation_delegators("o2", "u2")
+            .await
+            .unwrap()
+            .is_empty());
+        // Toggle off is an upsert on the same pair (same id).
+        assert_eq!(
+            ops.delegation_set("o1", "u1", "u2", false).await.unwrap(),
+            id
+        );
+        assert!(ops
+            .delegation_delegators("o1", "u2")
+            .await
+            .unwrap()
+            .is_empty());
+        let v = ops.delegation_list("o1").await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert!(!v[0].active);
+        assert!(ops.delegation_list("o2").await.unwrap().is_empty());
     }
 
     #[tokio::test]

@@ -74,6 +74,17 @@
       if (sb && window.innerWidth < 960) sb.classList.remove('open');
     });
   });
+  /* ---- sidebar menu search: filter links by keyword ---- */
+  on('menu-q', 'input', function () {
+    var q = (pval('menu-q') || '').toLowerCase();
+    qsa('.side-group', function (g) {
+      var links = Array.prototype.slice.call(g.querySelectorAll('.snav'));
+      if (!links.length) return;
+      var hit = links.filter(function (a) { return a.textContent.toLowerCase().indexOf(q) !== -1; });
+      links.forEach(function (a) { a.style.display = (!q || hit.indexOf(a) !== -1) ? '' : 'none'; });
+      g.style.display = (!q || hit.length) ? '' : 'none';
+    });
+  });
   document.querySelectorAll('details.nav-dd').forEach(function (d) {
     d.addEventListener('toggle', function () {
       if (!d.open) return;
@@ -1318,6 +1329,37 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('appr-notif-reload', 'click', apprNotifRefresh);
   on('appr-notif-unread-only', 'change', apprNotifRefresh);
+  /* ---- approval delegation (out-of-office substitutes) ---- */
+  async function delegRefresh() {
+    var box = document.getElementById('deleg-list');
+    if (!box) return;
+    var v = await j('/api/v1/delegations');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat (perlu hak Approve).</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.active ? '<button class="btn btn-sm btn-outline-danger" data-deleg-off="' + esc(x.delegate) + '" type="button">Cabut</button>' : '<span class="text-muted">nonaktif</span>';
+      return '<tr><td>' + x.id + '</td><td><code>' + esc(String(x.delegator).slice(0, 8)) + '</code></td><td><code>' + esc(String(x.delegate).slice(0, 8)) + '</code></td><td>' + (x.active ? 'ya' : 'tidak') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada delegasi.</td></tr>';
+    qsa('[data-deleg-off]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/delegations', { delegate_uid: b.getAttribute('data-deleg-off'), active: false });
+        if (!r.ok) { pmsg('deleg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('deleg-msg', '');
+        delegRefresh();
+      });
+    });
+  }
+  on('deleg-add', 'click', async function () {
+    var uid = pval('deleg-uid');
+    if (!uid) { pmsg('deleg-msg', 'Isi UID penerima kuasa.'); return; }
+    var r = await ppost('/api/v1/delegations', { delegate_uid: uid, active: true });
+    if (!r.ok) { pmsg('deleg-msg', 'Gagal (' + r.status + '). UID harus satu organisasi.'); return; }
+    pmsg('deleg-msg', '');
+    delegRefresh();
+  });
+  on('deleg-reload', 'click', delegRefresh);
+  qsa('.snav[data-tab="appr"]', function (a) {
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); });
+  });
   qsa('.snav[data-tab="appr"]', function (a) {
     a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); });
   });
@@ -1547,6 +1589,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   loadJobs();
   apprRefresh();
   apprNotifRefresh();
+  delegRefresh();
   certRefresh();
   ppatRefresh();
   clauseRefresh();

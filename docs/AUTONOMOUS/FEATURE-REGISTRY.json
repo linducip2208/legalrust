@@ -3137,19 +3137,29 @@
   "id": "F-D09-003",
   "domain": "D09",
   "title": "Delegation of authority",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0023_delegations.sql: approval_delegations (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: delegation_set/list/delegators",
+   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (Approve-gated set, org-checked) + decide honors delegation + approval.delegated audit",
+   "apps/server/static/site.js: delegasi card + toggle + hooks",
+   "apps/server/tests/api.rs: delegation_guards_and_audit + needles; memory upsert/resolve unit test"
+  ],
+  "audit_note": "Wave 40: delegation engine live; end-to-end same-org decide blocked on user provisioning (no invite flow yet)."
  },
  {
   "id": "F-D09-004",
   "domain": "D09",
   "title": "Out-of-office delegation",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0023_delegations.sql: approval_delegations (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: delegation_set/list/delegators",
+   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (Approve-gated set, org-checked) + decide honors delegation + approval.delegated audit",
+   "apps/server/static/site.js: delegasi card + toggle + hooks",
+   "apps/server/tests/api.rs: delegation_guards_and_audit + needles; memory upsert/resolve unit test"
+  ],
+  "audit_note": "Wave 40: active-flag toggle = out-of-office on/off; same provisioning caveat."
  },
  {
   "id": "F-D09-005",

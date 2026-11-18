@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 40: delegasi approval (main)
+- Substitute decide + audit; workspace **334 passed, 0 failed**; F-D09-003/004 PARTIAL.
+
 ## 2026-11-18 AUDIT-1000 wave 39: audit navigasi (main)
 - Semua menu penting tampil + terkunci test; workspace **332 passed, 0 failed** (1 transient flake, rerun hijau).
 

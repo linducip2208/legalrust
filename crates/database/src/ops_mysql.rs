@@ -1385,6 +1385,68 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn delegation_set(
+        &self,
+        org: &str,
+        delegator: &str,
+        delegate: &str,
+        active: bool,
+    ) -> Result<i64, StoreError> {
+        if delegator == delegate {
+            return Err(StoreError::Conflict("self delegation".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO approval_delegations (org_id, delegator_id, delegate_id, active) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE active=VALUES(active)",
+        )
+        .bind(org)
+        .bind(delegator)
+        .bind(delegate)
+        .bind(active)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        let id = r.last_insert_id() as i64;
+        if id == 0 {
+            // Upsert hit: fetch existing row id.
+            let x = sqlx::query(
+                "SELECT id FROM approval_delegations WHERE org_id=? AND delegator_id=? AND delegate_id=?",
+            )
+            .bind(org)
+            .bind(delegator)
+            .bind(delegate)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(db_err)?;
+            return Ok(x.get::<u64, _>("id") as i64);
+        }
+        Ok(id)
+    }
+    async fn delegation_list(&self, org: &str) -> Result<Vec<DelegationRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, delegator_id, delegate_id, active FROM approval_delegations WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DelegationRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                delegator: x.get::<String, _>("delegator_id"),
+                delegate: x.get::<String, _>("delegate_id"),
+                active: x.get::<bool, _>("active"),
+            })
+            .collect())
+    }
+    async fn delegation_delegators(
+        &self,
+        org: &str,
+        user: &str,
+    ) -> Result<Vec<String>, StoreError> {
+        let rows = sqlx::query("SELECT delegator_id FROM approval_delegations WHERE org_id=? AND delegate_id=? AND active=1")
+            .bind(org).bind(user).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| x.get::<String, _>("delegator_id"))
+            .collect())
+    }
     async fn notif_pref_set(
         &self,
         user: &str,

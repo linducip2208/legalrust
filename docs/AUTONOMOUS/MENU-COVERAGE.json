@@ -1,0 +1,17 @@
+{
+ "sidebar_count": 13,
+ "unique_tabs": 12,
+ "duplicate_tabs": {},
+ "missing_panels": [],
+ "top_tabs_count": 12,
+ "app_panels_count": 12,
+ "page_routes_count": 77,
+ "unlinked_public_pages": [],
+ "catalog_by_status": {
+  "PARTIAL": 96,
+  "NOT_STARTED": 359,
+  "CONFIGURATION_REQUIRED": 159,
+  "PLANNED": 311,
+  "IMPLEMENTED": 75
+ }
+}

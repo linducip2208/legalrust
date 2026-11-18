@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 40: delegasi approval pengganti (main)
+- Migration 0023; decide honors active delegation + audit; guard/UI tests.
+- F-D09-003 NOT_STARTED->PARTIAL (64.4); F-D09-004 PLANNED->PARTIAL (63.1). Caveat jujur: decide e2e butuh invite flow (F-D16-001 follow-up).
+- Workspace 334/0; registry 19.9 (75 IMPLEMENTED); 8-cat mean 20.3 (58 verified).
+
 ## Done wave 39: audit kelengkapan navigasi (main)
 - 26 halaman publik + /app + /skor wajib 200 (public_pages_all_render_200); sidebar 12 tab 1:1 + mobile nav + footer + sitemap terverifikasi.
 - Semua menu penting tampil. Workspace 332/0; registry 20.0 (75 IMPLEMENTED); 8-cat mean 20.2 (56 verified).

@@ -3335,6 +3335,8 @@ async fn dash_app_has_sidebar_nav_groups() {
     assert!(t.contains("id=\"sidebar\""), "missing sidebar");
     // One link per tab: no duplicate data-tab may share the active state.
     for s in [
+        "menu-q",
+        "Cari menu",
         "Dashboard",
         "Verifikasi Identitas",
         "Klien &amp; Perkara",
@@ -4526,6 +4528,84 @@ async fn public_pages_all_render_200() {
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK, "page {uri} must render");
     }
+}
+
+#[tokio::test]
+async fn delegation_guards_and_audit() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "deleg@x.id").await;
+    let tok_b = reg(&a, "delegB@x.id").await;
+    let other_uid = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok_b))
+            .await
+            .unwrap(),
+    )
+    .await["user_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // Cross-org delegate invisible; self-delegation conflicts.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/delegations",
+            &format!(r#"{{"delegate_uid":"{other_uid}"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let my_uid = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await["user_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/delegations",
+            &format!(r#"{{"delegate_uid":"{my_uid}"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Unknown uid 404; auditor cannot delegate.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/delegations",
+            r#"{"delegate_uid":"no-such-user"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/delegations",
+            &format!(r#"{{"delegate_uid":"{my_uid}"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Empty list for fresh org.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/delegations", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
 }
 
 #[tokio::test]
@@ -6561,6 +6641,10 @@ async fn uib_app_has_approvals_ui() {
         "appr-notif-reload",
         "appr-notif-unread",
         "appr-notif-unread-only",
+        "deleg-uid",
+        "deleg-add",
+        "deleg-reload",
+        "deleg-list",
         "job-summary",
         "trust-csv-acct",
         "trust-csv-btn",

@@ -143,6 +143,15 @@ pub struct BreachRow {
     pub affected_count: i64,
     pub status: String,
 }
+/// Approval delegation (delegator -> delegate).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DelegationRow {
+    pub id: i64,
+    pub org: String,
+    pub delegator: String,
+    pub delegate: String,
+    pub active: bool,
+}
 #[derive(Debug, Clone)]
 pub struct TrustAccountRow {
     pub id: i64,
@@ -665,6 +674,19 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError>;
     async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// Out-of-office approval delegation: delegate may decide steps the
+    /// delegator could decide. Returns delegation id.
+    async fn delegation_set(
+        &self,
+        org: &str,
+        delegator: &str,
+        delegate: &str,
+        active: bool,
+    ) -> Result<i64, StoreError>;
+    async fn delegation_list(&self, org: &str) -> Result<Vec<DelegationRow>, StoreError>;
+    /// Delegator ids that actively delegate to `user` (same org).
+    async fn delegation_delegators(&self, org: &str, user: &str)
+        -> Result<Vec<String>, StoreError>;
     /// UU PDP DPIA assessment register.
     async fn dpia_create(
         &self,
