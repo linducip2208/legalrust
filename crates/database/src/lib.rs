@@ -36,6 +36,7 @@ pub use ops::{
     ClientTagRow, ConsentRow, CrmStore, DeedRow, InvoiceRow, JobRow, MarketingArticleRow,
     MarketingContactRow, MarketingDemoRow, MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow,
     MarketingNoteRow, MarketingPlanRow, MarketingStore, MarketingSubscriberRow, MeetingRow,
-    NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow, PdpObligationRow, RagHit, RopaRow,
-    ShareRow, TemplateRow, TrustAccountRow, TrustEntryRow, WebhookDeliveryRow, WebhookEndpointRow,
+    NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow, PdpObligationRow, PpatRow, RagHit,
+    RopaRow, ShareRow, TemplateRow, TrustAccountRow, TrustEntryRow, WebhookDeliveryRow,
+    WebhookEndpointRow,
 };

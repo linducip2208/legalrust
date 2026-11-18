@@ -1080,6 +1080,84 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ppat_create(
+        &self,
+        org: &str,
+        number: &str,
+        deed_kind: &str,
+        seller: &str,
+        buyer: &str,
+        object: &str,
+    ) -> Result<i64, StoreError> {
+        let number = number.trim();
+        if number.is_empty() || number.len() > 60 {
+            return Err(StoreError::Conflict("number".into()));
+        }
+        if !matches!(
+            deed_kind,
+            "ajb" | "hibah" | "tukar_menukar" | "apht" | "skmht" | "sewa" | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("deed_kind".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO ppat_entries (org_id, number, deed_kind, party_seller, party_buyer, object_desc) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(number)
+        .bind(deed_kind)
+        .bind(seller.trim())
+        .bind(buyer.trim())
+        .bind(object.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let s = e.to_string();
+            if s.contains("uq_ppat_org_number") || s.contains("Duplicate entry") {
+                StoreError::Conflict("number taken".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, number, deed_kind, party_seller, party_buyer, object_desc, status FROM ppat_entries WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PpatRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                number: x.get::<String, _>("number"),
+                deed_kind: x.get::<String, _>("deed_kind"),
+                party_seller: x.get::<String, _>("party_seller"),
+                party_buyer: x.get::<String, _>("party_buyer"),
+                object_desc: x.get::<String, _>("object_desc"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "signed" | "registered") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        // Enforce draft->signed->registered in one conditional update.
+        let from = if to == "signed" { "draft" } else { "signed" };
+        let n =
+            sqlx::query("UPDATE ppat_entries SET status=? WHERE id=? AND org_id=? AND status=?")
+                .bind(to)
+                .bind(id as u64)
+                .bind(org)
+                .bind(from)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?
+                .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn pay_add(
         &self,
         org: &str,

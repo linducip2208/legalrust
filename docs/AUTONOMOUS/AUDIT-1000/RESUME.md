@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 27: register PPAT end-to-end (main)
+- Migration 0018 ppat_entries; CRUD + guarded transitions; UI register card; RBAC/audit/tests.
+- F-D13-001 NOT_STARTED->IMPLEMENTED (77.9). Workspace 321/0; registry 18.9 (66 IMPLEMENTED); mean 19.6 (42 v).
+
 ## Done wave 26: intake sertifikat tanah di UI Akta (main)
 - Sertifikat card (buat job land_certificate + daftar job + 404 jujur); intake flow test.
 - F-D13-002 51.8->67.5 PARTIAL (verified).

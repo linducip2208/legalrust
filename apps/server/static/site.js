@@ -581,6 +581,38 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   qsa('.snav[data-tab="akta"]', function (a) {
     a.addEventListener('click', function () { certRefresh(); });
   });
+  /* ---- PPAT deed register (draft -> signed -> registered) ---- */
+  var PPAT_NEXT = { draft: 'signed', signed: 'registered' };
+  async function ppatRefresh() {
+    var box = document.getElementById('ppat-list');
+    if (!box) return;
+    var v = await j('/api/v1/ppat');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = PPAT_NEXT[x.status];
+      var act = nx ? '<button class="btn btn-sm" data-ppat-next="' + x.id + '" data-ppat-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">selesai</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.number) + '</td><td>' + esc(x.deed_kind) + '</td><td>' + esc(x.seller) + ' → ' + esc(x.buyer) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada akta PPAT.</td></tr>';
+    qsa('[data-ppat-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/ppat/' + b.getAttribute('data-ppat-next') + '/status', { status: b.getAttribute('data-ppat-to') });
+        if (!r.ok) { pmsg('ppat-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ppat-msg', '');
+        ppatRefresh();
+      });
+    });
+  }
+  on('ppat-add', 'click', async function () {
+    if (!pval('ppat-number')) { pmsg('ppat-msg', 'Isi nomor akta.'); return; }
+    var r = await ppost('/api/v1/ppat', { number: pval('ppat-number'), deed_kind: pval('ppat-kind') || 'ajb', seller: pval('ppat-seller') || '', buyer: pval('ppat-buyer') || '', object: pval('ppat-object') || '' });
+    if (!r.ok) { pmsg('ppat-msg', 'Gagal (' + r.status + '). Nomor mungkin sudah dipakai.'); return; }
+    pmsg('ppat-msg', '');
+    ppatRefresh();
+  });
+  on('ppat-reload', 'click', ppatRefresh);
+  qsa('.snav[data-tab="akta"]', function (a) {
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); });
+  });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
     var box = document.getElementById('doc-version-detail');
@@ -1296,6 +1328,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apprRefresh();
   apprNotifRefresh();
   certRefresh();
+  ppatRefresh();
   whRefresh();
   kepRefresh();
   conRefresh();

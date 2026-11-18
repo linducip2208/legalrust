@@ -3365,6 +3365,11 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "cert-reload",
         "cert-msg",
         "cert-list",
+        "ppat-number",
+        "ppat-kind",
+        "ppat-add",
+        "ppat-reload",
+        "ppat-list",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
     }
@@ -3548,6 +3553,99 @@ async fn dash_flow_deed_from_template() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn ppat_register_crud_and_guards() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ppat@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // RBAC: auditor cannot create.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"1/2026","deed_kind":"ajb","seller":"A","buyer":"B","object":"SHM 1"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Validation: bad kind rejected at the store layer.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"1/2026","deed_kind":"gadai"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"1/2026","deed_kind":"ajb","seller":"A","buyer":"B","object":"SHM 1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Duplicate number rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"1/2026","deed_kind":"hibah"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // List shows draft; skip-ahead refused; walk the chain.
+    let res = a.clone().oneshot(get("/api/v1/ppat", &tok)).await.unwrap();
+    let v = body_json(res).await;
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["status"] == "draft"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/status"),
+            r#"{"status":"registered"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["signed", "registered"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/ppat/{pid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "transition to {st}");
+    }
+    // Auditor cannot move status either (no Update).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/status"),
+            r#"{"status":"draft"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

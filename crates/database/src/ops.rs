@@ -101,6 +101,18 @@ pub struct ArOpenRow {
     pub paid: i64,
     pub balance: i64,
 }
+/// PPAT deed register entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PpatRow {
+    pub id: i64,
+    pub org: String,
+    pub number: String,
+    pub deed_kind: String,
+    pub party_seller: String,
+    pub party_buyer: String,
+    pub object_desc: String,
+    pub status: String,
+}
 #[derive(Debug, Clone)]
 pub struct TrustAccountRow {
     pub id: i64,
@@ -601,6 +613,18 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ropa_list(&self, org: &str) -> Result<Vec<RopaRow>, StoreError>;
     async fn ropa_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// PPAT deed register: create/list/status-step (draft->signed->registered).
+    async fn ppat_create(
+        &self,
+        org: &str,
+        number: &str,
+        deed_kind: &str,
+        seller: &str,
+        buyer: &str,
+        object: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError>;
+    async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn notify(
         &self,
         org: &str,

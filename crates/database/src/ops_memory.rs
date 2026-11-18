@@ -41,6 +41,7 @@ struct Inner {
     obligations: HashMap<i64, PdpObligationRow>,
     consents: HashMap<i64, ConsentRow>,
     ropa: HashMap<i64, RopaRow>,
+    ppat: HashMap<i64, PpatRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -1103,6 +1104,75 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn ppat_create(
+        &self,
+        org: &str,
+        number: &str,
+        deed_kind: &str,
+        seller: &str,
+        buyer: &str,
+        object: &str,
+    ) -> Result<i64, StoreError> {
+        let number = number.trim();
+        if number.is_empty() || number.len() > 60 {
+            return Err(StoreError::Conflict("number".into()));
+        }
+        if !matches!(
+            deed_kind,
+            "ajb" | "hibah" | "tukar_menukar" | "apht" | "skmht" | "sewa" | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("deed_kind".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.ppat.values().any(|r| r.org == org && r.number == number) {
+            return Err(StoreError::Conflict("number taken".into()));
+        }
+        let id = self.next(&mut m);
+        m.ppat.insert(
+            id,
+            PpatRow {
+                id,
+                org: org.into(),
+                number: number.into(),
+                deed_kind: deed_kind.into(),
+                party_seller: seller.trim().into(),
+                party_buyer: buyer.trim().into(),
+                object_desc: object.trim().into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError> {
+        let mut v: Vec<PpatRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ppat
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ppat
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "signed") | ("signed", "registered")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
     }
     async fn trust_create_account(
         &self,
@@ -2191,6 +2261,36 @@ mod compliance_tests {
         ops.ropa_delete("org2", id).await.unwrap_err();
         ops.ropa_delete("org1", id).await.unwrap();
         assert!(ops.ropa_list("org1").await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn ppat_register_guards_and_transitions() {
+        let ops = MemoryOps::default();
+        assert!(ops
+            .ppat_create("o1", "  ", "ajb", "", "", "")
+            .await
+            .is_err());
+        assert!(ops
+            .ppat_create("o1", "1/26", "gadai", "", "", "")
+            .await
+            .is_err());
+        let id = ops
+            .ppat_create("o1", "1/26", "ajb", "A", "B", "SHM 1")
+            .await
+            .unwrap();
+        assert!(ops
+            .ppat_create("o1", "1/26", "hibah", "", "", "")
+            .await
+            .is_err());
+        assert!(ops.ppat_list("o2").await.unwrap().is_empty());
+        // Skip-ahead rejected; step through draft -> signed -> registered.
+        assert!(ops.ppat_set_status("o1", id, "registered").await.is_err());
+        ops.ppat_set_status("o1", id, "signed").await.unwrap();
+        assert!(ops.ppat_set_status("o2", id, "registered").await.is_err());
+        ops.ppat_set_status("o1", id, "registered").await.unwrap();
+        assert!(ops.ppat_set_status("o1", id, "draft").await.is_err());
+        let v = ops.ppat_list("o1").await.unwrap();
+        assert_eq!(v[0].status, "registered");
     }
 
     #[tokio::test]

@@ -4648,10 +4648,16 @@
   "id": "F-D13-001",
   "domain": "D13",
   "title": "PPAT deed register (akta PPAT)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0018_ppat.sql: ppat_entries (org-scoped, uq number, forward-only)",
+   "crates/database/src/ops.rs: PpatRow + ppat_create/list/set_status",
+   "crates/database/src/ops_memory.rs + ops_mysql.rs: kind allowlist, dup guard, draft->signed->registered",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat + POST /{id}/status (Create/View/Update + validator + audit)",
+   "apps/server/static/site.js: register card + advance wiring + tab hook + boot",
+   "apps/server/tests/api.rs: ppat_register_crud_and_guards (403/409/422-guard/chain) + memory unit test + needles"
+  ],
+  "audit_note": "Wave 27: PPAT register live end-to-end (migration 0018)."
  },
  {
   "id": "F-D13-002",
