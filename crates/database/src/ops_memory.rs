@@ -35,6 +35,8 @@ struct Inner {
     apprs: HashMap<i64, ApprovalReqRow>,
     appr_steps: HashMap<i64, ApprovalStepRow>,
     webhooks: Vec<WebhookDeliveryRow>,
+    obligations: HashMap<i64, PdpObligationRow>,
+    consents: HashMap<i64, ConsentRow>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -784,6 +786,137 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| -r.id);
         v.truncate(200);
+        Ok(v)
+    }
+    async fn pdp_obligation_create(
+        &self,
+        org: &str,
+        title: &str,
+        category: &str,
+        owner: &str,
+    ) -> Result<i64, StoreError> {
+        if title.trim().is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.obligations.insert(
+            id,
+            PdpObligationRow {
+                id,
+                org: org.into(),
+                title: title.trim().into(),
+                category: if category.trim().is_empty() {
+                    "general".into()
+                } else {
+                    category.trim().into()
+                },
+                status: "open".into(),
+                owner: owner.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn pdp_obligation_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<PdpObligationRow>, StoreError> {
+        let mut v: Vec<PdpObligationRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .obligations
+            .values()
+            .filter(|r| r.org == org && status.is_none_or(|s| r.status == s))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn pdp_obligation_set_status(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+    ) -> Result<(), StoreError> {
+        if !["open", "in_progress", "done"].contains(&status) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .obligations
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status == "done" {
+            return Err(StoreError::Conflict("obligation closed".into()));
+        }
+        if r.status == "open" && status == "open" {
+            return Err(StoreError::Conflict("no transition".into()));
+        }
+        r.status = status.into();
+        Ok(())
+    }
+    async fn consent_grant(
+        &self,
+        org: &str,
+        subject: &str,
+        purpose: &str,
+    ) -> Result<i64, StoreError> {
+        if subject.trim().is_empty() || purpose.trim().is_empty() {
+            return Err(StoreError::Conflict("subject/purpose".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.consents.values().any(|c| {
+            c.org == org
+                && c.subject == subject.trim()
+                && c.purpose == purpose.trim()
+                && c.status == "granted"
+        }) {
+            return Err(StoreError::Conflict("consent already granted".into()));
+        }
+        let id = self.next(&mut m);
+        m.consents.insert(
+            id,
+            ConsentRow {
+                id,
+                org: org.into(),
+                subject: subject.trim().into(),
+                purpose: purpose.trim().into(),
+                status: "granted".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn consent_withdraw(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .consents
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "granted" {
+            return Err(StoreError::Conflict("consent not active".into()));
+        }
+        r.status = "withdrawn".into();
+        Ok(())
+    }
+    async fn consent_list(
+        &self,
+        org: &str,
+        subject: Option<&str>,
+    ) -> Result<Vec<ConsentRow>, StoreError> {
+        let mut v: Vec<ConsentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .consents
+            .values()
+            .filter(|r| r.org == org && subject.is_none_or(|s| r.subject == s))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
         Ok(v)
     }
     async fn trust_create_account(
@@ -1847,6 +1980,60 @@ mod crm_tests {
         // Cross-org attach is rejected.
         let err = ops.tag_attach("org2", t.id, 7).await.unwrap_err();
         assert!(matches!(err, StoreError::NotFound));
+    }
+}
+
+#[cfg(test)]
+mod compliance_tests {
+    use super::*;
+    use crate::ops::OpsStore;
+
+    #[tokio::test]
+    async fn obligation_lifecycle_and_tenant_isolation() {
+        let ops = MemoryOps::default();
+        let id = ops
+            .pdp_obligation_create("org1", "ROPA review", "ropa", "dpo")
+            .await
+            .unwrap();
+        assert!(ops
+            .pdp_obligation_create("org1", "  ", "ropa", "")
+            .await
+            .is_err());
+        let v = ops.pdp_obligation_list("org1", None).await.unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].status, "open");
+        ops.pdp_obligation_set_status("org1", id, "in_progress")
+            .await
+            .unwrap();
+        assert!(ops
+            .pdp_obligation_set_status("org2", id, "done")
+            .await
+            .is_err());
+        ops.pdp_obligation_set_status("org1", id, "done")
+            .await
+            .unwrap();
+        assert!(ops
+            .pdp_obligation_set_status("org1", id, "open")
+            .await
+            .is_err());
+        assert!(ops
+            .pdp_obligation_list("org2", None)
+            .await
+            .unwrap()
+            .is_empty());
+    }
+
+    #[tokio::test]
+    async fn consent_grant_withdraw_regrant() {
+        let ops = MemoryOps::default();
+        let id = ops.consent_grant("org1", "nik-1", "kyc").await.unwrap();
+        assert!(ops.consent_grant("org1", "nik-1", "kyc").await.is_err());
+        ops.consent_withdraw("org1", id).await.unwrap();
+        assert!(ops.consent_withdraw("org1", id).await.is_err());
+        let id2 = ops.consent_grant("org1", "nik-1", "kyc").await.unwrap();
+        assert_ne!(id, id2);
+        let v = ops.consent_list("org1", Some("nik-1")).await.unwrap();
+        assert_eq!(v.len(), 2);
     }
 }
 

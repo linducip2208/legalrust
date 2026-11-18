@@ -1777,6 +1777,203 @@ async fn deeds_csv_export(
     Ok((StatusCode::OK, h, csv))
 }
 
+// ---------- compliance slice: UU PDP obligations + consent lifecycle ----------
+#[derive(Debug, Deserialize, Validate)]
+struct PdpObligationReq {
+    #[validate(length(min = 2, max = 200))]
+    title: String,
+    #[validate(length(max = 60))]
+    category: Option<String>,
+    #[validate(length(max = 120))]
+    owner: Option<String>,
+}
+async fn pdp_obligation_create(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<PdpObligationReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let id = s
+        .stores
+        .ops
+        .pdp_obligation_create(
+            &u.claims.org,
+            b.title.trim(),
+            b.category.as_deref().unwrap_or("general"),
+            b.owner.as_deref().unwrap_or(""),
+        )
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "compliance.obligation_created".into(),
+            entity: "pdp_obligation".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id, "status": "open"})))
+}
+#[derive(Debug, Deserialize)]
+struct PdpListQ {
+    status: Option<String>,
+}
+async fn pdp_obligation_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<PdpListQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    if let Some(st) = q.status.as_deref() {
+        if !["open", "in_progress", "done"].contains(&st) {
+            return Err(AppError::Validation("status".into()));
+        }
+    }
+    let v = s
+        .stores
+        .ops
+        .pdp_obligation_list(&u.claims.org, q.status.as_deref())
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|r| json!({"id": r.id, "title": r.title, "category": r.category, "status": r.status, "owner": r.owner}))
+        .collect::<Vec<_>>())))
+}
+#[derive(Debug, Deserialize)]
+struct PdpStatusReq {
+    status: String,
+}
+async fn pdp_obligation_status(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+    Json(b): Json<PdpStatusReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Update)?;
+    if !["open", "in_progress", "done"].contains(&b.status.as_str()) {
+        return Err(AppError::Validation("status".into()));
+    }
+    s.stores
+        .ops
+        .pdp_obligation_set_status(&u.claims.org, id, b.status.trim())
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: format!("compliance.obligation_{}", b.status.trim()),
+            entity: "pdp_obligation".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id, "status": b.status})))
+}
+#[derive(Debug, Deserialize, Validate)]
+struct ConsentGrantReq {
+    #[validate(length(min = 1, max = 120))]
+    subject: String,
+    #[validate(length(min = 2, max = 200))]
+    purpose: String,
+}
+async fn consent_grant(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<ConsentGrantReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Create)?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    let id = s
+        .stores
+        .ops
+        .consent_grant(&u.claims.org, b.subject.trim(), b.purpose.trim())
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "consent.granted".into(),
+            entity: "consent".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id, "status": "granted"})))
+}
+async fn consent_withdraw(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Update)?;
+    s.stores
+        .ops
+        .consent_withdraw(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "consent.withdrawn".into(),
+            entity: "consent".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id, "status": "withdrawn"})))
+}
+#[derive(Debug, Deserialize)]
+struct ConsentListQ {
+    subject: Option<String>,
+}
+async fn consent_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<ConsentListQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let v = s
+        .stores
+        .ops
+        .consent_list(&u.claims.org, q.subject.as_deref())
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(
+            |r| json!({"id": r.id, "subject": r.subject, "purpose": r.purpose, "status": r.status})
+        )
+        .collect::<Vec<_>>())))
+}
+// ---------- end compliance slice ----------
+
 async fn webhook_in(
     State(s): State<FullState>,
     headers: HeaderMap,
@@ -4557,6 +4754,16 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/clients.csv", get(clients_csv))
         .route("/api/v1/webhooks/incoming/{provider}", post(webhook_in))
         .route("/api/v1/webhooks/deliveries", get(webhook_list))
+        .route(
+            "/api/v1/compliance/obligations",
+            post(pdp_obligation_create).get(pdp_obligation_list),
+        )
+        .route(
+            "/api/v1/compliance/obligations/{id}/status",
+            post(pdp_obligation_status),
+        )
+        .route("/api/v1/consents", post(consent_grant).get(consent_list))
+        .route("/api/v1/consents/{id}/withdraw", post(consent_withdraw))
         .route("/api/v1/integrations", get(integrations))
         .route("/api/v1/auth/tokens", post(token_create).get(token_list))
         .route("/api/v1/auth/tokens/{id}", delete(token_revoke))

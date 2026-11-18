@@ -1,10 +1,10 @@
-# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 3)
+# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 5)
 
 Gates (SQLX_OFFLINE=true):
 - `cargo fmt --all -- --check`: PASS
 - `cargo clippy --workspace --all-targets -- -D warnings`: PASS
 - node --check site.js: PASS
-- `cargo test --workspace`: **292 passed, 0 failed** (server API 108 incl. webhook deliveries + store tenant test;
+- `cargo test --workspace`: **296 passed, 0 failed** (server API incl. compliance lifecycle + store tests; webhook deliveries + store tenant test;
   3 approvals + trust CSV + approvals UI needles; integrations 30; OCR 21;
   AI 19; full matrix)
 

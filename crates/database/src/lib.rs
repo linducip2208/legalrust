@@ -33,9 +33,9 @@ pub enum DbError {
 }
 pub use ops::{
     appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, AuditRow,
-    ClientTagRow, CrmStore, DeedRow, InvoiceRow, JobRow, MarketingArticleRow, MarketingContactRow,
-    MarketingDemoRow, MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow,
-    MarketingPlanRow, MarketingStore, MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow,
-    OcrJobRow, OpsStore, PaymentRow, RagHit, ShareRow, TemplateRow, TrustAccountRow, TrustEntryRow,
-    WebhookDeliveryRow,
+    ClientTagRow, ConsentRow, CrmStore, DeedRow, InvoiceRow, JobRow, MarketingArticleRow,
+    MarketingContactRow, MarketingDemoRow, MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow,
+    MarketingNoteRow, MarketingPlanRow, MarketingStore, MarketingSubscriberRow, MeetingRow,
+    NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow, PdpObligationRow, RagHit, ShareRow,
+    TemplateRow, TrustAccountRow, TrustEntryRow, WebhookDeliveryRow,
 };

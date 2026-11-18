@@ -127,6 +127,23 @@ pub struct WebhookDeliveryRow {
     pub detail: String,
 }
 #[derive(Debug, Clone)]
+pub struct PdpObligationRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub category: String,
+    pub status: String,
+    pub owner: String,
+}
+#[derive(Debug, Clone)]
+pub struct ConsentRow {
+    pub id: i64,
+    pub org: String,
+    pub subject: String,
+    pub purpose: String,
+    pub status: String,
+}
+#[derive(Debug, Clone)]
 pub struct NotifRow {
     pub id: i64,
     pub kind: String,
@@ -494,6 +511,40 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         provider: Option<&str>,
     ) -> Result<Vec<WebhookDeliveryRow>, StoreError>;
+    /// Create a UU PDP obligation (`open` initially).
+    async fn pdp_obligation_create(
+        &self,
+        org: &str,
+        title: &str,
+        category: &str,
+        owner: &str,
+    ) -> Result<i64, StoreError>;
+    async fn pdp_obligation_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<PdpObligationRow>, StoreError>;
+    /// Transition an obligation: open <-> in_progress -> done (done terminal).
+    async fn pdp_obligation_set_status(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+    ) -> Result<(), StoreError>;
+    /// Record consent granted (one active row per subject+purpose; re-grant
+    /// after withdraw opens a new row).
+    async fn consent_grant(
+        &self,
+        org: &str,
+        subject: &str,
+        purpose: &str,
+    ) -> Result<i64, StoreError>;
+    async fn consent_withdraw(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn consent_list(
+        &self,
+        org: &str,
+        subject: Option<&str>,
+    ) -> Result<Vec<ConsentRow>, StoreError>;
     async fn notify(
         &self,
         org: &str,

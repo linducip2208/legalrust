@@ -230,6 +230,14 @@
     {
       "id": "B-D11-PDP",
       "title": "UU PDP obligation register + consent lifecycle",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 wave 5: migration 0015, 6 API endpoints + RBAC + audit, API+store tests"
+    },
+    {
+      "id": "B-COMP-UI",
+      "title": "Compliance /app tab (obligations + consents)",
       "status": "PLANNED",
       "owner": null,
       "depends": []

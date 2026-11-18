@@ -1,6 +1,6 @@
 # DOMAIN-SCORES (AUDIT-1000 wave 2026-11-18, updated wave 3)
 
-Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.6/100** (was 18.4; +webhook delivery log).
+Source: `FEATURE-SCORES.json` (1000 features). Mean overall = **18.8/100** (was 18.6; +repertorium + compliance slice).
 
 ## Rubric (explicit — no fake precision)
 
@@ -35,8 +35,8 @@ placeholders pending per-feature code reads, NOT final grades.
 | D08 Workflow | 12.9 | jobs + inbound triggers + delivery log; engine pending |
 | D09 Approvals | 24.5 | engine + /app UI + tests; parallel/quorum remain |
 | D10 E-signature | 27.6 | PSrE adapter, provider blocked |
-| D11 Compliance | 7.2 | almost entirely planned |
-| D12 Notary Office | 8.6 | almost entirely planned |
+| D11 Compliance | 10.6 | obligation register + consent lifecycle live (API); dashboards pending |
+| D12 Notary Office | 10.8 | repertorium live; office ops mostly planned |
 | D13 PPAT | 10.8 | almost entirely planned |
 | D14 Finance | 13.2 | invoices/trust live, quotes pending |
 | D15 Billing | 15.1 | manual+Tripay live, plans pending |

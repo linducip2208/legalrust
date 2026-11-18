@@ -5068,26 +5068,34 @@
  {
   "feature_id": "F-D11-001",
   "domain": "D11",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "migrations/0015_compliance.sql: pdp_obligations + consent_records (FK org, tenant keys)",
+   "crates/database/src/ops.rs: pdp_obligation_create/list/set_status + consent_grant/withdraw/list (+appr_check-style validation)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/obligations, POST /{id}/status, POST/GET /api/v1/consents, POST /{id}/withdraw (Create/View/Update-gated + audit)",
+   "apps/server/tests/api.rs: compliance_obligation_and_consent_lifecycle (validation, RBAC lawyer/auditor, transitions, duplicate/re-grant)",
+   "crates/database/src/ops_memory.rs: compliance_tests (lifecycle + tenant isolation)"
   ],
-  "audit_note": "",
-  "overall_score": 10.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "UU PDP obligation register live (CRUD-lite + terminal guard + audit); dashboards/retention scheduler pending. No UI yet.",
+  "overall_score": 71.8,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (no UI yet)"
  },
  {
   "feature_id": "F-D11-002",
   "domain": "D11",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
+   "migrations/0015_compliance.sql: pdp_obligations + consent_records (FK org, tenant keys)",
+   "crates/database/src/ops.rs: pdp_obligation_create/list/set_status + consent_grant/withdraw/list (+appr_check-style validation)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/obligations, POST /{id}/status, POST/GET /api/v1/consents, POST /{id}/withdraw (Create/View/Update-gated + audit)",
+   "apps/server/tests/api.rs: compliance_obligation_and_consent_lifecycle (validation, RBAC lawyer/auditor, transitions, duplicate/re-grant)",
+   "crates/database/src/ops_memory.rs: compliance_tests (lifecycle + tenant isolation)"
   ],
-  "audit_note": "",
-  "overall_score": 0.0,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Consent grant/withdraw/re-grant with duplicate + terminal guards + audit; no UI yet, DSAR workflows pending.",
+  "overall_score": 71.8,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests verified (no UI yet)"
  },
  {
   "feature_id": "F-D11-003",

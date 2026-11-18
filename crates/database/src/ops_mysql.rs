@@ -768,6 +768,160 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn pdp_obligation_create(
+        &self,
+        org: &str,
+        title: &str,
+        category: &str,
+        owner: &str,
+    ) -> Result<i64, StoreError> {
+        if title.trim().is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let cat = if category.trim().is_empty() {
+            "general"
+        } else {
+            category.trim()
+        };
+        let r = sqlx::query(
+            "INSERT INTO pdp_obligations (org_id, title, category, owner) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title.trim())
+        .bind(cat)
+        .bind(owner.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn pdp_obligation_list(
+        &self,
+        org: &str,
+        status: Option<&str>,
+    ) -> Result<Vec<PdpObligationRow>, StoreError> {
+        let rows = if let Some(s) = status {
+            sqlx::query("SELECT id, org_id, title, category, status, owner FROM pdp_obligations WHERE org_id=? AND status=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(s).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, title, category, status, owner FROM pdp_obligations WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| PdpObligationRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                category: x.get::<String, _>("category"),
+                status: x.get::<String, _>("status"),
+                owner: x.get::<String, _>("owner"),
+            })
+            .collect())
+    }
+    async fn pdp_obligation_set_status(
+        &self,
+        org: &str,
+        id: i64,
+        status: &str,
+    ) -> Result<(), StoreError> {
+        if !["open", "in_progress", "done"].contains(&status) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let x = sqlx::query("SELECT status FROM pdp_obligations WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        let cur: String = x.get::<String, _>("status");
+        if cur == "done" {
+            return Err(StoreError::Conflict("obligation closed".into()));
+        }
+        if cur == "open" && status == "open" {
+            return Err(StoreError::Conflict("no transition".into()));
+        }
+        sqlx::query("UPDATE pdp_obligations SET status=? WHERE id=?")
+            .bind(status)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn consent_grant(
+        &self,
+        org: &str,
+        subject: &str,
+        purpose: &str,
+    ) -> Result<i64, StoreError> {
+        if subject.trim().is_empty() || purpose.trim().is_empty() {
+            return Err(StoreError::Conflict("subject/purpose".into()));
+        }
+        let dup = sqlx::query("SELECT id FROM consent_records WHERE org_id=? AND subject=? AND purpose=? AND status='granted' LIMIT 1")
+            .bind(org).bind(subject.trim()).bind(purpose.trim()).fetch_optional(&self.pool).await.map_err(db_err)?;
+        if dup.is_some() {
+            return Err(StoreError::Conflict("consent already granted".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO consent_records (org_id, subject, purpose) VALUES (?,?,?)")
+                .bind(org)
+                .bind(subject.trim())
+                .bind(purpose.trim())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn consent_withdraw(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query(
+            "UPDATE consent_records SET status='withdrawn', withdrawn_at=CURRENT_TIMESTAMP WHERE id=? AND org_id=? AND status='granted'",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            let exists = sqlx::query("SELECT id FROM consent_records WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .is_some();
+            if exists {
+                return Err(StoreError::Conflict("consent not active".into()));
+            }
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn consent_list(
+        &self,
+        org: &str,
+        subject: Option<&str>,
+    ) -> Result<Vec<ConsentRow>, StoreError> {
+        let rows = if let Some(s) = subject {
+            sqlx::query("SELECT id, org_id, subject, purpose, status FROM consent_records WHERE org_id=? AND subject=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(s).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, subject, purpose, status FROM consent_records WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ConsentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                subject: x.get::<String, _>("subject"),
+                purpose: x.get::<String, _>("purpose"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
     async fn pay_add(
         &self,
         org: &str,

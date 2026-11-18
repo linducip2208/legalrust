@@ -12,7 +12,7 @@
 | D08 | Workflow Automation | 0 | 4 | 4 | 4 | 14 | 18 | 4 live, 32 no-evidence |
 | D09 | Approval Mgmt | 9 | 0 | 9 | 1 | 17 | 13 | 9 live, 30 no-evidence |
 | D10 | Electronic Signature | 0 | 2 | 2 | 27 | 3 | 8 | 2 live, 11 no-evidence |
-| D11 | Compliance & Risk | 0 | 1 | 1 | 3 | 13 | 23 | 1 live, 36 no-evidence |
+| D11 | Compliance & Risk | 0 | 3 | 3 | 3 | 12 | 22 | 3 live, 34 no-evidence |
 | D12 | Notary Office Mgmt | 1 | 3 | 4 | 0 | 19 | 17 | 4 live, 36 no-evidence |
 | D13 | PPAT & Property | 0 | 3 | 3 | 3 | 17 | 17 | 3 live, 34 no-evidence |
 | D14 | Finance & Accounting | 2 | 2 | 4 | 2 | 18 | 16 | 4 live, 34 no-evidence |

@@ -4264,6 +4264,168 @@ async fn approvals_validation_and_rbac() {
 }
 
 #[tokio::test]
+async fn compliance_obligation_and_consent_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pdp@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Obligation compose + validation.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/obligations",
+            r#"{"title":"","category":"retention"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/obligations",
+            r#"{"title":"ROPA review Q4","category":"ropa","owner":"dpo@x.id"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Lawyer holds Create: may compose, but cannot change status (no Update).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/obligations",
+            r#"{"title":"DPIA vendor X","category":"dpia"}"#,
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let loid = body_json(res).await["id"].as_i64().unwrap();
+    // Auditor lacks Update: cannot transition status.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/obligations/{loid}/status"),
+            r#"{"status":"in_progress"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/obligations",
+            r#"{"title":"ROPA review Q4","category":"ropa","owner":"dpo@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let oid = body_json(res).await["id"].as_i64().unwrap();
+    // open -> in_progress -> done; done is terminal.
+    for (st, want) in [("in_progress", StatusCode::OK), ("done", StatusCode::OK)] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/obligations/{oid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "transition to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/obligations/{oid}/status"),
+            r#"{"status":"open"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/obligations?status=done", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64().unwrap() == oid));
+    // Consent grant -> duplicate 409 -> withdraw -> re-grant ok.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/consents",
+            r#"{"subject":"nik-3174","purpose":"kyc"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/consents",
+            r#"{"subject":"nik-3174","purpose":"kyc"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/consents/{cid}/withdraw"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/consents/{cid}/withdraw"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/consents",
+            r#"{"subject":"nik-3174","purpose":"kyc"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/consents?subject=nik-3174", &tok))
+        .await
+        .unwrap();
+    let list = body_json(res).await;
+    assert_eq!(list.as_array().unwrap().len(), 2);
+    assert!(list
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["status"] == "withdrawn"));
+}
+
+#[tokio::test]
 async fn trust_csv_export_returns_ledger() {
     use tower::ServiceExt;
     let a = app();

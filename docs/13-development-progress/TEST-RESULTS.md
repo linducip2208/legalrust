@@ -25,8 +25,8 @@
 
 ## 2026-11-18 — AUDIT-1000 wave 3: webhook delivery log
 - Gates: fmt PASS, clippy `-D warnings` PASS, node --check PASS.
-- `cargo test --workspace`: **292 passed, 0 failed** (webhook deliveries + store tenant test; server API 108; OCR 21; AI 19; full matrix).
-- Registry: IMPLEMENTED 51 (tetap) / PARTIAL 101; skor 16.9 → **17.0/100**; 8-cat mean 18.6 (16 verified).
+- `cargo test --workspace`: **296 passed, 0 failed** (compliance lifecycle + store tests + webhook deliveries + deeds CSV; server API 109; OCR 21; AI 19; full matrix).
+- Registry: IMPLEMENTED 52 (tetap) / PARTIAL 103; skor 16.9 → **17.0/100**; 8-cat mean 18.6 (16 verified).
 
 ## 2026-11-18 — AUDIT-1000 wave 2: approvals UI + report center (SQLX_OFFLINE=true, node --check clean)
 - Gates: fmt PASS, clippy `-D warnings` PASS.

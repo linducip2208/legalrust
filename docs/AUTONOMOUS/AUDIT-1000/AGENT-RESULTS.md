@@ -38,7 +38,7 @@
   `report.matters_csv_exported`, `report.clients_csv_exported`).
 - 3 approvals integration tests; registry: 10 features updated
   (F-D09 ×9 → PARTIAL w/ backend-complete notes, F-D20-034 → IMPLEMENTED).
-- Wave 3: webhook delivery log (migration 0014, webhook_log/list, every receipt logged, list endpoint + /app panel + needles); F-D08-013 + F-D25-017 → PARTIAL; workspace 292/292.
+- Wave 3: webhook delivery log (migration 0014, webhook_log/list, every receipt logged, list endpoint + /app panel + needles); F-D08-013 + F-D25-017; wave 5: D11 compliance slice (migration 0015, 6 API, tests) + repertorium live verification + api_db fix → PARTIAL; workspace 292/292.
 - Wave 2: approvals /app UI (panel+TABS+JS+needles), trust-ledger CSV
   route + UI button, job live counts; server API 107/107, workspace
   290/290, fmt+clippy clean; registry +13 → IMPLEMENTED
