@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 12: /app ROPA UI (main)
+- ROPA card di tab kepatuhan (tambah/hapus/muat-ulang); workspace **306 passed, 0 failed**; F-D11-006 frontend 80 (8-cat 80.0).
+
 ## 2026-11-18 AUDIT-1000 wave 11: ROPA register + compliance fixes (main)
 - ROPA register UU PDP live (migration 0017, API CRUD, RBAC, audit); memory cross-tenant delete bug diperbaiki; workspace **306 passed, 0 failed**; registry 17.7 (56 IMPLEMENTED); 8-cat mean 19.1 (25 verified).
 

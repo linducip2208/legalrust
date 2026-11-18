@@ -4950,6 +4950,12 @@ async fn uib_app_has_approvals_ui() {
         "con-subject",
         "con-grant",
         "con-list",
+        "ropa-activity",
+        "ropa-purpose",
+        "ropa-add",
+        "ropa-reload",
+        "ropa-list",
+        "ROPA",
         "Kepatuhan",
         "Persetujuan",
     ] {

@@ -1069,8 +1069,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     conRefresh();
   });
   on('con-reload', 'click', conRefresh);
+  /* ---- compliance: ROPA register ---- */
+  async function ropaRefresh() {
+    var box = document.getElementById('ropa-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/ropa');
+    if (!v) { box.innerHTML = '<tr><td colspan="7" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.activity) + '</td><td>' + esc(x.purpose) + '</td><td>' + esc(x.data_categories) + '</td><td>' + esc(x.legal_basis) + '</td><td>' + esc(x.retention) + '</td><td><button class="btn btn-sm" data-ropa-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="7" class="text-muted">Belum ada entri ROPA.</td></tr>';
+    qsa('[data-ropa-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/ropa/' + b.getAttribute('data-ropa-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ropa-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ropa-msg', '');
+        ropaRefresh();
+      });
+    });
+  }
+  on('ropa-add', 'click', async function () {
+    if (!pval('ropa-activity') || !pval('ropa-purpose')) { pmsg('ropa-msg', 'Isi aktivitas dan tujuan.'); return; }
+    var r = await ppost('/api/v1/compliance/ropa', { activity: pval('ropa-activity'), purpose: pval('ropa-purpose'), data_categories: pval('ropa-cats') || '', legal_basis: pval('ropa-basis') || 'consent', retention: pval('ropa-ret') || '' });
+    if (!r.ok) { pmsg('ropa-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ropa-msg', '');
+    ropaRefresh();
+  });
+  on('ropa-reload', 'click', ropaRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   async function whDlRefresh() {
@@ -1092,5 +1118,6 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   whRefresh();
   kepRefresh();
   conRefresh();
+  ropaRefresh();
   whDlRefresh();
 })();

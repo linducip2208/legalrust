@@ -3945,9 +3945,12 @@
    "crates/database/src/ops_mysql.rs: MySQL impl with tenant-scoped DELETE",
    "apps/server/src/lib.rs: POST/GET /api/v1/compliance/ropa + DELETE /api/v1/compliance/ropa/{id} (Create/View/Delete RBAC, validator, audit)",
    "apps/server/tests/api.rs: compliance_ro_pa_crud_and_guards (422 validation, 403 auditor create/delete, 404 double-delete)",
-   "crates/database/src/ops_memory.rs: ropa_crud_and_tenant_isolation unit test"
+   "crates/database/src/ops_memory.rs: ropa_crud_and_tenant_isolation unit test",
+   "apps/server/src/lib.rs: /app ROPA card (ropa-activity/purpose/cats/basis/ret/add/reload/list)",
+   "apps/server/static/site.js: ropaRefresh + add/delete wiring + kepatuhan tab hook + boot call",
+   "apps/server/tests/api.rs: /app needle assertions for ropa-* ids"
   ],
-  "audit_note": "Wave 11: ROPA register live (UU PDP); fixed memory ropa_delete cross-tenant destructive bug (check-before-remove)."
+  "audit_note": "Wave 11: ROPA register live (UU PDP); fixed memory ropa_delete cross-tenant destructive bug (check-before-remove). Wave 12: /app ROPA UI live in kepatuhan tab."
  },
  {
   "id": "F-D11-007",
