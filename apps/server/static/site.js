@@ -213,7 +213,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     });
     box.innerHTML = svg + '</svg><div class="text-muted small">Kategori nyata — tanpa deret waktu fiktif.</div>';
   }
-  function renderCal() {
+  async function renderCal() {
     var box = document.getElementById('cal');
     if (!box) return;
     var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
@@ -221,11 +221,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     var first = new Date(y, mo, 1).getDay();
     var dim = new Date(y, mo + 1, 0).getDate();
+    var dues = await j('/api/v1/tasks/due?limit=100');
+    var byDay = {};
+    (dues || []).forEach(function (t) {
+      if (!t.due) return;
+      var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t.due);
+      if (!m || +m[1] !== y || +m[2] !== mo + 1) return;
+      var d = +m[3];
+      (byDay[d] = byDay[d] || []).push(t);
+    });
     var html = '<div class="cal-head">' + months[mo] + ' ' + y + ' (Asia/Jakarta)</div><div class="cal-grid">';
     ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].forEach(function (d) { html += '<span class="cal-dow">' + d + '</span>'; });
     for (var i = 0; i < first; i++) html += '<span class="cal-d empty"></span>';
-    for (var dd = 1; dd <= dim; dd++) html += '<span class="cal-d' + (dd === today ? ' cal-today' : '') + '">' + dd + '</span>';
-    box.innerHTML = html + '</div><div class="text-muted small mt-1">Tidak ada item berjadwal — API tugas tidak menyediakan tenggat.</div>';
+    for (var dd = 1; dd <= dim; dd++) {
+      var mark = byDay[dd] ? ' ●' : '';
+      var cls = 'cal-d' + (dd === today ? ' cal-today' : '') + (byDay[dd] ? ' cal-due' : '');
+      var tip = byDay[dd] ? ' title="' + esc(byDay[dd].map(function (t) { return t.title; }).join('; ')) + '"' : '';
+      html += '<span class="' + cls + '"' + tip + '>' + dd + mark + '</span>';
+    }
+    var upcoming = (dues || []).filter(function (t) { return t.due && t.status !== 'done'; }).slice(0, 5);
+    box.innerHTML = html + '</div><div class="text-muted small mt-1">' + (upcoming.length
+      ? 'Tenggat terdekat: ' + upcoming.map(function (t) { return esc(t.title) + ' (' + esc(t.due.slice(0, 16)) + ')'; }).join('; ')
+      : 'Tidak ada tenggat terbuka.') + '</div>';
   }
   (async function () {
     try {
@@ -587,13 +604,25 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var sel = document.getElementById('task-matter');
     var box = document.getElementById('task-list');
     if (!sel || !box) return;
-    if (!sel.value) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Pilih perkara dulu.</td></tr>'; return; }
+    if (!sel.value) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Pilih perkara dulu.</td></tr>'; return; }
     var ts = await j('/api/v1/matters/' + sel.value + '/tasks');
-    if (!ts) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (!ts) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
     box.innerHTML = ts.map(function (t) {
       var nx = TASK_NEXT[t.status] || [];
-      return '<tr><td>' + t.id + '</td><td>' + esc(t.title) + '</td><td>' + badge(t.status) + '</td><td>' + nx.map(function (n) { return '<button class="btn btn-sm btn-outline-primary tadv" data-id="' + t.id + '" data-to="' + n + '">' + esc(n) + '</button>'; }).join(' ') + '</td></tr>';
-    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada tugas.</td></tr>';
+      var dueCell = t.due ? esc(t.due) : '<span class="text-muted">—</span>';
+      var dueSet = '<input class="form-control form-control-sm" style="width:150px;display:inline-block" type="datetime-local" id="due-' + t.id + '" value="' + (t.due ? esc(t.due.replace(' ', 'T').slice(0, 16)) : '') + '"> <button class="btn btn-sm" data-due-set="' + t.id + '" type="button">Set</button>';
+      return '<tr><td>' + t.id + '</td><td>' + esc(t.title) + '</td><td>' + badge(t.status) + '</td><td>' + dueCell + '<br>' + dueSet + '</td><td>' + nx.map(function (n) { return '<button class="btn btn-sm btn-outline-primary tadv" data-id="' + t.id + '" data-to="' + n + '">' + esc(n) + '</button>'; }).join(' ') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada tugas.</td></tr>';
+    qsa('[data-due-set]', function (b) {
+      b.addEventListener('click', async function () {
+        var inp = document.getElementById('due-' + b.getAttribute('data-due-set'));
+        var val = inp && inp.value ? inp.value.replace('T', ' ') + ':00' : null;
+        var r = await ppost('/api/v1/tasks/' + b.getAttribute('data-due-set') + '/due', { due: val });
+        if (!r.ok) { pmsg('task-msg', 'Gagal (' + r.status + '). Format: YYYY-MM-DD HH:MM.'); return; }
+        pmsg('task-msg', '');
+        loadTasks();
+      });
+    });
     qsa('.tadv', function (b) {
       b.addEventListener('click', async function () {
         var r = await ppost('/api/v1/tasks/' + b.dataset.id, { status: b.dataset.to });
@@ -610,8 +639,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (title.length < 2) { pmsg('task-msg', 'Judul minimal 2 huruf.'); return; }
     var r = await ppost('/api/v1/matters/' + mid + '/tasks', { title: title });
     if (!r.ok) { pmsg('task-msg', 'Gagal (' + r.status + ').'); return; }
+    var created = await r.json();
+    var dv = pval('task-due');
+    if (dv) {
+      var r2 = await ppost('/api/v1/tasks/' + created.id + '/due', { due: dv.replace('T', ' ') + ':00' });
+      if (!r2.ok) { pmsg('task-msg', 'Tugas dibuat, tenggat gagal (' + r2.status + ').'); loadTasks(); return; }
+    }
     pmsg('task-msg', '');
     document.getElementById('task-title').value = '';
+    var di = document.getElementById('task-due'); if (di) di.value = '';
     loadTasks();
   });
   on('cli-btn', 'click', async function () {
@@ -1249,6 +1285,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (f) qs.push('from=' + encodeURIComponent(f));
     if (t) qs.push('to=' + encodeURIComponent(t));
     dlCsv('/api/v1/reports/deeds.csv' + (qs.length ? '?' + qs.join('&') : ''), 'repertorium' + (qs.length ? '-' + qs.join('_').replace(/[^0-9A-Za-z_-]/g, '') : '') + '.csv', 'deed-csv-msg');
+  });
+  on('deed-cmp', 'click', function () {
+    var f = pval('deed-rep-from'), t = pval('deed-rep-to');
+    var cf = pval('deed-cmp-from'), ct = pval('deed-cmp-to');
+    var ok = /^\d{4}-\d{2}-\d{2}$/;
+    if (!f || !t || !cf || !ct || ![f, t, cf, ct].every(function (d) { return ok.test(d); })) { pmsg('deed-csv-msg', 'Isi keempat tanggal (periode + pembanding) YYYY-MM-DD.'); return; }
+    if (f > t || cf > ct) { pmsg('deed-csv-msg', 'Rentang terbalik.'); return; }
+    pmsg('deed-csv-msg', '');
+    dlCsv('/api/v1/reports/deeds.csv?compare=1&from=' + encodeURIComponent(f) + '&to=' + encodeURIComponent(t) + '&cmp_from=' + encodeURIComponent(cf) + '&cmp_to=' + encodeURIComponent(ct), 'repertorium-banding.csv', 'deed-csv-msg');
   });
   /* ---- approvals engine UI ---- */
   async function apprRefresh() {

@@ -43,6 +43,12 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 41+42: perbandingan periode + tenggat di kalender (main)
+- deeds.csv ?compare=1 summary (delta math + guards) + tombol Bandingkan.
+- Task due API + kolom Tenggat + setter per baris + kalender bertitik + upcoming.
+- F-D20-024 PLANNED->PARTIAL (67.2); F-D03-010 NOT_STARTED->PARTIAL (64.8).
+- Workspace 335/0; registry 19.9 (75 IMPLEMENTED); 8-cat mean 20.4 (59 v).
+
 ## Done wave 40: delegasi approval pengganti (main)
 - Migration 0023; decide honors active delegation + audit; guard/UI tests.
 - F-D09-003 NOT_STARTED->PARTIAL (64.4); F-D09-004 PLANNED->PARTIAL (63.1). Caveat jujur: decide e2e butuh invite flow (F-D16-001 follow-up).

@@ -847,10 +847,13 @@
   "id": "F-D03-010",
   "domain": "D03",
   "title": "Calendar integration (matter deadlines)",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/tasks/due + POST /tasks/{tid}/due + due in list_tasks",
+   "apps/server/static/site.js: renderCal due dots + upcoming list; per-row due setter; new-task due input",
+   "apps/server/tests/api.rs: task_due_set_list_and_calendar_feed + needles"
+  ],
+  "audit_note": "Wave 42: task dues wired to calendar; SLA math still pending."
  },
  {
   "id": "F-D03-011",
@@ -7575,10 +7578,13 @@
   "id": "F-D20-024",
   "domain": "D20",
   "title": "Comparative period analysis",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: deeds_csv_export ?compare=1&from=&to=&cmp_from=&cmp_to= summary + guards",
+   "apps/server/static/site.js: deed-cmp handler + inputs",
+   "apps/server/tests/api.rs: compare delta math + guard cases + needles"
+  ],
+  "audit_note": "Wave 41: comparative period summary live."
  },
  {
   "id": "F-D20-025",

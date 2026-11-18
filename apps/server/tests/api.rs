@@ -1433,6 +1433,96 @@ async fn notification_flood_guard_caps_per_user() {
 }
 
 #[tokio::test]
+async fn task_due_set_list_and_calendar_feed() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "taskdue@x.id").await;
+    let tok_b = reg(&a, "taskdueB@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Berkas AJB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    // Bad format rejected; valid datetime sticks.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"tomorrow"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2026-12-01 09:30:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["due"], "2026-12-01 09:30:00");
+    // List carries due; due feed orders ascending and isolates tenants.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/tasks"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await.as_array().unwrap()[0]["due"],
+        "2026-12-01 09:30:00"
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/due?limit=10", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["id"].as_i64() == Some(tid) && t["due"] == "2026-12-01 09:30:00"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/due?limit=10", &tok_b))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Unknown task 404; clearing works.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/tasks/999999999/due",
+            r#"{"due":null}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":null}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["due"].is_null());
+}
+
+#[tokio::test]
 async fn notifications_unread_only_and_limit() {
     use tower::ServiceExt;
     let a = app();
@@ -3071,6 +3161,7 @@ async fn mkt_app_has_marketing_tab_and_admin_refs() {
         "/api/v1/admin/pricing",
         "/api/v1/admin/faqs",
         "/api/v1/admin/articles",
+        "/api/v1/tasks/due",
     ] {
         assert!(js.contains(ep), "site.js missing {ep}");
     }
@@ -3453,6 +3544,7 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "mat-btn",
         "task-title",
         "task-btn",
+        "task-due",
         "ocr-doc",
         "ocr-type",
         "ocr-btn",
@@ -6608,6 +6700,41 @@ async fn deeds_csv_repertorium_export() {
             "uri was {uri}"
         );
     }
+    // Comparative summary: today vs ancient past (1 vs 0, delta 1).
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/deeds.csv?compare=1&from={today}&to={today}&cmp_from=2000-01-01&cmp_to=2000-01-31"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("metric,current,previous,delta\n"),
+        "was {text}"
+    );
+    assert!(text.contains("count,1,0,1"), "was {text}");
+    // Compare guards: missing/inverted/bad compare range rejected.
+    for uri in [
+        format!("/api/v1/reports/deeds.csv?compare=1&from={today}&to={today}"),
+        format!("/api/v1/reports/deeds.csv?compare=1&from={today}&to={today}&cmp_from=2000-02-01&cmp_to=2000-01-01"),
+        format!("/api/v1/reports/deeds.csv?compare=1&from={today}&to={today}&cmp_from=bogus&cmp_to=2000-01-31"),
+    ] {
+        let res = a.clone().oneshot(get(&uri, &tok)).await.unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "uri was {uri}"
+        );
+    }
     let _ = did;
 }
 
@@ -6669,6 +6796,9 @@ async fn uib_app_has_approvals_ui() {
         "whe-list",
         "deed-rep-from",
         "deed-rep-to",
+        "deed-cmp-from",
+        "deed-cmp-to",
+        "deed-cmp",
         "deed-csv",
         "deed-csv-msg",
         "wh-dl-list",
