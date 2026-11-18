@@ -52,8 +52,8 @@
     if (r.status === 401) { location.href = '/login'; return null; }
     return r.json();
   }
-  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'mkt', 'pengaturan', 'audit', 'jobs'];
-  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', mkt: 'marketing', pengaturan: 'pengaturan', audit: 'audit', jobs: 'jobs' };
+  var TABS = ['ringkas', 'klien', 'dok', 'ocr', 'akta', 'keu', 'appr', 'mkt', 'pengaturan', 'audit', 'jobs'];
+  var TABLBL = { ringkas: 'ringkasan', klien: 'klien', dok: 'dokumen', ocr: 'ocr', akta: 'akta', keu: 'keuangan', appr: 'persetujuan', mkt: 'marketing', pengaturan: 'pengaturan', audit: 'audit', jobs: 'jobs' };
   window.apptab = function (x) {
     TABS.forEach(function (k) {
       var el = document.getElementById('p-' + k);
@@ -835,6 +835,12 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     box.innerHTML = v.map(function (x) {
       return '<tr><td>' + x.id + '</td><td>' + esc(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + x.attempts + '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-muted">Antrean kosong.</td></tr>';
+    var sum = document.getElementById('job-summary');
+    if (sum) {
+      var c = {};
+      v.forEach(function (x) { c[x.status] = (c[x.status] || 0) + 1; });
+      sum.textContent = Object.keys(c).map(function (k) { return k + ': ' + c[k]; }).join(' · ') || 'kosong';
+    }
   }
   on('audit-reload', 'click', loadAudit);
   on('audit-entity', 'change', loadAudit);
@@ -873,7 +879,85 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     q.focus();
     if (q.select) q.select();
   });
+  on('trust-csv-btn', 'click', function () {
+    var id = pval('trust-csv-acct');
+    if (!id) { pmsg('trust-csv-msg', 'Isi ID rekening trust.'); return; }
+    pmsg('trust-csv-msg', '');
+    dlCsv('/api/v1/reports/trust-ledger.csv?account_id=' + encodeURIComponent(id), 'trust-' + id + '.csv', 'trust-csv-msg');
+  });
+  /* ---- approvals engine UI ---- */
+  async function apprRefresh() {
+    var box = document.getElementById('appr-list');
+    if (!box) return;
+    var f = pval('appr-filter');
+    var v = await j('/api/v1/approvals' + (f ? '?status=' + encodeURIComponent(f) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.entity) + ' #' + x.entity_id + '</td><td>' + badge(x.status) + '</td><td><button class="btn btn-sm" data-appr="' + x.id + '" type="button">Detail</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada permintaan.</td></tr>';
+    qsa('[data-appr]', function (b) {
+      b.addEventListener('click', function () {
+        document.getElementById('appr-id').value = b.getAttribute('data-appr');
+        apprShow();
+      });
+    });
+  }
+  async function apprShow() {
+    var box = document.getElementById('appr-detail');
+    if (!box) return;
+    var id = pval('appr-id');
+    if (!id) { pmsg('appr-dmsg', 'Isi ID permintaan.'); return; }
+    pmsg('appr-dmsg', '');
+    var v = await j('/api/v1/approvals/' + encodeURIComponent(id));
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    box.innerHTML = '<p><strong>#' + v.id + '</strong> ' + esc(v.title) + ' — ' + esc(v.entity) + ' #' + v.entity_id + ' ' + badge(v.status) + '</p>'
+      + '<ol>' + (v.steps || []).map(function (s) {
+        return '<li>tahap ' + s.step_no + ' (' + esc(s.role) + '): ' + badge(s.status) + (s.comment ? ' — <em>' + esc(s.comment) + '</em>' : '') + '</li>';
+      }).join('') + '</ol>';
+  }
+  async function apprDecide(decision) {
+    var id = pval('appr-id'), step = pval('appr-step');
+    if (!id || !step) { pmsg('appr-dmsg', 'Isi ID permintaan dan no. tahap.'); return; }
+    var r = await ppost('/api/v1/approvals/' + encodeURIComponent(id) + '/decisions',
+      { step_no: +step, decision: decision, comment: pval('appr-comment') || null });
+    if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + '). Cek urutan tahap & peran.'); return; }
+    pmsg('appr-dmsg', '');
+    apprShow();
+    apprRefresh();
+  }
+  on('appr-btn', 'click', async function () {
+    var roles = [pval('appr-role1'), pval('appr-role2'), pval('appr-role3')].filter(function (x) { return x; });
+    if (!pval('appr-entity-id') || !pval('appr-title') || !roles.length) { pmsg('appr-msg', 'Isi ID entitas, judul, dan min. 1 peran.'); return; }
+    var r = await ppost('/api/v1/approvals', {
+      entity: document.getElementById('appr-entity').value,
+      entity_id: +pval('appr-entity-id'),
+      title: pval('appr-title'),
+      steps: roles.map(function (x, i) { return { step_no: i + 1, role: x }; })
+    });
+    if (!r.ok) { pmsg('appr-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('appr-msg', '');
+    apprRefresh();
+  });
+  on('appr-reload', 'click', apprRefresh);
+  on('appr-filter', 'change', apprRefresh);
+  on('appr-show', 'click', apprShow);
+  on('appr-ok', 'click', function () { apprDecide('approve'); });
+  on('appr-no', 'click', function () { apprDecide('reject'); });
+  on('appr-rw', 'click', function () { apprDecide('rework'); });
+  on('appr-revoke', 'click', async function () {
+    var id = pval('appr-id');
+    if (!id) { pmsg('appr-dmsg', 'Isi ID permintaan.'); return; }
+    var r = await ppost('/api/v1/approvals/' + encodeURIComponent(id) + '/revoke', {});
+    if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('appr-dmsg', '');
+    apprShow();
+    apprRefresh();
+  });
+  qsa('.snav[data-tab="appr"]', function (a) {
+    a.addEventListener('click', function () { apprRefresh(); });
+  });
   mktRefresh();
   loadAudit();
   loadJobs();
+  apprRefresh();
 })();

@@ -4173,3 +4173,100 @@ async fn approvals_validation_and_rbac() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+#[tokio::test]
+async fn trust_csv_export_returns_ledger() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "trustcsv@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Trust Co","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/accounts",
+            &format!(r#"{{"client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"credit","amount_minor":750000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/trust-ledger.csv?account_id={aid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(bytes.to_vec()).unwrap();
+    let mut lines = text.lines();
+    assert_eq!(lines.next().unwrap(), "id,matter_id,amount_cents,memo");
+    let row = lines.next().expect("one entry row");
+    assert!(row.contains("750000"), "row was {row}");
+    assert!(row.contains("credit"), "row was {row}");
+}
+
+#[tokio::test]
+async fn uib_app_has_approvals_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "p-appr",
+        "appr-entity",
+        "appr-entity-id",
+        "appr-title",
+        "appr-role1",
+        "appr-btn",
+        "appr-msg",
+        "appr-filter",
+        "appr-reload",
+        "appr-list",
+        "appr-id",
+        "appr-show",
+        "appr-detail",
+        "appr-step",
+        "appr-comment",
+        "appr-ok",
+        "appr-no",
+        "appr-rw",
+        "appr-revoke",
+        "appr-dmsg",
+        "appr-err",
+        "job-summary",
+        "trust-csv-acct",
+        "trust-csv-btn",
+        "trust-csv-msg",
+        "Persetujuan",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+    assert!(t.contains("data-tab=\"appr\""), "missing appr tab link");
+}

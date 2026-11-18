@@ -127,3 +127,9 @@
 - Perbaikan: `D:/laragon/etc/apache2/sites-enabled/00-legalrust-proxy.conf` (prefix `00-`, bukan `auto.*` agar tidak ditimpa; dimuat duluan sehingga menang untuk ServerName sama) + restart Apache (kill tree + start ulang dengan `-d` ServerRoot yang sama; `-k restart` gagal karena Apache jalan sebagai proses biasa, bukan service) + backend dijalankan ulang (`target-ui5/debug/legalrust-server.exe`, JWT 32+, DB Laragon `legalrust`).
 - Verifikasi: `legalrust.test/healthz` → backend JSON ok; `/`, `/login`, `/app` → 200.
 - Catatan operasional: backend berjalan sebagai proses latar (bukan service); bila mati, jalankan ulang perintah di atas lalu cek `:8080/healthz`. Jangan edit `auto.*` (ditimpa Laragon) — edit `00-legalrust-proxy.conf`.
+
+## 2026-11-18 — AUDIT-1000 wave 2: approvals UI + report center (main)
+- /app: panel `p-appr` (compose/list/detail/decide/revoke), tab Persetujuan + sidenav Alur Kerja rewired, TABS/TABLBL, `appr*` JS + job live counts + trust-CSV download; node --check + needle test hijau; HTML live-terverifikasi via curl (:8080 + legalrust.test 200).
+- API: `GET /api/v1/reports/trust-ledger.csv` (Export-gated + audit `report.trust_csv_exported`); job counts client-side (tanpa endpoint baru).
+- Tes: server API 105 → 107, workspace **290 passed, 0 failed**; fmt+clippy clean.
+- Registry: F-D09 ×8, F-D20-001/004/020, F-D25-009 → IMPLEMENTED (total 51); skor 16.3 → **16.9/100**; 8-cat mean 18.4 (14 verified).

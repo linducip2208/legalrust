@@ -19,7 +19,11 @@
 - `cargo test --workspace`: **285 passed, 0 failed** (ai 19 incl. live-stub + unreachable-blocked; server API 102 incl. stub-200, gated-ollama-live, 501-unreachable; OCR 21; Tripay stub E2E).
 - Live proof: `POST /api/v1/ai/chat` → `{"reply":"4","model":"qwen2.5:1.5b","input_tokens":40,"output_tokens":2}` (Ollama lokal via endpoint).
 - Self-audit: grep secrets/TODO/unsafe/PII-log + CORS permissive→allowlist + .env ignored — temuan ditutup kecuali pentest eksternal (rekomendasi).
-## 2026-11-18 — AUDIT-1000 wave (SQLX_OFFLINE=true; 3 subagent read-only + eksekutor)
+## 2026-11-18 — AUDIT-1000 wave 2: approvals UI + report center (SQLX_OFFLINE=true, node --check clean)
+- Gates: fmt PASS, clippy `-D warnings` PASS.
+- `cargo test --workspace`: **290 passed, 0 failed** (server API 107 incl. approvals UI needles + trust CSV; OCR 21; AI 19; Tripay stub E2E).
+- Registry: IMPLEMENTED 38 → **51** (F-D09 ×8, F-D20-001/004/020, F-D25-009); skor 16.3 → **16.9/100**; 8-cat mean 18.4 (14 verified).
+## 2026-11-18 — AUDIT-1000 wave 1: backend slice + gap scan (SQLX_OFFLINE=true; 3 subagent read-only + eksekutor)
 - Gates: fmt PASS, clippy `-D warnings` PASS.
 - `cargo test --workspace`: **288 passed, 0 failed** (approvals 3 baru; sisanya hijau).
 - Gap scan: nol TODO/mock di non-test source; semua 501 jujur dan terdokumentasi.

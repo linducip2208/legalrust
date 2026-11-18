@@ -1,10 +1,12 @@
-# TEST-RESULTS (AUDIT-1000 wave 2026-11-18)
+# TEST-RESULTS (AUDIT-1000 wave 2026-11-18, updated wave 2)
 
 Gates (SQLX_OFFLINE=true):
 - `cargo fmt --all -- --check`: PASS
 - `cargo clippy --workspace --all-targets -- -D warnings`: PASS
-- `cargo test --workspace`: **288 passed, 0 failed** (server API 105 incl.
-  3 approvals tests; integrations 30; OCR 21; AI 19; full matrix)
+- node --check site.js: PASS
+- `cargo test --workspace`: **290 passed, 0 failed** (server API 107 incl.
+  3 approvals + trust CSV + approvals UI needles; integrations 30; OCR 21;
+  AI 19; full matrix)
 
 New coverage this wave:
 - `approvals_sequential_flow` (out-of-order 409, close, re-decide 409,

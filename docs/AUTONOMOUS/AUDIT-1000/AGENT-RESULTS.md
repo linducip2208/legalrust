@@ -1,4 +1,4 @@
-# AGENT-RESULTS (AUDIT-1000 wave 2026-11-18)
+# AGENT-RESULTS (AUDIT-1000 wave 2026-11-18 + wave 2)
 
 ## W1-backend-inventory (explore)
 - 16 lib crates + 4 apps inventoried with purposes.
@@ -36,6 +36,9 @@
   (admin/owner bypass, mismatch → 403).
 - CSV audit events (`report.matters_exported`,
   `report.matters_csv_exported`, `report.clients_csv_exported`).
-- 3 approvals integration tests; full suite 288/288; fmt+clippy clean.
-- Registry: 10 features updated (F-D09 ×9 → PARTIAL w/ backend-complete
-  notes, F-D20-034 → IMPLEMENTED).
+- 3 approvals integration tests; registry: 10 features updated
+  (F-D09 ×9 → PARTIAL w/ backend-complete notes, F-D20-034 → IMPLEMENTED).
+- Wave 2: approvals /app UI (panel+TABS+JS+needles), trust-ledger CSV
+  route + UI button, job live counts; server API 107/107, workspace
+  290/290, fmt+clippy clean; registry +13 → IMPLEMENTED
+  (F-D09 ×8, F-D20-001/004/020, F-D25-009).

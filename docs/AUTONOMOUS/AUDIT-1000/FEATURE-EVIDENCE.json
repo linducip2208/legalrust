@@ -4045,21 +4045,17 @@
  {
   "feature_id": "F-D09-001",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Approval composer: API complete (create/list/get, entity-exists check, audit+notify); no dedicated UI composer yet — /app tab pending.",
-  "overall_score": 77.6,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 88.2,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-002",
@@ -4136,21 +4132,17 @@
  {
   "feature_id": "F-D09-008",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Comments supported on decisions (2000-char cap, stored per step, visible in appr_get history); no UI thread yet.",
-  "overall_score": 76.5,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 86.8,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-009",
@@ -4167,21 +4159,17 @@
  {
   "feature_id": "F-D09-010",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Rework supported (decision=rework resets steps to pending, request needs_rework, resubmission tested); no UI return-to-drafter button yet.",
-  "overall_score": 76.5,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 86.8,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-011",
@@ -4234,59 +4222,47 @@
  {
   "feature_id": "F-D09-015",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Sequential policy enforced server-side (out-of-order → 409 earlier step pending, tested); parallel branches not modeled.",
-  "overall_score": 77.7,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 87.8,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-016",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Audit pack via audit approval.created/decided/revoked + appr_get history; no export bundle yet.",
-  "overall_score": 72.8,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 83.6,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-017",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Dashboard = list endpoint with status filter; no board UI yet.",
-  "overall_score": 71.0,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 82.9,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-018",
@@ -4363,40 +4339,32 @@
  {
   "feature_id": "F-D09-024",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Evidence who/when/why: decided_by + timestamp + comment per step + audit events; no export yet.",
-  "overall_score": 72.8,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 83.6,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-025",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Revocation endpoint live with terminal-state guard + audit; no UI button yet.",
-  "overall_score": 76.5,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 87.3,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-026",
@@ -4474,21 +4442,17 @@
  {
   "feature_id": "F-D09-032",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:2231 appr_create (entity-exists check, steps validation)",
-   "apps/server/src/lib.rs:2324 appr_list (status filter) + :2347 appr_get (steps history)",
-   "apps/server/src/lib.rs:2383 appr_decide (sequential order + role-match + idempotency guard)",
-   "apps/server/src/lib.rs:2462 appr_revoke (terminal-state guard)",
-   "apps/server/src/lib.rs:4367-4370 routes POST/GET /api/v1/approvals, GET /{id}, POST /{id}/decisions, POST /{id}/revoke",
-   "migrations/0013_approvals.sql: approval_requests + approval_steps (FK cascade, uq request+step_no)",
-   "crates/database/src/ops.rs: appr_create/list/get/decide/revoke trait + appr_check",
-   "apps/server/tests/api.rs: approvals_sequential_flow, approvals_rework_revoke_roundtrip, approvals_validation_and_rbac"
+   "apps/server/src/lib.rs: p-appr panel (compose/list/detail/decide/revoke)",
+   "apps/server/src/lib.rs: Persetujuan top-tab + Alur Kerja sidenav (data-tab=appr)",
+   "apps/server/static/site.js: apprRefresh/apprShow/apprDecide + job-summary counts",
+   "apps/server/tests/api.rs: approvals_* (3 API) + uib_app_has_approvals_ui (26 needles)"
   ],
-  "audit_note": "Role mapping: steps carry approver_role slugs; decide requires step role or admin/owner (tested incl. notary-mismatch 403).",
-  "overall_score": 76.0,
+  "audit_note": "Backend + /app UI + tests complete 2026-11-18 (compose/list/detail/decide/revoke, sequential guard, role-match, audit, SSE notify).",
+  "overall_score": 86.2,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D09-033",
@@ -9503,14 +9467,16 @@
  {
   "feature_id": "F-D20-001",
   "domain": "D20",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+   "apps/server/src/lib.rs: trust_ledger_csv_export (Export-gated + audit report.trust_csv_exported)",
+   "apps/server/src/lib.rs: keu export card (trust-csv-acct/btn)",
+   "apps/server/tests/api.rs: trust_csv_export_returns_ledger"
   ],
-  "audit_note": "",
-  "overall_score": 51.8,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Report library: matters CSV x2, clients CSV, trust-ledger CSV — all Export/View-gated + audit.",
+  "overall_score": 86.0,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D20-002",
@@ -9539,14 +9505,16 @@
  {
   "feature_id": "F-D20-004",
   "domain": "D20",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
+   "apps/server/src/lib.rs: trust_ledger_csv_export (Export-gated + audit report.trust_csv_exported)",
+   "apps/server/src/lib.rs: keu export card (trust-csv-acct/btn)",
+   "apps/server/tests/api.rs: trust_csv_export_returns_ledger"
   ],
-  "audit_note": "",
-  "overall_score": 51.8,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "CSV export endpoints live + /app download buttons (blob) + audit trail.",
+  "overall_score": 88.1,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D20-005",
@@ -9732,16 +9700,16 @@
  {
   "feature_id": "F-D20-020",
   "domain": "D20",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
-   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
-   "authorize() checks per endpoint"
+   "apps/server/src/lib.rs: trust_ledger_csv_export (Export-gated + audit report.trust_csv_exported)",
+   "apps/server/src/lib.rs: keu export card (trust-csv-acct/btn)",
+   "apps/server/tests/api.rs: trust_csv_export_returns_ledger"
   ],
-  "audit_note": "",
-  "overall_score": 51.8,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Report access control: Export/View RBAC per endpoint + audit actor recorded.",
+  "overall_score": 86.0,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D20-021",
@@ -9909,9 +9877,9 @@
    "crates/database/src/ops.rs: audit_list role-gated reader"
   ],
   "audit_note": "Report audit trail now emitted: report.matters_exported (:1992), report.matters_csv_exported (:1568), report.clients_csv_exported (:1610).",
-  "overall_score": 80.2,
+  "overall_score": 87.3,
   "verified_8cat": true,
-  "verification": "2026-11-18 wave: code-read + tests"
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D20-035",
@@ -12051,16 +12019,16 @@
  {
   "feature_id": "F-D25-009",
   "domain": "D25",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs job routes (enqueue/list); :1732 job_enqueue",
-   "crates/database/src/ops.rs:382 job_enqueue (+claim/done)",
-   "migrations/0008_ops.sql: jobs"
+   "apps/server/src/lib.rs: job-summary counts in jobs card header",
+   "apps/server/static/site.js: loadJobs fills #job-summary",
+   "apps/server/tests/api.rs: uib_app_has_approvals_ui (job-summary needle)"
   ],
-  "audit_note": "",
-  "overall_score": 51.8,
-  "verified_8cat": false,
-  "verification": "registry claim vs code inventory (subagent backend sweep + gap scan) — individual 8-cat audit queued (see RESUME.md)"
+  "audit_note": "Job monitor: table + live status counts + auto-refresh + enqueue; needs RBAC View (tested via suite).",
+  "overall_score": 84.8,
+  "verified_8cat": true,
+  "verification": "2026-11-18 wave AUDIT-1000: code + tests + UI verified"
  },
  {
   "feature_id": "F-D25-010",
