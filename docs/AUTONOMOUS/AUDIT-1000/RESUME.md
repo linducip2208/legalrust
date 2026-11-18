@@ -45,7 +45,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 32: viewer + catat mutasi trust di UI (main)
 - Detail rekening + tabel mutasi + form debit/credit + shortcut per baris; overdraft 409.
-- F-D14-011/012 frontend+testing up (86.5). Workspace 324/0; registry 19.3 (68 IMPLEMENTED); mean 19.9 (48 v).
+- F-D14-011/012 frontend+testing up (86.5). Workspace 324/0; registry 19.3 (68 IMPLEMENTED); mean 19.8 (49 v).
 
 ## Done wave 31: flood guard jalur notifikasi (main)
 - Per-user cap 20/min + audit rate_limited; 25-create test (<=20, >=15, audit hit).
