@@ -940,6 +940,19 @@ async fn tripay_gateway_and_callback_against_stub() {
         .unwrap()
         .iter()
         .any(|r| r["provider"] == "tripay" && r["status"] == "accepted"));
+    // Status filter trims to matching rows only.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/webhooks/deliveries?status=rejected", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["status"] == "rejected"));
     let res = a
         .clone()
         .oneshot(get(&format!("/api/v1/invoices/{iid}"), &tok))
@@ -4820,6 +4833,9 @@ async fn uib_app_has_approvals_ui() {
         "deed-rep-date",
         "deed-csv",
         "deed-csv-msg",
+        "wh-dl-list",
+        "wh-dl-reload",
+        "wh-dl-msg",
         "p-kepatuhan",
         "kep-title",
         "kep-add",

@@ -1072,6 +1072,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
     a.addEventListener('click', function () { kepRefresh(); conRefresh(); });
   });
+  on('wh-dl-reload', 'click', whDlRefresh);
+  async function whDlRefresh() {
+    var box = document.getElementById('wh-dl-list');
+    if (!box) return;
+    var v = await j('/api/v1/webhooks/deliveries?status=rejected');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.provider) + '</td><td>' + esc(x.event) + '</td><td>' + esc(x.detail) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada dead letter. Semua terkirim.</td></tr>';
+  }
+  qsa('.snav[data-tab="jobs"]', function (a) {
+    a.addEventListener('click', function () { whDlRefresh(); });
+  });
   mktRefresh();
   loadAudit();
   loadJobs();
@@ -1079,4 +1092,5 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   whRefresh();
   kepRefresh();
   conRefresh();
+  whDlRefresh();
 })();

@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 10: dead-letter alerting v1 + benchmarks baseline (main)
+- Dead-letter audit entry on max-retry exhaustion; ?status= filter on deliveries; /app Dead letters card + needles; status-filter API test.
+- Workspace 304/0; registry 17.6 (55+2 re-scored); 8-cat mean 19.0.
+
 ## Next executable tasks (priority order)
 1. **Outbound auto-dispatch** -> DONE wave 7 (signed fan-out; retry remains queued).
 2. **Webhook retry queue + dead-letter + failure alerts** (B-WH-RETRY) -> F-D08-013/F-D25-017 up.
