@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 36: masa berlaku token API (main)
+- expires_in_days 1..365 (default 90) + enforcement di token_owner + kolom UI + unit/API tests.
+- F-D16-013 PARTIAL->IMPLEMENTED (78.8). Workspace 328/0; registry 19.7 (72 IMPLEMENTED); mean 20.0 (53 v).
+
 ## Done wave 35: katalog matriks peran (main)
 - GET /api/v1/roles/matrix + tabel least-privilege di Pengaturan; 12 peran, owner 12 hak, auditor minimal.
 - F-D16-007 PARTIAL->IMPLEMENTED (75.6). Workspace 326/0; registry 19.6 (71 IMPLEMENTED); mean 19.9 (52 v).

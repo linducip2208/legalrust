@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 36: token expiry (main)
+- Masa berlaku + enforcement; workspace **328 passed, 0 failed**; F-D16-013 IMPLEMENTED (78.8).
+
 ## 2026-11-18 AUDIT-1000 wave 35: matriks peran (main)
 - Katalog least-privilege di UI + test; workspace **326 passed, 0 failed**; F-D16-007 IMPLEMENTED (75.6).
 
