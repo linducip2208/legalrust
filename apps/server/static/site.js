@@ -297,8 +297,14 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada akta.</td></tr>';
       wireAdv('al', 'ae');
       document.getElementById('tl').innerHTML = tr.map(function (x) {
-        return '<tr><td>' + x.id + '</td><td>' + x.client_id + '</td><td>' + fmtRp(x.balance) + '</td></tr>';
-      }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada rekening.</td></tr>';
+        return '<tr><td>' + x.id + '</td><td>' + x.client_id + '</td><td>' + fmtRp(x.balance) + '</td><td><button class="btn btn-sm" data-trust-view="' + x.id + '" type="button">Mutasi</button></td></tr>';
+      }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada rekening.</td></tr>';
+      qsa('[data-trust-view]', function (b) {
+        b.addEventListener('click', function () {
+          document.getElementById('trust-view-id').value = b.getAttribute('data-trust-view');
+          trustView();
+        });
+      });
       renderFunnel(a);
       renderChart(m, d, a);
       renderCal();
@@ -352,6 +358,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var r = await fetch('/api/v1/trust/transfer', { method: 'POST', headers: Object.assign({}, H, { 'Content-Type': 'application/json' }), body: JSON.stringify({ from: +document.getElementById('tf').value, to: +document.getElementById('tt').value, amount_minor: +document.getElementById('ta').value }) });
     if (!r.ok) { document.getElementById('te').textContent = 'Gagal (' + r.status + '): saldo tidak cukup?'; return; }
     location.reload();
+  });
+  /* ---- trust ledger: account detail + manual entries ---- */
+  async function trustView() {
+    var box = document.getElementById('trust-detail');
+    if (!box) return;
+    var id = pval('trust-view-id');
+    if (!id) { pmsg('trust-view-msg', 'Isi ID rekening dulu.'); return; }
+    pmsg('trust-view-msg', '');
+    var v = await j('/api/v1/trust/accounts/' + encodeURIComponent(id));
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat (cek ID / hak akses).</p>'; return; }
+    box.innerHTML = '<p><strong>Rekening #' + v.id + '</strong> — Saldo: <strong>' + fmtRp(v.balance) + '</strong></p>'
+      + '<div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Jenis</th><th>Nominal</th></tr></thead><tbody>'
+      + ((v.entries || []).map(function (e) {
+        return '<tr><td>' + e.id + '</td><td>' + badge(e.kind) + '</td><td>' + fmtRp(e.amount) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada mutasi.</td></tr>')
+      + '</tbody></table></div>';
+  }
+  on('trust-view', 'click', trustView);
+  on('trust-entry-add', 'click', async function () {
+    var id = pval('trust-view-id');
+    var amt = +pval('trust-entry-amount');
+    if (!id) { pmsg('trust-entry-msg', 'Isi ID rekening dulu (lihat mutasi).'); return; }
+    if (!amt || amt <= 0) { pmsg('trust-entry-msg', 'Isi nominal minor dulu.'); return; }
+    var mid = pval('trust-entry-matter');
+    var r = await ppost('/api/v1/trust/accounts/' + encodeURIComponent(id) + '/entries', { kind: pval('trust-entry-kind') || 'credit', matter_id: mid ? +mid : null, amount_minor: amt });
+    if (!r.ok) { pmsg('trust-entry-msg', 'Gagal (' + r.status + '). Cek saldo untuk debit.'); return; }
+    pmsg('trust-entry-msg', '');
+    trustView();
   });
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];

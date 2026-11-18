@@ -5757,6 +5757,72 @@ async fn compliance_ro_pa_crud_and_guards() {
 }
 
 #[tokio::test]
+async fn trust_entry_add_and_detail_lists_mutations() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "trustmut@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Trust Mut","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/trust/accounts",
+            &format!(r#"{{"client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    // Credit posts; overdraft debit rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"credit","amount_minor":500000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/trust/accounts/{aid}/entries"),
+            r#"{"kind":"debit","amount_minor":600000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/trust/accounts/{aid}"), &tok))
+        .await
+        .unwrap();
+    let j = body_json(res).await;
+    assert_eq!(j["balance"].as_i64().unwrap(), 500000);
+    let es = j["entries"].as_array().unwrap();
+    assert_eq!(es.len(), 1);
+    assert_eq!(es[0]["kind"], "credit");
+    assert_eq!(es[0]["amount"].as_i64().unwrap(), 500000);
+    // Foreign account hidden.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/trust/accounts/999999999", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn trust_csv_export_returns_ledger() {
     use tower::ServiceExt;
     let a = app();
@@ -6010,6 +6076,11 @@ async fn uib_app_has_approvals_ui() {
         "trust-csv-acct",
         "trust-csv-btn",
         "trust-csv-msg",
+        "trust-view-id",
+        "trust-view",
+        "trust-detail",
+        "trust-entry-kind",
+        "trust-entry-add",
         "ar-csv",
         "ar-msg",
         "Piutang terbuka",

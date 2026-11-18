@@ -5134,8 +5134,12 @@
    "apps/server/src/lib.rs:1771 trust_acct_create; :1869 trust_transfer",
    "crates/database/src/ops.rs:400 trust_create_account, :425 trust_transfer",
    "crates/database/src/ops_memory.rs:623,679 insufficient-balance guards (no negative balances)",
-   "migrations/0009_trust.sql: trust_accounts, trust_entries"
-  ]
+   "migrations/0009_trust.sql: trust_accounts, trust_entries",
+   "apps/server/src/lib.rs: p-keu mutasi viewer + entry form (debit/credit + matter)",
+   "apps/server/static/site.js: trustView + trust-entry-add wiring + per-row Mutasi shortcut",
+   "apps/server/tests/api.rs: trust_entry_add_and_detail_lists_mutations (credit/overdraft-409/detail/404) + needles"
+  ],
+  "audit_note": " Wave 32: mutation viewer + manual entry UI live."
  },
  {
   "id": "F-D14-012",
@@ -5146,8 +5150,12 @@
    "apps/server/src/lib.rs:1771 trust_acct_create; :1869 trust_transfer",
    "crates/database/src/ops.rs:400 trust_create_account, :425 trust_transfer",
    "crates/database/src/ops_memory.rs:623,679 insufficient-balance guards (no negative balances)",
-   "migrations/0009_trust.sql: trust_accounts, trust_entries"
-  ]
+   "migrations/0009_trust.sql: trust_accounts, trust_entries",
+   "apps/server/src/lib.rs: p-keu mutasi viewer + entry form (debit/credit + matter)",
+   "apps/server/static/site.js: trustView + trust-entry-add wiring + per-row Mutasi shortcut",
+   "apps/server/tests/api.rs: trust_entry_add_and_detail_lists_mutations (credit/overdraft-409/detail/404) + needles"
+  ],
+  "audit_note": " Wave 32: mutation viewer + manual entry UI live."
  },
  {
   "id": "F-D14-013",
