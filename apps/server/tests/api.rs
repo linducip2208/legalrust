@@ -3360,6 +3360,11 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "doc-version-id",
         "doc-version-btn",
         "doc-version-detail",
+        "cert-doc",
+        "cert-btn",
+        "cert-reload",
+        "cert-msg",
+        "cert-list",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
     }
@@ -3543,6 +3548,47 @@ async fn dash_flow_deed_from_template() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn land_certificate_intake_flow() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cert@x.id").await;
+    let did = mk_search_doc(&a, &tok, "shm-001.jpg").await;
+    // Unknown document rejected; valid intake queues a land_certificate job.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ocr/jobs",
+            r#"{"document_id":999999999,"doc_type":"land_certificate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ocr/jobs",
+            &format!(r#"{{"document_id":{did},"doc_type":"land_certificate"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let jid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/jobs", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|j| j["id"].as_i64() == Some(jid) && j["doc_type"] == "land_certificate"));
 }
 
 #[tokio::test]

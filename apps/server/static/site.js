@@ -559,6 +559,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('sh-msg', '');
     if (box) box.innerHTML = '<div>Tautan: <a href="' + esc(v.url) + '">' + esc(v.url) + '</a></div>';
   });
+  /* ---- land certificate intake (Akta tab; jobs processed in OCR tab) ---- */
+  async function certRefresh() {
+    var box = document.getElementById('cert-list');
+    if (!box) return;
+    var v = await j('/api/v1/ocr/jobs');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.filter(function (x) { return x.doc_type === 'land_certificate'; }).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada job sertifikat.</td></tr>';
+  }
+  on('cert-btn', 'click', async function () {
+    var id = pval('cert-doc');
+    if (!id) { pmsg('cert-msg', 'Isi ID dokumen sertifikat dulu.'); return; }
+    var r = await ppost('/api/v1/ocr/jobs', { document_id: +id, doc_type: 'land_certificate' });
+    if (!r.ok) { pmsg('cert-msg', 'Gagal (' + r.status + '). Cek ID dokumen.'); return; }
+    pmsg('cert-msg', '');
+    certRefresh();
+  });
+  on('cert-reload', 'click', certRefresh);
+  qsa('.snav[data-tab="akta"]', function (a) {
+    a.addEventListener('click', function () { certRefresh(); });
+  });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
     var box = document.getElementById('doc-version-detail');
@@ -1273,6 +1295,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   loadJobs();
   apprRefresh();
   apprNotifRefresh();
+  certRefresh();
   whRefresh();
   kepRefresh();
   conRefresh();

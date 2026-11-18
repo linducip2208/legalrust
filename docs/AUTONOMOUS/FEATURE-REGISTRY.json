@@ -4661,8 +4661,12 @@
   "evidence": [
    "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
    "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields",
+   "apps/server/src/lib.rs: p-akta Sertifikat tanah intake card (job create + job list)",
+   "apps/server/static/site.js: certRefresh (land_certificate filter) + wiring + boot",
+   "apps/server/tests/api.rs: land_certificate_intake_flow (404 + queue + list) + needles"
+  ],
+  "audit_note": " Wave 26: intake UI live; stays PARTIAL (no checklist/BPN)."
  },
  {
   "id": "F-D13-003",

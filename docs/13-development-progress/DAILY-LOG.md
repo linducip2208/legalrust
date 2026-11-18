@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 26: intake sertifikat (main)
+- Menu Akta kini intake sertifikat tanah; workspace **319 passed, 0 failed**; F-D13-002 67.5.
+
 ## 2026-11-18 AUDIT-1000 wave 25: riwayat versi dokumen (main)
 - Menu Dokumen kini tampilkan riwayat versi; workspace **318 passed, 0 failed**; F-D04-003 86.5.
 
