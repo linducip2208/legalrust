@@ -1261,6 +1261,66 @@ async fn tokens_password_roles_notifications() {
 }
 
 #[tokio::test]
+async fn notifications_kind_filter_and_read() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "notifkind@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Approval create emits a kind=approval notification.
+    let _ = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=approval", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(!v.as_array().unwrap().is_empty());
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|n| n["kind"] == "approval"));
+    let nid = v[0]["id"].as_i64().unwrap();
+    // Other kinds excluded; overlong kind rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=deed", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    let long = "k".repeat(65);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/notifications?kind={long}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Mark-read flips the read flag.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/notifications/{nid}/read"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=approval", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|n| n["id"].as_i64() == Some(nid) && n["read"] == true));
+}
+
+#[tokio::test]
 async fn shares_reports_audit_jobs_trust_sse() {
     use tower::ServiceExt;
     let a = app();
@@ -5064,6 +5124,9 @@ async fn uib_app_has_approvals_ui() {
         "appr-revoke",
         "appr-dmsg",
         "appr-err",
+        "appr-notif-list",
+        "appr-notif-reload",
+        "appr-notif-unread",
         "job-summary",
         "trust-csv-acct",
         "trust-csv-btn",

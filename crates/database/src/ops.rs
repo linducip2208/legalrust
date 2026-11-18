@@ -597,7 +597,11 @@ pub trait OpsStore: Send + Sync {
         title: &str,
         body: Option<&str>,
     ) -> Result<i64, StoreError>;
-    async fn notify_list(&self, user: &str) -> Result<Vec<NotifRow>, StoreError>;
+    async fn notify_list(
+        &self,
+        user: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<NotifRow>, StoreError>;
     async fn notify_read(&self, user: &str, id: i64) -> Result<(), StoreError>;
     async fn share_create(
         &self,

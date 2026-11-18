@@ -1012,6 +1012,30 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('appr-reload', 'click', apprRefresh);
   on('appr-filter', 'change', apprRefresh);
+  /* ---- approval notifications (kind-routed action node) ---- */
+  async function apprNotifRefresh() {
+    var box = document.getElementById('appr-notif-list');
+    if (!box) return;
+    var v = await j('/api/v1/notifications?kind=approval');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var unread = v.filter(function (x) { return !x.read; }).length;
+    var badge = document.getElementById('appr-notif-unread');
+    if (badge) badge.textContent = unread ? unread + ' belum dibaca' : 'semua dibaca';
+    box.innerHTML = v.slice(0, 5).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + (x.read ? 'ya' : 'belum') + '</td><td>'
+        + (x.read ? '<span class="text-muted">—</span>' : '<button class="btn btn-sm" data-notif-read="' + x.id + '" type="button">Tandai dibaca</button>') + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada notifikasi approval.</td></tr>';
+    qsa('[data-notif-read]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/notifications/' + b.getAttribute('data-notif-read') + '/read', {});
+        if (r.ok) apprNotifRefresh();
+      });
+    });
+  }
+  on('appr-notif-reload', 'click', apprNotifRefresh);
+  qsa('.snav[data-tab="appr"]', function (a) {
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); });
+  });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
   on('appr-no', 'click', function () { apprDecide('reject'); });
@@ -1134,6 +1158,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   loadAudit();
   loadJobs();
   apprRefresh();
+  apprNotifRefresh();
   whRefresh();
   kepRefresh();
   conRefresh();

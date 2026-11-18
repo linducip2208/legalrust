@@ -369,14 +369,18 @@ impl OpsStore for MemoryOps {
         );
         Ok(id)
     }
-    async fn notify_list(&self, user: &str) -> Result<Vec<NotifRow>, StoreError> {
+    async fn notify_list(
+        &self,
+        user: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<NotifRow>, StoreError> {
         Ok(self
             .inner
             .lock()
             .unwrap()
             .notifs
             .iter()
-            .filter(|(_, (u, _, _, _, _))| u == user)
+            .filter(|(_, (u, k, _, _, _))| u == user && kind.is_none_or(|x| k == x))
             .map(|(id, (_, k, t, _, r))| NotifRow {
                 id: *id,
                 kind: k.clone(),

@@ -43,6 +43,12 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 15: kind-routed approval notifications + D08-003 re-score (main)
+- GET /api/v1/notifications?kind= (<=64 else 422) + appr-tab card (5 latest, unread badge, mark-read).
+- notifications_kind_filter_and_read test. F-D08-015 PARTIAL->IMPLEMENTED (8-cat 77.9).
+- F-D08-003 stale NOT_STARTED->IMPLEMENTED (sequential engine evidence, 8-cat 82.2, no code change).
+- Workspace 309/0; registry 18.4 (62 IMPLEMENTED); 8-cat mean 19.3 (30 verified).
+
 ## Done wave 14: global search hardening + RAG ACL-trim (main)
 - /api/v1/search: page/per_page/types + totals (arrays kept); rag_search ranks via rank() + org-trim at boundary.
 - UI pager + totals; pagination/types/isolation tests. F-D23-001/021/031 PARTIAL->IMPLEMENTED (8-cat 74.4).

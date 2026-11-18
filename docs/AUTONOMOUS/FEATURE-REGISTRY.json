@@ -2736,10 +2736,15 @@
   "id": "F-D08-003",
   "domain": "D08",
   "title": "Sequential approval chains",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0013_approvals.sql: approval_requests + approval_steps (tenant-scoped)",
+   "apps/server/src/lib.rs: appr_create/list/get/decide/revoke + role-match gate + audit + notify fan-out",
+   "crates/database/src/ops_memory.rs: sequential guard (earlier step pending -> 409)",
+   "apps/server/tests/api.rs: approvals_sequential_flow (out-of-order rejected) + rework/revoke roundtrip",
+   "apps/server/static/site.js: appr tab compose/list/detail/decide"
+  ],
+  "audit_note": "Wave 15: re-scored, engine implements sequential chains (evidence above); was stale NOT_STARTED."
  },
  {
   "id": "F-D08-004",
@@ -2854,11 +2859,17 @@
   "id": "F-D08-015",
   "domain": "D08",
   "title": "Notification action nodes",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3491-3492 notification routes; :1496 notify_list",
-   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)"
-  ]
+   "notify_user in-app + SSE sse_events (e.g. matter.created at :365-403)",
+   "apps/server/src/lib.rs: notify_list ?kind= filter (<=64 else 422) + appr-tab approval-notifications card",
+   "crates/database/src/ops.rs: OpsStore::notify_list(user, kind)",
+   "crates/database/src/ops_memory.rs + ops_mysql.rs: kind filter (memory match / SQL AND kind=?)",
+   "apps/server/static/site.js: apprNotifRefresh (5 latest + unread badge + mark-read) + tab hook + boot",
+   "apps/server/tests/api.rs: notifications_kind_filter_and_read + appr-notif needles"
+  ],
+  "audit_note": " Wave 15: kind-routed approval notification node live."
  },
  {
   "id": "F-D08-016",
