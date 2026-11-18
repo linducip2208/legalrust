@@ -5369,12 +5369,13 @@
   "id": "F-D14-037",
   "domain": "D14",
   "title": "Finance audit trail",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
-   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "apps/server/src/lib.rs: trust_transfer audits trust.transfer; exports audit report.{trust,ar,matters,deeds}_csv_exported",
+   "apps/server/src/lib.rs: audit-entity filter +trust/report options in UI",
+   "apps/server/tests/api.rs: entity=trust + entity=report trail assertions"
+  ],
+  "audit_note": "Wave 30: finance audit trail queryable per entity."
  },
  {
   "id": "F-D14-038",

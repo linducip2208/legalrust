@@ -9454,19 +9454,19 @@
  {
   "feature_id": "F-D14-037",
   "domain": "D14",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 85,
+   "database": 75,
+   "frontend": 70,
+   "business_logic": 80,
+   "security": 85,
+   "testing": 85,
+   "integration": 65,
+   "documentation": 60
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 75.6,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D14-038",

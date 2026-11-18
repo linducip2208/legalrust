@@ -2259,6 +2259,18 @@ async fn trust_transfer_json_flow() {
         .await
         .unwrap();
     assert_eq!(body_json(res).await["balance"].as_i64().unwrap(), 400000);
+    // Finance audit trail: transfer + report exports queryable per entity.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=trust", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "trust.transfer"));
     let res = a
         .clone()
         .oneshot(post(
@@ -5772,6 +5784,18 @@ async fn trust_csv_export_returns_ledger() {
     let row = lines.next().expect("one entry row");
     assert!(row.contains("750000"), "row was {row}");
     assert!(row.contains("credit"), "row was {row}");
+    // Export is audit-trailed under entity=report.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.trust_csv_exported"));
 }
 
 #[tokio::test]

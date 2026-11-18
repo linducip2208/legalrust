@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 30: jejak audit keuangan (main)
+- trust.transfer audit + filter trust/report + trail assertions.
+- F-D14-037 PARTIAL->IMPLEMENTED (75.6). Workspace 322/0; registry 19.2 (68 IMPLEMENTED); mean 19.8 (46 v).
+
 ## Done wave 29: checklist PPAT + filter audit meluas (main)
 - GET /api/v1/ppat/{id}/checklist + tombol Cek inline; filter audit +notification/user/ppat/report/ropa.
 - F-D13-003 NOT_STARTED->PARTIAL (64.4); F-D13-005 PLANNED->PARTIAL (59.4); F-D18-028 68.5->70.9 PARTIAL.
