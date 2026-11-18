@@ -43,6 +43,12 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 16: sidebar 1:1 per tab, menu ganda hilang (main)
+- 25 snav duplikat (ocr x4, klien x4, dok x3, akta x4, ...) -> 12 link 1:1 per tab; tiap klik kini 1 item aktif.
+- Tab Keuangan (p-keu) kini reachable dari sidebar (sebelumnya hanya via quick-action).
+- dash_app_has_sidebar_nav_groups: label baru + uniqueness assert tiap data-tab tepat 1x.
+- Workspace 309/0; registry 18.4 (62 IMPLEMENTED); 8-cat mean 19.3 (30 verified).
+
 ## Done wave 15: kind-routed approval notifications + D08-003 re-score (main)
 - GET /api/v1/notifications?kind= (<=64 else 422) + appr-tab card (5 latest, unread badge, mark-read).
 - notifications_kind_filter_and_read test. F-D08-015 PARTIAL->IMPLEMENTED (8-cat 77.9).

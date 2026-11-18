@@ -251,6 +251,14 @@
       "owner": "main",
       "depends": [],
       "evidence": "2026-11-18 wave 10: dead-letter audit + ?status filter + /app Dead letters card + needles"
+    },
+    {
+      "id": "B-NAV-DEDUP",
+      "title": "Sidebar /app 1:1 per tab (hilangkan menu ganda aktif) + link Keuangan",
+      "status": "DONE",
+      "owner": "main",
+      "depends": [],
+      "evidence": "2026-11-18 wave 16: 25 snav duplikat -> 12 link 1:1; uniqueness test tiap data-tab tepat 1x; 309 tests green"
     }
   ]
 }

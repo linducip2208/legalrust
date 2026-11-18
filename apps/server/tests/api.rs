@@ -2927,29 +2927,41 @@ async fn mkt_app_page_csp_safe_and_js_wires_marketing() {
 async fn dash_app_has_sidebar_nav_groups() {
     let (_, _, t) = page_get(&app(), "/app").await;
     assert!(t.contains("id=\"sidebar\""), "missing sidebar");
+    // One link per tab: no duplicate data-tab may share the active state.
     for s in [
         "Dashboard",
         "Verifikasi Identitas",
-        "KTP / KK / NPWP",
-        "Review KYC",
-        "Klien",
-        "Kontak",
-        "Organisasi",
-        "Daftar Perkara",
-        "Tugas",
-        "Proyek",
-        "Kalender",
-        "Pustaka Dokumen",
-        "Versi",
-        "Berbagi",
-        "Ekstraksi",
-        "Template Akta",
-        "Proses Akta",
-        "PPAT",
+        "Klien &amp; Perkara",
+        "Keuangan",
+        "Dokumen",
+        "Akta",
         "Persetujuan",
-        "Tanda Tangan",
+        "Marketing",
+        "Pengaturan",
+        "Audit",
+        "Jobs",
+        "Kepatuhan",
     ] {
         assert!(t.contains(s), "missing sidebar item {s}");
+    }
+    let sb_start = t.find("id=\"sidebar\"").unwrap();
+    let sb = &t[sb_start..t[sb_start..].find("</aside>").unwrap() + sb_start];
+    for tab in [
+        "ringkas",
+        "ocr",
+        "klien",
+        "keu",
+        "dok",
+        "akta",
+        "appr",
+        "mkt",
+        "pengaturan",
+        "audit",
+        "jobs",
+        "kepatuhan",
+    ] {
+        let n = sb.matches(&format!("data-tab=\"{tab}\"")).count();
+        assert_eq!(n, 1, "sidebar data-tab={tab} appears {n}x, want exactly 1");
     }
     for id in [
         "p-ringkas",

@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 15: approval notification node (main)
+## 2026-11-18 — AUDIT-1000 wave 16: sidebar dedup 1:1 (main)
+- Sidebar uniqueness test (12 tab tepat 1x); workspace **309 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 15: approval notification node (main)
 - Kind filter + mark-read roundtrip + needles; workspace **309 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 14: search hardening + RAG ACL-trim (main)
