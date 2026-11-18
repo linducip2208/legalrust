@@ -1158,6 +1158,42 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn notif_pref_set(
+        &self,
+        user: &str,
+        kind: &str,
+        enabled: bool,
+    ) -> Result<(), StoreError> {
+        if kind.trim().is_empty() || kind.len() > 64 {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        sqlx::query(
+            "INSERT INTO notification_prefs (user_id, kind, enabled) VALUES (?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled)",
+        )
+        .bind(user)
+        .bind(kind.trim())
+        .bind(enabled)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(())
+    }
+    async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
+        )
+        .bind(user)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| {
+                let en: i8 = x.get("enabled");
+                (x.get::<String, _>("kind"), en != 0)
+            })
+            .collect())
+    }
     async fn pay_add(
         &self,
         org: &str,

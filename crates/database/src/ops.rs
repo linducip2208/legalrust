@@ -625,6 +625,11 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError>;
     async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// Notification preferences: per-user kind opt-out. Disabled kinds are
+    /// skipped by the notify fan-out (F-D18-006).
+    async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)
+        -> Result<(), StoreError>;
+    async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError>;
     async fn notify(
         &self,
         org: &str,

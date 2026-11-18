@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 28: preferensi notifikasi (main)
+- Opt-out per jenis + audit suppressed; workspace **322 passed, 0 failed**; F-D18-006 IMPLEMENTED (76.9).
+
 ## 2026-11-18 AUDIT-1000 wave 27: register PPAT (main)
 - Register akta PPAT + transisi status + UI; workspace **321 passed, 0 failed**; F-D13-001 IMPLEMENTED (77.9).
 

@@ -2749,6 +2749,24 @@ async fn integrations(
 
 // ---------- Phase 11/12 final handlers ----------
 async fn notify_user(s: &FullState, org: &str, user: &str, kind: &str, title: &str) {
+    // Preference center (F-D18-006): opted-out kinds are suppressed, not sent.
+    let prefs = s.stores.ops.notif_pref_list(user).await.unwrap_or_default();
+    if prefs.iter().any(|(k, e)| k == kind && !e) {
+        audit(
+            &s.pool,
+            &s.stores,
+            AuditEvent {
+                tenant_id: org.to_string(),
+                actor_id: Some(user.to_string()),
+                action: format!("notify.{kind}.suppressed"),
+                entity: "notification".into(),
+                entity_id: 0,
+                ip: None,
+            },
+        )
+        .await;
+        return;
+    }
     let nid = s
         .stores
         .ops
@@ -3074,6 +3092,44 @@ async fn notify_read(
     )
     .await;
     Ok(Json(json!({"read": true})))
+}
+/// Notification preference center (F-D18-006): per-user kind toggles.
+#[derive(Debug, Deserialize, Validate)]
+struct NotifPrefReq {
+    #[validate(length(min = 1, max = 64))]
+    kind: String,
+    enabled: bool,
+}
+async fn notif_pref_list(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    let v = s
+        .stores
+        .ops
+        .notif_pref_list(&u.claims.sub)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!(v
+        .iter()
+        .map(|(k, e)| json!({"kind": k, "enabled": e}))
+        .collect::<Vec<_>>())))
+}
+async fn notif_pref_set(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Json(b): Json<NotifPrefReq>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    b.validate()
+        .map_err(|e| AppError::Validation(e.to_string()))?;
+    s.stores
+        .ops
+        .notif_pref_set(&u.claims.sub, b.kind.trim(), b.enabled)
+        .await
+        .map_err(map_store)?;
+    Ok(Json(json!({"kind": b.kind.trim(), "enabled": b.enabled})))
 }
 
 #[derive(Debug, Deserialize)]
@@ -5647,6 +5703,10 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/users", get(user_list))
         .route("/api/v1/users/{uid}/roles", post(user_assign_role))
         .route("/api/v1/notifications", get(notify_list))
+        .route(
+            "/api/v1/notifications/prefs",
+            get(notif_pref_list).post(notif_pref_set),
+        )
         .route("/api/v1/notifications/{id}/read", post(notify_read))
         .route(
             "/api/v1/documents/{id}/shares",

@@ -11647,19 +11647,19 @@
  {
   "feature_id": "F-D18-006",
   "domain": "D18",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 10,
-   "database": 10,
-   "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "backend": 85,
+   "database": 80,
+   "frontend": 70,
+   "business_logic": 85,
+   "security": 80,
+   "testing": 85,
+   "integration": 70,
+   "documentation": 60
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 76.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D18-007",

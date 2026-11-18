@@ -42,6 +42,7 @@ struct Inner {
     consents: HashMap<i64, ConsentRow>,
     ropa: HashMap<i64, RopaRow>,
     ppat: HashMap<i64, PpatRow>,
+    prefs: HashMap<(String, String), bool>,
     seq: i64,
 }
 #[derive(Debug, Clone, Default)]
@@ -1173,6 +1174,35 @@ impl OpsStore for MemoryOps {
         }
         r.status = to.into();
         Ok(())
+    }
+    async fn notif_pref_set(
+        &self,
+        user: &str,
+        kind: &str,
+        enabled: bool,
+    ) -> Result<(), StoreError> {
+        if kind.trim().is_empty() || kind.len() > 64 {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        self.inner
+            .lock()
+            .unwrap()
+            .prefs
+            .insert((user.into(), kind.trim().into()), enabled);
+        Ok(())
+    }
+    async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
+        let mut v: Vec<(String, bool)> = self
+            .inner
+            .lock()
+            .unwrap()
+            .prefs
+            .iter()
+            .filter(|((u, _), _)| u == user)
+            .map(|((_, k), e)| (k.clone(), *e))
+            .collect();
+        v.sort_by(|a, b| a.0.cmp(&b.0));
+        Ok(v)
     }
     async fn trust_create_account(
         &self,

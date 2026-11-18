@@ -6581,10 +6581,15 @@
   "id": "F-D18-006",
   "domain": "D18",
   "title": "Notification preference center",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0019_notif_prefs.sql: notification_prefs (user, kind) forward-only",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: notif_pref_set/list",
+   "apps/server/src/lib.rs: notify_user honors opt-out (+suppressed audit); GET/POST /api/v1/notifications/prefs",
+   "apps/server/static/site.js: bell dropdown preference checkboxes per kind",
+   "apps/server/tests/api.rs: notification_prefs_opt_out_suppresses (suppress/audit/re-enable + guards)"
+  ],
+  "audit_note": "Wave 28: preference center live end-to-end (migration 0019)."
  },
  {
   "id": "F-D18-007",

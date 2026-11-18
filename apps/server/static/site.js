@@ -390,6 +390,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         refreshNotifs();
       });
     });
+    /* preference center: per-kind opt-out (F-D18-006) */
+    var kinds = ['approval', 'matter', 'invoice', 'ocr', 'ai'];
+    var prefs = await j('/api/v1/notifications/prefs');
+    var off = {};
+    (prefs || []).forEach(function (p) { if (!p.enabled) off[p.kind] = true; });
+    bl.innerHTML += '<div class="q-group"><strong>Preferensi</strong>'
+      + kinds.map(function (k) {
+        return '<label class="form-check"><input class="form-check-input npref" data-kind="' + k + '" type="checkbox"' + (off[k] ? '' : ' checked') + '><span class="form-check-label">' + k + '</span></label>';
+      }).join('') + '</div>';
+    qsa('.npref', function (c) {
+      c.addEventListener('change', async function () {
+        await ppost('/api/v1/notifications/prefs', { kind: c.dataset.kind, enabled: !!c.checked });
+      });
+    });
   }
   /* ---- pengaturan: token API, kata sandi, peran ---- */
   async function loadTokens() {

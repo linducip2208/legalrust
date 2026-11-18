@@ -1335,6 +1335,74 @@ async fn notifications_kind_filter_and_read() {
 }
 
 #[tokio::test]
+async fn notification_prefs_opt_out_suppresses() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "notifpref@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Disable approval notes: creating an approval emits nothing for me.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/notifications/prefs",
+            r#"{"kind":"approval","enabled":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let _ = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=approval", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Suppression is audit-traced.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=notification", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "notify.approval.suppressed"));
+    // Re-enable: the next approval notifies again.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/notifications/prefs",
+            r#"{"kind":"approval","enabled":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let _ = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/notifications?kind=approval", &tok))
+        .await
+        .unwrap();
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+    // Guards: empty/overlong kind rejected.
+    for body in [
+        r#"{"kind":"","enabled":false}"#.to_string(),
+        format!(r#"{{"kind":"{}","enabled":false}}"#, "k".repeat(65)),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/notifications/prefs", &body, Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
+
+#[tokio::test]
 async fn notifications_unread_only_and_limit() {
     use tower::ServiceExt;
     let a = app();
