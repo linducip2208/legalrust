@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 34: konsol sesi aktif (main)
+- GET /api/v1/auth/sessions + revoke others (self->409, foreign->404) + kartu Sesi aktif.
+- F-D16-019 PARTIAL->IMPLEMENTED (76.9). Workspace 325/0; registry 19.5 (70 IMPLEMENTED); mean 20.0 (51 v).
+
 ## Done wave 33: kuitansi pembayaran (main)
 - GET /api/v1/invoices/{id}/receipt + tombol Kuitansi + print view; receipt_viewed audit.
 - F-D15-036 NOT_STARTED->IMPLEMENTED (75.6). Workspace 324/0; registry 19.4 (69 IMPLEMENTED); mean 19.9 (50 v).

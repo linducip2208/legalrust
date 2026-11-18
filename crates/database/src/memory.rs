@@ -85,6 +85,23 @@ impl UserStore for MemoryStores {
             None => Err(StoreError::NotFound),
         }
     }
+    async fn list_sessions(&self, user: &str) -> Result<Vec<SessionRow>, StoreError> {
+        let mut v: Vec<SessionRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .sessions
+            .iter()
+            .filter(|(_, (u, _, _))| u == user)
+            .map(|(sid, (_, exp, revoked))| SessionRow {
+                id: sid.clone(),
+                expires_at: exp.format("%Y-%m-%d %H:%M:%S").to_string(),
+                revoked: *revoked,
+            })
+            .collect();
+        v.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(v)
+    }
     async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError> {
         Ok(self.inner.lock().unwrap().users.get(id).cloned())
     }

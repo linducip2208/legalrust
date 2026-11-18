@@ -4195,6 +4195,86 @@ async fn ui5_role_assign_invalid_422() {
 }
 
 #[tokio::test]
+async fn session_console_lists_and_revokes_others() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sesscon@x.id").await;
+    let tok_b = reg(&a, "sessconB@x.id").await;
+    // Second login = second session.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"sesscon@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/sessions", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let all = v.as_array().unwrap();
+    assert_eq!(all.len(), 2);
+    assert_eq!(all.iter().filter(|s| s["current"] == true).count(), 1);
+    assert!(all.iter().all(|s| s["revoked"] == false));
+    let other = all.iter().find(|s| s["current"] != true).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let current = all.iter().find(|s| s["current"] == true).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // Revoke the other session; self-revoke refused; foreign sid hidden.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/auth/sessions/{other}/revoke"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/auth/sessions/{current}/revoke"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/auth/sessions/{other}/revoke"),
+            "{}",
+            Some(&tok_b),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/sessions", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|s| s["id"] == other && s["revoked"] == true));
+}
+
+#[tokio::test]
 async fn users_list_scoped_and_cross_org_assign_blocked() {
     use tower::ServiceExt;
     let a = app();
@@ -4335,6 +4415,9 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
         "tok-name",
         "tok-btn",
         "tok-list",
+        "sess-list",
+        "sess-reload",
+        "sess-msg",
         "tok-plain",
         "pw-cur",
         "pw-new",

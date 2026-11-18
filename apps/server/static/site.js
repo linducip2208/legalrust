@@ -480,6 +480,27 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       });
     });
   }
+  /* ---- session console (F-D16-019): list + revoke others ---- */
+  async function loadSessions() {
+    var box = document.getElementById('sess-list');
+    if (!box) return;
+    var v = await j('/api/v1/auth/sessions');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var st = x.revoked ? 'dicabut' : (x.current ? 'sesi ini' : 'aktif');
+      var act = (!x.revoked && !x.current) ? '<button class="btn btn-sm btn-outline-danger srev" data-id="' + esc(x.id) + '">Cabut</button>' : '<span class="text-muted">—</span>';
+      return '<tr><td><code>' + esc(x.id.slice(0, 8)) + '…</code></td><td>' + esc(x.expires_at) + '</td><td>' + st + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada sesi.</td></tr>';
+    qsa('.srev', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/auth/sessions/' + encodeURIComponent(b.dataset.id) + '/revoke', {});
+        if (!r.ok) { pmsg('sess-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sess-msg', '');
+        loadSessions();
+      });
+    });
+  }
+  on('sess-reload', 'click', loadSessions);
   on('tok-btn', 'click', async function () {
     var nm = pval('tok-name');
     if (nm.length < 2) { pmsg('tok-msg', 'Nama minimal 2 huruf.'); return; }
@@ -518,7 +539,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     loadRoleUsers();
   });
   qsa('.snav[data-tab="pengaturan"]', function (a) {
-    a.addEventListener('click', function () { loadRoleUsers(); });
+    a.addEventListener('click', function () { loadRoleUsers(); loadSessions(); });
   });
   on('cli-csv', 'click', async function () {
     var r = await fetch('/api/v1/clients.csv', { headers: H });
@@ -533,6 +554,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   loadTokens();
   loadRoleUsers();
+  loadSessions();
   [['qa-client', 'klien', 'cli-name'], ['qa-matter', 'klien', 'mat-title'], ['qa-upload', 'dok', 'dn'], ['qa-ocr', 'ocr', 'ocr-doc'], ['qa-deed', 'akta', 'deed-number'], ['qa-invoice', 'keu', 'invm-total']].forEach(function (x) {
     on(x[0], 'click', function () { window.apptab(x[1]); var t = document.getElementById(x[2]); if (t) t.focus(); });
   });

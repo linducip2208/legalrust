@@ -5978,12 +5978,14 @@
   "id": "F-D16-019",
   "domain": "D16",
   "title": "Session management console",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
-   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
-   "migrations/0001_foundation.sql: users, sessions"
-  ]
+   "crates/database/src/store.rs + memory.rs + mysql.rs: UserStore::list_sessions",
+   "apps/server/src/lib.rs: GET /api/v1/auth/sessions + POST /{id}/revoke (self/foreign guards)",
+   "apps/server/static/site.js: Sesi aktif card + revoke wiring + boot/tab hooks",
+   "apps/server/tests/api.rs: session_console_lists_and_revokes_others + needles"
+  ],
+  "audit_note": "Wave 34: session console live (list + revoke others; self via logout)."
  },
  {
   "id": "F-D16-020",

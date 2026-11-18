@@ -18,6 +18,12 @@ pub struct UserRow {
     pub status: String,
 }
 #[derive(Debug, Clone)]
+pub struct SessionRow {
+    pub id: String,
+    pub expires_at: String,
+    pub revoked: bool,
+}
+#[derive(Debug, Clone)]
 pub struct DocRow {
     pub id: i64,
     pub org_id: String,
@@ -112,6 +118,9 @@ pub trait UserStore: Send + Sync {
         exp: chrono::NaiveDateTime,
     ) -> Result<String, StoreError>;
     async fn revoke_session(&self, sid: &str) -> Result<(), StoreError>;
+
+    /// Caller's own sessions (id, expires_at display, revoked flag).
+    async fn list_sessions(&self, user: &str) -> Result<Vec<SessionRow>, StoreError>;
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError>;
     async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError>;
 

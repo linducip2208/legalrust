@@ -131,6 +131,23 @@ impl UserStore for MysqlStores {
         }
         Ok(())
     }
+    async fn list_sessions(&self, user: &str) -> Result<Vec<SessionRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, DATE_FORMAT(expires_at,'%Y-%m-%d %H:%i:%S') AS exp_s, revoked FROM sessions WHERE user_id=? ORDER BY created_at DESC LIMIT 100",
+        )
+        .bind(user)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| SessionRow {
+                id: x.get::<String, _>("id"),
+                expires_at: x.get::<String, _>("exp_s"),
+                revoked: x.get::<bool, _>("revoked"),
+            })
+            .collect())
+    }
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError> {
         let r = sqlx::query(
             "SELECT revoked, UNIX_TIMESTAMP(expires_at) AS exp_unix FROM sessions WHERE id=?",
