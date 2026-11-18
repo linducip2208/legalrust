@@ -4895,6 +4895,44 @@ async fn deeds_csv_repertorium_export() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Period: today..today contains the deed; ancient..ancient does not.
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/deeds.csv?from={today}&to={today}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert!(String::from_utf8(bytes.to_vec()).unwrap().contains("D-9"));
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/reports/deeds.csv?from=2000-01-01&to=2000-01-31",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    assert!(!String::from_utf8(bytes.to_vec()).unwrap().contains("D-9"));
+    // Guards: bad shape and inverted range rejected.
+    for uri in [
+        "/api/v1/reports/deeds.csv?from=bogus".to_string(),
+        format!("/api/v1/reports/deeds.csv?from={today}&to=2000-01-01"),
+    ] {
+        let res = a.clone().oneshot(get(&uri, &tok)).await.unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "uri was {uri}"
+        );
+    }
     let _ = did;
 }
 
@@ -4937,7 +4975,8 @@ async fn uib_app_has_approvals_ui() {
         "whe-reload",
         "whe-msg",
         "whe-list",
-        "deed-rep-date",
+        "deed-rep-from",
+        "deed-rep-to",
         "deed-csv",
         "deed-csv-msg",
         "wh-dl-list",

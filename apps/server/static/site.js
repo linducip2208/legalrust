@@ -933,10 +933,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     dlCsv('/api/v1/reports/trust-ledger.csv?account_id=' + encodeURIComponent(id), 'trust-' + id + '.csv', 'trust-csv-msg');
   });
   on('deed-csv', 'click', function () {
-    var d = pval('deed-rep-date');
-    if (d && !/^\d{4}-\d{2}-\d{2}$/.test(d)) { pmsg('deed-csv-msg', 'Format tanggal YYYY-MM-DD.'); return; }
+    var f = pval('deed-rep-from'), t = pval('deed-rep-to');
+    var ok = /^\d{4}-\d{2}-\d{2}$/;
+    if ((f && !ok.test(f)) || (t && !ok.test(t))) { pmsg('deed-csv-msg', 'Format tanggal YYYY-MM-DD.'); return; }
+    if (f && t && f > t) { pmsg('deed-csv-msg', 'Rentang terbalik: dari > sampai.'); return; }
     pmsg('deed-csv-msg', '');
-    dlCsv('/api/v1/reports/deeds.csv' + (d ? '?date=' + encodeURIComponent(d) : ''), 'repertorium' + (d ? '-' + d : '') + '.csv', 'deed-csv-msg');
+    var qs = [];
+    if (f) qs.push('from=' + encodeURIComponent(f));
+    if (t) qs.push('to=' + encodeURIComponent(t));
+    dlCsv('/api/v1/reports/deeds.csv' + (qs.length ? '?' + qs.join('&') : ''), 'repertorium' + (qs.length ? '-' + qs.join('_').replace(/[^0-9A-Za-z_-]/g, '') : '') + '.csv', 'deed-csv-msg');
   });
   /* ---- approvals engine UI ---- */
   async function apprRefresh() {

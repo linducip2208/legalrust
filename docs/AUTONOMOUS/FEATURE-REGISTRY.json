@@ -7310,15 +7310,19 @@
   "id": "F-D20-009",
   "domain": "D20",
   "title": "Deed-volume period report & export",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "crates/database/src/ops.rs: DeedRow.created (YYYY-MM-DD HH:MM:SS)",
    "apps/server/src/lib.rs: GET /api/v1/reports/deeds.csv?date= (Export-gated + audit report.deeds_csv_exported)",
    "apps/server/src/lib.rs: /app akta panel repertorium card (deed-rep-date/deed-csv)",
    "apps/server/static/site.js: deed-csv download handler",
-   "apps/server/tests/api.rs: deeds_csv_repertorium_export (header/row/today-filter/empty-date/422)"
+   "apps/server/tests/api.rs: deeds_csv_repertorium_export (header/row/today-filter/empty-date/422)",
+   "apps/server/src/lib.rs: deeds_csv_export from/to inclusive period filter + from>to guard (date param kept)",
+   "apps/server/src/lib.rs: /app repertorium card from/to inputs + client-side range guard",
+   "apps/server/static/site.js: deed-csv builds ?from=&to= query",
+   "apps/server/tests/api.rs: period contains/excludes + bad-shape + inverted-range 422 assertions"
   ],
-  "audit_note": "Deed-volume export per single day live; multi-day period ranges pending."
+  "audit_note": "Deed-volume export per single day live; multi-day period ranges pending. Wave 13: period report live; single-day ?date= kept for compat."
  },
  {
   "id": "F-D20-010",
