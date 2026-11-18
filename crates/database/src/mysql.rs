@@ -173,6 +173,26 @@ impl UserStore for MysqlStores {
         }
         Ok(())
     }
+    async fn list_users(&self, org: &str) -> Result<Vec<UserRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, email, password_hash, full_name, status FROM users WHERE org_id=? ORDER BY email LIMIT 200",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| UserRow {
+                id: x.get::<String, _>("id"),
+                org_id: x.get::<String, _>("org_id"),
+                email: x.get::<String, _>("email"),
+                name: x.get::<String, _>("full_name"),
+                pw_hash: x.get::<String, _>("password_hash"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
     async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError> {
         let rows = sqlx::query(
             "SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id=r.id WHERE ur.user_id=?",

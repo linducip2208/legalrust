@@ -402,13 +402,26 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var b = document.getElementById('pw-new'); if (b) b.value = '';
     pmsg('pw-msg', 'Kata sandi diubah.');
   });
+  async function loadRoleUsers() {
+    var sel = document.getElementById('role-uid');
+    if (!sel) return;
+    var v = await j('/api/v1/users');
+    if (!v) { sel.innerHTML = '<option value="">Gagal memuat (perlu hak Assign).</option>'; return; }
+    sel.innerHTML = v.map(function (x) {
+      return '<option value="' + esc(x.id) + '">' + esc(x.email) + ' — ' + esc((x.roles || []).join(', ') || 'tanpa peran') + '</option>';
+    }).join('') || '<option value="">Tidak ada pengguna.</option>';
+  }
   on('role-btn', 'click', async function () {
     var uid = pval('role-uid');
     var sel = document.getElementById('role-sel');
-    if (!uid) { pmsg('role-msg', 'Isi UID pengguna manual.'); return; }
+    if (!uid) { pmsg('role-msg', 'Pilih pengguna dulu.'); return; }
     var r = await ppost('/api/v1/users/' + encodeURIComponent(uid) + '/roles', { role: sel ? sel.value : '' });
     if (!r.ok) { pmsg('role-msg', 'Gagal (' + r.status + '). Perlu hak Assign / peran valid.'); return; }
     pmsg('role-msg', 'Peran ditetapkan.');
+    loadRoleUsers();
+  });
+  qsa('.snav[data-tab="pengaturan"]', function (a) {
+    a.addEventListener('click', function () { loadRoleUsers(); });
   });
   on('cli-csv', 'click', async function () {
     var r = await fetch('/api/v1/clients.csv', { headers: H });
@@ -422,6 +435,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     a.remove();
   });
   loadTokens();
+  loadRoleUsers();
   [['qa-client', 'klien', 'cli-name'], ['qa-matter', 'klien', 'mat-title'], ['qa-upload', 'dok', 'dn'], ['qa-ocr', 'ocr', 'ocr-doc'], ['qa-deed', 'akta', 'deed-number'], ['qa-invoice', 'keu', 'invm-total']].forEach(function (x) {
     on(x[0], 'click', function () { window.apptab(x[1]); var t = document.getElementById(x[2]); if (t) t.focus(); });
   });

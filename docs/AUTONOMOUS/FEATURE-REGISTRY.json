@@ -5763,12 +5763,14 @@
   "id": "F-D16-001",
   "domain": "D16",
   "title": "User provisioning",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
-   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
-   "migrations/0001_foundation.sql: users, sessions"
-  ]
+   "crates/database/src/store.rs + memory.rs + mysql.rs: UserStore::list_users org-scoped",
+   "apps/server/src/lib.rs: GET /api/v1/users (Assign-gated) + user_assign_role org check (cross-org 404)",
+   "apps/server/static/site.js: role-uid select populated + reload; pengaturan manual text fixed",
+   "apps/server/tests/api.rs: users_list_scoped_and_cross_org_assign_blocked"
+  ],
+  "audit_note": "Wave 23: org user directory live; cross-tenant grant blocked + audited."
  },
  {
   "id": "F-D16-002",
@@ -6034,8 +6036,10 @@
   "evidence": [
    "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
    "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "migrations/0001_foundation.sql: audit_events",
+   "apps/server/src/lib.rs: user_assign_role audits user.role_assigned:{role}; entity=user trail test"
+  ],
+  "audit_note": " Wave 23: role-change audit live; stays PARTIAL (no review/offboarding UI)."
  },
  {
   "id": "F-D16-030",

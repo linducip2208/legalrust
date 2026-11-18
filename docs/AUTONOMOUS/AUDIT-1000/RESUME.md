@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 23: org user directory + cross-org grant block (main)
+- GET /api/v1/users (Assign) + assign org-check + user.role_assigned audit; pengaturan role dropdown.
+- IDOR fix: foreign-org grant -> 404. F-D16-001 PARTIAL->IMPLEMENTED (76.9); F-D16-029 51.8->67.9 PARTIAL.
+- Workspace 316/0; registry 18.7 (65 IMPLEMENTED); 8-cat mean 19.5 (36 verified).
+
 ## Done wave 22: notification filter control + manual (main)
 - appr-notif "Hanya belum dibaca" checkbox + manual section 4 Notifikasi; F-D18-038 PARTIAL->IMPLEMENTED (74.4).
 - Note: 1 transient api failure seen once, green on 4 reruns (name not captured; watchlist).

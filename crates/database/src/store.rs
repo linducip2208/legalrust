@@ -114,6 +114,9 @@ pub trait UserStore: Send + Sync {
     async fn revoke_session(&self, sid: &str) -> Result<(), StoreError>;
     async fn session_live(&self, sid: &str) -> Result<bool, StoreError>;
     async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError>;
+
+    /// Org-scoped user directory (never leaks other tenants).
+    async fn list_users(&self, org: &str) -> Result<Vec<UserRow>, StoreError>;
     async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError>;
     async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError>;
     async fn assign_role(&self, org: &str, user_id: &str, role: &str) -> Result<(), StoreError>;

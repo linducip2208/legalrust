@@ -88,6 +88,19 @@ impl UserStore for MemoryStores {
     async fn get_user(&self, id: &str) -> Result<Option<UserRow>, StoreError> {
         Ok(self.inner.lock().unwrap().users.get(id).cloned())
     }
+    async fn list_users(&self, org: &str) -> Result<Vec<UserRow>, StoreError> {
+        let mut v: Vec<UserRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .users
+            .values()
+            .filter(|u| u.org_id == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.email.cmp(&b.email));
+        Ok(v)
+    }
     async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError> {
         self.inner
             .lock()

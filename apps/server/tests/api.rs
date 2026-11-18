@@ -3750,6 +3750,97 @@ async fn ui5_role_assign_invalid_422() {
 }
 
 #[tokio::test]
+async fn users_list_scoped_and_cross_org_assign_blocked() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "usrlist@x.id").await;
+    let tok_b = reg(&a, "usrlistB@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Directory lists own org only, with roles attached.
+    let res = a.clone().oneshot(get("/api/v1/users", &tok)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let mine = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|u| u["email"] == "usrlist@x.id")
+        .expect("self listed");
+    assert!(mine["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r == "org_owner"));
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|u| u["email"] != "usrlistB@x.id"));
+    // No-token and under-privileged callers are rejected.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/users", &auditor))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Cross-tenant role grant is a 404 (no org leak signal).
+    let other_uid = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/users", &tok_b))
+            .await
+            .unwrap(),
+    )
+    .await[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{other_uid}/roles"),
+            r#"{"role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Same-org grant works and is audit-trailed.
+    let my_uid = mine["id"].as_str().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{my_uid}/roles"),
+            r#"{"role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=user", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "user.role_assigned:lawyer"));
+}
+
+#[tokio::test]
 async fn ui5_clients_csv_export() {
     use tower::ServiceExt;
     let a = app();
