@@ -114,3 +114,9 @@
 - Hardening: CORS permissive → allowlist env (`CORS_ORIGINS`, default same-origin-only); self-audit (no hardcoded secrets, no TODO non-test, .env ignored, no PII di log) → DONE (pentest eksternal tetap disarankan); tesseract masuk `deploy/Dockerfile.server` runtime.
 - Manual: 02-PORTAL ditulis ulang (/app 10 tab + search + notif), 04/06/07/08 diperbarui (OCR engine, Tripay, AI live, troubleshooting baru); env AI/CORS/Tripay di `.env.example` + `.env.prod.example`; `deploy/README` langkah 6-8.
 - Skor: 31/32 = 97/100. Sisa jujur: prod deploy + benchmarks + prod-DB + counsel sign-off.
+
+## 2026-11-18 — legalrust.test jadi file listing: diagnosis + perbaikan (main)
+- Penyebab ganda: (1) backend :8080 mati (dimatikan saat bersih-bersih sesi) → proxy tanpa tujuan; (2) Laragon menimpa `auto.legalrust.test.conf` (ProxyPass manual hilang) → vhost jadi DocumentRoot repo = terlihat seperti file manager.
+- Perbaikan: `D:/laragon/etc/apache2/sites-enabled/00-legalrust-proxy.conf` (prefix `00-`, bukan `auto.*` agar tidak ditimpa; dimuat duluan sehingga menang untuk ServerName sama) + restart Apache (kill tree + start ulang dengan `-d` ServerRoot yang sama; `-k restart` gagal karena Apache jalan sebagai proses biasa, bukan service) + backend dijalankan ulang (`target-ui5/debug/legalrust-server.exe`, JWT 32+, DB Laragon `legalrust`).
+- Verifikasi: `legalrust.test/healthz` → backend JSON ok; `/`, `/login`, `/app` → 200.
+- Catatan operasional: backend berjalan sebagai proses latar (bukan service); bila mati, jalankan ulang perintah di atas lalu cek `:8080/healthz`. Jangan edit `auto.*` (ditimpa Laragon) — edit `00-legalrust-proxy.conf`.
