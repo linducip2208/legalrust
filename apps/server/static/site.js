@@ -795,6 +795,35 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="3" class="text-muted">Indeks kosong.</td></tr>';
   }
   on('klapper-reload', 'click', klapperRefresh);
+  /* ---- office: performance dashboard ---- */
+  async function perfRefresh() {
+    var box = document.getElementById('perf-sum');
+    if (!box) return;
+    var v = await j('/api/v1/reports/office-performance');
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    var states = Object.keys(v.deeds_by_state || {}).map(function (k) { return k + ': ' + v.deeds_by_state[k]; }).join(' • ') || '—';
+    box.innerHTML = '<div class="table-responsive"><table class="table card-table"><tbody>'
+      + '<tr><td>Total akta</td><td><strong>' + v.deeds_total + '</strong></td></tr>'
+      + '<tr><td>Akta per status</td><td>' + esc(states) + '</td></tr>'
+      + '<tr><td>Janji temu (selesai / total)</td><td><strong>' + v.appointments_done + ' / ' + v.appointments_total + '</strong></td></tr>'
+      + '<tr><td>Quotation diterima (Rp)</td><td><strong>' + fmtRp(v.quotations_accepted_sum_minor) + '</strong> (' + v.quotations_total + ' quotation)</td></tr>'
+      + '<tr><td>Tamu (di dalam / total)</td><td><strong>' + v.visitors_inside + ' / ' + v.visitors_total + '</strong></td></tr>'
+      + '</tbody></table></div>';
+  }
+  on('perf-reload', 'click', perfRefresh);
+  /* ---- office: deed volume ---- */
+  async function volRefresh() {
+    var box = document.getElementById('vol-list');
+    if (!box) return;
+    var g = pval('vol-group') || 'month';
+    var v = await j('/api/v1/reports/deed-volume?group=' + encodeURIComponent(g));
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.buckets || []).map(function (x) {
+      return '<tr><td>' + esc(x.key) + '</td><td><strong>' + x.count + '</strong></td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada akta.</td></tr>';
+  }
+  on('vol-group', 'change', volRefresh);
+  on('vol-reload', 'click', volRefresh);
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];
     if (!f) { document.getElementById('ue').textContent = 'Pilih berkas dulu.'; return; }
@@ -1301,7 +1330,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('ph-reload', 'click', phRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); klapperRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3248,6 +3277,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   pbRefresh();
   phRefresh();
   klapperRefresh();
+  perfRefresh();
+  volRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();

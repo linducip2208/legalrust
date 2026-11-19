@@ -4775,19 +4775,25 @@
   "id": "F-D12-026",
   "domain": "D12",
   "title": "Office performance dashboard",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/office-performance (deeds/appointments/quotations/visitors, dynamic states)",
+   "apps/server/static/site.js: perfRefresh card Dasbor kinerja in akta tab + hooks",
+   "apps/server/tests/api.rs: office_performance_and_deed_volume e2e (seeded counts, 401)"
+  ],
+  "audit_note": "Wave 84: pure derivation; verified by test (373/0)."
  },
  {
   "id": "F-D12-027",
   "domain": "D12",
   "title": "Deed volume analytics",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/deed-volume?group=month|state (repertorium buckets)",
+   "apps/server/static/site.js: volRefresh card Volume akta + hooks",
+   "apps/server/tests/api.rs: group params asserted"
+  ],
+  "audit_note": "Wave 84: verified by test (373/0)."
  },
  {
   "id": "F-D12-028",

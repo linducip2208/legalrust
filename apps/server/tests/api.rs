@@ -3564,6 +3564,11 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ppat-list",
         "klapper-reload",
         "klapper-list",
+        "perf-reload",
+        "perf-sum",
+        "vol-group",
+        "vol-reload",
+        "vol-list",
         "pb-no",
         "pb-add",
         "pb-reload",
@@ -6988,6 +6993,73 @@ async fn compliance_alerts_feed() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/compliance/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn office_performance_and_deed_volume() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "perfvol@x.id").await;
+    // Seed: one deed (draft), one done appointment, one accepted quotation.
+    let _did = mk_deed(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/appointments",
+            r#"{"client_name":"BB","scheduled_at":"2026-04-01 09:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["checked_in", "done"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/appointments/{aid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/office-performance", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let p = body_json(res).await;
+    assert_eq!(p["appointments_done"].as_i64().unwrap(), 1);
+    assert_eq!(p["deeds_total"].as_i64().unwrap(), 1);
+    assert_eq!(p["deeds_by_state"]["draft"].as_i64().unwrap(), 1);
+    // Volume: month buckets + state grouping + 401 guard.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deed-volume", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["group"].as_str().unwrap(), "month");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deed-volume?group=state", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["group"].as_str().unwrap(), "state");
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/office-performance")
                 .body(Body::empty())
                 .unwrap(),
         )
