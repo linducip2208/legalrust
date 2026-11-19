@@ -49,7 +49,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 51: ringkasan eksekutif (main)
 - Snapshot 9 metrik lintas modul + kartu ringkas; F-D20-039 PLANNED->PARTIAL (68.2).
-- Workspace 344/0; registry 19.9 (79 IMPLEMENTED); 8-cat mean 21.0 (69 v).
+- Workspace 344/0; registry 19.9 (79 IMPLEMENTED); 8-cat mean 20.9 (69 v).
 
 ## Done wave 50: SoD conflict check (main)
 - GET /api/v1/roles/sod + kartu Cek SoD (3 pasangan, advisory); F-D14-038 67.9->70.5 PARTIAL.
