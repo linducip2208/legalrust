@@ -1358,19 +1358,27 @@
   "id": "F-D04-018",
   "domain": "D04",
   "title": "Document watermarking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "watermark header lines as new versions; scoped to text layer (binary needs native libs, 422 with reason):",
+   "  - apps/server/src/lib.rs: doc_annotate helper + POST watermark/stamp (text/* only, new version each, audit)",
+   "  - apps/server/static/site.js: watermark/stamp controls + hooks (dok panel lifecycle card)",
+   "  - apps/server/tests/api.rs: document_watermark_and_stamp_text_layer e2e (prefix bytes, version chain, binary 422, 401)"
+  ],
+  "audit_note": "Wave 130: text-layer marking live. Verified by test (418/0)."
  },
  {
   "id": "F-D04-019",
   "domain": "D04",
   "title": "Document stamping (received/controlled)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "received/controlled stamp lines as new versions; scoped to text layer (binary needs native libs, 422 with reason):",
+   "  - apps/server/src/lib.rs: doc_annotate helper + POST watermark/stamp (text/* only, new version each, audit)",
+   "  - apps/server/static/site.js: watermark/stamp controls + hooks (dok panel lifecycle card)",
+   "  - apps/server/tests/api.rs: document_watermark_and_stamp_text_layer e2e (prefix bytes, version chain, binary 422, 401)"
+  ],
+  "audit_note": "Wave 130: text-layer marking live. Verified by test (418/0)."
  },
  {
   "id": "F-D04-020",

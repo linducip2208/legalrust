@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 130: watermark + stamp (main)
+- text-layer marking (no tables) + kartu + uji.
+- F-D04-018/019 NOT_STARTED/PLANNED->IMPLEMENTED (~72.1 verified). Workspace 418/0; registry ~28.2 (228 IMPLEMENTED); mean 30.7 (218 v).
+
 ## Done wave 129: locks + favorites (main)
 - doc_locks + doc_favs (0084) + write gate + kartu + uji.
 - F-D04-004/027 NOT_STARTED->IMPLEMENTED (~72.4 verified). Workspace 417/0; registry ~28.2 (226 IMPLEMENTED); mean 30.5 (216 v).

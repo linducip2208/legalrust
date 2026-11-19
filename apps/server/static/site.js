@@ -3292,6 +3292,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('dlk-msg', '');
     dlkFavs();
   });
+  /* ---- watermark + stamp (F-D04-018/019, text layer) ---- */
+  on('dwm-go', 'click', async function () {
+    if (!pval('dlk-doc') || !pval('dwm-text')) { pmsg('dlk-msg', 'Isi ID dokumen dan teks.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/watermark', { text: pval('dwm-text') });
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Khusus dokumen teks?'); return; }
+    pmsg('dlk-msg', '');
+  });
+  on('dst-go', 'click', async function () {
+    if (!pval('dlk-doc')) { pmsg('dlk-msg', 'Isi ID dokumen.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/stamp', { kind: pval('dst-kind') || 'received' });
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Khusus dokumen teks?'); return; }
+    pmsg('dlk-msg', '');
+  });
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {

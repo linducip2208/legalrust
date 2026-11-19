@@ -5610,6 +5610,8 @@ async fn crm_app_contains_crm_ids() {
         "dlk-lock",
         "dlk-status",
         "dlk-fav",
+        "dwm-text",
+        "dst-go",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9642,6 +9644,156 @@ async fn approval_policy_versions_and_fast_track() {
             Request::builder()
                 .uri("/api/v1/approval-policies")
                 .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_watermark_and_stamp_text_layer() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docwm@x.id").await;
+    let content = b"isi akta baris satu\nbaris dua";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"n.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Watermark prepends + versions.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/watermark"),
+            r#"{"text":"RAHASIA"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["version"].as_i64().unwrap(), 2);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/content"), &tok))
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap()
+        .to_vec();
+    assert!(bytes.starts_with(b"WATERMARK: RAHASIA\nisi akta"));
+    // Stamp appends another version.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/stamp"),
+            r#"{"kind":"received"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["version"].as_i64().unwrap(), 3);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/content"), &tok))
+        .await
+        .unwrap();
+    let bytes = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap()
+        .to_vec();
+    assert!(bytes.starts_with(b"DITERIMA "));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/stamp"),
+            r#"{"kind":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Binary mime rejected with clear reason.
+    let bin = b"%PDF-fake";
+    let bsha = legalrust_document::sha256_hex(bin);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"b.pdf","mime":"application/pdf","size":{},"sha":"{bsha}"}}"#,
+                bin.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{bid}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(bin.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{bid}/watermark"),
+            r#"{"text":"X"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/watermark"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"text":"X"}"#))
                 .unwrap(),
         )
         .await
