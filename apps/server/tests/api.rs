@@ -5698,6 +5698,9 @@ async fn crm_app_contains_crm_ids() {
         "mms-mid",
         "mms-add",
         "mms-list",
+        "ddl-mid",
+        "ddl-go",
+        "ddl-calc",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11782,6 +11785,121 @@ async fn conflict_register_log_and_list() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/conflicts/register")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn deadline_engine_and_calculator() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dlcalc@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MDL"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Berkas"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2001-01-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Engine flags the overdue task; ghost matter 404s.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/deadlines"), &tok))
+        .await
+        .unwrap();
+    let dv = body_json(res).await;
+    assert_eq!(dv["breached"], serde_json::json!(true));
+    assert!(dv["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["overdue"] == true));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/999999/deadlines", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/deadlines/summary", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["matter_id"].as_i64() == Some(mid)));
+    // Calculator: 2026-01-05 (Mon) + 5 business days = Mon 2026-01-12; calendar = Sat 2026-01-10.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deadlines/calc",
+            r#"{"start":"2026-01-05","days":5,"skip_weekends":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["due"].as_str().unwrap(), "2026-01-12");
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deadlines/calc",
+            r#"{"start":"2026-01-05","days":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["due"].as_str().unwrap(), "2026-01-10");
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deadlines/calc",
+            r#"{"start":"besok","days":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/deadlines/presets", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["name"] == "Banding"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/deadlines/summary")
                 .body(Body::empty())
                 .unwrap(),
         )

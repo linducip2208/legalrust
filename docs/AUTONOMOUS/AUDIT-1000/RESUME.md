@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 175: deadline engine + calculator (main)
+- per-matter/org deadline rollups + business-day calc + kartu + uji; no migration.
+- F-D03-008/009 NOT_STARTED->IMPLEMENTED (~72.5 verified). Workspace 465/0; registry ~32.4 (318 IMPLEMENTED); mean 36.1 (308 v).
+
 ## Done wave 174: task deps + milestones (main)
 - task_deps (cycle-guarded) + milestones (0110) + task_get + kartu + uji; mcl collision repaired.
 - F-D03-006 NOT_STARTED->IMPLEMENTED, F-D03-007 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 464/0; registry ~32.3 (316 IMPLEMENTED); mean 35.9 (306 v).

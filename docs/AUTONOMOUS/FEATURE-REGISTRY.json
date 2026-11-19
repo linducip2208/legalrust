@@ -1004,19 +1004,25 @@
   "id": "F-D03-008",
   "domain": "D03",
   "title": "Deadline & SLA engine",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /matters/{id}/deadlines + GET /deadlines/summary (task due + milestone rollups, breach flags)",
+   "site.js: deadline card + summary (klien panel)",
+   "tests: deadline_engine_and_calculator e2e (breach rows, ghost 404)"
+  ],
+  "audit_note": "Wave 175: deadline engine live. Verified by test (465/0)."
  },
  {
   "id": "F-D03-009",
   "domain": "D03",
   "title": "Court / agency deadline calculator",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: POST /deadlines/calc (business-day math, weekend skip) + GET /deadlines/presets",
+   "site.js: calculator (klien panel)",
+   "tests: 5-business-day + calendar math asserted, bad date 422; presets labeled reference-only"
+  ],
+  "audit_note": "Wave 175: calculator live. Verified by test (465/0)."
  },
  {
   "id": "F-D03-010",

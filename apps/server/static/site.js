@@ -3253,6 +3253,30 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     mmsRefresh();
   });
   on('mms-reload', 'click', mmsRefresh);
+  /* ---- deadlines + calculator (F-D03-008/009) ---- */
+  on('ddl-go', 'click', async function () {
+    var out = document.getElementById('ddl-out');
+    if (!pval('ddl-mid')) { if (out) out.textContent = 'Isi ID perkara.'; return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(pval('ddl-mid')) + '/deadlines');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = (v.breached ? '<span class="badge bg-red-lt">' + v.overdue + ' lewat</span> ' : '<span class="badge bg-green-lt">aman</span> ')
+      + v.tasks.map(function (x) { return '<span class="badge">' + esc(x.title) + ' · ' + esc(x.due || 'tanpa batas') + (x.overdue ? ' LEWAT' : '') + '</span>'; }).join(' ');
+  });
+  on('ddl-sum', 'click', async function () {
+    var out = document.getElementById('ddl-out');
+    var v = await j('/api/v1/deadlines/summary');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = 'Perkara bermasalah: ' + v.breached_matters + ' · ' + (v.rows || []).map(function (x) { return '<span class="badge">#' + x.matter_id + ' ' + esc(x.title) + ' +' + (x.task_overdue + x.milestone_overdue) + '</span>'; }).join(' ');
+  });
+  on('ddl-calc', 'click', async function () {
+    var out = document.getElementById('ddl-out');
+    var el = document.getElementById('ddl-we');
+    var r = await ppost('/api/v1/deadlines/calc', { start: pval('ddl-start') || '2026-01-05', days: +(pval('ddl-days') || 14), skip_weekends: !!(el && el.checked) });
+    if (!r.ok) { pmsg('ddl-msg', 'Gagal (' + r.status + '). Format tanggal?'); return; }
+    pmsg('ddl-msg', '');
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.textContent = 'Jatuh tempo: ' + v.due + ' (' + v.weekday + '). ' + v.note;
+  });
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

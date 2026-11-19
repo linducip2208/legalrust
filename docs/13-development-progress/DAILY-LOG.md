@@ -171,6 +171,9 @@
 - Root cause: migrations/0099_client_events.sql reused constraint name fk_cev_org already taken by migrations/0043_evidence.sql. sqlx aborted 0099 (recorded success=0), server stayed up on old schema. Live check caught it via migration-version assertion.
 - Recovery: renamed to fk_clev_org, dropped stray tables, deleted the success=0 row, rebuilt, relaunched -> version 99 success=1, both tables live. Lesson repeats wave-138: assert _sqlx_migrations + new tables on every relaunch.
 
+## 2026-11-20 AUDIT-1000 wave 175: deadline + kalkulator (main)
+- Engine + kalkulator hari kerja; workspace **465 passed, 0 failed**; F-D03-008/009 IMPLEMENTED.
+
 ## 2026-11-20 AUDIT-1000 wave 174: dependensi + milestone (main)
 - Dependensi tugas + milestone; workspace **464 passed, 0 failed**; F-D03-006/007 IMPLEMENTED.
 
