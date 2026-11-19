@@ -11659,6 +11659,107 @@ async fn client_portal_invites_and_surveys() {
 }
 
 #[tokio::test]
+async fn retention_prospect_purge() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "prospret@x.id").await;
+    // Prospect rule now accepted (was: entity not purgeable).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"prospect","retain_years":2,"action":"purge","note":"prospek basi"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Create an org-scoped lead, then request its purge.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/leads",
+            r#"{"name":"Prospek Lama","email":"lama@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/purge-requests",
+            &format!(r#"{{"entity":"prospect","entity_id":{lid},"reason":"lewat masa retensi"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Self-approve forbidden; second admin approves; execute deletes the lead.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"pret2@x.id","role":"office_admin"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"pret2@x.id","name":"PR2","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    let adm2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/execute"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/admin/leads/{lid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=preq", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "retention.purged"));
+}
+
+#[tokio::test]
 async fn crm_dashboard_and_client_expiry() {
     use tower::ServiceExt;
     let a = app();

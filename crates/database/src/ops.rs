@@ -3517,7 +3517,10 @@ pub trait OpsStore: Send + Sync {
 /// Entities eligible for approval-gated purge (ephemeral tracker rows only;
 /// deeds, consents and vault pins are legal holds and can never be purged).
 pub(crate) fn purgeable(entity: &str) -> bool {
-    matches!(entity, "bpn" | "girik" | "lhist" | "uho" | "preg" | "nhoff")
+    matches!(
+        entity,
+        "bpn" | "girik" | "lhist" | "uho" | "preg" | "nhoff" | "prospect"
+    )
 }
 
 /// Entities a retention rule may cover (purgeable set plus informational

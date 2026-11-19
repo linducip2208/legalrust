@@ -5521,6 +5521,23 @@ impl OpsStore for MemoryOps {
                 }
                 _ => false,
             },
+            "prospect" => match m.mkt_leads.get(&entity_id) {
+                Some(r) if r.org.as_deref() == Some(org) => {
+                    m.mkt_leads.remove(&entity_id);
+                    m.mkt_notes.remove(&entity_id);
+                    let fids: Vec<i64> = m
+                        .mkt_followups
+                        .iter()
+                        .filter(|(_, v)| v.lead_id == entity_id)
+                        .map(|(k, _)| *k)
+                        .collect();
+                    for k in fids {
+                        m.mkt_followups.remove(&k);
+                    }
+                    true
+                }
+                _ => false,
+            },
             _ => return Err(StoreError::Conflict("entity not purgeable".into())),
         };
         if !owned_and_removed {

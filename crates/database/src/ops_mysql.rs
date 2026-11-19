@@ -5911,6 +5911,7 @@ impl OpsStore for MysqlOps {
             "lhist" => sqlx::query("DELETE FROM land_history WHERE id=? AND org_id=?"),
             "uho" => sqlx::query("DELETE FROM unit_handovers WHERE id=? AND org_id=?"),
             "preg" => sqlx::query("DELETE FROM protocol_register WHERE id=? AND org_id=?"),
+            "prospect" => sqlx::query("DELETE FROM marketing_leads WHERE id=? AND org_id=?"),
             _ => sqlx::query("DELETE FROM notary_handoffs WHERE id=? AND org_id=?"),
         }
         .bind(entity_id)

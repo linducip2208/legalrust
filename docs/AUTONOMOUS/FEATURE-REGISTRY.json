@@ -882,10 +882,14 @@
   "id": "F-D02-039",
   "domain": "D02",
   "title": "Data retention for prospects",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs: purgeable() extended with prospect (ephemeral leads only; holds untouched)",
+   "ops_memory.rs: prospect arm removes lead + notes + followups (org-scoped)",
+   "ops_mysql.rs: explicit prospect arm DELETE marketing_leads (notes/followups cascade via FK)",
+   "tests: retention_prospect_purge e2e (rule->request->SoD->approve->execute->lead gone, audit)"
+  ],
+  "audit_note": "Wave 154: prospect retention live on approval-gated purge. Verified by test (444/0)."
  },
  {
   "id": "F-D02-040",
