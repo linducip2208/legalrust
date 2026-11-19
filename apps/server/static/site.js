@@ -1140,6 +1140,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     });
   }
   on('task-matter', 'change', loadTasks);
+  /* ---- office: multi-desk dispatch board ---- */
+  async function dspRefresh() {
+    var box = document.getElementById('dsp-board');
+    if (!box) return;
+    var v = await j('/api/v1/tasks/dispatch');
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    box.innerHTML = v.map(function (g) {
+      return '<h4 class="mt-2">' + esc(g.desk) + ' (' + g.tasks.length + ')</h4><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Judul</th><th>Status</th><th>Petugas</th></tr></thead><tbody>'
+        + g.tasks.map(function (x) {
+          return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + badge(x.status) + '</td><td>' + esc(x.assignee || '—') + '</td></tr>';
+        }).join('') + '</tbody></table></div>';
+    }).join('') || '<p class="text-muted">Tidak ada tugas terbuka.</p>';
+  }
+  on('dsp-add', 'click', async function () {
+    if (!pval('dsp-task')) { pmsg('dsp-msg', 'Isi ID tugas.'); return; }
+    var r = await ppost('/api/v1/tasks/' + encodeURIComponent(pval('dsp-task')) + '/assign', { assignee: pval('dsp-who') || '', desk: pval('dsp-desk') || '' });
+    if (!r.ok) { pmsg('dsp-msg', 'Gagal (' + r.status + '). Tugas tidak ada?'); return; }
+    pmsg('dsp-msg', '');
+    dspRefresh();
+    loadTasks();
+  });
+  on('dsp-reload', 'click', dspRefresh);
   on('task-btn', 'click', async function () {
     var mid = pval('task-matter'), title = pval('task-title');
     if (!mid) { pmsg('task-msg', 'Pilih perkara dulu.'); return; }
@@ -2325,6 +2347,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   hrsRefresh();
   rosRefresh();
   levRefresh();
+  dspRefresh();
   staffRefresh();
   waitRefresh();
   annRefresh();

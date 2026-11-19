@@ -4880,10 +4880,15 @@
   "id": "F-D12-033",
   "domain": "D12",
   "title": "Multi-desk task dispatch",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0059_task_dispatch.sql: assignee+desk columns on tasks (forward-only ALTER)",
+   "crates/database/src/store.rs + memory.rs + mysql.rs: TaskRow extended + task_assign + task_board",
+   "apps/server/src/lib.rs: POST /api/v1/tasks/{id}/assign + GET /api/v1/tasks/dispatch (desk groups, done excluded)",
+   "apps/server/static/site.js: dspRefresh dispatch board card in klien tab + hooks",
+   "apps/server/tests/api.rs: multi_desk_dispatch e2e (ghost 404, regroup, cross-org empty, 401)"
+  ],
+  "audit_note": "Wave 91: D12 CLOSED; verified by test (380/0)."
  },
  {
   "id": "F-D12-034",

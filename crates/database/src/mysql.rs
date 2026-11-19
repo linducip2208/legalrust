@@ -348,6 +348,12 @@ fn task_row(x: &sqlx::mysql::MySqlRow) -> Result<TaskRow, StoreError> {
         due: x
             .try_get::<Option<String>, _>("due_at")
             .map_err(|e| StoreError::Db(e.to_string()))?,
+        assignee: x
+            .try_get::<String, _>("assignee")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
+        desk: x
+            .try_get::<String, _>("desk")
+            .map_err(|e| StoreError::Db(e.to_string()))?,
     })
 }
 #[async_trait::async_trait]
@@ -457,10 +463,12 @@ impl CoreStore for MysqlStores {
             title: title.into(),
             status: "open".into(),
             due: None,
+            assignee: String::new(),
+            desk: String::new(),
         })
     }
     async fn list_tasks(&self, org: &str, matter: i64) -> Result<Vec<TaskRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE org_id=? AND matter_id=? ORDER BY id").bind(org).bind(matter as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE org_id=? AND matter_id=? ORDER BY id").bind(org).bind(matter as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         rows.iter().map(task_row).collect()
     }
     async fn set_task_status(
@@ -503,6 +511,8 @@ impl CoreStore for MysqlStores {
             title: String::new(),
             status: status.into(),
             due: None,
+            assignee: String::new(),
+            desk: String::new(),
         })
     }
     async fn create_doc(
@@ -622,12 +632,42 @@ impl CoreStore for MysqlStores {
         if n == 0 {
             return Err(StoreError::NotFound);
         }
-        let x = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE id=?").bind(id as u64).fetch_one(&self.pool).await.map_err(db_err)?;
+        let x = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE id=?").bind(id as u64).fetch_one(&self.pool).await.map_err(db_err)?;
         task_row(&x)
     }
     async fn task_due_list(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError> {
         let lim = limit.max(0) as u64;
-        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at FROM tasks WHERE org_id=? AND due_at IS NOT NULL ORDER BY due_at ASC LIMIT ?").bind(org).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE org_id=? AND due_at IS NOT NULL ORDER BY due_at ASC LIMIT ?").bind(org).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?;
+        rows.iter().map(task_row).collect()
+    }
+    async fn task_assign(
+        &self,
+        org: &str,
+        id: i64,
+        assignee: &str,
+        desk: &str,
+    ) -> Result<TaskRow, StoreError> {
+        if assignee.len() > 120 || desk.len() > 60 {
+            return Err(StoreError::Conflict("assignee/desk".into()));
+        }
+        let n = sqlx::query("UPDATE tasks SET assignee=?, desk=? WHERE id=? AND org_id=?")
+            .bind(assignee.trim())
+            .bind(desk.trim())
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        let x = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_one(&self.pool).await.map_err(db_err)?;
+        task_row(&x)
+    }
+    async fn task_board(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError> {
+        let lim = limit.clamp(1, 500) as u64;
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE org_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(lim).fetch_all(&self.pool).await.map_err(db_err)?;
         rows.iter().map(task_row).collect()
     }
     async fn saved_search_create(

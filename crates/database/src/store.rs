@@ -63,6 +63,8 @@ pub struct TaskRow {
     pub title: String,
     pub status: String,
     pub due: Option<String>,
+    pub assignee: String,
+    pub desk: String,
 }
 #[derive(Debug, Clone)]
 pub struct SavedSearchRow {
@@ -207,6 +209,14 @@ pub trait CoreStore: Send + Sync {
         due: Option<&str>,
     ) -> Result<TaskRow, StoreError>;
     async fn task_due_list(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError>;
+    async fn task_assign(
+        &self,
+        org: &str,
+        id: i64,
+        assignee: &str,
+        desk: &str,
+    ) -> Result<TaskRow, StoreError>;
+    async fn task_board(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError>;
     async fn saved_search_create(
         &self,
         org: &str,

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 91: multi-desk dispatch (main, D12 closed)
+- task assignee+desk (0059 ALTER) + assign/board + kartu + uji.
+- F-D12-033 PLANNED->IMPLEMENTED (~73.1 verified). Workspace 380/0; registry ~24.7 (144 IMPLEMENTED); mean ~25.6 (142 v).
+
 ## Done wave 90: staff productivity + waiting analytics (main, D12: 1 left)
 - GET /api/v1/reports/staff-productivity + waiting-analytics + kartu ringkas + uji (derivasi, tanpa migrasi).
 - F-D12-028/029 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 379/0; registry ~24.5 (142 IMPLEMENTED); mean 25.6 (140 v).

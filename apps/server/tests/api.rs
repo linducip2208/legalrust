@@ -5453,6 +5453,10 @@ async fn crm_app_contains_crm_ids() {
         "rch-add",
         "rch-reload",
         "rch-list",
+        "dsp-task",
+        "dsp-add",
+        "dsp-reload",
+        "dsp-board",
         "dcl-doc",
         "dcl-add",
         "dcl-reload",
@@ -8489,6 +8493,106 @@ async fn staff_productivity_and_waiting_analytics() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/reports/waiting-analytics")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn multi_desk_dispatch() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dispatch@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Susun draft"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    // Ghost task 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/tasks/999999/assign",
+            r#"{"assignee":"BB","desk":"meja-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/assign"),
+            r#"{"assignee":"Siti","desk":"meja-2"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Board groups by desk; unassigned bucket exists for the others.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/dispatch", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let b = body_json(res).await;
+    let g = b
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["desk"] == "meja-2")
+        .expect("desk group present");
+    assert!(g["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["id"].as_i64() == Some(tid) && t["assignee"] == "Siti"));
+    // Cross-org isolation: other org sees an empty board.
+    let tok2 = reg(&a, "dispatch2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/dispatch", &tok2))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 0);
+    // Reassign moves the card; done tasks leave the board.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/assign"),
+            r#"{"assignee":"Andi","desk":"meja-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/dispatch", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|g| g["desk"] == "meja-1"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/tasks/dispatch")
                 .body(Body::empty())
                 .unwrap(),
         )

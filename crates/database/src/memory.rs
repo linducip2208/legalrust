@@ -325,6 +325,8 @@ impl CoreStore for MemoryStores {
             title: title.into(),
             status: "open".into(),
             due: None,
+            assignee: String::new(),
+            desk: String::new(),
         };
         m.tasks.insert(id, r.clone());
         Ok(r)
@@ -464,6 +466,40 @@ impl CoreStore for MemoryStores {
         // order matches chronological order (overdue first).
         v.sort_by(|a, b| a.due.cmp(&b.due));
         v.truncate(limit.max(0) as usize);
+        Ok(v)
+    }
+    async fn task_assign(
+        &self,
+        org: &str,
+        id: i64,
+        assignee: &str,
+        desk: &str,
+    ) -> Result<TaskRow, StoreError> {
+        if assignee.len() > 120 || desk.len() > 60 {
+            return Err(StoreError::Conflict("assignee/desk".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let t = m
+            .tasks
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        t.assignee = assignee.trim().into();
+        t.desk = desk.trim().into();
+        Ok(t.clone())
+    }
+    async fn task_board(&self, org: &str, limit: i64) -> Result<Vec<TaskRow>, StoreError> {
+        let mut v: Vec<TaskRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .tasks
+            .values()
+            .filter(|x| x.org_id == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(limit.clamp(1, 500) as usize);
         Ok(v)
     }
     async fn saved_search_create(
