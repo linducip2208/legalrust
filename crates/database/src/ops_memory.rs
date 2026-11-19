@@ -154,6 +154,7 @@ struct Inner {
     tdeps: HashMap<i64, TaskDepRow>,
     mms: HashMap<i64, MatterMilestoneRow>,
     mlinks: HashMap<i64, MatterLinkRow>,
+    tens: HashMap<i64, TimeEntryRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -336,6 +337,14 @@ fn tdep_reaches(
 }
 
 fn mms_date_ok(on: &str) -> Result<String, StoreError> {
+    let d = on.trim();
+    if d.len() != 10 || d.as_bytes()[4] != b'-' {
+        return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+    }
+    Ok(d.into())
+}
+
+fn ten_date_ok(on: &str) -> Result<String, StoreError> {
     let d = on.trim();
     if d.len() != 10 || d.as_bytes()[4] != b'-' {
         return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
@@ -3976,6 +3985,94 @@ impl OpsStore for MemoryOps {
         match m.mms.get(&id) {
             Some(r) if r.org == org => {
                 m.mms.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ten_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        entry_date: &str,
+        minutes: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_id <= 0 || user_id.trim().is_empty() {
+            return Err(StoreError::Conflict("matter/user".into()));
+        }
+        if !(1..=960).contains(&minutes) {
+            return Err(StoreError::Conflict("minutes 1-960".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let entry_date = ten_date_ok(entry_date)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.tens.insert(
+            id,
+            TimeEntryRow {
+                id,
+                org: org.into(),
+                matter_id,
+                user_id: user_id.into(),
+                entry_date,
+                minutes,
+                note: note.trim().into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ten_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+        status: Option<String>,
+    ) -> Result<Vec<TimeEntryRow>, StoreError> {
+        let mut v: Vec<TimeEntryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .tens
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && matter_id.map(|x| r.matter_id == x).unwrap_or(true)
+                    && status.as_ref().map(|x| &r.status == x).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| b.entry_date.cmp(&a.entry_date));
+        Ok(v)
+    }
+    async fn ten_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .tens
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "submitted")
+                | ("submitted", "approved")
+                | ("submitted", "rejected")
+                | ("rejected", "draft")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.tens.get(&id) {
+            Some(r) if r.org == org => {
+                m.tens.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

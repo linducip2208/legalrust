@@ -56,7 +56,7 @@ pub use ops::{
     PriceRow, PurgeRequestRow, QuorumOverrideRow, QuorumRoundRow, QuorumVoteRow, QuotationItemRow,
     QuotationRow, RagHit, ReceiptRow, RecheckRow, RegChangeRow, RetentionRuleRow, RiskRow, RopaRow,
     RosterRow, RouteRuleRow, SelfcheckRow, ShareRow, SopRow, StorageBoxRow, TaskDepRow,
-    TemplateRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow, UnitHandoverRow,
-    UsageRow, VendorRow, VisitorRow, WaiverRow, WebhookDeliveryRow, WebhookEndpointRow, WhistleRow,
-    WitnessRow, YearSealRow, ZoneRow,
+    TemplateRow, TimeEntryRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow,
+    UnitHandoverRow, UsageRow, VendorRow, VisitorRow, WaiverRow, WebhookDeliveryRow,
+    WebhookEndpointRow, WhistleRow, WitnessRow, YearSealRow, ZoneRow,
 };

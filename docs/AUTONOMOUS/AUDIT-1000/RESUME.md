@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 177: time entries + timesheet approval (main)
+- time_entries (0111) + status chain + kartu + uji; recovered lib.rs from HEAD after a bad bulk-delete (no work lost).
+- F-D03-013/015 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 467/0; registry ~32.6 (322 IMPLEMENTED); mean 36.3 (311 v).
+
 ## Done wave 176: kanban + ICS export (main)
 - task board columns + ICS download + kartu + uji; no migration.
 - F-D03-010 PARTIAL->IMPLEMENTED, F-D03-011 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 466/0; registry ~32.5 (320 IMPLEMENTED); mean 36.2 (309 v).

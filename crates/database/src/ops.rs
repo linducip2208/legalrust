@@ -408,6 +408,18 @@ pub struct TaskDepRow {
     pub task_id: i64,
     pub depends_on: i64,
 }
+/// Time entry (draft->submitted->approved/rejected).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TimeEntryRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub user_id: String,
+    pub entry_date: String,
+    pub minutes: i64,
+    pub note: String,
+    pub status: String,
+}
 /// Matter milestone (dated, flaggable done).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatterMilestoneRow {
@@ -2370,6 +2382,24 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<MatterMilestoneRow>, StoreError>;
     async fn mms_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
     async fn mms_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Time entries (draft->submitted->approved/rejected; staff approves).
+    async fn ten_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        entry_date: &str,
+        minutes: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ten_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+        status: Option<String>,
+    ) -> Result<Vec<TimeEntryRow>, StoreError>;
+    async fn ten_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

@@ -3307,6 +3307,46 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('kan-go', 'click', kanRefresh);
   on('cal-dl', 'click', function () { dlCsv('/api/v1/calendar.ics', 'tugas.ics', 'kan-msg'); });
+  /* ---- timesheet (F-D03-013/015) ---- */
+  var TEN_NEXT = { draft: 'submitted', submitted: 'approved', rejected: 'draft' };
+  async function tenRefresh() {
+    var box = document.getElementById('ten-list');
+    if (!box) return;
+    var qs = [];
+    if (pval('ten-mid')) qs.push('matter_id=' + encodeURIComponent(pval('ten-mid')));
+    if (pval('ten-filter')) qs.push('status=' + encodeURIComponent(pval('ten-filter')));
+    var v = await j('/api/v1/time-entries' + (qs.length ? '?' + qs.join('&') : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = TEN_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-ten-next="' + x.id + '" data-ten-to="' + nx + '" type="button">-> ' + nx + '</button> ' : '<span class="text-muted">' + x.status + '</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-ten-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + esc(x.entry_date) + '</td><td>' + esc(x.user_id) + '</td><td>' + x.minutes + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada entri.</td></tr>';
+    qsa('[data-ten-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/time-entries/' + b.getAttribute('data-ten-next') + '/status', { to: b.getAttribute('data-ten-to') });
+        if (!r.ok) { pmsg('ten-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ten-msg', '');
+        tenRefresh();
+      });
+    });
+    qsa('[data-ten-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/time-entries/' + b.getAttribute('data-ten-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ten-msg', 'Gagal (' + r.status + ').'); return; }
+        tenRefresh();
+      });
+    });
+  }
+  on('ten-add', 'click', async function () {
+    if (!pval('ten-mid') || !pval('ten-user') || !pval('ten-date') || !pval('ten-min')) { pmsg('ten-msg', 'Isi perkara, pengguna, tanggal, menit.'); return; }
+    var r = await ppost('/api/v1/time-entries', { matter_id: +pval('ten-mid'), user_id: pval('ten-user'), entry_date: pval('ten-date'), minutes: +pval('ten-min'), note: pval('ten-note') || '' });
+    if (!r.ok) { pmsg('ten-msg', 'Gagal (' + r.status + '). Format tanggal/menit?'); return; }
+    pmsg('ten-msg', '');
+    tenRefresh();
+  });
+  on('ten-reload', 'click', tenRefresh);
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

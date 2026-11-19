@@ -1062,10 +1062,15 @@
   "id": "F-D03-013",
   "domain": "D03",
   "title": "Time entry (manual)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0111: time_entries table (status check, forward-only)",
+   "ops.rs + memory + mysql: ten add/list/set-status/delete + allowlists",
+   "lib.rs: POST/GET time-entries + status/delete (matter-verified, RBAC)",
+   "site.js: timesheet card + hooks (klien panel)",
+   "tests: time_entries_and_timesheet_approval e2e (gates, skip-ahead 409, 403/401)"
+  ],
+  "audit_note": "Wave 177: time entry live. Verified by test (467/0)."
  },
  {
   "id": "F-D03-014",
@@ -1080,10 +1085,12 @@
   "id": "F-D03-015",
   "domain": "D03",
   "title": "Timesheet approval",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "Same ten_set_status chain: draft->submitted->approved/rejected (rejected->draft); Update-gated approve",
+   "tests: submitted->approved asserted; skip-ahead 409 asserted"
+  ],
+  "audit_note": "Wave 177: timesheet approval live. Verified by test (467/0)."
  },
  {
   "id": "F-D03-016",

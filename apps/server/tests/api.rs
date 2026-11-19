@@ -5703,6 +5703,9 @@ async fn crm_app_contains_crm_ids() {
         "ddl-calc",
         "kan-go",
         "cal-dl",
+        "ten-mid",
+        "ten-add",
+        "ten-list",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11891,6 +11894,101 @@ async fn kanban_board_and_ics_export() {
         .unwrap()
         .iter()
         .any(|e| e["action"] == "report.calendar_exported"));
+}
+
+#[tokio::test]
+async fn time_entries_and_timesheet_approval() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ten@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let mid = mk_matter(&a, &tok).await;
+    // Auditor cannot create (Create gate); ghost matter 404s; bad minutes rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/time-entries",
+            &format!(
+                r#"{{"matter_id":{mid},"user_id":"Ayu","entry_date":"2026-01-05","minutes":120}}"#
+            ),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/time-entries",
+            r#"{"matter_id":999999,"user_id":"Ayu","entry_date":"2026-01-05","minutes":120}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/time-entries",
+            &format!(
+                r#"{{"matter_id":{mid},"user_id":"Ayu","entry_date":"2026-01-05","minutes":0}}"#
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a.clone().oneshot(post("/api/v1/time-entries", &format!(r#"{{"matter_id":{mid},"user_id":"Ayu","entry_date":"2026-01-05","minutes":120,"note":"Riset"}}"#), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    // Skip-ahead rejected; chain draft->submitted->approved.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/time-entries/{eid}/status"),
+            r#"{"to":"approved"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["submitted", "approved"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/time-entries/{eid}/status"),
+                &format!(r#"{{"to":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "time entry to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/time-entries?matter_id={mid}&status=approved"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid) && r["minutes"].as_i64() == Some(120)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/time-entries")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

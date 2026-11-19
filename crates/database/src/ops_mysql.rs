@@ -3459,9 +3459,9 @@ impl OpsStore for MysqlOps {
                 id: x.get::<u64, _>("id") as i64,
                 org: x.get::<String, _>("org_id"),
                 needle: x.get::<String, _>("needle"),
-                clients_hits: x.get::<i64, _>("clients_hits"),
-                matters_hits: x.get::<i64, _>("matters_hits"),
-                parties_hits: x.get::<i64, _>("parties_hits"),
+                clients_hits: x.get::<i32, _>("clients_hits") as i64,
+                matters_hits: x.get::<i32, _>("matters_hits") as i64,
+                parties_hits: x.get::<i32, _>("parties_hits") as i64,
                 verdict: x.get::<String, _>("verdict"),
                 note: x.get::<String, _>("note"),
                 checked_by: x.get::<String, _>("checked_by"),
@@ -3679,6 +3679,107 @@ impl OpsStore for MysqlOps {
     }
     async fn mms_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM matter_milestones WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn ten_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        entry_date: &str,
+        minutes: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_id <= 0 || user_id.trim().is_empty() {
+            return Err(StoreError::Conflict("matter/user".into()));
+        }
+        if !(1..=960).contains(&minutes) {
+            return Err(StoreError::Conflict("minutes 1-960".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let d = entry_date.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let r = sqlx::query("INSERT INTO time_entries (org_id, matter_id, user_id, entry_date, minutes, note) VALUES (?,?,?,?,?,?)")
+            .bind(org).bind(matter_id as u64).bind(user_id).bind(d).bind(minutes as i32).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ten_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+        status: Option<String>,
+    ) -> Result<Vec<TimeEntryRow>, StoreError> {
+        let rows = match (matter_id, status.as_deref()) {
+            (Some(m), Some(st)) => sqlx::query("SELECT id, org_id, matter_id, user_id, entry_date, minutes, note, status FROM time_entries WHERE org_id=? AND matter_id=? AND status=? ORDER BY entry_date DESC LIMIT 500")
+                .bind(org).bind(m as u64).bind(st).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(m), None) => sqlx::query("SELECT id, org_id, matter_id, user_id, entry_date, minutes, note, status FROM time_entries WHERE org_id=? AND matter_id=? ORDER BY entry_date DESC LIMIT 500")
+                .bind(org).bind(m as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, Some(st)) => sqlx::query("SELECT id, org_id, matter_id, user_id, entry_date, minutes, note, status FROM time_entries WHERE org_id=? AND status=? ORDER BY entry_date DESC LIMIT 500")
+                .bind(org).bind(st).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, None) => sqlx::query("SELECT id, org_id, matter_id, user_id, entry_date, minutes, note, status FROM time_entries WHERE org_id=? ORDER BY entry_date DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| TimeEntryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                user_id: x.get::<String, _>("user_id"),
+                entry_date: x.get::<String, _>("entry_date"),
+                minutes: x.get::<i32, _>("minutes") as i64,
+                note: x.get::<String, _>("note"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn ten_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM time_entries WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("draft", "submitted")
+                | ("submitted", "approved")
+                | ("submitted", "rejected")
+                | ("rejected", "draft")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE time_entries SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM time_entries WHERE id=? AND org_id=?")
             .bind(id as u64)
             .bind(org)
             .execute(&self.pool)
