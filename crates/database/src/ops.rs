@@ -65,6 +65,18 @@ pub struct FreezeRow {
     pub reason: String,
     pub set_by: String,
 }
+/// Approval routing rule (amount threshold or AML-risk floor -> role).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RouteRuleRow {
+    pub id: i64,
+    pub org: String,
+    pub kind: String,
+    pub entity: String,
+    pub min_value: i64,
+    pub role: String,
+    pub priority: i64,
+    pub note: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1431,6 +1443,20 @@ pub trait OpsStore: Send + Sync {
         reason: &str,
         set_by: &str,
     ) -> Result<FreezeRow, StoreError>;
+    /// Approval routing rules (amount thresholds + AML-risk floors).
+    #[allow(clippy::too_many_arguments)]
+    async fn aroute_add(
+        &self,
+        org: &str,
+        kind: &str,
+        entity: &str,
+        min_value: i64,
+        role: &str,
+        priority: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn aroute_list(&self, org: &str) -> Result<Vec<RouteRuleRow>, StoreError>;
+    async fn aroute_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Record an inbound webhook receipt (observability; never fails the
     /// webhook itself — callers ignore the result).
     async fn webhook_log(

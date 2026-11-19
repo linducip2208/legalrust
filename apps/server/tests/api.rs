@@ -9209,6 +9209,116 @@ async fn approval_attachments_and_archive() {
 }
 
 #[tokio::test]
+async fn approval_routing_amount_and_risk() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprroute@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    // Rules are admin-gated.
+    let res = a.clone().oneshot(post("/api/v1/approval-routes", r#"{"kind":"amount","entity":"invoice","min_value":100000000,"role":"finance_officer"}"#, Some(&lawyer))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approval-routes",
+            r#"{"kind":"alien","entity":"invoice","role":"XX"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for (kind, entity, minv, role) in [
+        ("amount", "invoice", 100_000_000i64, "finance_officer"),
+        ("amount", "invoice", 1_000_000_000i64, "director"),
+        ("risk", "matter", 60i64, "compliance"),
+    ] {
+        let res = a.clone().oneshot(post("/api/v1/approval-routes", &format!(r#"{{"kind":"{kind}","entity":"{entity}","min_value":{minv},"role":"{role}","priority":10}}"#), Some(&tok))).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "add {kind}/{role}");
+    }
+    // Corporate client with a big invoice: amount hits 100jt tier, risk hits 60.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"PT Besar","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let corp = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"M1","client_id":{corp}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let iid = mk_invoice(&a, &tok, mid, 500_000_000).await;
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/approvals/route-resolve?entity=invoice&entity_id={iid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let rv = body_json(res).await;
+    assert_eq!(rv["amount_minor"].as_i64().unwrap(), 500_000_000);
+    let roles = rv["roles"].as_array().unwrap();
+    assert!(roles.iter().any(|r| r == "finance_officer"));
+    assert!(!roles.iter().any(|r| r == "director"));
+    // Matter risk path: 10 + 20 + 5 + 10 = 45 < 60 -> no compliance role.
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/approvals/route-resolve?entity=matter&entity_id={mid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let mv = body_json(res).await;
+    assert_eq!(mv["risk_score"].as_i64().unwrap(), 45);
+    assert!(!mv["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r == "compliance"));
+    // Ghost + bad entity + anon.
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/approvals/route-resolve?entity=invoice&entity_id=999999",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/approvals/route-resolve?entity=alien&entity_id=1",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approval-routes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_conditional_and_amendment() {
     use tower::ServiceExt;
     let a = app();
@@ -14961,6 +15071,11 @@ async fn uib_app_has_approvals_ui() {
         "appr-sim",
         "appr-cond",
         "appr-amend",
+        "rr-kind",
+        "rr-add",
+        "rr-reload",
+        "rr-list",
+        "rrs-go",
         "arc-status",
         "arc-reload",
         "arc-list",

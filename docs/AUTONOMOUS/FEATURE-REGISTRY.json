@@ -3256,19 +3256,27 @@
   "id": "F-D09-012",
   "domain": "D09",
   "title": "Amount-threshold routing",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0078_approval_routes.sql: approval_routes table (kind/entity/threshold/priority, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/delete + allowlists",
+   "apps/server/src/lib.rs: POST/GET/DELETE /api/v1/approval-routes (admin gate, audit) + resolver amount branch",
+   "apps/server/static/site.js: routing card + resolver + hooks (appr panel)",
+   "apps/server/tests/api.rs: approval_routing_amount_and_risk e2e (tier hit/miss, lawyer 403, 404/422/401)"
+  ],
+  "audit_note": "Wave 120: amount routing live. Verified by test (409/0)."
  },
  {
   "id": "F-D09-013",
   "domain": "D09",
   "title": "Matter-risk routing",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: resolver risk branch reuses shared aml_score_for (no drift)",
+   "apps/server/tests/api.rs: risk 45 asserted, compliance floor 60 correctly unmatched",
+   "apps/server/tests/api.rs: matter/invoice/deed amount paths covered"
+  ],
+  "audit_note": "Wave 120: risk routing live (shared weights with AML screen). Verified by test (409/0)."
  },
  {
   "id": "F-D09-014",

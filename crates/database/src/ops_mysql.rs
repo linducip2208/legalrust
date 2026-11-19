@@ -1054,6 +1054,78 @@ impl OpsStore for MysqlOps {
         .map_err(db_err)?;
         self.freeze_get(org).await
     }
+    #[allow(clippy::too_many_arguments)]
+    async fn aroute_add(
+        &self,
+        org: &str,
+        kind: &str,
+        entity: &str,
+        min_value: i64,
+        role: &str,
+        priority: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "amount" | "risk") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if !["matter", "invoice", "deed"].contains(&entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if min_value < 0 {
+            return Err(StoreError::Conflict("min_value".into()));
+        }
+        let role = role.trim();
+        if role.is_empty() || role.len() > 60 {
+            return Err(StoreError::Conflict("role".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO approval_routes (org_id, kind, entity, min_value, role, priority, note) VALUES (?,?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(kind)
+        .bind(entity)
+        .bind(min_value)
+        .bind(role)
+        .bind(priority)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn aroute_list(&self, org: &str) -> Result<Vec<RouteRuleRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, kind, entity, min_value, role, priority, note FROM approval_routes WHERE org_id=? ORDER BY priority DESC, id ASC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RouteRuleRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                kind: x.get::<String, _>("kind"),
+                entity: x.get::<String, _>("entity"),
+                min_value: x.get::<i64, _>("min_value"),
+                role: x.get::<String, _>("role"),
+                priority: x.get::<i32, _>("priority") as i64,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn aroute_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM approval_routes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn webhook_log(
         &self,
         org: Option<&str>,

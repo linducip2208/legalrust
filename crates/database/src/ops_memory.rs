@@ -123,6 +123,7 @@ struct Inner {
     aprefs: HashMap<String, ApprPrefRow>,
     freezes: HashMap<String, FreezeRow>,
     idem: std::collections::HashSet<(String, String)>,
+    aroutes: HashMap<i64, RouteRuleRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1145,6 +1146,73 @@ impl OpsStore for MemoryOps {
         };
         m.freezes.insert(org.into(), row.clone());
         Ok(row)
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn aroute_add(
+        &self,
+        org: &str,
+        kind: &str,
+        entity: &str,
+        min_value: i64,
+        role: &str,
+        priority: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "amount" | "risk") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if !["matter", "invoice", "deed"].contains(&entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if min_value < 0 {
+            return Err(StoreError::Conflict("min_value".into()));
+        }
+        let role = role.trim();
+        if role.is_empty() || role.len() > 60 {
+            return Err(StoreError::Conflict("role".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.aroutes.insert(
+            id,
+            RouteRuleRow {
+                id,
+                org: org.into(),
+                kind: kind.into(),
+                entity: entity.into(),
+                min_value,
+                role: role.into(),
+                priority,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn aroute_list(&self, org: &str) -> Result<Vec<RouteRuleRow>, StoreError> {
+        let mut v: Vec<RouteRuleRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .aroutes
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.id.cmp(&b.id)));
+        Ok(v)
+    }
+    async fn aroute_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.aroutes.get(&id) {
+            Some(r) if r.org == org => {
+                m.aroutes.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn webhook_log(
         &self,

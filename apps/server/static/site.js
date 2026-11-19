@@ -3698,6 +3698,40 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('frz-on', 'click', function () { frzSet(true); });
   on('frz-off', 'click', function () { frzSet(false); });
   on('frz-reload', 'click', frzRefresh);
+  /* ---- approval routing (F-D09-012/013) ---- */
+  async function rrRefresh() {
+    var box = document.getElementById('rr-list');
+    if (!box) return;
+    var v = await j('/api/v1/approval-routes');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat (perlu admin?).</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.kind) + '</td><td>' + badge(x.entity) + '</td><td>' + x.min_value + '</td><td>' + badge(x.role) + '</td><td><button class="btn btn-sm btn-outline-danger" data-rr-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada aturan.</td></tr>';
+    qsa('[data-rr-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/approval-routes/' + b.getAttribute('data-rr-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('rr-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('rr-msg', '');
+        rrRefresh();
+      });
+    });
+  }
+  on('rr-add', 'click', async function () {
+    if (!pval('rr-role')) { pmsg('rr-msg', 'Isi peran tujuan.'); return; }
+    var r = await ppost('/api/v1/approval-routes', { kind: pval('rr-kind') || 'amount', entity: pval('rr-entity') || 'invoice', min_value: +pval('rr-min') || 0, role: pval('rr-role'), priority: +pval('rr-prio') || 0 });
+    if (!r.ok) { pmsg('rr-msg', 'Gagal (' + r.status + '). Perlu admin?'); return; }
+    pmsg('rr-msg', '');
+    rrRefresh();
+  });
+  on('rr-reload', 'click', rrRefresh);
+  on('rrs-go', 'click', async function () {
+    var out = document.getElementById('rrs-out');
+    if (!pval('rrs-id')) { pmsg('rr-msg', 'Isi ID entitas.'); return; }
+    var v = await j('/api/v1/approvals/route-resolve?entity=' + encodeURIComponent(pval('rrs-entity')) + '&entity_id=' + encodeURIComponent(pval('rrs-id')));
+    if (!v) { pmsg('rr-msg', 'Gagal memuat.'); return; }
+    pmsg('rr-msg', '');
+    if (out) out.textContent = 'Nominal ' + v.amount_minor + ', risiko ' + v.risk_score + ' → ' + (v.roles || []).join(', ') || 'tanpa peran';
+  });
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3753,10 +3787,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4880,6 +4914,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   arcRefresh();
   dgstRefresh();
   frzRefresh();
+  rrRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();
