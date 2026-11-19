@@ -335,6 +335,16 @@ pub struct ChecklistRow {
     pub item: String,
     pub done: bool,
 }
+/// Compliance evidence vault link (register entry -> evidence note).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvidenceRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub register_name: String,
+    pub register_id: i64,
+    pub note: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1124,6 +1134,131 @@ pub trait OpsStore: Send + Sync {
     async fn clist_list(&self, org: &str, matter_id: i64) -> Result<Vec<ChecklistRow>, StoreError>;
     async fn clist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
     async fn clist_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Compliance evidence vault links.
+    async fn evidence_add(
+        &self,
+        org: &str,
+        title: &str,
+        register_name: &str,
+        register_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn evidence_list(
+        &self,
+        org: &str,
+        register_name: Option<&str>,
+        register_id: Option<i64>,
+    ) -> Result<Vec<EvidenceRow>, StoreError>;
+    async fn evidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// App-layer referential check: does `register_name`/`register_id` exist?
+    /// Default implementation reuses the register list methods so memory and
+    /// MySQL backends behave identically; unknown names yield `false`.
+    async fn evidence_register_exists(
+        &self,
+        org: &str,
+        register_name: &str,
+        register_id: i64,
+    ) -> Result<bool, StoreError> {
+        let hit = match register_name {
+            "obligations" => self
+                .pdp_obligation_list(org, None)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "consents" => self
+                .consent_list(org, None)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "ropa" => self
+                .ropa_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "dpia" => self
+                .dpia_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "breach" => self
+                .breach_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "vendors" => self
+                .vendor_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "incidents" => self
+                .incident_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "capas" => self
+                .capa_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "regchanges" => self
+                .regchange_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "trainings" => self
+                .training_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "risks" => self
+                .risk_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "dsar" => self
+                .dsar_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "ethics" => self
+                .ethics_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "gifts" => self
+                .gift_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "findings" => self
+                .afinding_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "whistle" => self
+                .whistle_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "waivers" => self
+                .waiver_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "policies" => self
+                .policy_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            "controls" => self
+                .control_list(org)
+                .await?
+                .iter()
+                .any(|r| r.id == register_id),
+            _ => false,
+        };
+        Ok(hit)
+    }
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

@@ -4315,19 +4315,27 @@
   "id": "F-D11-030",
   "domain": "D11",
   "title": "Compliance evidence vault",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0043_evidence.sql: compliance_evidence table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: vault CRUD + evidence_register_exists (19-register app-layer FK)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/evidence-vault + delete (RBAC, audit, filtered list)",
+   "apps/server/static/site.js: evRefresh card Brankas bukti + hooks",
+   "apps/server/tests/api.rs: evidence_vault_and_regulator_pack e2e (alien register/ghost 404, filters, client 403)"
+  ],
+  "audit_note": "Wave 73: full lifecycle live; verified by test (362/0)."
  },
  {
   "id": "F-D11-031",
   "domain": "D11",
   "title": "Regulator inquiry response pack",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/regulator-pack.csv (meta + 20 posture rows + alerts, Export-gated, audited)",
+   "apps/server/static/site.js: regpack-csv button in Dasbor kepatuhan card",
+   "apps/server/tests/api.rs: pack header/sections asserted, client 403"
+  ],
+  "audit_note": "Wave 73: verified by test (362/0)."
  },
  {
   "id": "F-D11-032",

@@ -35,7 +35,7 @@ pub use ops::{
     appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow,
     AuditFindingRow, AuditPlanRow, AuditRow, BreachRow, CapaRow, ChecklistRow, ClauseRow,
     ClientTagRow, ConsentRow, ControlRow, ControlTestRow, CrmStore, DeedRow, DelegationRow,
-    DpiaRow, DsarRow, EthicsRow, GiftRow, IncidentRow, InviteRow, InvoiceRow, JobRow,
+    DpiaRow, DsarRow, EthicsRow, EvidenceRow, GiftRow, IncidentRow, InviteRow, InvoiceRow, JobRow,
     MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
     MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
     MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow,

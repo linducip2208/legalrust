@@ -6916,6 +6916,154 @@ async fn compliance_alerts_feed() {
 }
 
 #[tokio::test]
+async fn evidence_vault_and_regulator_pack() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "evpack@x.id").await;
+    let client = forged_role_token(&tok, vec!["client"]);
+    // Seed a risk to link evidence against.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/risks",
+            r#"{"title":"RR"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    // Unknown register and ghost id rejected.
+    for (payload, want) in [
+        (
+            format!(r#"{{"title":"BB","register":"alien","register_id":{rid}}}"#),
+            StatusCode::NOT_FOUND,
+        ),
+        (
+            r#"{"title":"BB","register":"risks","register_id":999999}"#.to_string(),
+            StatusCode::NOT_FOUND,
+        ),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/compliance/evidence-vault",
+                &payload,
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "payload was {payload}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/compliance/evidence-vault", &format!(r#"{{"title":"Hasil uji penetrasi","register":"risks","register_id":{rid},"note":"PDF-2026-01"}}"#), Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/compliance/evidence-vault?register=risks",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid)));
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/compliance/evidence-vault?register=risks&register_id={rid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/evidence-vault?register=dsar", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 0);
+    // Delete is Delete-gated.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/evidence-vault/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {client}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Regulator pack: Export-gated, CSV with sections.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/regulator-pack.csv", &client))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/regulator-pack.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let body = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(body.to_vec()).unwrap();
+    assert!(text.starts_with("regulator_response_pack,org_hash_generated_at\n"));
+    for want in [
+        "posture,risks,1,",
+        "posture,evidence,1,",
+        "section,register,total,detail",
+    ] {
+        assert!(text.contains(want), "pack missing {want}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=evidence", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.evidence_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/compliance/evidence-vault")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn matter_checklist_and_scorecard() {
     use tower::ServiceExt;
     let a = app();
@@ -9289,6 +9437,11 @@ async fn uib_app_has_approvals_ui() {
         "mcl-list",
         "score-reload",
         "score-list",
+        "regpack-csv",
+        "ev-title",
+        "ev-add",
+        "ev-reload",
+        "ev-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

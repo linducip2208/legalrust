@@ -2413,6 +2413,33 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('');
   }
   on('score-reload', 'click', scoreRefresh);
+  on('regpack-csv', 'click', function () { dlCsv('/api/v1/reports/regulator-pack.csv', 'regulator-pack.csv', 'posture-msg'); });
+  /* ---- compliance: evidence vault ---- */
+  async function evRefresh() {
+    var box = document.getElementById('ev-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/evidence-vault');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.register) + ' #' + x.register_id + '</td><td>' + esc(x.note) + '</td><td><button class="btn btn-sm btn-outline-danger" data-ev-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada bukti.</td></tr>';
+    qsa('[data-ev-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/evidence-vault/' + b.getAttribute('data-ev-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ev-msg', '');
+        evRefresh();
+      });
+    });
+  }
+  on('ev-add', 'click', async function () {
+    if (!pval('ev-title') || !pval('ev-reg') || !pval('ev-rid')) { pmsg('ev-msg', 'Isi judul, register, dan ID entri.'); return; }
+    var r = await ppost('/api/v1/compliance/evidence-vault', { title: pval('ev-title'), register: pval('ev-reg'), register_id: +pval('ev-rid'), note: pval('ev-note') || '' });
+    if (!r.ok) { pmsg('ev-msg', 'Gagal (' + r.status + '). Register/ID harus valid.'); return; }
+    pmsg('ev-msg', '');
+    evRefresh();
+  });
+  on('ev-reload', 'click', evRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2438,7 +2465,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2501,6 +2528,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   aplanRefresh();
   mclRefresh();
   scoreRefresh();
+  evRefresh();
   postureRefresh();
   alertsRefresh();
   whDlRefresh();

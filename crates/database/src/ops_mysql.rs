@@ -3032,6 +3032,96 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn evidence_add(
+        &self,
+        org: &str,
+        title: &str,
+        register_name: &str,
+        register_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        if register_id <= 0 {
+            return Err(StoreError::Conflict("register_id".into()));
+        }
+        if !self
+            .evidence_register_exists(org, register_name, register_id)
+            .await?
+        {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO compliance_evidence (org_id, title, register_name, register_id, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(register_name)
+        .bind(register_id as u64)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn evidence_list(
+        &self,
+        org: &str,
+        register_name: Option<&str>,
+        register_id: Option<i64>,
+    ) -> Result<Vec<EvidenceRow>, StoreError> {
+        let (sql, has_name, has_id) = match (register_name, register_id) {
+            (Some(_), Some(_)) => (
+                "SELECT id, org_id, title, register_name, register_id, note FROM compliance_evidence WHERE org_id=? AND register_name=? AND register_id=? ORDER BY id DESC LIMIT 200",
+                true, true,
+            ),
+            (Some(_), None) => (
+                "SELECT id, org_id, title, register_name, register_id, note FROM compliance_evidence WHERE org_id=? AND register_name=? ORDER BY id DESC LIMIT 200",
+                true, false,
+            ),
+            _ => (
+                "SELECT id, org_id, title, register_name, register_id, note FROM compliance_evidence WHERE org_id=? ORDER BY id DESC LIMIT 200",
+                false, false,
+            ),
+        };
+        let mut q = sqlx::query(sql).bind(org);
+        if has_name {
+            q = q.bind(register_name.unwrap_or(""));
+        }
+        if has_id {
+            q = q.bind(register_id.unwrap_or(0) as u64);
+        }
+        let rows = q.fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| EvidenceRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                register_name: x.get::<String, _>("register_name"),
+                register_id: x.get::<u64, _>("register_id") as i64,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn evidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM compliance_evidence WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

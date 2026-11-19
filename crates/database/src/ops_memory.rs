@@ -65,6 +65,7 @@ struct Inner {
     ctests: HashMap<i64, ControlTestRow>,
     aplans: HashMap<i64, AuditPlanRow>,
     clists: HashMap<i64, ChecklistRow>,
+    evidence: HashMap<i64, EvidenceRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2640,6 +2641,77 @@ impl OpsStore for MemoryOps {
         match m.clists.get(&id) {
             Some(r) if r.org == org => {
                 m.clists.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn evidence_add(
+        &self,
+        org: &str,
+        title: &str,
+        register_name: &str,
+        register_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        if register_id <= 0 {
+            return Err(StoreError::Conflict("register_id".into()));
+        }
+        if !self
+            .evidence_register_exists(org, register_name, register_id)
+            .await?
+        {
+            return Err(StoreError::NotFound);
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.evidence.insert(
+            id,
+            EvidenceRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                register_name: register_name.into(),
+                register_id,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn evidence_list(
+        &self,
+        org: &str,
+        register_name: Option<&str>,
+        register_id: Option<i64>,
+    ) -> Result<Vec<EvidenceRow>, StoreError> {
+        let mut v: Vec<EvidenceRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .evidence
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && register_name.map(|n| r.register_name == n).unwrap_or(true)
+                    && register_id.map(|i| r.register_id == i).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn evidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.evidence.get(&id) {
+            Some(r) if r.org == org => {
+                m.evidence.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
