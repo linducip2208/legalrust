@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 103: foreign guardrail + notary handoff (main)
+- fguard matrix (no table) + notary_handoffs (0068) + kartu + uji.
+- F-D13-035/026 PLANNED->IMPLEMENTED (~72.9 verified). Workspace 392/0; registry ~26.0 (168 IMPLEMENTED); mean 27.4 (166 v).
+
 ## Done wave 102: PPAT monthly report + dashboard (main)
 - ppat_monthly + ppat_dashboard aggregates (no migration) + kartu + uji.
 - F-D13-029/037 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 391/0; registry ~25.9 (166 IMPLEMENTED); mean 27.2 (164 v).

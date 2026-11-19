@@ -257,6 +257,16 @@ pub struct DeedConsentRow {
     pub verified: bool,
     pub note: String,
 }
+/// Notary-to-PPAT handoff checklist item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NotaryHandoffRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub doc_name: String,
+    pub received: bool,
+    pub note: String,
+}
 /// Land-history (riwayat tanah) record entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LandHistoryRow {
@@ -1347,6 +1357,26 @@ pub trait OpsStore: Send + Sync {
         -> Result<Vec<PpatMonthlyRow>, StoreError>;
     /// PPAT office dashboard snapshot (cross-table counts).
     async fn ppat_dashboard(&self, org: &str) -> Result<PpatDashboard, StoreError>;
+    /// Notary-to-PPAT handoff checklist.
+    async fn nhoff_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_name: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn nhoff_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<NotaryHandoffRow>, StoreError>;
+    async fn nhoff_set_received(
+        &self,
+        org: &str,
+        id: i64,
+        received: bool,
+    ) -> Result<(), StoreError>;
+    async fn nhoff_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

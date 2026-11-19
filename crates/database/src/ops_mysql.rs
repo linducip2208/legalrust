@@ -1349,6 +1349,92 @@ impl OpsStore for MysqlOps {
             pending_handovers,
         })
     }
+    async fn nhoff_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_name: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let doc_name = doc_name.trim();
+        if doc_name.is_empty() || doc_name.len() > 160 {
+            return Err(StoreError::Conflict("doc_name".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO notary_handoffs (org_id, ppat_id, doc_name, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(doc_name)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn nhoff_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<NotaryHandoffRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, doc_name, received, note FROM notary_handoffs WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| NotaryHandoffRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                doc_name: x.get::<String, _>("doc_name"),
+                received: x.get::<u8, _>("received") != 0,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn nhoff_set_received(
+        &self,
+        org: &str,
+        id: i64,
+        received: bool,
+    ) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE notary_handoffs SET received=? WHERE id=? AND org_id=?")
+            .bind(if received { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn nhoff_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM notary_handoffs WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

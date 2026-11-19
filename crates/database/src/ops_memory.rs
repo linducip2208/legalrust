@@ -108,6 +108,7 @@ struct Inner {
     dconsents: HashMap<i64, DeedConsentRow>,
     lhistory: HashMap<i64, LandHistoryRow>,
     uhandovers: HashMap<i64, UnitHandoverRow>,
+    nhoffs: HashMap<i64, NotaryHandoffRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1395,6 +1396,81 @@ impl OpsStore for MemoryOps {
                 .filter(|r| r.org == org && r.status != "delivered")
                 .count() as i64,
         })
+    }
+    async fn nhoff_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_name: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let doc_name = doc_name.trim();
+        if doc_name.is_empty() || doc_name.len() > 160 {
+            return Err(StoreError::Conflict("doc_name".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.nhoffs.insert(
+            id,
+            NotaryHandoffRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                doc_name: doc_name.into(),
+                received: false,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn nhoff_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<NotaryHandoffRow>, StoreError> {
+        let mut v: Vec<NotaryHandoffRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .nhoffs
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn nhoff_set_received(
+        &self,
+        org: &str,
+        id: i64,
+        received: bool,
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.nhoffs.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.received = received;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn nhoff_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.nhoffs.get(&id) {
+            Some(r) if r.org == org => {
+                m.nhoffs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn dpia_create(
         &self,

@@ -3647,6 +3647,13 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "rpm-list",
         "pdb-reload",
         "pdb-list",
+        "fgd-sub",
+        "fgd-check",
+        "fgd-out",
+        "nho-ppat",
+        "nho-add",
+        "nho-reload",
+        "nho-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8657,6 +8664,127 @@ async fn pbb_and_ppat_fee() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn foreign_guard_and_notary_handoff() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "fguard@x.id").await;
+    // Statutory matrix.
+    for (sub, right, allowed) in [
+        ("wna", "hak_pakai", true),
+        ("wna", "shm", false),
+        ("wna", "hgb", false),
+        ("pma", "hgb", true),
+        ("pma", "hak_pakai", true),
+        ("pma", "shm", false),
+        ("wni", "shm", true),
+        ("badan_wni", "shm", true),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(get(
+                &format!("/api/v1/foreign-guard?subject={sub}&right={right}"),
+                &tok,
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "{sub}/{right}");
+        assert_eq!(
+            body_json(res).await["allowed"],
+            serde_json::json!(allowed),
+            "{sub}/{right}"
+        );
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/foreign-guard?subject=alien&right=shm", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/foreign-guard?subject=wna&right=alien", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/foreign-guard?subject=wni&right=shm")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Notary handoff checklist.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"NH/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/handoffs"),
+            r#"{"doc_name":"Minuta akta"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/handoffs/{hid}/received"),
+            r#"{"received":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/handoffs"), &tok))
+        .await
+        .unwrap();
+    let hv = body_json(res).await;
+    assert!(hv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(hid) && r["received"] == true));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/handoffs",
+            r#"{"doc_name":"ZZ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=nhoff", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.nhoff_added"));
 }
 
 #[tokio::test]

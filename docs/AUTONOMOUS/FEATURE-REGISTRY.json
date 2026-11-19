@@ -5298,10 +5298,15 @@
   "id": "F-D13-026",
   "domain": "D13",
   "title": "Notary-PPAT handoff checklist",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0068_notary_handoff.sql: notary_handoffs table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/received/delete",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/handoffs + received + delete (RBAC, audit)",
+   "apps/server/static/site.js: nhoRefresh card Serah terima notaris-PPAT + hooks",
+   "apps/server/tests/api.rs: received toggle + ghost 404 + audit asserted"
+  ],
+  "audit_note": "Wave 103: verified by test (392/0)."
  },
  {
   "id": "F-D13-027",
@@ -5409,10 +5414,13 @@
   "id": "F-D13-035",
   "domain": "D13",
   "title": "Foreign-ownership guardrail",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/foreign-guard (statutory subject x right matrix, RBAC)",
+   "apps/server/static/site.js: fgd card Guardrail kepemilikan asing + hooks",
+   "apps/server/tests/api.rs: foreign_guard_and_notary_handoff e2e (8-cell matrix, 422, 401)"
+  ],
+  "audit_note": "Wave 103: pure-logic guardrail live; verified by test (392/0)."
  },
  {
   "id": "F-D13-036",
