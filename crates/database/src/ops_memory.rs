@@ -120,6 +120,8 @@ struct Inner {
     bpns: HashMap<i64, BpnTrackRow>,
     rrules: HashMap<i64, RetentionRuleRow>,
     preqs: HashMap<i64, PurgeRequestRow>,
+    aprefs: HashMap<String, ApprPrefRow>,
+    freezes: HashMap<String, FreezeRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1074,6 +1076,64 @@ impl OpsStore for MemoryOps {
         }
         r.status = "revoked".into();
         Ok(())
+    }
+    async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError> {
+        let m = self.inner.lock().unwrap();
+        Ok(m.aprefs.get(user).cloned().unwrap_or(ApprPrefRow {
+            user: user.into(),
+            digest_mode: "instant".into(),
+            escalate_to: String::new(),
+        }))
+    }
+    async fn apref_set(
+        &self,
+        user: &str,
+        digest_mode: &str,
+        escalate_to: &str,
+    ) -> Result<ApprPrefRow, StoreError> {
+        if !matches!(digest_mode, "instant" | "daily" | "off") {
+            return Err(StoreError::Conflict("digest_mode".into()));
+        }
+        if escalate_to.len() > 160 {
+            return Err(StoreError::Conflict("escalate_to".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let row = ApprPrefRow {
+            user: user.into(),
+            digest_mode: digest_mode.into(),
+            escalate_to: escalate_to.trim().into(),
+        };
+        m.aprefs.insert(user.into(), row.clone());
+        Ok(row)
+    }
+    async fn freeze_get(&self, org: &str) -> Result<FreezeRow, StoreError> {
+        let m = self.inner.lock().unwrap();
+        Ok(m.freezes.get(org).cloned().unwrap_or(FreezeRow {
+            org: org.into(),
+            frozen: false,
+            reason: String::new(),
+            set_by: String::new(),
+        }))
+    }
+    async fn freeze_set(
+        &self,
+        org: &str,
+        frozen: bool,
+        reason: &str,
+        set_by: &str,
+    ) -> Result<FreezeRow, StoreError> {
+        if reason.len() > 500 {
+            return Err(StoreError::Conflict("reason".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let row = FreezeRow {
+            org: org.into(),
+            frozen,
+            reason: reason.trim().into(),
+            set_by: set_by.into(),
+        };
+        m.freezes.insert(org.into(), row.clone());
+        Ok(row)
     }
     async fn webhook_log(
         &self,

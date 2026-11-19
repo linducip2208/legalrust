@@ -8928,6 +8928,160 @@ async fn protocol_retention_and_aml_scores() {
 }
 
 #[tokio::test]
+async fn approval_prefs_and_freeze() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprpref@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    // Digest prefs roundtrip.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/prefs", &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["digest_mode"],
+        serde_json::json!("instant")
+    );
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/prefs",
+            r#"{"digest_mode":"daily","escalate_to":"admin-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/prefs", &tok))
+        .await
+        .unwrap();
+    let pv = body_json(res).await;
+    assert_eq!(pv["digest_mode"], serde_json::json!("daily"));
+    assert_eq!(pv["escalate_to"], serde_json::json!("admin-1"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/prefs",
+            r#"{"digest_mode":"hourly"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Freeze is admin-gated.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/freeze",
+            r#"{"frozen":true}"#,
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/freeze",
+            r#"{"frozen":true,"reason":"audit semesteran"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // All mutation paths short-circuit while frozen.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/decide-bulk",
+            &format!(r#"{{"items":[{{"id":{aid},"step_no":1,"decision":"approve"}}]}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/revoke"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Reopen and decide normally.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/freeze",
+            r#"{"frozen":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/freeze", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["frozen"], serde_json::json!(false));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=approval", &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "approval.frozen"));
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "approval.unfrozen"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/prefs")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_attachments_and_archive() {
     use tower::ServiceExt;
     let a = app();
@@ -14600,6 +14754,11 @@ async fn uib_app_has_approvals_ui() {
         "arc-status",
         "arc-reload",
         "arc-list",
+        "dgst-mode",
+        "dgst-save",
+        "dgst-reload",
+        "frz-on",
+        "frz-reload",
         "appr-id",
         "appr-show",
         "appr-detail",

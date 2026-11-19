@@ -3632,6 +3632,40 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="4" class="text-muted">Arsip kosong.</td></tr>';
   }
   on('arc-reload', 'click', arcRefresh);
+  /* ---- approval digest prefs (F-D09-028) ---- */
+  async function dgstRefresh() {
+    var box = document.getElementById('dgst-out');
+    var v = await j('/api/v1/approvals/prefs');
+    if (!v) { if (box) box.textContent = 'Gagal memuat.'; return; }
+    var sel = document.getElementById('dgst-mode');
+    if (sel) sel.value = v.digest_mode || 'instant';
+    var to = document.getElementById('dgst-to');
+    if (to && !to.value) to.value = v.escalate_to || '';
+    if (box) box.textContent = 'Mode: ' + (v.digest_mode || 'instant') + (v.escalate_to ? ' · eskalasi ke ' + v.escalate_to : '');
+  }
+  on('dgst-save', 'click', async function () {
+    var r = await ppost('/api/v1/approvals/prefs', { digest_mode: pval('dgst-mode') || 'instant', escalate_to: pval('dgst-to') || '' });
+    if (!r.ok) { pmsg('dgst-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dgst-msg', '');
+    dgstRefresh();
+  });
+  on('dgst-reload', 'click', dgstRefresh);
+  /* ---- approval freeze (F-D09-023) ---- */
+  async function frzRefresh() {
+    var box = document.getElementById('frz-out');
+    var v = await j('/api/v1/approvals/freeze');
+    if (!v) { if (box) box.innerHTML = '<span class="text-muted">Gagal memuat.</span>'; return; }
+    if (box) box.innerHTML = v.frozen ? '<span class="badge bg-red-lt">BEKU</span> <span class="text-muted">' + esc(v.reason || '') + '</span>' : '<span class="badge bg-green-lt">terbuka</span>';
+  }
+  async function frzSet(frozen) {
+    var r = await ppost('/api/v1/approvals/freeze', { frozen: frozen, reason: pval('frz-reason') || '' });
+    if (!r.ok) { pmsg('frz-msg', 'Gagal (' + r.status + '). Perlu admin?'); return; }
+    pmsg('frz-msg', '');
+    frzRefresh();
+  }
+  on('frz-on', 'click', function () { frzSet(true); });
+  on('frz-off', 'click', function () { frzSet(false); });
+  on('frz-reload', 'click', frzRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3687,10 +3721,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4812,6 +4846,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cfxRefresh();
   blkRefresh();
   arcRefresh();
+  dgstRefresh();
+  frzRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();

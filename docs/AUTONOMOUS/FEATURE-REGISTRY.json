@@ -3373,10 +3373,15 @@
   "id": "F-D09-023",
   "domain": "D09",
   "title": "Approval freeze during audit",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0076_appr_prefs_freeze.sql: approval_freeze table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: freeze_get/set (upsert)",
+   "apps/server/src/lib.rs: freeze_guard enforced in decide + bulk + revoke; GET/POST freeze (admin gate, audit)",
+   "apps/server/static/site.js: frz card Bekukan (audit) + hooks (appr panel)",
+   "apps/server/tests/api.rs: lawyer 403, frozen decide/bulk/revoke 409, reopen decides OK, audit events"
+  ],
+  "audit_note": "Wave 117: audit freeze live. Verified by test (406/0)."
  },
  {
   "id": "F-D09-024",
@@ -3428,10 +3433,15 @@
   "id": "F-D09-028",
   "domain": "D09",
   "title": "Approval digest & escalation preferences",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0076_appr_prefs_freeze.sql: approval_prefs table (digest check, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: apref_get/set (instant|daily|off)",
+   "apps/server/src/lib.rs: GET/POST /api/v1/approvals/prefs (own user, no admin gate needed)",
+   "apps/server/static/site.js: dgst card preferensi digest + hooks (appr panel)",
+   "apps/server/tests/api.rs: approval_prefs_and_freeze e2e (roundtrip, bad mode 409, 401)"
+  ],
+  "audit_note": "Wave 117: digest prefs live. Verified by test (406/0)."
  },
  {
   "id": "F-D09-029",

@@ -945,6 +945,95 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError> {
+        let row = sqlx::query(
+            "SELECT user_id, digest_mode, escalate_to FROM approval_prefs WHERE user_id=?",
+        )
+        .bind(user)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(match row {
+            Some(x) => ApprPrefRow {
+                user: x.get::<String, _>("user_id"),
+                digest_mode: x.get::<String, _>("digest_mode"),
+                escalate_to: x.get::<String, _>("escalate_to"),
+            },
+            None => ApprPrefRow {
+                user: user.into(),
+                digest_mode: "instant".into(),
+                escalate_to: String::new(),
+            },
+        })
+    }
+    async fn apref_set(
+        &self,
+        user: &str,
+        digest_mode: &str,
+        escalate_to: &str,
+    ) -> Result<ApprPrefRow, StoreError> {
+        if !matches!(digest_mode, "instant" | "daily" | "off") {
+            return Err(StoreError::Conflict("digest_mode".into()));
+        }
+        if escalate_to.len() > 160 {
+            return Err(StoreError::Conflict("escalate_to".into()));
+        }
+        sqlx::query(
+            "INSERT INTO approval_prefs (user_id, digest_mode, escalate_to) VALUES (?,?,?) ON DUPLICATE KEY UPDATE digest_mode=VALUES(digest_mode), escalate_to=VALUES(escalate_to)",
+        )
+        .bind(user)
+        .bind(digest_mode)
+        .bind(escalate_to.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        self.apref_get(user).await
+    }
+    async fn freeze_get(&self, org: &str) -> Result<FreezeRow, StoreError> {
+        let row = sqlx::query(
+            "SELECT org_id, frozen, reason, set_by FROM approval_freeze WHERE org_id=?",
+        )
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(match row {
+            Some(x) => FreezeRow {
+                org: x.get::<String, _>("org_id"),
+                frozen: x.get::<u8, _>("frozen") != 0,
+                reason: x.get::<String, _>("reason"),
+                set_by: x.get::<String, _>("set_by"),
+            },
+            None => FreezeRow {
+                org: org.into(),
+                frozen: false,
+                reason: String::new(),
+                set_by: String::new(),
+            },
+        })
+    }
+    async fn freeze_set(
+        &self,
+        org: &str,
+        frozen: bool,
+        reason: &str,
+        set_by: &str,
+    ) -> Result<FreezeRow, StoreError> {
+        if reason.len() > 500 {
+            return Err(StoreError::Conflict("reason".into()));
+        }
+        sqlx::query(
+            "INSERT INTO approval_freeze (org_id, frozen, reason, set_by) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE frozen=VALUES(frozen), reason=VALUES(reason), set_by=VALUES(set_by)",
+        )
+        .bind(org)
+        .bind(if frozen { 1u8 } else { 0u8 })
+        .bind(reason.trim())
+        .bind(set_by)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        self.freeze_get(org).await
+    }
     async fn webhook_log(
         &self,
         org: Option<&str>,

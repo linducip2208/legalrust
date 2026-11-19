@@ -50,6 +50,21 @@ pub struct ApprovalStepRow {
     pub status: String,
     pub comment: Option<String>,
 }
+/// Approval digest + escalation preferences (per user).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApprPrefRow {
+    pub user: String,
+    pub digest_mode: String,
+    pub escalate_to: String,
+}
+/// Approval audit-freeze flag (per org).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FreezeRow {
+    pub org: String,
+    pub frozen: bool,
+    pub reason: String,
+    pub set_by: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1396,6 +1411,23 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ApprovalStepRow>, StoreError>;
     /// Revoke a non-terminal request (`pending`/`needs_rework` only).
     async fn appr_revoke(&self, org: &str, id: i64, user: &str) -> Result<(), StoreError>;
+    /// Approval digest + escalation preferences (per user id).
+    async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError>;
+    async fn apref_set(
+        &self,
+        user: &str,
+        digest_mode: &str,
+        escalate_to: &str,
+    ) -> Result<ApprPrefRow, StoreError>;
+    /// Approval audit freeze (per org). While frozen, decide paths 409.
+    async fn freeze_get(&self, org: &str) -> Result<FreezeRow, StoreError>;
+    async fn freeze_set(
+        &self,
+        org: &str,
+        frozen: bool,
+        reason: &str,
+        set_by: &str,
+    ) -> Result<FreezeRow, StoreError>;
     /// Record an inbound webhook receipt (observability; never fails the
     /// webhook itself — callers ignore the result).
     async fn webhook_log(
