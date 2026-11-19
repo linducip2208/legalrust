@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 70: compliance alert feed (main)
 - GET /api/v1/compliance/alerts (6 jenis turunan) + kartu Peringatan + posture/CSV 19 register.
-- F-D11-034 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 359/0; registry ~22.3 (102 IMPLEMENTED); mean ~22.8 (100 v).
+- F-D11-034 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 359/0; registry ~22.4 (102 IMPLEMENTED); mean 22.9 (100 v).
 
 ## Done wave 69: policy library + control library (main)
 - policies + acks (0038) + controls (0039) + kartu kepatuhan + uji.
