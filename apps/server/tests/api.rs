@@ -5623,6 +5623,9 @@ async fn crm_app_contains_crm_ids() {
         "dxp-list",
         "dfo-reload",
         "dfo-list",
+        "rdt-terms",
+        "prl-book",
+        "prl-reload",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9995,6 +9998,170 @@ async fn document_folders_and_dashboard() {
             Request::builder()
                 .uri("/api/v1/documents/stats")
                 .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_redact_and_protocol_register() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docredact@x.id").await;
+    let content = b"rahasia NIK 123 milik Budi";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"s.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // No-match redaction rejected; binary rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/redact"),
+            r#"{"terms":["tidakada"]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let bin = b"%PDF-9";
+    let bsha = legalrust_document::sha256_hex(bin);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"b.pdf","mime":"application/pdf","size":{},"sha":"{bsha}"}}"#,
+                bin.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{bid}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(bin.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{bid}/redact"),
+            r#"{"terms":["x"]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Mask + verify content.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/redact"),
+            r#"{"terms":["NIK 123","Budi"]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["masked"].as_i64().unwrap(), 2);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/content"), &tok))
+        .await
+        .unwrap();
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(text.starts_with("rahasia \u{2588}\u{2588}\u{2588} milik \u{2588}\u{2588}\u{2588}"));
+    // Protocol linkage + register.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/protocol-link"),
+            r#"{"book":"B-7"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/protocol-register", &tok))
+        .await
+        .unwrap();
+    let rv = body_json(res).await;
+    assert!(rv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did) && r["protocol_book"] == "B-7"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents/999999/protocol-link",
+            r#"{"book":"B-7"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/redact"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"terms":["x"]}"#))
                 .unwrap(),
         )
         .await

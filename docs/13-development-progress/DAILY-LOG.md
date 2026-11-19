@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
+- Redaksi + register protokol; workspace **424 passed, 0 failed**; F-D04-020/040 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 135: chunked + pratinjau (main)
 - Unggah bertahap + pratinjau; workspace **423 passed, 0 failed**; F-D04-035/012 IMPLEMENTED.
 

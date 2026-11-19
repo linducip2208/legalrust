@@ -3356,6 +3356,30 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Khusus dokumen teks?'); return; }
     pmsg('dlk-msg', '');
   });
+  /* ---- redaction + protocol register (F-D04-020/040) ---- */
+  on('rdt-go', 'click', async function () {
+    if (!pval('dlk-doc') || !pval('rdt-terms')) { pmsg('dlk-msg', 'Isi ID dokumen dan istilah.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/redact', { terms: pval('rdt-terms').split(',').map(function (s) { return s.trim(); }).filter(Boolean) });
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Ada yang cocok? Khusus teks?'); return; }
+    var v = await r.json();
+    pmsg('dlk-msg', '');
+    var out = document.getElementById('dlk-out');
+    if (out) out.textContent = 'Tersamarkan ' + v.masked + ' kemunculan (versi ' + v.version + ').';
+  });
+  on('prl-link', 'click', async function () {
+    if (!pval('dlk-doc') || !pval('prl-book')) { pmsg('dlk-msg', 'Isi ID dokumen dan buku.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/protocol-link', { book: pval('prl-book') });
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dlk-msg', '');
+    prlRefresh();
+  });
+  async function prlRefresh() {
+    var out = document.getElementById('prl-out');
+    var v = await j('/api/v1/documents/protocol-register');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = (v.rows || []).map(function (x) { return '<span class="badge">dok #' + x.doc_id + ' → ' + esc(x.protocol_book) + '</span>'; }).join(' ') || 'Belum ada dokumen protokol.';
+  }
+  on('prl-reload', 'click', prlRefresh);
   /* ---- doc diff + expiry (F-D04-021/022) ---- */
   on('dff-go', 'click', async function () {
     var out = document.getElementById('dff-out');
@@ -5378,6 +5402,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dlcDueRefresh();
   mtfRefresh();
   dlkFavs();
+  prlRefresh();
   dxpRefresh();
   dfoRefresh();
   sopRefresh();

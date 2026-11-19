@@ -1402,10 +1402,14 @@
   "id": "F-D04-020",
   "domain": "D04",
   "title": "Redaction tools",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "term masking as new immutable versions; shared slice:",
+   "  - apps/server/src/lib.rs: POST redact (text-only masking, versioned) + protocol-link/register (meta-backed) + audit",
+   "  - apps/server/static/site.js: redact + protocol controls + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_redact_and_protocol_register e2e (mask bytes, no-match/binary guards, ghost/401)"
+  ],
+  "audit_note": "Wave 136: redaction + segregation live. Verified by test (424/0)."
  },
  {
   "id": "F-D04-021",
@@ -1646,10 +1650,14 @@
   "id": "F-D04-040",
   "domain": "D04",
   "title": "Protocol (notary) document segregation",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "protocol_book meta linkage + segregated register view; shared slice:",
+   "  - apps/server/src/lib.rs: POST redact (text-only masking, versioned) + protocol-link/register (meta-backed) + audit",
+   "  - apps/server/static/site.js: redact + protocol controls + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_redact_and_protocol_register e2e (mask bytes, no-match/binary guards, ghost/401)"
+  ],
+  "audit_note": "Wave 136: redaction + segregation live. Verified by test (424/0)."
  },
  {
   "id": "F-D05-001",
