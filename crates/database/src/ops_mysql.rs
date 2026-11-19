@@ -3073,6 +3073,145 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cpi_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        email: &str,
+        token: &str,
+    ) -> Result<i64, StoreError> {
+        let email = email.trim().to_lowercase();
+        if client_id <= 0 || !email.contains('@') || email.len() > 255 {
+            return Err(StoreError::Conflict("email".into()));
+        }
+        if token.len() < 8 {
+            return Err(StoreError::Conflict("token".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_portal_invites (org_id, client_id, email, token) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(&email)
+        .bind(token)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cpi_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientPortalInviteRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, email, token, status FROM client_portal_invites WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, email, token, status FROM client_portal_invites WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientPortalInviteRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                email: x.get::<String, _>("email"),
+                token: x.get::<String, _>("token"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("pending", "accepted") | ("pending", "expired") | ("pending", "revoked")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_portal_invites SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_portal_invites WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn csv_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || !(1..=10).contains(&score) {
+            return Err(StoreError::Conflict("score 1-10".into()));
+        }
+        if comment.len() > 1000 {
+            return Err(StoreError::Conflict("comment".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_surveys (org_id, client_id, score, comment) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(score)
+        .bind(comment.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn csv_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSurveyRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, score, comment FROM client_surveys WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, score, comment FROM client_surveys WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientSurveyRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                score: x.get::<i64, _>("score"),
+                comment: x.get::<String, _>("comment"),
+            })
+            .collect())
+    }
     async fn up_start(
         &self,
         org: &str,

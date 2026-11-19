@@ -5664,6 +5664,11 @@ async fn crm_app_contains_crm_ids() {
         "cel-cid",
         "cel-add",
         "cel-list",
+        "cpi-cid",
+        "cpi-add",
+        "cpi-list",
+        "csv-cid",
+        "csv-add",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11519,6 +11524,122 @@ async fn client_engagement_letters() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/engagement-letters")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_portal_invites_and_surveys() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"klien@x.id"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            r#"{"client_id":999999,"email":"klien@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"bukan-email"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"klien@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iv = body_json(res).await;
+    let iid = iv["id"].as_i64().unwrap();
+    assert!(iv["token"].as_str().unwrap().starts_with("cpi_"));
+    // accept then terminal: second transition rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/portal-invites/{iid}/status"),
+            r#"{"status":"accepted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/portal-invites/{iid}/status"),
+            r#"{"status":"revoked"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Surveys: bad score rejected; average asserted.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/surveys",
+            &format!(r#"{{"client_id":{cli},"score":11}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    for s in [8, 6] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/surveys",
+                &format!(r#"{{"client_id":{cli},"score":{s},"comment":"ok"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/surveys?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert_eq!(sv["count"].as_i64().unwrap(), 2);
+    assert_eq!(sv["avg"].as_f64().unwrap(), 7.0);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/portal-invites")
                 .body(Body::empty())
                 .unwrap(),
         )

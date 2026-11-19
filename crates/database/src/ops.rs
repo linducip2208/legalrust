@@ -336,6 +336,25 @@ pub struct ClientEngLetterRow {
     pub body: String,
     pub status: String,
 }
+/// Portal invitation (pending->accepted/expired/revoked).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientPortalInviteRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub email: String,
+    pub token: String,
+    pub status: String,
+}
+/// Satisfaction survey response (score 1-10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientSurveyRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub score: i64,
+    pub comment: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2106,6 +2125,34 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ClientEngLetterRow>, StoreError>;
     async fn cel_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cel_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Portal invitations (pending->accepted/expired/revoked).
+    async fn cpi_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        email: &str,
+        token: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cpi_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientPortalInviteRow>, StoreError>;
+    async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Satisfaction surveys (score 1-10, list + average).
+    async fn csv_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError>;
+    async fn csv_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSurveyRow>, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

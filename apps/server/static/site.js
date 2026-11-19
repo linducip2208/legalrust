@@ -3326,6 +3326,52 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     celRefresh();
   });
   on('cel-reload', 'click', celRefresh);
+  /* ---- portal invites + surveys (F-D02-017/018) ---- */
+  async function cpiRefresh() {
+    var box = document.getElementById('cpi-list');
+    if (!box) return;
+    var v = await j('/api/v1/portal-invites' + (pval('cpi-cid') ? '?client_id=' + encodeURIComponent(pval('cpi-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'pending'
+        ? '<button class="btn btn-sm" data-cpi-next="' + x.id + '" data-cpi-to="accepted" type="button">Terima</button> <button class="btn btn-sm btn-outline-danger" data-cpi-next="' + x.id + '" data-cpi-to="revoked" type="button">Cabut</button>'
+        : '<span class="text-muted">' + x.status + '</span>';
+      return '<tr><td>' + esc(x.email) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada undangan.</td></tr>';
+    qsa('[data-cpi-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/portal-invites/' + b.getAttribute('data-cpi-next') + '/status', { status: b.getAttribute('data-cpi-to') });
+        if (!r.ok) { pmsg('cpi-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cpi-msg', '');
+        cpiRefresh();
+      });
+    });
+  }
+  on('cpi-add', 'click', async function () {
+    if (!pval('cpi-cid') || !pval('cpi-email')) { pmsg('cpi-msg', 'Isi ID klien dan email.'); return; }
+    var r = await ppost('/api/v1/portal-invites', { client_id: +pval('cpi-cid'), email: pval('cpi-email') });
+    if (!r.ok) { pmsg('cpi-msg', 'Gagal (' + r.status + '). Email valid?'); return; }
+    var v = await r.json().catch(function () { return null; });
+    pmsg('cpi-msg', '');
+    var out = document.getElementById('cpi-msg');
+    if (out && v && v.token) out.innerHTML = '<span class="text-muted">Token sekali-tampil: ' + esc(v.token) + '</span>';
+    cpiRefresh();
+  });
+  on('cpi-reload', 'click', cpiRefresh);
+  async function csvRefresh() {
+    var out = document.getElementById('csv-out');
+    var v = await j('/api/v1/surveys' + (pval('csv-cid') ? '?client_id=' + encodeURIComponent(pval('csv-cid')) : ''));
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.textContent = 'Rata-rata ' + v.avg + ' dari ' + v.count + ' respons.';
+  }
+  on('csv-add', 'click', async function () {
+    if (!pval('csv-cid')) { pmsg('cpi-msg', 'Isi ID klien.'); return; }
+    var r = await ppost('/api/v1/surveys', { client_id: +pval('csv-cid'), score: +(pval('csv-score') || 5), comment: pval('csv-comment') || '' });
+    if (!r.ok) { pmsg('cpi-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cpi-msg', '');
+    csvRefresh();
+  });
+  on('csv-reload', 'click', csvRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4160,6 +4206,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cfbRefresh();
   cnrRefresh();
   celRefresh();
+  cpiRefresh();
+  csvRefresh();
   vipRefresh();
   apptRefresh();
   queueRefresh();

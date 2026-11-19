@@ -150,6 +150,8 @@ struct Inner {
     cfb: HashMap<i64, ClientFeedbackRow>,
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
+    cpis: HashMap<i64, ClientPortalInviteRow>,
+    csvs: HashMap<i64, ClientSurveyRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -3300,6 +3302,126 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn cpi_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        email: &str,
+        token: &str,
+    ) -> Result<i64, StoreError> {
+        let email = email.trim().to_lowercase();
+        if client_id <= 0 || !email.contains('@') || email.len() > 255 {
+            return Err(StoreError::Conflict("email".into()));
+        }
+        if token.len() < 8 {
+            return Err(StoreError::Conflict("token".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.cpis.values().any(|r| r.org == org && r.token == token) {
+            return Err(StoreError::Conflict("already invited".into()));
+        }
+        let id = self.next(&mut m);
+        m.cpis.insert(
+            id,
+            ClientPortalInviteRow {
+                id,
+                org: org.into(),
+                client_id,
+                email,
+                token: token.into(),
+                status: "pending".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cpi_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientPortalInviteRow>, StoreError> {
+        let mut v: Vec<ClientPortalInviteRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cpis
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cpis
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("pending", "accepted") | ("pending", "expired") | ("pending", "revoked")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cpis.get(&id) {
+            Some(r) if r.org == org => {
+                m.cpis.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn csv_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || !(1..=10).contains(&score) {
+            return Err(StoreError::Conflict("score 1-10".into()));
+        }
+        if comment.len() > 1000 {
+            return Err(StoreError::Conflict("comment".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.csvs.insert(
+            id,
+            ClientSurveyRow {
+                id,
+                org: org.into(),
+                client_id,
+                score,
+                comment: comment.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn csv_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSurveyRow>, StoreError> {
+        let mut v: Vec<ClientSurveyRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .csvs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

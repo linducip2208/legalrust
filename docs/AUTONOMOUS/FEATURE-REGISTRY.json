@@ -587,19 +587,29 @@
   "id": "F-D02-017",
   "domain": "D02",
   "title": "Client portal invitation management",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0097: client_portal_invites table (token unique, forward-only)",
+   "ops.rs + memory + mysql: cpi add/list/status/delete + terminal guards",
+   "lib.rs: portal-invite endpoints, token hashed at rest, raw once (RBAC, 404/401)",
+   "site.js: invite card + hooks (klien panel); portal login noted as D19 follow-up",
+   "tests: portal_invites_and_surveys e2e (email 422, ghost 404, terminal 409, 403/401)"
+  ],
+  "audit_note": "Wave 149: invitation lifecycle live; portal login itself is D19 follow-up. Verified by test (439/0)."
  },
  {
   "id": "F-D02-018",
   "domain": "D02",
   "title": "Client satisfaction survey",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0097: client_surveys table (score 1-10 check, forward-only)",
+   "ops.rs + memory + mysql: csv add/list",
+   "lib.rs: survey endpoints + live average summary (RBAC)",
+   "site.js: survey card + hooks (klien panel)",
+   "tests: bad score 422, average 7.0 asserted, ghost/403/401"
+  ],
+  "audit_note": "Wave 149: surveys live. Verified by test (439/0)."
  },
  {
   "id": "F-D02-019",
