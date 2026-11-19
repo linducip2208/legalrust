@@ -1684,6 +1684,47 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     choRefresh();
   });
   on('cho-reload', 'click', choRefresh);
+  /* ---- property: APHT/SKMHT charges ---- */
+  async function chgRefresh() {
+    var box = document.getElementById('chg-list');
+    if (!box) return;
+    var pid = pval('chg-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/charges');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.kind) + '</td><td>' + esc(x.creditor) + '</td><td>' + fmtRp(x.ceiling_minor) + '</td><td>' + esc(x.valid_until) + '</td><td><button class="btn btn-sm btn-outline-danger" data-chg-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada pembebanan.</td></tr>';
+    qsa('[data-chg-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/charges/' + b.getAttribute('data-chg-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('chg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('chg-msg', '');
+        chgRefresh();
+      });
+    });
+  }
+  on('chg-add', 'click', async function () {
+    if (!pval('chg-ppat') || !pval('chg-cred')) { pmsg('chg-msg', 'Isi ID akta dan kreditor.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('chg-ppat')) + '/charges', { kind: pval('chg-kind') || 'apht', creditor: pval('chg-cred'), ceiling_minor: +pval('chg-ceil') || 0, valid_until: pval('chg-until') || '', note: '' });
+    if (!r.ok) { pmsg('chg-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('chg-msg', '');
+    chgRefresh();
+  });
+  on('chg-reload', 'click', chgRefresh);
+  /* ---- property: charge expiry monitor ---- */
+  async function chgdRefresh() {
+    var box = document.getElementById('chgd-list');
+    if (!box) return;
+    var d = parseInt(pval('chgd-days'), 10);
+    if (!(d >= 0)) d = 30;
+    var v = await j('/api/v1/charges/due?days=' + d);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.due || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>akta #' + x.ppat_id + '</td><td>' + badge(x.kind) + ' <span class="text-muted">(' + esc(x.creditor) + ')</span></td><td><strong>' + esc(x.valid_until) + '</strong></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada yang mendekati kedaluwarsa.</td></tr>';
+  }
+  on('chgd-reload', 'click', chgdRefresh);
   /* ---- property: kind-aware readiness ---- */
   async function rdyRefresh() {
     var box = document.getElementById('rdy-list');
@@ -1700,7 +1741,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); rdyRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3854,6 +3895,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   mpdRefresh();
   kycRefresh();
   choRefresh();
+  chgRefresh();
+  chgdRefresh();
   rdyRefresh();
   klapperRefresh();
   perfRefresh();

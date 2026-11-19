@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 96: APHT/SKMHT charges + expiry monitor (main)
+- deed_charges (0063, upsert+Tx) + monitor + kartu + uji.
+- F-D13-008/009 PLANNED/NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 385/0; registry ~25.2 (154 IMPLEMENTED); mean ~26.3 (152 v).
+
 ## Done wave 95: kind-aware PPAT readiness (main)
 - GET /api/v1/ppat/{id}/readiness (hibah/tukar_menukar rules) + kartu + uji (tanpa migrasi).
 - F-D13-006/007 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 384/0; registry ~25.1 (152 IMPLEMENTED); mean 26.3 (150 v).

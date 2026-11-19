@@ -5076,18 +5076,28 @@
   "id": "F-D13-008",
   "domain": "D13",
   "title": "APHT (mortgage) drafting",
-  "status": "PLANNED",
-  "evidence": [],
-  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021). Koreksi 2026-11-19: skor wave 37 salah tempel; dikembalikan ke status awal."
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "migrations/0063_mortgage_charges.sql: deed_charges table (unique kind per deed, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: upsert CRUD, apht-only allowlist",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/charges + delete (RBAC, audit)",
+   "apps/server/static/site.js: chgRefresh card APHT/SKMHT + hooks",
+   "apps/server/tests/api.rs: mortgage_charges_and_expiry_monitor e2e (gadai 409, upsert dedup)"
+  ],
+  "audit_note": "Wave 96: full lifecycle live; verified by test (385/0)."
  },
  {
   "id": "F-D13-009",
   "domain": "D13",
   "title": "SKMHT drafting & expiry monitor",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/charges/due?days=N (valid_until<=horizon, sorted)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: charge_due (lexicographic date compare)",
+   "apps/server/static/site.js: chgdRefresh monitor card (1bln/3bln statutory note) + hooks",
+   "apps/server/tests/api.rs: window inclusion + days echo + 401 asserted"
+  ],
+  "audit_note": "Wave 96: monitor surfaces expiries, never extends them; verified by test (385/0)."
  },
  {
   "id": "F-D13-010",

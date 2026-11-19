@@ -97,6 +97,7 @@ struct Inner {
     seals: HashMap<i64, YearSealRow>,
     pparties: HashMap<i64, PpatPartyRow>,
     chandovers: HashMap<i64, CertHandoverRow>,
+    charges: HashMap<i64, DeedChargeRow>,
     zones: HashMap<i64, ZoneRow>,
     pbb: HashMap<i64, PbbRow>,
     delegs: HashMap<i64, DelegationRow>,
@@ -4724,6 +4725,106 @@ impl OpsStore for MemoryOps {
         match m.seals.get(&id) {
             Some(r) if r.org == org => {
                 m.seals.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn charge_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        creditor: &str,
+        ceiling_minor: i64,
+        valid_until: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "apht" | "skmht") {
+            return Err(StoreError::Conflict("kind apht|skmht".into()));
+        }
+        let creditor = creditor.trim();
+        if creditor.is_empty() || creditor.len() > 160 {
+            return Err(StoreError::Conflict("creditor".into()));
+        }
+        if ceiling_minor < 0 {
+            return Err(StoreError::Conflict("ceiling".into()));
+        }
+        if valid_until.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("date/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if let Some((id, r)) = m
+            .charges
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.ppat_id == ppat_id && r.kind == kind)
+        {
+            r.creditor = creditor.into();
+            r.ceiling_minor = ceiling_minor;
+            r.valid_until = valid_until.trim().into();
+            r.note = note.trim().into();
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.charges.insert(
+            id,
+            DeedChargeRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                kind: kind.into(),
+                creditor: creditor.into(),
+                ceiling_minor,
+                valid_until: valid_until.trim().into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn charge_list(&self, org: &str, ppat_id: i64) -> Result<Vec<DeedChargeRow>, StoreError> {
+        let mut v: Vec<DeedChargeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .charges
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn charge_due(&self, org: &str, days: i64) -> Result<Vec<DeedChargeRow>, StoreError> {
+        let days = days.clamp(0, 365);
+        let horizon = (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string();
+        let mut v: Vec<DeedChargeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .charges
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && !r.valid_until.trim().is_empty()
+                    && r.valid_until.as_str() <= horizon.as_str()
+            })
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.valid_until.cmp(&b.valid_until));
+        Ok(v)
+    }
+    async fn charge_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.charges.get(&id) {
+            Some(r) if r.org == org => {
+                m.charges.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

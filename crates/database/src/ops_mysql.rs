@@ -5504,6 +5504,134 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
+    async fn charge_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        creditor: &str,
+        ceiling_minor: i64,
+        valid_until: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "apht" | "skmht") {
+            return Err(StoreError::Conflict("kind apht|skmht".into()));
+        }
+        let creditor = creditor.trim();
+        if creditor.is_empty() || creditor.len() > 160 {
+            return Err(StoreError::Conflict("creditor".into()));
+        }
+        if ceiling_minor < 0 {
+            return Err(StoreError::Conflict("ceiling".into()));
+        }
+        if valid_until.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("date/note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        // Upsert on (ppat_id, kind): one charge row per kind per deed.
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<u64> =
+            sqlx::query("SELECT id FROM deed_charges WHERE org_id=? AND ppat_id=? AND kind=?")
+                .bind(org)
+                .bind(ppat_id as u64)
+                .bind(kind)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        let id = match cur {
+            Some(id) => {
+                sqlx::query("UPDATE deed_charges SET creditor=?, ceiling_minor=?, valid_until=?, note=? WHERE id=?")
+                    .bind(creditor)
+                    .bind(ceiling_minor)
+                    .bind(valid_until.trim())
+                    .bind(note.trim())
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_err)?;
+                id as i64
+            }
+            None => {
+                let r = sqlx::query(
+                    "INSERT INTO deed_charges (org_id, ppat_id, kind, creditor, ceiling_minor, valid_until, note) VALUES (?,?,?,?,?,?,?)",
+                )
+                .bind(org)
+                .bind(ppat_id as u64)
+                .bind(kind)
+                .bind(creditor)
+                .bind(ceiling_minor)
+                .bind(valid_until.trim())
+                .bind(note.trim())
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+                r.last_insert_id() as i64
+            }
+        };
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+    async fn charge_list(&self, org: &str, ppat_id: i64) -> Result<Vec<DeedChargeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, kind, creditor, ceiling_minor, valid_until, note FROM deed_charges WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 20")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DeedChargeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                creditor: x.get::<String, _>("creditor"),
+                ceiling_minor: x.get::<i64, _>("ceiling_minor"),
+                valid_until: x.get::<String, _>("valid_until"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn charge_due(&self, org: &str, days: i64) -> Result<Vec<DeedChargeRow>, StoreError> {
+        let days = days.clamp(0, 365);
+        let horizon = (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(days))
+            .format("%Y-%m-%d")
+            .to_string();
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, kind, creditor, ceiling_minor, valid_until, note FROM deed_charges WHERE org_id=? AND valid_until<>'' AND valid_until<=? ORDER BY valid_until ASC LIMIT 200")
+            .bind(org).bind(horizon).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DeedChargeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                creditor: x.get::<String, _>("creditor"),
+                ceiling_minor: x.get::<i64, _>("ceiling_minor"),
+                valid_until: x.get::<String, _>("valid_until"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn charge_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM deed_charges WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn pparty_add(
         &self,
         org: &str,

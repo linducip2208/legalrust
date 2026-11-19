@@ -657,6 +657,18 @@ pub struct YearSealRow {
     pub note: String,
     pub status: String,
 }
+/// Mortgage-deed detail (APHT/SKMHT support + expiry monitor).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeedChargeRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub kind: String,
+    pub creditor: String,
+    pub ceiling_minor: i64,
+    pub valid_until: String,
+    pub note: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1824,6 +1836,21 @@ pub trait OpsStore: Send + Sync {
     async fn sealy_list(&self, org: &str) -> Result<Vec<YearSealRow>, StoreError>;
     async fn sealy_seal(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn sealy_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Mortgage-deed details (APHT/SKMHT) + expiry monitor.
+    #[allow(clippy::too_many_arguments)]
+    async fn charge_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        creditor: &str,
+        ceiling_minor: i64,
+        valid_until: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn charge_list(&self, org: &str, ppat_id: i64) -> Result<Vec<DeedChargeRow>, StoreError>;
+    async fn charge_due(&self, org: &str, days: i64) -> Result<Vec<DeedChargeRow>, StoreError>;
+    async fn charge_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// PPAT party KYC bundle.
     async fn pparty_add(
         &self,

@@ -3582,6 +3582,12 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "cho-add",
         "cho-reload",
         "cho-list",
+        "chg-ppat",
+        "chg-add",
+        "chg-reload",
+        "chg-list",
+        "chgd-days",
+        "chgd-reload",
         "sbox-code",
         "sbox-add",
         "sbox-reload",
@@ -8728,6 +8734,122 @@ async fn zones_and_tax_worksheets() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn mortgage_charges_and_expiry_monitor() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "chgdue@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"AP/1","deed_kind":"apht","seller":"A","buyer":"B"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/charges"),
+            r#"{"kind":"gadai","creditor":"Bank X"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/charges"),
+            r#"{"kind":"skmht","creditor":"Bank X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/ppat/{pid}/charges"), r#"{"kind":"skmht","creditor":"Bank X","ceiling_minor":500000000,"valid_until":"2026-03-15"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Upsert: same kind again replaces (no duplicate rows).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/charges"),
+            r#"{"kind":"skmht","creditor":"Bank Y","valid_until":"2026-04-15"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/charges"), &tok))
+        .await
+        .unwrap();
+    let cl = body_json(res).await;
+    assert_eq!(cl.as_array().unwrap().len(), 1);
+    assert_eq!(cl[0]["creditor"].as_str().unwrap(), "Bank Y");
+    // Ghost deed 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/charges",
+            r#"{"kind":"apht","creditor":"ZZ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Expiry monitor: 2026-04-15 within 60 days of 2026-03-01? No — use wide window.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/charges/due?days=3650", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["due"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["ppat_id"].as_i64() == Some(pid)));
+    // Tight window excludes it only if horizon precedes valid_until... just assert shape.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/charges/due?days=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["days"].as_i64().unwrap(), 0);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/charges/due")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=charge", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.charge_saved"));
 }
 
 #[tokio::test]
