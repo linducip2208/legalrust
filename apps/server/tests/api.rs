@@ -6916,6 +6916,125 @@ async fn compliance_alerts_feed() {
 }
 
 #[tokio::test]
+async fn matter_checklist_and_scorecard() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mclsc@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Ghost matter 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/999999/checklist",
+            r#"{"item":"Butir hantu"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/checklist"),
+            r#"{"item":"Verifikasi identitas"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/checklist/{cid}/toggle"),
+            r#"{"done":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/checklist"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["done"] == true));
+    // Cross-org isolation: item invisible elsewhere.
+    let tok2 = reg(&a, "mclsc2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/checklist"), &tok2))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Scorecard: empty org yields nulls; seeded data yields percentages.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/scorecard", &tok2))
+        .await
+        .unwrap();
+    let sc = body_json(res).await;
+    assert!(sc["overall"].is_null());
+    assert!(sc["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|p| p["value"].is_null()));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/trainings",
+            r#"{"title":"TT"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "completed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/trainings/{tid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/scorecard", &tok))
+        .await
+        .unwrap();
+    let sc = body_json(res).await;
+    let tr = sc["parts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["area"] == "trainings_completed_pct")
+        .unwrap();
+    assert_eq!(tr["value"].as_f64().unwrap(), 100.0);
+    assert!(sc["overall"].as_f64().unwrap() >= 0.0);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/compliance/scorecard")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn control_tests_and_audit_plans() {
     use tower::ServiceExt;
     let a = app();
@@ -9164,6 +9283,12 @@ async fn uib_app_has_approvals_ui() {
         "aplan-add",
         "aplan-reload",
         "aplan-list",
+        "mcl-matter",
+        "mcl-add",
+        "mcl-reload",
+        "mcl-list",
+        "score-reload",
+        "score-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

@@ -4333,19 +4333,27 @@
   "id": "F-D11-032",
   "domain": "D11",
   "title": "Matter-level compliance checklist",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0042_matter_checklist.sql: matter_checklist_items table (FK matter CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped CRUD + toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/matters/{id}/checklist + toggle + delete (matter existence 404, RBAC)",
+   "apps/server/static/site.js: mclRefresh card (progres %) + hooks",
+   "apps/server/tests/api.rs: matter_checklist_and_scorecard e2e (ghost 404, cross-org 404)"
+  ],
+  "audit_note": "Wave 72: full lifecycle live; verified by test (361/0)."
  },
  {
   "id": "F-D11-033",
   "domain": "D11",
   "title": "Office compliance scorecard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/compliance/scorecard (5 ratios + overall, null when empty)",
+   "apps/server/static/site.js: scoreRefresh card + hooks",
+   "apps/server/tests/api.rs: null-on-empty + 100% after completion + 401"
+  ],
+  "audit_note": "Wave 72: pure derivation; verified by test (361/0)."
  },
  {
   "id": "F-D11-034",

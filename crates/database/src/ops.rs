@@ -326,6 +326,15 @@ pub struct AuditPlanRow {
     pub scope: String,
     pub status: String,
 }
+/// Matter-level compliance checklist item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChecklistRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub item: String,
+    pub done: bool,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1110,6 +1119,11 @@ pub trait OpsStore: Send + Sync {
     async fn aplan_list(&self, org: &str) -> Result<Vec<AuditPlanRow>, StoreError>;
     async fn aplan_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn aplan_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Matter-level compliance checklist.
+    async fn clist_add(&self, org: &str, matter_id: i64, item: &str) -> Result<i64, StoreError>;
+    async fn clist_list(&self, org: &str, matter_id: i64) -> Result<Vec<ChecklistRow>, StoreError>;
+    async fn clist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    async fn clist_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

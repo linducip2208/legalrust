@@ -64,6 +64,7 @@ struct Inner {
     controls: HashMap<i64, ControlRow>,
     ctests: HashMap<i64, ControlTestRow>,
     aplans: HashMap<i64, AuditPlanRow>,
+    clists: HashMap<i64, ChecklistRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2587,6 +2588,58 @@ impl OpsStore for MemoryOps {
         match m.aplans.get(&id) {
             Some(r) if r.org == org => {
                 m.aplans.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn clist_add(&self, org: &str, matter_id: i64, item: &str) -> Result<i64, StoreError> {
+        let item = item.trim();
+        if item.is_empty() || item.len() > 200 {
+            return Err(StoreError::Conflict("item".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.clists.insert(
+            id,
+            ChecklistRow {
+                id,
+                org: org.into(),
+                matter_id,
+                item: item.into(),
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn clist_list(&self, org: &str, matter_id: i64) -> Result<Vec<ChecklistRow>, StoreError> {
+        let mut v: Vec<ChecklistRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .clists
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn clist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .clists
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.done = done;
+        Ok(())
+    }
+    async fn clist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.clists.get(&id) {
+            Some(r) if r.org == org => {
+                m.clists.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

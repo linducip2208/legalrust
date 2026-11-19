@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 72: matter checklist + scorecard (main)
+- matter_checklist_items (0042) + scorecard derivasi + kartu + uji.
+- F-D11-032/033 PLANNED/NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 361/0; registry ~22.6 (106 IMPLEMENTED); mean ~23.0 (104 v).
+
 ## Done wave 71: control tests + audit plans (main)
 - control_tests (0040) + jadwal jatuh tempo + audit_plans (0041) + kartu + uji.
 - F-D11-028/025 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 360/0; registry ~22.5 (104 IMPLEMENTED); mean 23.0 (102 v).

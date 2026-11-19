@@ -2975,6 +2975,63 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn clist_add(&self, org: &str, matter_id: i64, item: &str) -> Result<i64, StoreError> {
+        let item = item.trim();
+        if item.is_empty() || item.len() > 200 {
+            return Err(StoreError::Conflict("item".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_checklist_items (org_id, matter_id, item) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(item)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn clist_list(&self, org: &str, matter_id: i64) -> Result<Vec<ChecklistRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, matter_id, item, done FROM matter_checklist_items WHERE org_id=? AND matter_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).bind(matter_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ChecklistRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                item: x.get::<String, _>("item"),
+                done: x.get::<i8, _>("done") != 0,
+            })
+            .collect())
+    }
+    async fn clist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE matter_checklist_items SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn clist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_checklist_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

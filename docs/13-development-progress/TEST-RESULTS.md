@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 72: checklist + scorecard (main)
+- Isolation + null-safety + 401; workspace **361 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 71: control tests + plans (main)
 - Due math + chains + guards; workspace **360 passed, 0 failed**.
 

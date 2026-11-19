@@ -2360,6 +2360,59 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     aplanRefresh();
   });
   on('aplan-reload', 'click', aplanRefresh);
+  /* ---- compliance: matter checklist ---- */
+  async function mclRefresh() {
+    var box = document.getElementById('mcl-list');
+    if (!box) return;
+    var mid = pval('mcl-matter');
+    if (!mid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID perkara lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(mid) + '/checklist');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var done = v.filter(function (x) { return x.done; }).length;
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.item) + '</td><td>' + (x.done ? '<span class="badge bg-green-lt">ya</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td>'
+        + '<td><button class="btn btn-sm" data-mcl-tg="' + x.id + '" data-mcl-done="' + (!x.done) + '" type="button">Ubah</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-mcl-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada butir.</td></tr>';
+    if (v.length) box.innerHTML += '<tr><td colspan="4" class="text-muted">Progres: ' + done + '/' + v.length + ' selesai.</td></tr>';
+    qsa('[data-mcl-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/checklist/' + b.getAttribute('data-mcl-tg') + '/toggle', { done: b.getAttribute('data-mcl-done') === 'true' });
+        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mcl-msg', '');
+        mclRefresh();
+      });
+    });
+    qsa('[data-mcl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/checklist/' + b.getAttribute('data-mcl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mcl-msg', '');
+        mclRefresh();
+      });
+    });
+  }
+  on('mcl-add', 'click', async function () {
+    if (!pval('mcl-matter') || !pval('mcl-item')) { pmsg('mcl-msg', 'Isi ID perkara dan butir.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-matter')) + '/checklist', { item: pval('mcl-item') });
+    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mcl-msg', '');
+    mclRefresh();
+  });
+  on('mcl-reload', 'click', mclRefresh);
+  /* ---- compliance: scorecard ---- */
+  async function scoreRefresh() {
+    var box = document.getElementById('score-list');
+    var sum = document.getElementById('score-sum');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/scorecard');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Skor keseluruhan: ' + (v.overall === null || v.overall === undefined ? '—' : v.overall + '%');
+    box.innerHTML = (v.parts || []).map(function (x) {
+      return '<tr><td>' + esc(x.area) + '</td><td>' + (x.value === null || x.value === undefined ? '<span class="text-muted">—</span>' : '<strong>' + x.value + '%</strong>') + '</td></tr>';
+    }).join('');
+  }
+  on('score-reload', 'click', scoreRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2385,7 +2438,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2446,6 +2499,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ctdueRefresh();
   ctestRefresh();
   aplanRefresh();
+  mclRefresh();
+  scoreRefresh();
   postureRefresh();
   alertsRefresh();
   whDlRefresh();
