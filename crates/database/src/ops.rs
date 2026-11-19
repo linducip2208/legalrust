@@ -378,6 +378,15 @@ pub struct PortalRatingRow {
     pub score: i64,
     pub comment: String,
 }
+/// Portal usage event (login/view/download/upload/message/rating/request).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PortalEventRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub kind: String,
+    pub ref_name: String,
+}
 /// Satisfaction survey response (score 1-10).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSurveyRow {
@@ -2271,6 +2280,19 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: Option<i64>,
     ) -> Result<Vec<PortalRatingRow>, StoreError>;
+    /// Portal usage events (beacon log + per-client/org aggregates).
+    async fn pev_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        ref_name: &str,
+    ) -> Result<i64, StoreError>;
+    async fn pev_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalEventRow>, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

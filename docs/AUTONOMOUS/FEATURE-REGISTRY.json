@@ -8270,10 +8270,15 @@
   "id": "F-D19-033",
   "domain": "D19",
   "title": "Portal usage analytics",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0106: portal_events table (kind check, forward-only)",
+   "ops.rs + memory + mysql: pev add/list",
+   "lib.rs: beacon + own/staff aggregates, login auto-beacon (best-effort)",
+   "site.js: view beacon + stats UI (portal card)",
+   "tests: portal_usage_analytics e2e (kinds, isolation, staff aggregate)"
+  ],
+  "audit_note": "Wave 170: usage analytics live. Verified by test (460/0)."
  },
  {
   "id": "F-D19-034",

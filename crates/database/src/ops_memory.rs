@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    pevs: HashMap<i64, PortalEventRow>,
     prats: HashMap<i64, PortalRatingRow>,
     ccprs: HashMap<i64, ClientCopyReqRow>,
     cmsgs: HashMap<i64, ClientMessageRow>,
@@ -275,6 +276,18 @@ fn prat_ok(kind: &str, score: i64) -> Result<String, StoreError> {
     }
     if !(1..=5).contains(&score) {
         return Err(StoreError::Conflict("score 1-5".into()));
+    }
+    Ok(k)
+}
+
+fn pev_ok(kind: &str) -> Result<String, StoreError> {
+    let k = kind.trim().to_lowercase();
+    if ![
+        "login", "view", "download", "upload", "message", "rating", "request",
+    ]
+    .contains(&k.as_str())
+    {
+        return Err(StoreError::Conflict("kind".into()));
     }
     Ok(k)
 }
@@ -3613,6 +3626,49 @@ impl OpsStore for MemoryOps {
             .cloned()
             .collect();
         v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn pev_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        ref_name: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || ref_name.len() > 120 {
+            return Err(StoreError::Conflict("event".into()));
+        }
+        let kind = pev_ok(kind)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.pevs.insert(
+            id,
+            PortalEventRow {
+                id,
+                org: org.into(),
+                client_id,
+                kind,
+                ref_name: ref_name.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn pev_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalEventRow>, StoreError> {
+        let mut v: Vec<PortalEventRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pevs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(500);
         Ok(v)
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {

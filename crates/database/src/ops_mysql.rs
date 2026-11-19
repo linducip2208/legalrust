@@ -3351,6 +3351,59 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn pev_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        ref_name: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || ref_name.len() > 120 {
+            return Err(StoreError::Conflict("event".into()));
+        }
+        let k = kind.trim().to_lowercase();
+        if ![
+            "login", "view", "download", "upload", "message", "rating", "request",
+        ]
+        .contains(&k.as_str())
+        {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO portal_events (org_id, client_id, kind, ref_name) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(&k)
+        .bind(ref_name.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn pev_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalEventRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, kind, ref_name FROM portal_events WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, kind, ref_name FROM portal_events WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| PortalEventRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                ref_name: x.get::<String, _>("ref_name"),
+            })
+            .collect())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

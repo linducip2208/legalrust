@@ -5714,6 +5714,7 @@ async fn crm_app_contains_crm_ids() {
         "ptl-rate",
         "ptl-notice",
         "ptl-sla",
+        "ptl-stats",
         "aria-live",
         "aria-label",
         "cdrq-list",
@@ -11693,6 +11694,79 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_usage_analytics() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal15@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p15@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Bad kind rejected; view beacon counted; login auto-logged.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/events",
+            r#"{"kind":"hack"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/events",
+            r#"{"kind":"view","ref_name":"dashboard"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/analytics", &ptok))
+        .await
+        .unwrap();
+    let av = body_json(res).await;
+    assert!(av["events"].as_i64().unwrap() >= 2);
+    assert_eq!(av["by_kind"]["login"].as_i64().unwrap(), 1);
+    assert_eq!(av["by_kind"]["view"].as_i64().unwrap(), 1);
+    // Staff org aggregate sees the same rows; portal of nobody else leaks in.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/analytics/portal", &tok))
+        .await
+        .unwrap();
+    let ov = body_json(res).await;
+    assert_eq!(ov["by_kind"]["login"].as_i64().unwrap(), 1);
+    assert_eq!(ov["by_client"].as_object().unwrap().len(), 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/analytics", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

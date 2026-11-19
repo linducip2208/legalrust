@@ -3621,9 +3621,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var r = await fetch('/api/v1/portal/sla', { headers: ptlH() });
     if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
     var v = await r.json().catch(function () { return null; });
-    if (out && v) out.innerHTML = v.breached
-      ? '<span class="badge bg-red-lt">' + v.overdue.length + ' lewat batas</span> ' + v.overdue.map(function (x) { return '<span class="badge">' + esc(x.task) + ' · ' + esc(x.due) + '</span>'; }).join(' ')
-      : '<span class="badge bg-green-lt">tepat waktu</span> · ' + v.on_track + ' tugas jalan, ' + (v.due_soon || []).length + ' dekat batas.';
+    if (out && v) {
+      fetch('/api/v1/portal/events', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ kind: 'view', ref_name: 'sla' }) });
+      out.innerHTML = v.breached
+        ? '<span class="badge bg-red-lt">' + v.overdue.length + ' lewat batas</span> ' + v.overdue.map(function (x) { return '<span class="badge">' + esc(x.task) + ' · ' + esc(x.due) + '</span>'; }).join(' ')
+        : '<span class="badge bg-green-lt">tepat waktu</span> · ' + v.on_track + ' tugas jalan, ' + (v.due_soon || []).length + ' dekat batas.';
+    }
+  });
+  on('ptl-stats', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/analytics', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.innerHTML = 'Aktivitas: ' + v.events + ' peristiwa · ' + Object.keys(v.by_kind || {}).map(function (k) { return k + ' ' + v.by_kind[k]; }).join(', ');
   });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
