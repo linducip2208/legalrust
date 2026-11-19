@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 79: visitor log + announcements (main)
+- visitors + announcements (0049, nomor dipakai ulang setelah 0049 lama ditarik pre-push) + kartu + uji.
+- F-D12-037/032 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 368/0; registry ~23.3 (120 IMPLEMENTED); mean ~24.0 (118 v).
+
 ## Done wave 78: inventory + meterai usage (main)
 - inventory_items + meterai_usage (0048, atomic decrement Tx) + kartu keu + uji.
 - F-D12-017/018 NOT_STARTED/PLANNED->IMPLEMENTED (~73.4 verified). Workspace 367/0; registry ~23.2 (118 IMPLEMENTED); mean 24.0 (116 v). Recovery: 0048 initially failed live on duplicate FK fk_inv_org (success=0, no tables); fixed local-only + cleared failed row; 48 success=1 live.

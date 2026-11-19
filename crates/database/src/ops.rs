@@ -436,6 +436,27 @@ pub struct UsageRow {
     pub need: String,
     pub used_on: String,
 }
+/// Office visitor log entry (check-in -> check-out).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VisitorRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub need: String,
+    pub check_in: String,
+    pub check_out: String,
+    pub status: String,
+}
+/// Office announcement (pinned board).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnnouncementRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub body: String,
+    pub pinned: bool,
+    pub active: bool,
+}
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuotationItemRow {
@@ -1356,6 +1377,35 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn stock_use_list(&self, org: &str, item_id: i64) -> Result<Vec<UsageRow>, StoreError>;
     async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office visitor log.
+    async fn visitor_checkin(
+        &self,
+        org: &str,
+        name: &str,
+        need: &str,
+        check_in: &str,
+    ) -> Result<i64, StoreError>;
+    async fn visitor_list(&self, org: &str) -> Result<Vec<VisitorRow>, StoreError>;
+    async fn visitor_checkout(&self, org: &str, id: i64, check_out: &str)
+        -> Result<(), StoreError>;
+    async fn visitor_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office announcement board.
+    async fn announce_create(
+        &self,
+        org: &str,
+        title: &str,
+        body: &str,
+        pinned: bool,
+    ) -> Result<i64, StoreError>;
+    async fn announce_list(&self, org: &str) -> Result<Vec<AnnouncementRow>, StoreError>;
+    async fn announce_set(
+        &self,
+        org: &str,
+        id: i64,
+        pinned: Option<bool>,
+        active: Option<bool>,
+    ) -> Result<(), StoreError>;
+    async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

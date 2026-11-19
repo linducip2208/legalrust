@@ -5418,6 +5418,10 @@ async fn crm_app_contains_crm_ids() {
         "queue-date",
         "queue-reload",
         "queue-list",
+        "vis-name",
+        "vis-add",
+        "vis-reload",
+        "vis-list",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
@@ -5468,6 +5472,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "rep-msg",
         "keu-csv",
         "keu-msg",
+        "ann-title",
+        "ann-add",
+        "ann-reload",
+        "ann-list",
         "price-code",
         "price-add",
         "price-reload",
@@ -6952,6 +6960,147 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn visitors_and_announcements() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "visann@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/visitors",
+            r#"{"name":"BB","check_in":"2026-03-01 09:00"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Bad slot rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/visitors",
+            r#"{"name":"Budi","check_in":"2026-13-99 99:99"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/visitors",
+            r#"{"name":"Budi Santoso","need":"Konsultasi AJB","check_in":"2026-03-01 09:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    // Double checkout rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/visitors/{vid}/checkout"),
+            r#"{"check_out":"2026-03-01 10:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/visitors/{vid}/checkout"),
+            r#"{"check_out":"2026-03-01 11:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/visitors", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(vid) && r["status"] == "out"));
+    // Announcements: pin ordering + archive hides.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/announcements",
+            r#"{"title":"Libur","body":"Tutup Jumat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/announcements",
+            r#"{"title":"Apel","body":"Senin pagi","pinned":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/announcements", &tok))
+        .await
+        .unwrap();
+    let al = body_json(res).await;
+    assert_eq!(al.as_array().unwrap().len(), 2);
+    assert!(al.as_array().unwrap()[0]["pinned"].as_bool().unwrap());
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/announcements/{aid}"),
+            r#"{"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/announcements/{aid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=visitor", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.visitor_checkin"));
 }
 
 #[tokio::test]

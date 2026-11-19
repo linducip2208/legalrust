@@ -4791,10 +4791,15 @@
   "id": "F-D12-032",
   "domain": "D12",
   "title": "Office announcement board",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0049_visitors_announcements.sql: announcements table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + pin/active toggles, pinned-first order",
+   "apps/server/src/lib.rs: POST/GET /api/v1/announcements + set + delete (RBAC, audit)",
+   "apps/server/static/site.js: annRefresh card Pengumuman in ringkas tab + hooks",
+   "apps/server/tests/api.rs: pin order + archive + Delete-gate asserted"
+  ],
+  "audit_note": "Wave 79: verified by test (368/0)."
  },
  {
   "id": "F-D12-033",
@@ -4838,10 +4843,15 @@
   "id": "F-D12-037",
   "domain": "D12",
   "title": "Office visitor log",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0049_visitors_announcements.sql: visitors table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: checkin/list/checkout/delete, strict slot format",
+   "apps/server/src/lib.rs: POST/GET /api/v1/visitors + checkout + delete (RBAC, audit)",
+   "apps/server/static/site.js: visRefresh card Buku tamu in klien tab + hooks",
+   "apps/server/tests/api.rs: visitors_and_announcements e2e (bad slot 409, double checkout 409)"
+  ],
+  "audit_note": "Wave 79: full lifecycle live; verified by test (368/0)."
  },
  {
   "id": "F-D12-038",

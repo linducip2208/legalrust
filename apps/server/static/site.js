@@ -1564,10 +1564,97 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('appt-reload', 'click', function () { apptRefresh(); queueRefresh(); });
   on('queue-reload', 'click', queueRefresh);
+  /* ---- office: visitor log ---- */
+  async function visRefresh() {
+    var box = document.getElementById('vis-list');
+    if (!box) return;
+    var v = await j('/api/v1/visitors');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'in' ? '<button class="btn btn-sm" data-vis-out="' + x.id + '" type="button">Check-out</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-vis-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + ' <span class="text-muted">(' + esc(x.need) + ')</span></td><td>' + esc(x.check_in) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada tamu.</td></tr>';
+    qsa('[data-vis-out]', function (b) {
+      b.addEventListener('click', async function () {
+        var now = new Date();
+        var pad = function (n) { return (n < 10 ? '0' : '') + n; };
+        var stamp = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+        var r = await ppost('/api/v1/visitors/' + b.getAttribute('data-vis-out') + '/checkout', { check_out: stamp });
+        if (!r.ok) { pmsg('vis-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('vis-msg', '');
+        visRefresh();
+      });
+    });
+    qsa('[data-vis-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/visitors/' + b.getAttribute('data-vis-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('vis-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('vis-msg', '');
+        visRefresh();
+      });
+    });
+  }
+  on('vis-add', 'click', async function () {
+    if (!pval('vis-name') || !pval('vis-in')) { pmsg('vis-msg', 'Isi nama dan waktu masuk (YYYY-MM-DD HH:MM).'); return; }
+    var r = await ppost('/api/v1/visitors', { name: pval('vis-name'), need: pval('vis-need') || '', check_in: pval('vis-in') });
+    if (!r.ok) { pmsg('vis-msg', 'Gagal (' + r.status + '). Format: YYYY-MM-DD HH:MM.'); return; }
+    pmsg('vis-msg', '');
+    visRefresh();
+  });
+  on('vis-reload', 'click', visRefresh);
+  /* ---- office: announcements ---- */
+  async function annRefresh() {
+    var box = document.getElementById('ann-list');
+    if (!box) return;
+    var v = await j('/api/v1/announcements');
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    var act = v.filter(function (x) { return x.active; });
+    box.innerHTML = act.map(function (x) {
+      return '<div class="card mt-2"><div class="card-body"><h4>' + (x.pinned ? '📌 ' : '') + esc(x.title) + '</h4><p>' + esc(x.body) + '</p>'
+        + '<div class="mkt-row"><button class="btn btn-sm" data-ann-pin="' + x.id + '" data-ann-on="' + (!x.pinned) + '" type="button">' + (x.pinned ? 'Lepas pin' : 'Pin') + '</button> '
+        + '<button class="btn btn-sm" data-ann-hide="' + x.id + '" type="button">Arsipkan</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-ann-del="' + x.id + '" type="button">Hapus</button></div></div></div>';
+    }).join('') || '<p class="text-muted">Belum ada pengumuman aktif.</p>';
+    qsa('[data-ann-pin]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/announcements/' + b.getAttribute('data-ann-pin'), { pinned: b.getAttribute('data-ann-on') === 'true' });
+        if (!r.ok) { pmsg('ann-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ann-msg', '');
+        annRefresh();
+      });
+    });
+    qsa('[data-ann-hide]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/announcements/' + b.getAttribute('data-ann-hide'), { active: false });
+        if (!r.ok) { pmsg('ann-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ann-msg', '');
+        annRefresh();
+      });
+    });
+    qsa('[data-ann-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/announcements/' + b.getAttribute('data-ann-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ann-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ann-msg', '');
+        annRefresh();
+      });
+    });
+  }
+  on('ann-add', 'click', async function () {
+    if (!pval('ann-title')) { pmsg('ann-msg', 'Isi judul pengumuman.'); return; }
+    var r = await ppost('/api/v1/announcements', { title: pval('ann-title'), body: pval('ann-body') || '', pinned: false });
+    if (!r.ok) { pmsg('ann-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ann-msg', '');
+    annRefresh();
+  });
+  on('ann-reload', 'click', annRefresh);
   crmTags();
   crmRecent();
   apptRefresh();
   queueRefresh();
+  visRefresh();
+  annRefresh();
   /* ---- audit viewer + jobs queue (additive) ---- */
   async function dlCsv(url, filename, msgId) {
     var r = await fetch(url, { headers: H });

@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 79: visitors + announcements (main)
+- Slot guards + pin order + gates; workspace **368 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 78: inventory (main)
 - Oversell guards + Tx + flags; workspace **367 passed, 0 failed**.
 

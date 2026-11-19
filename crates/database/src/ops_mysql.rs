@@ -3948,6 +3948,185 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn visitor_checkin(
+        &self,
+        org: &str,
+        name: &str,
+        need: &str,
+        check_in: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if need.len() > 255 || check_in.len() > 16 {
+            return Err(StoreError::Conflict("need/check_in".into()));
+        }
+        if chrono::NaiveDateTime::parse_from_str(check_in.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("check_in YYYY-MM-DD HH:MM".into()));
+        }
+        let nd: String = need.trim().chars().take(255).collect();
+        let r = sqlx::query("INSERT INTO visitors (org_id, name, need, check_in) VALUES (?,?,?,?)")
+            .bind(org)
+            .bind(name)
+            .bind(nd)
+            .bind(check_in.trim())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn visitor_list(&self, org: &str) -> Result<Vec<VisitorRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, need, check_in, check_out, status FROM visitors WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| VisitorRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                need: x.get::<String, _>("need"),
+                check_in: x.get::<String, _>("check_in"),
+                check_out: x.get::<String, _>("check_out"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn visitor_checkout(
+        &self,
+        org: &str,
+        id: i64,
+        check_out: &str,
+    ) -> Result<(), StoreError> {
+        if chrono::NaiveDateTime::parse_from_str(check_out.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("check_out YYYY-MM-DD HH:MM".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM visitors WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("in") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("already out".into())
+            });
+        }
+        sqlx::query("UPDATE visitors SET status='out', check_out=? WHERE id=? AND org_id=?")
+            .bind(check_out.trim())
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn visitor_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM visitors WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn announce_create(
+        &self,
+        org: &str,
+        title: &str,
+        body: &str,
+        pinned: bool,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.len() > 5000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO announcements (org_id, title, body, pinned) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(title)
+                .bind(body.trim())
+                .bind(if pinned { 1i8 } else { 0i8 })
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn announce_list(&self, org: &str) -> Result<Vec<AnnouncementRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, body, pinned, active FROM announcements WHERE org_id=? ORDER BY pinned DESC, id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AnnouncementRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                body: x.get::<String, _>("body"),
+                pinned: x.get::<i8, _>("pinned") != 0,
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn announce_set(
+        &self,
+        org: &str,
+        id: i64,
+        pinned: Option<bool>,
+        active: Option<bool>,
+    ) -> Result<(), StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM announcements WHERE id=?")
+            .bind(id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        if let Some(p) = pinned {
+            sqlx::query("UPDATE announcements SET pinned=? WHERE id=? AND org_id=?")
+                .bind(if p { 1i8 } else { 0i8 })
+                .bind(id as u64)
+                .bind(org)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        }
+        if let Some(a) = active {
+            sqlx::query("UPDATE announcements SET active=? WHERE id=? AND org_id=?")
+                .bind(if a { 1i8 } else { 0i8 })
+                .bind(id as u64)
+                .bind(org)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        }
+        Ok(())
+    }
+    async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM announcements WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

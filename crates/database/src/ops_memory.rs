@@ -76,6 +76,8 @@ struct Inner {
     advances: HashMap<i64, AdvanceRow>,
     inventory: HashMap<i64, InventoryRow>,
     stock_use: HashMap<i64, UsageRow>,
+    visitors: HashMap<i64, VisitorRow>,
+    announces: HashMap<i64, AnnouncementRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3393,6 +3395,157 @@ impl OpsStore for MemoryOps {
         match m.stock_use.get(&id) {
             Some(r) if r.org == org => {
                 m.stock_use.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn visitor_checkin(
+        &self,
+        org: &str,
+        name: &str,
+        need: &str,
+        check_in: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if need.len() > 255 || check_in.len() > 16 {
+            return Err(StoreError::Conflict("need/check_in".into()));
+        }
+        if chrono::NaiveDateTime::parse_from_str(check_in.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("check_in YYYY-MM-DD HH:MM".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.visitors.insert(
+            id,
+            VisitorRow {
+                id,
+                org: org.into(),
+                name: name.into(),
+                need: need.trim().chars().take(255).collect(),
+                check_in: check_in.trim().into(),
+                check_out: String::new(),
+                status: "in".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn visitor_list(&self, org: &str) -> Result<Vec<VisitorRow>, StoreError> {
+        let mut v: Vec<VisitorRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .visitors
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn visitor_checkout(
+        &self,
+        org: &str,
+        id: i64,
+        check_out: &str,
+    ) -> Result<(), StoreError> {
+        if chrono::NaiveDateTime::parse_from_str(check_out.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("check_out YYYY-MM-DD HH:MM".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .visitors
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "in" {
+            return Err(StoreError::Conflict("already out".into()));
+        }
+        r.status = "out".into();
+        r.check_out = check_out.trim().into();
+        Ok(())
+    }
+    async fn visitor_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.visitors.get(&id) {
+            Some(r) if r.org == org => {
+                m.visitors.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn announce_create(
+        &self,
+        org: &str,
+        title: &str,
+        body: &str,
+        pinned: bool,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.len() > 5000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.announces.insert(
+            id,
+            AnnouncementRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                body: body.trim().into(),
+                pinned,
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn announce_list(&self, org: &str) -> Result<Vec<AnnouncementRow>, StoreError> {
+        let mut v: Vec<AnnouncementRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .announces
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| b.pinned.cmp(&a.pinned).then(b.id.cmp(&a.id)));
+        Ok(v)
+    }
+    async fn announce_set(
+        &self,
+        org: &str,
+        id: i64,
+        pinned: Option<bool>,
+        active: Option<bool>,
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .announces
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if let Some(p) = pinned {
+            r.pinned = p;
+        }
+        if let Some(a) = active {
+            r.active = a;
+        }
+        Ok(())
+    }
+    async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.announces.get(&id) {
+            Some(r) if r.org == org => {
+                m.announces.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

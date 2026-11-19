@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 79: visitors + announcements (main)
+- Buku tamu + papan pengumuman; workspace **368 passed, 0 failed**; F-D12-037/032 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 78: inventory (main)
 - Stok atomik + low flag; workspace **367 passed, 0 failed**; F-D12-017/018 IMPLEMENTED.
 
