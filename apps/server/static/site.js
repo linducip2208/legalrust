@@ -1194,6 +1194,14 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
   on('rep-deadlines', 'click', function () { dlCsv('/api/v1/reports/deadline-compliance.csv', 'deadline-compliance.csv', 'rep-msg'); });
   on('rep-posture', 'click', function () { dlCsv('/api/v1/reports/compliance-posture.csv', 'compliance-posture.csv', 'rep-msg'); });
+  on('rep-exec', 'click', async function () {
+    var box = document.getElementById('exec-sum');
+    if (!box) return;
+    var v = await j('/api/v1/reports/executive-summary');
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    var rows = [['Klien', v.clients], ['Perkara', v.matters], ['Akta', v.deeds], ['Invoice terbuka', v.open_invoices], ['Sisa tagihan', fmtRp(v.open_balance)], ['Persetujuan pending', v.pending_approvals], ['Obligasi terbuka', v.open_obligations], ['Tugas bertenggat', v.tasks_due_tracked], ['Tugas lewat tenggat', v.tasks_overdue]];
+    box.innerHTML = '<div class="table-responsive"><table class="table card-table"><tbody>' + rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td><strong>' + r[1] + '</strong></td></tr>'; }).join('') + '</tbody></table></div>';
+  });
   on('keu-csv', 'click', function () { dlCsv('/api/v1/reports/matters-csv', 'matters.csv', 'keu-msg'); });
   on('ar-csv', 'click', function () { dlCsv('/api/v1/reports/ar-aging.csv', 'ar-aging.csv', 'ar-msg'); });
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals-bottleneck.csv', 'approvals-bottleneck.csv', 'ar-msg'); });

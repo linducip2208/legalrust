@@ -7746,10 +7746,13 @@
   "id": "F-D20-039",
   "domain": "D20",
   "title": "Executive summary pack",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/executive-summary (View + 9 metrik lintas modul)",
+   "apps/server/static/site.js: rep-exec card render + ringkas hooks",
+   "apps/server/tests/api.rs: executive_summary_aggregates_modules + needles"
+  ],
+  "audit_note": "Wave 51: snapshot eksekutif live; board theme/export belum ada."
  },
  {
   "id": "F-D20-040",

@@ -5411,6 +5411,7 @@ async fn uib_app_has_audit_jobs_ui() {
         "rep-matters",
         "rep-deadlines",
         "rep-posture",
+        "rep-exec",
         "rep-msg",
         "keu-csv",
         "keu-msg",
@@ -6855,6 +6856,41 @@ async fn trust_csv_export_returns_ledger() {
         .unwrap()
         .iter()
         .any(|e| e["action"] == "report.trust_csv_exported"));
+}
+
+#[tokio::test]
+async fn executive_summary_aggregates_modules() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "execsum@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let _ = mk_invoice(&a, &tok, mid, 500000).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/executive-summary", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    assert!(j["matters"].as_i64().unwrap() >= 1);
+    assert!(j["open_invoices"].as_i64().unwrap() >= 1);
+    assert_eq!(j["open_balance"].as_i64().unwrap(), 500000);
+    assert!(j.get("clients").is_some());
+    assert!(j.get("deeds").is_some());
+    assert!(j.get("pending_approvals").is_some());
+    assert!(j.get("tasks_overdue").is_some());
+    // Unauthorized without token.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/executive-summary")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
