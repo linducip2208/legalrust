@@ -1709,6 +1709,173 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cchk_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if !matches!(kind, "onboarding" | "offboarding") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_checklists (org_id, client_id, kind, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(kind)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cchk_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientCheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, kind, status, note FROM client_checklists WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientCheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cchk_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<(String, String)> =
+            sqlx::query("SELECT kind, status FROM client_checklists WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| (x.get::<String, _>("kind"), x.get::<String, _>("status")));
+        let (kind, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (kind.as_str(), status.as_str(), to),
+            (_, "open", "in_progress")
+                | (_, "in_progress", "done")
+                | ("offboarding", "done", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_checklists SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cchk_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_checklists WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cchit_add(
+        &self,
+        org: &str,
+        checklist_id: i64,
+        label: &str,
+    ) -> Result<i64, StoreError> {
+        let label = label.trim();
+        if label.len() < 2 || label.len() > 200 {
+            return Err(StoreError::Conflict("label".into()));
+        }
+        let own: Option<u64> =
+            sqlx::query("SELECT id FROM client_checklists WHERE id=? AND org_id=?")
+                .bind(checklist_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        if own.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_check_items (org_id, checklist_id, label) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(checklist_id as u64)
+        .bind(label)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cchit_list(
+        &self,
+        org: &str,
+        checklist_id: i64,
+    ) -> Result<Vec<ClientCheckItemRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, checklist_id, label, done FROM client_check_items WHERE org_id=? AND checklist_id=? ORDER BY id ASC LIMIT 100")
+            .bind(org).bind(checklist_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientCheckItemRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                checklist_id: x.get::<u64, _>("checklist_id") as i64,
+                label: x.get::<String, _>("label"),
+                done: x.get::<u8, _>("done") != 0,
+            })
+            .collect())
+    }
+    async fn cchit_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE client_check_items SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cchit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_check_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

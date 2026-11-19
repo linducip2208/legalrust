@@ -176,6 +176,25 @@ pub struct ClientSegRow {
     pub client_id: i64,
     pub tag: String,
 }
+/// Client onboarding/offboarding checklist.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientCheckRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub kind: String,
+    pub status: String,
+    pub note: String,
+}
+/// Checklist item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientCheckItemRow {
+    pub id: i64,
+    pub org: String,
+    pub checklist_id: i64,
+    pub label: String,
+    pub done: bool,
+}
 /// Document metadata value (tags = repeated rows on tag-kind fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocMetaRow {
@@ -1701,6 +1720,27 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientSegRow>, StoreError>;
     async fn cseg_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Client onboarding/offboarding checklists + items.
+    async fn cchk_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cchk_list(&self, org: &str, client_id: i64)
+        -> Result<Vec<ClientCheckRow>, StoreError>;
+    async fn cchk_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cchk_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn cchit_add(&self, org: &str, checklist_id: i64, label: &str)
+        -> Result<i64, StoreError>;
+    async fn cchit_list(
+        &self,
+        org: &str,
+        checklist_id: i64,
+    ) -> Result<Vec<ClientCheckItemRow>, StoreError>;
+    async fn cchit_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    async fn cchit_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

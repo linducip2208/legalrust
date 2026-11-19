@@ -2844,6 +2844,71 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     csgRefresh();
   });
   on('csg-reload', 'click', csgRefresh);
+  /* ---- onboarding/offboarding checklists (F-D02-009/010) ---- */
+  var CKO_NEXT = { open: 'in_progress', in_progress: 'done', done: 'closed' };
+  async function ckoRefresh() {
+    var box = document.getElementById('cko-list');
+    if (!box) return;
+    if (!pval('cko-cid')) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID klien lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cko-cid')) + '/checklists');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = CKO_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-cko-next="' + x.id + '" data-cko-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">final</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-cko-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada checklist.</td></tr>';
+    qsa('[data-cko-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/checklists/' + b.getAttribute('data-cko-next') + '/status', { status: b.getAttribute('data-cko-to') });
+        if (!r.ok) { pmsg('cko-msg', 'Gagal (' + r.status + '). Onboarding berhenti di done; hanya offboarding ke closed.'); return; }
+        pmsg('cko-msg', '');
+        ckoRefresh();
+      });
+    });
+    qsa('[data-cko-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/checklists/' + b.getAttribute('data-cko-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cko-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cko-msg', '');
+        ckoRefresh();
+      });
+    });
+  }
+  on('cko-add', 'click', async function () {
+    if (!pval('cko-cid')) { pmsg('cko-msg', 'Isi ID klien.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cko-cid')) + '/checklists', { kind: pval('cko-kind') || 'onboarding' });
+    if (!r.ok) { pmsg('cko-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cko-msg', '');
+    ckoRefresh();
+  });
+  on('cko-reload', 'click', ckoRefresh);
+  async function ckiRefresh() {
+    var box = document.getElementById('cki-list');
+    if (!box) return;
+    if (!pval('cki-lid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID checklist.</td></tr>'; return; }
+    var v = await j('/api/v1/checklists/' + encodeURIComponent(pval('cki-lid')) + '/items');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.label) + '</td><td>' + (x.done ? 'ya' : 'tidak') + '</td><td><button class="btn btn-sm" data-cki-tgl="' + x.id + '" data-cki-to="' + (x.done ? '0' : '1') + '" type="button">Alih</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada butir.</td></tr>';
+    qsa('[data-cki-tgl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/check-items/' + b.getAttribute('data-cki-tgl') + '/toggle', { done: b.getAttribute('data-cki-to') === '1' });
+        if (!r.ok) { pmsg('cko-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cko-msg', '');
+        ckiRefresh();
+      });
+    });
+  }
+  on('cki-add', 'click', async function () {
+    if (!pval('cki-lid') || !pval('cki-label')) { pmsg('cko-msg', 'Isi ID checklist dan butir.'); return; }
+    var r = await ppost('/api/v1/checklists/' + encodeURIComponent(pval('cki-lid')) + '/items', { label: pval('cki-label') });
+    if (!r.ok) { pmsg('cko-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cko-msg', '');
+    ckiRefresh();
+  });
+  on('cki-reload', 'click', ckiRefresh);
   /* ---- office: appointments + queue board ---- */
   var APPT_NEXT = { scheduled: 'checked_in', checked_in: 'done' };
   async function apptRefresh() {
@@ -3652,6 +3717,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   crmRecent();
   chlRefresh();
   csgRefresh();
+  ckoRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

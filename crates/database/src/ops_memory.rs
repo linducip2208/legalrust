@@ -134,6 +134,8 @@ struct Inner {
     dmeta: HashMap<i64, DocMetaRow>,
     chlinks: HashMap<i64, ClientLinkRow>,
     csegs: HashMap<i64, ClientSegRow>,
+    cchks: HashMap<i64, ClientCheckRow>,
+    cchits: HashMap<i64, ClientCheckItemRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -1990,6 +1992,157 @@ impl OpsStore for MemoryOps {
         match m.csegs.get(&id) {
             Some(r) if r.org == org => {
                 m.csegs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cchk_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if !matches!(kind, "onboarding" | "offboarding") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cchks.insert(
+            id,
+            ClientCheckRow {
+                id,
+                org: org.into(),
+                client_id,
+                kind: kind.into(),
+                status: "open".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cchk_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientCheckRow>, StoreError> {
+        let mut v: Vec<ClientCheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cchks
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cchk_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cchks
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.kind.as_str(), r.status.as_str(), to),
+            (_, "open", "in_progress")
+                | (_, "in_progress", "done")
+                | ("offboarding", "done", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cchk_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cchks.get(&id) {
+            Some(r) if r.org == org => {
+                m.cchks.remove(&id);
+                let kids: Vec<i64> = m
+                    .cchits
+                    .iter()
+                    .filter(|(_, v)| v.checklist_id == id)
+                    .map(|(k, _)| *k)
+                    .collect();
+                for k in kids {
+                    m.cchits.remove(&k);
+                }
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cchit_add(
+        &self,
+        org: &str,
+        checklist_id: i64,
+        label: &str,
+    ) -> Result<i64, StoreError> {
+        let label = label.trim();
+        if label.len() < 2 || label.len() > 200 {
+            return Err(StoreError::Conflict("label".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.cchks.get(&checklist_id) {
+            Some(r) if r.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.cchits.insert(
+            id,
+            ClientCheckItemRow {
+                id,
+                org: org.into(),
+                checklist_id,
+                label: label.into(),
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn cchit_list(
+        &self,
+        org: &str,
+        checklist_id: i64,
+    ) -> Result<Vec<ClientCheckItemRow>, StoreError> {
+        let mut v: Vec<ClientCheckItemRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cchits
+            .values()
+            .filter(|r| r.org == org && r.checklist_id == checklist_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn cchit_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cchits.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.done = done;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cchit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cchits.get(&id) {
+            Some(r) if r.org == org => {
+                m.cchits.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

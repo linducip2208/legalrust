@@ -5613,6 +5613,12 @@ async fn crm_app_contains_crm_ids() {
         "csg-cid",
         "csg-add",
         "csg-list",
+        "cko-cid",
+        "cko-add",
+        "cko-reload",
+        "cko-list",
+        "cki-lid",
+        "cki-add",
         "up-file",
         "up-go",
         "up-prog",
@@ -10560,6 +10566,167 @@ async fn client_hierarchy_and_segments() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/client-links")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_onboarding_offboarding_checklists() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cchk@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Auditor cannot open (Create gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/checklists"),
+            r#"{"kind":"onboarding"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Bad kind rejected; ghost client 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/checklists"),
+            r#"{"kind":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/999999/checklists",
+            r#"{"kind":"onboarding"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Onboarding chain open->in_progress->done; done->closed rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/checklists"),
+            r#"{"kind":"onboarding","note":"KYC"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let oid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "done"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/checklists/{oid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "onboarding to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/checklists/{oid}/status"),
+            r#"{"status":"closed"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Offboarding goes all the way to closed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/checklists"),
+            r#"{"kind":"offboarding"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "done", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/checklists/{fid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "offboarding to {st}");
+    }
+    // Items: add/toggle/list; ghost list 404? (empty ok) — ghost add 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/checklists/{oid}/items"),
+            r#"{"label":"KTP terverifikasi"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/checklists/999999/items",
+            r#"{"label":"ZZ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/check-items/{iid}/toggle"),
+            r#"{"done":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/checklists/{oid}/items"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(iid) && r["done"] == true));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=client", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "client.checklist_opened"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/clients/{cli}/checklists"))
                 .body(Body::empty())
                 .unwrap(),
         )

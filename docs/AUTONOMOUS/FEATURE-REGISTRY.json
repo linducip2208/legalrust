@@ -479,19 +479,31 @@
   "id": "F-D02-009",
   "domain": "D02",
   "title": "Client onboarding checklist",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "onboarding open->in_progress->done chain; shared slice:",
+   "  - migrations/0086_client_checklists.sql: client_checklists + client_check_items (kind check, cascade, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: checklist CRUD + kind-scoped chains + item add/list/toggle/delete",
+   "  - apps/server/src/lib.rs: POST/GET checklists + status + delete + items + toggle (existence-verified, RBAC, audit)",
+   "  - apps/server/static/site.js: checklist card + item tracker + hooks (klien panel)",
+   "  - apps/server/tests/api.rs: onboarding_offboarding e2e (chains, kind-only closed, ghost/403/401)"
+  ],
+  "audit_note": "Wave 138: lifecycle checklists live. Verified by test (428/0)."
  },
  {
   "id": "F-D02-010",
   "domain": "D02",
   "title": "Client offboarding & file closure",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "offboarding through done->closed file closure; shared slice:",
+   "  - migrations/0086_client_checklists.sql: client_checklists + client_check_items (kind check, cascade, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: checklist CRUD + kind-scoped chains + item add/list/toggle/delete",
+   "  - apps/server/src/lib.rs: POST/GET checklists + status + delete + items + toggle (existence-verified, RBAC, audit)",
+   "  - apps/server/static/site.js: checklist card + item tracker + hooks (klien panel)",
+   "  - apps/server/tests/api.rs: onboarding_offboarding e2e (chains, kind-only closed, ghost/403/401)"
+  ],
+  "audit_note": "Wave 138: lifecycle checklists live. Verified by test (428/0)."
  },
  {
   "id": "F-D02-011",
