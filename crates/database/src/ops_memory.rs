@@ -259,6 +259,14 @@ fn crole_ok(role: &str) -> Result<String, StoreError> {
     Ok(r)
 }
 
+fn ann_aud_ok(audience: &str) -> Result<String, StoreError> {
+    let a = audience.trim().to_lowercase();
+    if !["staff", "all", "clients"].contains(&a.as_str()) {
+        return Err(StoreError::Conflict("audience".into()));
+    }
+    Ok(a)
+}
+
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
     let c = channel.trim().to_lowercase();
     if !["email", "phone", "visit", "newsletter"].contains(&c.as_str()) {
@@ -8004,6 +8012,7 @@ impl OpsStore for MemoryOps {
                 body: body.trim().into(),
                 pinned,
                 active: true,
+                audience: "staff".into(),
             },
         );
         Ok(id)
@@ -8041,6 +8050,22 @@ impl OpsStore for MemoryOps {
             r.active = a;
         }
         Ok(())
+    }
+    async fn announce_set_audience(
+        &self,
+        org: &str,
+        id: i64,
+        audience: &str,
+    ) -> Result<(), StoreError> {
+        let audience = ann_aud_ok(audience)?;
+        let mut m = self.inner.lock().unwrap();
+        match m.announces.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.audience = audience;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

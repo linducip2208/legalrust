@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 163: persetujuan portal (main)
+## 2026-11-19 AUDIT-1000 wave 164: pengumuman + pengingat (main)
+- Targeting + window; workspace **454 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 163: persetujuan portal (main)
 - Scoped prefs; workspace **453 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 162: salinan + lacak (main)

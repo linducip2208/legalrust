@@ -9000,7 +9000,7 @@ impl OpsStore for MysqlOps {
         Ok(r.last_insert_id() as i64)
     }
     async fn announce_list(&self, org: &str) -> Result<Vec<AnnouncementRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, title, body, pinned, active FROM announcements WHERE org_id=? ORDER BY pinned DESC, id DESC LIMIT 200")
+        let rows = sqlx::query("SELECT id, org_id, title, body, pinned, active, audience FROM announcements WHERE org_id=? ORDER BY pinned DESC, id DESC LIMIT 200")
             .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
@@ -9011,8 +9011,32 @@ impl OpsStore for MysqlOps {
                 body: x.get::<String, _>("body"),
                 pinned: x.get::<i8, _>("pinned") != 0,
                 active: x.get::<i8, _>("active") != 0,
+                audience: x.get::<String, _>("audience"),
             })
             .collect())
+    }
+    async fn announce_set_audience(
+        &self,
+        org: &str,
+        id: i64,
+        audience: &str,
+    ) -> Result<(), StoreError> {
+        let a = audience.trim().to_lowercase();
+        if !["staff", "all", "clients"].contains(&a.as_str()) {
+            return Err(StoreError::Conflict("audience".into()));
+        }
+        let n = sqlx::query("UPDATE announcements SET audience=? WHERE id=? AND org_id=?")
+            .bind(&a)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
     }
     async fn announce_set(
         &self,

@@ -8021,10 +8021,13 @@
   "id": "F-D19-012",
   "domain": "D19",
   "title": "Appointment reminders",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/reminders (own scheduled appts in N-day window)",
+   "site.js: pengingat button (portal card)",
+   "tests: near-in/far-out asserted, staff 403"
+  ],
+  "audit_note": "Wave 164: appointment reminders live. Verified by test (454/0)."
  },
  {
   "id": "F-D19-013",
@@ -8044,10 +8047,15 @@
   "id": "F-D19-014",
   "domain": "D19",
   "title": "Targeted portal announcements",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0104: audience column on announcements (forward-only, default staff)",
+   "ops.rs + memory + mysql: audience in rows + announce_set_audience (staff/all/clients)",
+   "lib.rs: audience route + handler; GET /portal/announcements filters active all/clients",
+   "site.js: staff target cycler + portal button",
+   "tests: portal_announcements_and_reminders e2e (staff-only hidden, bad audience 409)"
+  ],
+  "audit_note": "Wave 164: targeted announcements live. Verified by test (454/0)."
  },
  {
   "id": "F-D19-015",
@@ -8237,10 +8245,11 @@
   "id": "F-D19-032",
   "domain": "D19",
   "title": "Portal announcement targeting",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "Same audience mechanism as F-D19-014 (staff/all/clients targeting)."
+  ],
+  "audit_note": "Wave 164: targeting live. Verified by test (454/0)."
  },
  {
   "id": "F-D19-033",

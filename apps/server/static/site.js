@@ -3532,6 +3532,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.channel) + ': ' + (x.allowed ? 'ya' : 'tidak') + '</span>'; }).join(' ') || 'Belum ada preferensi.';
   });
+  on('ptl-ann', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/announcements', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + (x.pinned ? '📌 ' : '') + esc(x.title) + '</span>'; }).join(' ') || 'Tidak ada pengumuman.';
+  });
+  on('ptl-rem', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/reminders?upcoming_days=30', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.purpose) + ' · ' + esc(x.scheduled_at) + '</span>'; }).join(' ') || 'Tidak ada janji dekat.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');
@@ -3948,8 +3962,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       return '<div class="card mt-2"><div class="card-body"><h4>' + (x.pinned ? '📌 ' : '') + esc(x.title) + '</h4><p>' + esc(x.body) + '</p>'
         + '<div class="mkt-row"><button class="btn btn-sm" data-ann-pin="' + x.id + '" data-ann-on="' + (!x.pinned) + '" type="button">' + (x.pinned ? 'Lepas pin' : 'Pin') + '</button> '
         + '<button class="btn btn-sm" data-ann-hide="' + x.id + '" type="button">Arsipkan</button> '
-        + '<button class="btn btn-sm btn-outline-danger" data-ann-del="' + x.id + '" type="button">Hapus</button></div></div></div>';
+        + '<button class="btn btn-sm btn-outline-danger" data-ann-del="' + x.id + '" type="button">Hapus</button> '
+        + '<button class="btn btn-sm btn-outline-secondary" data-ann-aud="' + x.id + '" data-ann-cur="' + esc(x.audience || 'staff') + '" type="button">Target: ' + esc(x.audience || 'staff') + '</button></div></div></div>';
     }).join('') || '<p class="text-muted">Belum ada pengumuman aktif.</p>';
+    var ANN_NEXT = { staff: 'all', all: 'clients', clients: 'staff' };
+    qsa('[data-ann-aud]', function (b) {
+      b.addEventListener('click', async function () {
+        var nx = ANN_NEXT[b.getAttribute('data-ann-cur')] || 'staff';
+        var r = await ppost('/api/v1/announcements/' + b.getAttribute('data-ann-aud') + '/audience', { audience: nx });
+        if (!r.ok) { pmsg('ann-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ann-msg', '');
+        annRefresh();
+      });
+    });
     qsa('[data-ann-pin]', function (b) {
       b.addEventListener('click', async function () {
         var r = await ppost('/api/v1/announcements/' + b.getAttribute('data-ann-pin'), { pinned: b.getAttribute('data-ann-on') === 'true' });

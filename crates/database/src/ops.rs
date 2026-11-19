@@ -1124,6 +1124,7 @@ pub struct AnnouncementRow {
     pub body: String,
     pub pinned: bool,
     pub active: bool,
+    pub audience: String,
 }
 /// Down-payment (uang muka) receipt.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3038,6 +3039,12 @@ pub trait OpsStore: Send + Sync {
         id: i64,
         pinned: Option<bool>,
         active: Option<bool>,
+    ) -> Result<(), StoreError>;
+    async fn announce_set_audience(
+        &self,
+        org: &str,
+        id: i64,
+        audience: &str,
     ) -> Result<(), StoreError>;
     async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Down-payment (uang muka) receipts.
