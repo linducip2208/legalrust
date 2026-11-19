@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 95: kind-aware PPAT readiness (main)
 - GET /api/v1/ppat/{id}/readiness (hibah/tukar_menukar rules) + kartu + uji (tanpa migrasi).
-- F-D13-006/007 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 384/0; registry ~25.1 (152 IMPLEMENTED); mean ~26.2 (150 v).
+- F-D13-006/007 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 384/0; registry ~25.1 (152 IMPLEMENTED); mean 26.3 (150 v).
 
 ## Done wave 94: PBB checks + PPAT fee (main)
 - pbb_checks (0062) + fee worksheet + kartu + uji.
