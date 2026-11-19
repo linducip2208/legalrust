@@ -3422,6 +3422,26 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return null; });
     if (out && v) out.textContent = 'Portal: ' + v.display_name + ' (' + v.kind + ') · peran ' + (v.roles || []).join(',');
   });
+  function ptlH() {
+    var h = {};
+    for (var k in H) h[k] = H[k];
+    if (PTL_TOK) h['authorization'] = 'Bearer ' + PTL_TOK;
+    return h;
+  }
+  on('ptl-dash', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/dashboard', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.textContent = 'Dasbor: ' + (v.matters || []).length + ' perkara · AR ' + fmtRp(v.open_ar_minor) + ' · dok-diminta ' + (v.pending_doc_requests || []).length + ' · pengingat ' + (v.reminders_30d || []).length;
+  });
+  on('ptl-matters', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/matters', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (m) { return '<span class="badge">' + esc(m.title) + ' · ' + esc(m.status) + ' · ' + m.documents + ' dok</span>'; }).join(' ') || 'Belum ada perkara.';
+  });
   /* ---- campaigns + participations (F-D02-022) ---- */
   async function mcpRefresh() {
     var box = document.getElementById('mcp-list');

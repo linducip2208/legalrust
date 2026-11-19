@@ -7919,19 +7919,25 @@
   "id": "F-D19-003",
   "domain": "D19",
   "title": "Client dashboard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/dashboard (portal_client gate, own matters/balances/requests/reminders)",
+   "site.js: portal card dasbor button + hooks",
+   "tests: portal_dashboard_and_matters e2e (cross-book isolation, staff 403, 401)"
+  ],
+  "audit_note": "Wave 158: portal dashboard live, identity-derived scope. Verified by test (448/0)."
  },
  {
   "id": "F-D19-004",
   "domain": "D19",
   "title": "Matter progress view",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/matters (tasks-by-status, doc counts, invoiced totals per matter)",
+   "site.js: perkara button + hooks",
+   "tests: tasks_by_status shape + isolation asserted"
+  ],
+  "audit_note": "Wave 158: matter progress live. Verified by test (448/0)."
  },
  {
   "id": "F-D19-005",

@@ -5687,6 +5687,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-token",
         "ptl-login",
         "ptl-me",
+        "ptl-dash",
+        "ptl-matters",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11658,6 +11660,86 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_dashboard_and_matters() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal3@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let cli2 = mk_crm_client(&a, &tok).await;
+    // Two books: only the login client's data may surface.
+    for (c, t) in [(cli, "MA"), (cli2, "MB")] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/matters",
+                &format!(r#"{{"title":"{t}","client_id":{c}}}"#,),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p3@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/dashboard", &ptok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let dv = body_json(res).await;
+    assert_eq!(dv["matters"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        dv["matters"].as_array().unwrap()[0]["title"],
+        serde_json::json!("MA")
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/matters", &ptok))
+        .await
+        .unwrap();
+    let mv = body_json(res).await;
+    assert_eq!(mv.as_array().unwrap().len(), 1);
+    assert!(mv.as_array().unwrap()[0].get("tasks_by_status").is_some());
+    // Staff token is not a portal identity.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/dashboard", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/portal/dashboard")
                 .body(Body::empty())
                 .unwrap(),
         )
