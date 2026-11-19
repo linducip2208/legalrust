@@ -5453,6 +5453,10 @@ async fn crm_app_contains_crm_ids() {
         "dcl-add",
         "dcl-reload",
         "dcl-list",
+        "sop-code",
+        "sop-add",
+        "sop-reload",
+        "sop-list",
         "hrs-day",
         "hrs-set",
         "hrs-reload",
@@ -5523,6 +5527,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "oin-add",
         "oin-reload",
         "oin-list",
+        "bc-at",
+        "bc-add",
+        "bc-reload",
+        "bc-list",
         "price-code",
         "price-add",
         "price-reload",
@@ -7727,6 +7735,136 @@ async fn atk_and_archive_boxes() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/archive-boxes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn sop_library_and_backup_checks() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sopbc@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/sops",
+            r#"{"code":"X","title":"Y","body":"BB"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/sops",
+            r#"{"code":"SOP-ARSIP","title":"Arsip","version":"1.0","body":"Langkah arsip"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/sops",
+            r#"{"code":"SOP-ARSIP","title":"Dup","body":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["published", "archived"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/sops/{sid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "sop to {st}");
+    }
+    let res = a.clone().oneshot(get("/api/v1/sops", &tok)).await.unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(sid) && r["status"] == "archived"));
+    // Backup checks: strict timestamp + method/result allowlists.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/backup-checks",
+            r#"{"checked_at":"2026-13-99 99:99","method":"dump","result":"pass"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/backup-checks",
+            r#"{"checked_at":"2026-05-01 02:00","method":"carrier","result":"pass"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/backup-checks", r#"{"checked_at":"2026-05-01 02:00","method":"dump","result":"pass","note":"mysqldump OK"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/backup-checks", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(bid) && r["result"] == "pass"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=sop", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.sop_created"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=bcheck", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.bcheck_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/sops")
                 .body(Body::empty())
                 .unwrap(),
         )

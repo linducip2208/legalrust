@@ -4846,10 +4846,15 @@
   "id": "F-D12-031",
   "domain": "D12",
   "title": "Office SOP library",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0057_sop_backup.sql: sop_docs table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + draft->published->archived",
+   "apps/server/src/lib.rs: POST/GET /api/v1/sops + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: sopRefresh card Pustaka SOP in dok tab + hooks",
+   "apps/server/tests/api.rs: sop_library_and_backup_checks e2e (dup 409, chain)"
+  ],
+  "audit_note": "Wave 88: full lifecycle live; verified by test (377/0)."
  },
  {
   "id": "F-D12-032",
@@ -4889,10 +4894,15 @@
   "id": "F-D12-035",
   "domain": "D12",
   "title": "Office backup verification",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0057_sop_backup.sql: backup_checks table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped add/list/delete, strict timestamp + allowlists",
+   "apps/server/src/lib.rs: POST/GET /api/v1/backup-checks + delete (RBAC, audit; latest surfaced in UI)",
+   "apps/server/static/site.js: bcRefresh card Verifikasi backup in jobs tab + hooks",
+   "apps/server/tests/api.rs: bad timestamp/method 409 asserted"
+  ],
+  "audit_note": "Wave 88: verified by test (377/0)."
  },
  {
   "id": "F-D12-036",

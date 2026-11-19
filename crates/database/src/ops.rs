@@ -574,6 +574,27 @@ pub struct FeedbackRow {
     pub rating: i64,
     pub status: String,
 }
+/// SOP library document (draft -> published -> archived).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SopRow {
+    pub id: i64,
+    pub org: String,
+    pub code: String,
+    pub title: String,
+    pub version: String,
+    pub body: String,
+    pub status: String,
+}
+/// Backup verification log entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackupCheckRow {
+    pub id: i64,
+    pub org: String,
+    pub checked_at: String,
+    pub method: String,
+    pub result: String,
+    pub note: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1702,6 +1723,29 @@ pub trait OpsStore: Send + Sync {
     async fn feedback_list(&self, org: &str) -> Result<Vec<FeedbackRow>, StoreError>;
     async fn feedback_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn feedback_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// SOP library.
+    async fn sop_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn sop_list(&self, org: &str) -> Result<Vec<SopRow>, StoreError>;
+    async fn sop_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn sop_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Backup verification log.
+    async fn bcheck_add(
+        &self,
+        org: &str,
+        checked_at: &str,
+        method: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn bcheck_list(&self, org: &str) -> Result<Vec<BackupCheckRow>, StoreError>;
+    async fn bcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

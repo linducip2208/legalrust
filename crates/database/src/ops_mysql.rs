@@ -5187,6 +5187,170 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn sop_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let title = title.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.trim().is_empty() || body.len() > 200_000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let ver: String = version.trim().chars().take(20).collect();
+        let r = sqlx::query(
+            "INSERT INTO sop_docs (org_id, code, title, version, body) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(code)
+        .bind(title)
+        .bind(ver)
+        .bind(body.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn sop_list(&self, org: &str) -> Result<Vec<SopRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, code, title, version, body, status FROM sop_docs WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| SopRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                title: x.get::<String, _>("title"),
+                version: x.get::<String, _>("version"),
+                body: x.get::<String, _>("body"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn sop_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "published" | "archived") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM sop_docs WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("draft"), "published") | (Some("published"), "archived")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE sop_docs SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn sop_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM sop_docs WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn bcheck_add(
+        &self,
+        org: &str,
+        checked_at: &str,
+        method: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if checked_at.len() != 16
+            || chrono::NaiveDateTime::parse_from_str(checked_at.trim(), "%Y-%m-%d %H:%M").is_err()
+        {
+            return Err(StoreError::Conflict("checked_at YYYY-MM-DD HH:MM".into()));
+        }
+        if !matches!(method, "dump" | "files" | "remote") {
+            return Err(StoreError::Conflict("method".into()));
+        }
+        if !matches!(result, "pass" | "fail") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO backup_checks (org_id, checked_at, method, result, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(checked_at.trim())
+        .bind(method)
+        .bind(result)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn bcheck_list(&self, org: &str) -> Result<Vec<BackupCheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, checked_at, method, result, note FROM backup_checks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| BackupCheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                checked_at: x.get::<String, _>("checked_at"),
+                method: x.get::<String, _>("method"),
+                result: x.get::<String, _>("result"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn bcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM backup_checks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

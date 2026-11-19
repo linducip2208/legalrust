@@ -2144,6 +2144,77 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     dclRefresh();
   });
   on('dcl-reload', 'click', dclRefresh);
+  /* ---- office: SOP library ---- */
+  var SOP_NEXT = { draft: 'published', published: 'archived' };
+  async function sopRefresh() {
+    var box = document.getElementById('sop-list');
+    if (!box) return;
+    var v = await j('/api/v1/sops');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = SOP_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-sop-next="' + x.id + '" data-sop-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">arsip</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-sop-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.code) + '</td><td>' + esc(x.title) + ' <span class="text-muted">(v' + esc(x.version) + ')</span></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada SOP.</td></tr>';
+    qsa('[data-sop-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/sops/' + b.getAttribute('data-sop-next') + '/status', { status: b.getAttribute('data-sop-to') });
+        if (!r.ok) { pmsg('sop-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sop-msg', '');
+        sopRefresh();
+      });
+    });
+    qsa('[data-sop-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/sops/' + b.getAttribute('data-sop-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('sop-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sop-msg', '');
+        sopRefresh();
+      });
+    });
+  }
+  on('sop-add', 'click', async function () {
+    if (!pval('sop-code') || !pval('sop-title') || !pval('sop-body')) { pmsg('sop-msg', 'Isi kode, judul, dan isi.'); return; }
+    var r = await ppost('/api/v1/sops', { code: pval('sop-code'), title: pval('sop-title'), version: '1.0', body: pval('sop-body') });
+    if (!r.ok) { pmsg('sop-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('sop-msg', '');
+    sopRefresh();
+  });
+  on('sop-reload', 'click', sopRefresh);
+  /* ---- office: backup checks ---- */
+  async function bcRefresh() {
+    var box = document.getElementById('bc-list');
+    var last = document.getElementById('bc-last');
+    if (!box) return;
+    var v = await j('/api/v1/backup-checks');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (last && v.length) {
+      var l = v[0];
+      last.textContent = 'Terakhir: ' + l.checked_at + ' (' + l.method + ') = ' + l.result;
+    } else if (last) {
+      last.textContent = 'Belum pernah diverifikasi.';
+    }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.checked_at) + '</td><td>' + badge(x.method) + '</td><td>' + badge(x.result) + '</td><td><button class="btn btn-sm btn-outline-danger" data-bc-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada verifikasi.</td></tr>';
+    qsa('[data-bc-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/backup-checks/' + b.getAttribute('data-bc-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('bc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('bc-msg', '');
+        bcRefresh();
+      });
+    });
+  }
+  on('bc-add', 'click', async function () {
+    if (!pval('bc-at')) { pmsg('bc-msg', 'Isi waktu (YYYY-MM-DD HH:MM).'); return; }
+    var r = await ppost('/api/v1/backup-checks', { checked_at: pval('bc-at'), method: pval('bc-method') || 'dump', result: pval('bc-result') || 'pass', note: pval('bc-note') || '' });
+    if (!r.ok) { pmsg('bc-msg', 'Gagal (' + r.status + '). Format: YYYY-MM-DD HH:MM.'); return; }
+    pmsg('bc-msg', '');
+    bcRefresh();
+  });
+  on('bc-reload', 'click', bcRefresh);
   /* ---- office: office incidents ---- */
   var OIN_NEXT = { open: 'investigating', investigating: 'resolved', resolved: 'closed' };
   async function oinRefresh() {
@@ -3480,7 +3551,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('int-reload', 'click', intRefresh);
   qsa('.snav[data-tab="jobs"]', function (a) {
-    a.addEventListener('click', function () { whDlRefresh(); intRefresh(); });
+    a.addEventListener('click', function () { whDlRefresh(); intRefresh(); bcRefresh(); });
   });
   async function whDlRefresh() {
     var box = document.getElementById('wh-dl-list');
@@ -3548,9 +3619,11 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   aboxRefresh();
   useRefresh();
   dclRefresh();
+  sopRefresh();
   oinRefresh();
   dpRefresh();
   bankRefresh();
   whDlRefresh();
+  bcRefresh();
   intRefresh();
 })();

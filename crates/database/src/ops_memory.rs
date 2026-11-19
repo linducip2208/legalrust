@@ -91,6 +91,8 @@ struct Inner {
     oincidents: HashMap<i64, OfficeIncidentRow>,
     bankf: HashMap<i64, BankFacilityRow>,
     feedback: HashMap<i64, FeedbackRow>,
+    sops: HashMap<i64, SopRow>,
+    bchecks: HashMap<i64, BackupCheckRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4449,6 +4451,144 @@ impl OpsStore for MemoryOps {
         match m.feedback.get(&id) {
             Some(r) if r.org == org => {
                 m.feedback.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn sop_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let title = title.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.trim().is_empty() || body.len() > 200_000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.sops.values().any(|p| p.org == org && p.code == code) {
+            return Err(StoreError::Conflict("duplicate code".into()));
+        }
+        let id = self.next(&mut m);
+        m.sops.insert(
+            id,
+            SopRow {
+                id,
+                org: org.into(),
+                code: code.into(),
+                title: title.into(),
+                version: version.trim().chars().take(20).collect(),
+                body: body.trim().into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn sop_list(&self, org: &str) -> Result<Vec<SopRow>, StoreError> {
+        let mut v: Vec<SopRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .sops
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn sop_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .sops
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "published") | ("published", "archived")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn sop_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.sops.get(&id) {
+            Some(r) if r.org == org => {
+                m.sops.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn bcheck_add(
+        &self,
+        org: &str,
+        checked_at: &str,
+        method: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if checked_at.len() != 16
+            || chrono::NaiveDateTime::parse_from_str(checked_at.trim(), "%Y-%m-%d %H:%M").is_err()
+        {
+            return Err(StoreError::Conflict("checked_at YYYY-MM-DD HH:MM".into()));
+        }
+        if !matches!(method, "dump" | "files" | "remote") {
+            return Err(StoreError::Conflict("method".into()));
+        }
+        if !matches!(result, "pass" | "fail") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.bchecks.insert(
+            id,
+            BackupCheckRow {
+                id,
+                org: org.into(),
+                checked_at: checked_at.trim().into(),
+                method: method.into(),
+                result: result.into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn bcheck_list(&self, org: &str) -> Result<Vec<BackupCheckRow>, StoreError> {
+        let mut v: Vec<BackupCheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .bchecks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn bcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.bchecks.get(&id) {
+            Some(r) if r.org == org => {
+                m.bchecks.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
