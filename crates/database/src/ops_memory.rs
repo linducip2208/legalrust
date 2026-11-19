@@ -81,6 +81,9 @@ struct Inner {
     dpayments: HashMap<i64, DownPaymentRow>,
     witnesses: HashMap<i64, WitnessRow>,
     rechecks: HashMap<i64, RecheckRow>,
+    hours: HashMap<i64, OfficeHoursRow>,
+    roster: HashMap<i64, RosterRow>,
+    leaves: HashMap<i64, LeaveRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3758,6 +3761,199 @@ impl OpsStore for MemoryOps {
         match m.rechecks.get(&id) {
             Some(r) if r.org == org => {
                 m.rechecks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn hours_set(
+        &self,
+        org: &str,
+        weekday: i64,
+        open_time: &str,
+        close_time: &str,
+        active: bool,
+    ) -> Result<i64, StoreError> {
+        if !(0..=6).contains(&weekday) {
+            return Err(StoreError::Conflict("weekday 0-6".into()));
+        }
+        if !valid_hhmm(open_time.trim()) || !valid_hhmm(close_time.trim()) {
+            return Err(StoreError::Conflict("HH:MM".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, r)) = m
+            .hours
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.weekday == weekday)
+        {
+            r.open_time = open_time.trim().into();
+            r.close_time = close_time.trim().into();
+            r.active = active;
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.hours.insert(
+            id,
+            OfficeHoursRow {
+                id,
+                org: org.into(),
+                weekday,
+                open_time: open_time.trim().into(),
+                close_time: close_time.trim().into(),
+                active,
+            },
+        );
+        Ok(id)
+    }
+    async fn hours_list(&self, org: &str) -> Result<Vec<OfficeHoursRow>, StoreError> {
+        let mut v: Vec<OfficeHoursRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .hours
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.weekday);
+        Ok(v)
+    }
+    async fn roster_add(
+        &self,
+        org: &str,
+        name: &str,
+        role: &str,
+        shift: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(shift, "pagi" | "siang" | "penuh") {
+            return Err(StoreError::Conflict("shift".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.roster.insert(
+            id,
+            RosterRow {
+                id,
+                org: org.into(),
+                name: name.into(),
+                role: role.trim().chars().take(60).collect(),
+                shift: shift.into(),
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn roster_list(&self, org: &str) -> Result<Vec<RosterRow>, StoreError> {
+        let mut v: Vec<RosterRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .roster
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn roster_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .roster
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
+        Ok(())
+    }
+    async fn roster_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.roster.get(&id) {
+            Some(r) if r.org == org => {
+                m.roster.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn leave_request(
+        &self,
+        org: &str,
+        holder: &str,
+        kind: &str,
+        from_date: &str,
+        to_date: &str,
+        substitute: &str,
+    ) -> Result<i64, StoreError> {
+        let holder = holder.trim();
+        if holder.is_empty() || holder.len() > 120 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if !matches!(kind, "leave" | "sick" | "duty") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if from_date.len() > 10 || to_date.len() > 10 {
+            return Err(StoreError::Conflict("date".into()));
+        }
+        if !from_date.trim().is_empty() && !to_date.trim().is_empty() && from_date > to_date {
+            return Err(StoreError::Conflict("range".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.leaves.insert(
+            id,
+            LeaveRow {
+                id,
+                org: org.into(),
+                holder: holder.into(),
+                kind: kind.into(),
+                from_date: from_date.trim().into(),
+                to_date: to_date.trim().into(),
+                substitute: substitute.trim().chars().take(120).collect(),
+                status: "requested".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn leave_list(&self, org: &str) -> Result<Vec<LeaveRow>, StoreError> {
+        let mut v: Vec<LeaveRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .leaves
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn leave_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .leaves
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("requested", "approved") | ("requested", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn leave_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.leaves.get(&id) {
+            Some(r) if r.org == org => {
+                m.leaves.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

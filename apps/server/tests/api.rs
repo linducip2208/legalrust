@@ -5432,6 +5432,18 @@ async fn crm_app_contains_crm_ids() {
         "rch-add",
         "rch-reload",
         "rch-list",
+        "hrs-day",
+        "hrs-set",
+        "hrs-reload",
+        "hrs-list",
+        "ros-name",
+        "ros-add",
+        "ros-reload",
+        "ros-list",
+        "lev-who",
+        "lev-add",
+        "lev-reload",
+        "lev-list",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
@@ -6968,6 +6980,162 @@ async fn compliance_alerts_feed() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/compliance/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn office_hours_roster_leaves() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "officer@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Hours: strict HH:MM, upsert per weekday.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-hours",
+            r#"{"weekday":9,"open_time":"08:00","close_time":"17:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Hours: strict HH:MM, upsert per weekday.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-hours",
+            r#"{"weekday":0,"open_time":"99:99","close_time":"17:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-hours",
+            r#"{"weekday":0,"open_time":"08:00","close_time":"17:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-hours",
+            r#"{"weekday":0,"open_time":"08:30","close_time":"17:30"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/office-hours", &tok))
+        .await
+        .unwrap();
+    let hours = body_json(res).await;
+    assert_eq!(hours.as_array().unwrap().len(), 1);
+    assert_eq!(hours[0]["open_time"].as_str().unwrap(), "08:30");
+    assert_eq!(hours[0]["day"].as_str().unwrap(), "Senin");
+    // Roster + leaves lifecycle.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/roster",
+            r#"{"name":"Siti","role":"staff","shift":"pagi"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/roster",
+            r#"{"name":"Siti","role":"staff","shift":"malam"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/roster",
+            r#"{"name":"Siti","role":"staff","shift":"pagi"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/leaves", r#"{"holder":"Siti","kind":"leave","from_date":"2026-03-10","to_date":"2026-03-01","substitute":"Andi"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/leaves", r#"{"holder":"Siti","kind":"leave","from_date":"2026-03-01","to_date":"2026-03-10","substitute":"Andi"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/leaves/{lid}/status"),
+            r#"{"status":"approved"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/leaves/{lid}/status"),
+            r#"{"status":"rejected"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/leaves", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(lid) && r["substitute"] == "Andi"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=roster", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.roster_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/roster")
                 .body(Body::empty())
                 .unwrap(),
         )

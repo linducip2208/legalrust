@@ -4361,6 +4361,235 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn hours_set(
+        &self,
+        org: &str,
+        weekday: i64,
+        open_time: &str,
+        close_time: &str,
+        active: bool,
+    ) -> Result<i64, StoreError> {
+        if !(0..=6).contains(&weekday) {
+            return Err(StoreError::Conflict("weekday 0-6".into()));
+        }
+        if !valid_hhmm(open_time.trim()) || !valid_hhmm(close_time.trim()) {
+            return Err(StoreError::Conflict("HH:MM".into()));
+        }
+        // Upsert on (org, weekday): one row per day.
+        let cur: Option<u64> =
+            sqlx::query("SELECT id FROM office_hours WHERE org_id=? AND weekday=?")
+                .bind(org)
+                .bind(weekday as u8)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        match cur {
+            Some(id) => {
+                sqlx::query("UPDATE office_hours SET open_time=?, close_time=?, active=? WHERE id=? AND org_id=?")
+                    .bind(open_time.trim())
+                    .bind(close_time.trim())
+                    .bind(if active { 1i8 } else { 0i8 })
+                    .bind(id)
+                    .bind(org)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(db_err)?;
+                Ok(id as i64)
+            }
+            None => {
+                let r = sqlx::query(
+                    "INSERT INTO office_hours (org_id, weekday, open_time, close_time, active) VALUES (?,?,?,?,?)",
+                )
+                .bind(org)
+                .bind(weekday as u8)
+                .bind(open_time.trim())
+                .bind(close_time.trim())
+                .bind(if active { 1i8 } else { 0i8 })
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+                Ok(r.last_insert_id() as i64)
+            }
+        }
+    }
+    async fn hours_list(&self, org: &str) -> Result<Vec<OfficeHoursRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, weekday, open_time, close_time, active FROM office_hours WHERE org_id=? ORDER BY weekday ASC")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| OfficeHoursRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                weekday: x.get::<u8, _>("weekday") as i64,
+                open_time: x.get::<String, _>("open_time"),
+                close_time: x.get::<String, _>("close_time"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn roster_add(
+        &self,
+        org: &str,
+        name: &str,
+        role: &str,
+        shift: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(shift, "pagi" | "siang" | "penuh") {
+            return Err(StoreError::Conflict("shift".into()));
+        }
+        let rl: String = role.trim().chars().take(60).collect();
+        let r =
+            sqlx::query("INSERT INTO roster_members (org_id, name, role, shift) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(name)
+                .bind(rl)
+                .bind(shift)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn roster_list(&self, org: &str) -> Result<Vec<RosterRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, role, shift, active FROM roster_members WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RosterRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                role: x.get::<String, _>("role"),
+                shift: x.get::<String, _>("shift"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn roster_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE roster_members SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn roster_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM roster_members WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn leave_request(
+        &self,
+        org: &str,
+        holder: &str,
+        kind: &str,
+        from_date: &str,
+        to_date: &str,
+        substitute: &str,
+    ) -> Result<i64, StoreError> {
+        let holder = holder.trim();
+        if holder.is_empty() || holder.len() > 120 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if !matches!(kind, "leave" | "sick" | "duty") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if from_date.len() > 10 || to_date.len() > 10 {
+            return Err(StoreError::Conflict("date".into()));
+        }
+        if !from_date.trim().is_empty() && !to_date.trim().is_empty() && from_date > to_date {
+            return Err(StoreError::Conflict("range".into()));
+        }
+        let sub: String = substitute.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO leaves (org_id, holder, kind, from_date, to_date, substitute) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(holder)
+        .bind(kind)
+        .bind(from_date.trim())
+        .bind(to_date.trim())
+        .bind(sub)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn leave_list(&self, org: &str) -> Result<Vec<LeaveRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, holder, kind, from_date, to_date, substitute, status FROM leaves WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| LeaveRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                holder: x.get::<String, _>("holder"),
+                kind: x.get::<String, _>("kind"),
+                from_date: x.get::<String, _>("from_date"),
+                to_date: x.get::<String, _>("to_date"),
+                substitute: x.get::<String, _>("substitute"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn leave_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "approved" | "rejected") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> = sqlx::query("SELECT status FROM leaves WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("requested") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE leaves SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn leave_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM leaves WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

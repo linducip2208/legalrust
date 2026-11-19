@@ -1722,6 +1722,108 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     rchRefresh();
   });
   on('rch-reload', 'click', rchRefresh);
+  /* ---- office: working hours ---- */
+  async function hrsRefresh() {
+    var box = document.getElementById('hrs-list');
+    if (!box) return;
+    var v = await j('/api/v1/office-hours');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var byDay = {};
+    v.forEach(function (x) { byDay[x.weekday] = x; });
+    var names = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
+    box.innerHTML = names.map(function (n, i) {
+      var x = byDay[i];
+      return '<tr><td>' + n + '</td><td>' + (x ? esc(x.open_time) + '–' + esc(x.close_time) : '<span class="text-muted">belum diatur</span>') + '</td><td>' + (x ? (x.active ? '<span class="badge bg-green-lt">buka</span>' : '<span class="badge bg-yellow-lt">tutup</span>') : '<span class="text-muted">—</span>') + '</td></tr>';
+    }).join('');
+  }
+  on('hrs-set', 'click', async function () {
+    if (!pval('hrs-open') || !pval('hrs-close')) { pmsg('hrs-msg', 'Isi jam buka dan tutup (HH:MM).'); return; }
+    var r = await ppost('/api/v1/office-hours', { weekday: +pval('hrs-day'), open_time: pval('hrs-open'), close_time: pval('hrs-close'), active: true });
+    if (!r.ok) { pmsg('hrs-msg', 'Gagal (' + r.status + '). Format HH:MM.'); return; }
+    pmsg('hrs-msg', '');
+    hrsRefresh();
+  });
+  on('hrs-reload', 'click', hrsRefresh);
+  /* ---- office: roster ---- */
+  async function rosRefresh() {
+    var box = document.getElementById('ros-list');
+    if (!box) return;
+    var v = await j('/api/v1/roster');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '<button class="btn btn-sm" data-ros-tg="' + x.id + '" data-ros-on="' + (!x.active) + '" type="button">' + (x.active ? 'Nonaktifkan' : 'Aktifkan') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-ros-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + ' <span class="text-muted">(' + esc(x.role) + ')</span></td><td>' + badge(x.shift) + '</td><td>' + (x.active ? '<span class="badge bg-green-lt">aktif</span>' : '<span class="badge bg-yellow-lt">nonaktif</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Roster kosong.</td></tr>';
+    qsa('[data-ros-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/roster/' + b.getAttribute('data-ros-tg') + '/active', { active: b.getAttribute('data-ros-on') === 'true' });
+        if (!r.ok) { pmsg('ros-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ros-msg', '');
+        rosRefresh();
+      });
+    });
+    qsa('[data-ros-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/roster/' + b.getAttribute('data-ros-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ros-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ros-msg', '');
+        rosRefresh();
+      });
+    });
+  }
+  on('ros-add', 'click', async function () {
+    if (!pval('ros-name')) { pmsg('ros-msg', 'Isi nama staf.'); return; }
+    var r = await ppost('/api/v1/roster', { name: pval('ros-name'), role: pval('ros-role') || 'staff', shift: pval('ros-shift') || 'pagi' });
+    if (!r.ok) { pmsg('ros-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ros-msg', '');
+    rosRefresh();
+  });
+  on('ros-reload', 'click', rosRefresh);
+  /* ---- office: leaves & substitutes ---- */
+  async function levRefresh() {
+    var box = document.getElementById('lev-list');
+    if (!box) return;
+    var v = await j('/api/v1/leaves');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'requested' ? '<button class="btn btn-sm btn-success" data-lev-ok="' + x.id + '" type="button">Setujui</button> <button class="btn btn-sm btn-danger" data-lev-no="' + x.id + '" type="button">Tolak</button> ' : '<span class="text-muted">final</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-lev-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.holder) + ' <span class="text-muted">(' + esc(x.kind) + ')</span></td><td>' + esc(x.from_date) + ' → ' + esc(x.to_date) + '</td><td>' + esc(x.substitute) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada pengajuan.</td></tr>';
+    qsa('[data-lev-ok]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/leaves/' + b.getAttribute('data-lev-ok') + '/status', { status: 'approved' });
+        if (!r.ok) { pmsg('lev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('lev-msg', '');
+        levRefresh();
+      });
+    });
+    qsa('[data-lev-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/leaves/' + b.getAttribute('data-lev-no') + '/status', { status: 'rejected' });
+        if (!r.ok) { pmsg('lev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('lev-msg', '');
+        levRefresh();
+      });
+    });
+    qsa('[data-lev-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/leaves/' + b.getAttribute('data-lev-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('lev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('lev-msg', '');
+        levRefresh();
+      });
+    });
+  }
+  on('lev-add', 'click', async function () {
+    if (!pval('lev-who')) { pmsg('lev-msg', 'Isi pemegang cuti.'); return; }
+    var r = await ppost('/api/v1/leaves', { holder: pval('lev-who'), kind: pval('lev-kind') || 'leave', from_date: pval('lev-from') || '', to_date: pval('lev-to') || '', substitute: pval('lev-sub') || '' });
+    if (!r.ok) { pmsg('lev-msg', 'Gagal (' + r.status + '). Rentang tanggal terbalik?'); return; }
+    pmsg('lev-msg', '');
+    levRefresh();
+  });
+  on('lev-reload', 'click', levRefresh);
   /* ---- office: announcements ---- */
   async function annRefresh() {
     var box = document.getElementById('ann-list');
@@ -1775,6 +1877,9 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   visRefresh();
   witRefresh();
   rchRefresh();
+  hrsRefresh();
+  rosRefresh();
+  levRefresh();
   annRefresh();
   /* ---- audit viewer + jobs queue (additive) ---- */
   async function dlCsv(url, filename, msgId) {

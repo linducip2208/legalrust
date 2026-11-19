@@ -1,4 +1,18 @@
 use super::store::StoreError;
+/// Strict `HH:MM` (24h) check shared by the office-hours impls.
+pub(crate) fn valid_hhmm(s: &str) -> bool {
+    let b = s.as_bytes();
+    if b.len() != 5 || b[2] != b':' {
+        return false;
+    }
+    let digit = |i: usize| b[i].is_ascii_digit();
+    if !(digit(0) && digit(1) && digit(3) && digit(4)) {
+        return false;
+    }
+    let h: u32 = s[..2].parse().unwrap_or(99);
+    let mi: u32 = s[3..].parse().unwrap_or(99);
+    h < 24 && mi < 60
+}
 #[derive(Debug, Clone)]
 pub struct OcrJobRow {
     pub id: i64,
@@ -489,6 +503,38 @@ pub struct RecheckRow {
     pub result: String,
     pub verified_on: String,
     pub note: String,
+}
+/// Weekly office-hours row (weekday 0=Senin..6=Ahad).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfficeHoursRow {
+    pub id: i64,
+    pub org: String,
+    pub weekday: i64,
+    pub open_time: String,
+    pub close_time: String,
+    pub active: bool,
+}
+/// Roster member (staff shift assignment).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RosterRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub role: String,
+    pub shift: String,
+    pub active: bool,
+}
+/// Leave / substitute request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeaveRow {
+    pub id: i64,
+    pub org: String,
+    pub holder: String,
+    pub kind: String,
+    pub from_date: String,
+    pub to_date: String,
+    pub substitute: String,
+    pub status: String,
 }
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1475,6 +1521,39 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn recheck_list(&self, org: &str) -> Result<Vec<RecheckRow>, StoreError>;
     async fn recheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office working-hours & roster.
+    async fn hours_set(
+        &self,
+        org: &str,
+        weekday: i64,
+        open_time: &str,
+        close_time: &str,
+        active: bool,
+    ) -> Result<i64, StoreError>;
+    async fn hours_list(&self, org: &str) -> Result<Vec<OfficeHoursRow>, StoreError>;
+    async fn roster_add(
+        &self,
+        org: &str,
+        name: &str,
+        role: &str,
+        shift: &str,
+    ) -> Result<i64, StoreError>;
+    async fn roster_list(&self, org: &str) -> Result<Vec<RosterRow>, StoreError>;
+    async fn roster_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn roster_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Leave / substitute protocol.
+    async fn leave_request(
+        &self,
+        org: &str,
+        holder: &str,
+        kind: &str,
+        from_date: &str,
+        to_date: &str,
+        substitute: &str,
+    ) -> Result<i64, StoreError>;
+    async fn leave_list(&self, org: &str) -> Result<Vec<LeaveRow>, StoreError>;
+    async fn leave_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn leave_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

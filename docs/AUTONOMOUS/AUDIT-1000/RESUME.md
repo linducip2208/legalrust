@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 82: office hours + roster + leaves (main)
+- office_hours + roster_members + leaves (0052) + kartu klien + uji.
+- F-D12-007/008 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 371/0; registry ~23.6 (126 IMPLEMENTED); mean ~24.4 (124 v).
+
 ## Done wave 81: witness pool + re-verification (main)
 - witnesses + rechecks (0051) + kartu klien + uji (re-verifikasi manual, eksternal BLOCKED).
 - F-D12-024/023 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 370/0; registry ~23.5 (124 IMPLEMENTED); mean 24.4 (122 v).

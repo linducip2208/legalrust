@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 82: hours + roster + leaves (main)
+- Upsert + toggles + chains; workspace **371 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 81: witnesses + rechecks (main)
 - Toggles + allowlists + guards; workspace **370 passed, 0 failed**.
 

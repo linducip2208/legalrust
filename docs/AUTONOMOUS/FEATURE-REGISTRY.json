@@ -4531,19 +4531,29 @@
   "id": "F-D12-007",
   "domain": "D12",
   "title": "Office working-hours & roster",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0052_office_roster.sql: office_hours (upsert per weekday) + roster_members tables",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: hours upsert/list, roster CRUD + toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/office-hours, POST/GET /api/v1/roster + active + delete (RBAC, audit)",
+   "apps/server/static/site.js: hrsRefresh (7-day grid) + rosRefresh cards in klien tab + hooks",
+   "apps/server/tests/api.rs: office_hours_roster_leaves e2e (upsert overwrite, day names)"
+  ],
+  "audit_note": "Wave 82: full lifecycle live; verified by test (371/0)."
  },
  {
   "id": "F-D12-008",
   "domain": "D12",
   "title": "Notary leave / substitute protocol",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0052_office_roster.sql: leaves table (substitute field, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: request/list + requested->approved/rejected, range guard",
+   "apps/server/src/lib.rs: POST/GET /api/v1/leaves + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: levRefresh card Cuti & pengganti + hooks",
+   "apps/server/tests/api.rs: inverted range 409, chain guards, substitute asserted"
+  ],
+  "audit_note": "Wave 82: verified by test (371/0)."
  },
  {
   "id": "F-D12-009",
