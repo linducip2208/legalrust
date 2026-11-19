@@ -3618,6 +3618,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "bnd-add",
         "bnd-reload",
         "bnd-list",
+        "mrt-ppat",
+        "mrt-add",
+        "mrt-reload",
+        "mrt-list",
+        "hir-ppat",
+        "hir-add",
+        "hir-reload",
+        "hir-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8628,6 +8636,127 @@ async fn pbb_and_ppat_fee() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn deed_consents_marital_and_heir() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dconsent@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"DC/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"marital","party":"Istri Penjual"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"alien","party":"ZZ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"marital","party":"Istri Penjual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"heir","party":"Anak Kandung"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hid = body_json(res).await["id"].as_i64().unwrap();
+    // Verify flow.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/consents/{mid}/verify"),
+            r#"{"verified":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/consents"), &tok))
+        .await
+        .unwrap();
+    let cv = body_json(res).await;
+    assert!(cv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(mid) && r["verified"] == true));
+    assert!(cv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(hid) && r["kind"] == "heir" && r["verified"] == false));
+    // Ghost deed 404s; unauthenticated 401s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/consents",
+            r#"{"kind":"marital","party":"ZZ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/ppat/{pid}/consents"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=dconsent", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.dconsent_added"));
 }
 
 #[tokio::test]

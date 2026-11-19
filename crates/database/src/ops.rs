@@ -229,6 +229,17 @@ pub struct BoundaryRow {
     pub result: String,
     pub checked_on: String,
 }
+/// Deed consent check (marital / heir / board / power-to-sell).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeedConsentRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub kind: String,
+    pub party: String,
+    pub verified: bool,
+    pub note: String,
+}
 /// Operational incident (non-PDP incidents, complaints, near-misses).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncidentRow {
@@ -1991,6 +2002,22 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn bndry_list(&self, org: &str) -> Result<Vec<BoundaryRow>, StoreError>;
     async fn bndry_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Deed consent checks (marital / heir / board / power-to-sell).
+    async fn dconsent_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        party: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn dconsent_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<DeedConsentRow>, StoreError>;
+    async fn dconsent_verify(&self, org: &str, id: i64, verified: bool) -> Result<(), StoreError>;
+    async fn dconsent_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

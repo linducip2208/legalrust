@@ -104,6 +104,7 @@ struct Inner {
     lmerges: HashMap<i64, LandMergeRow>,
     ldisputes: HashMap<i64, LandDisputeRow>,
     boundaries: HashMap<i64, BoundaryRow>,
+    dconsents: HashMap<i64, DeedConsentRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -5379,6 +5380,81 @@ impl OpsStore for MemoryOps {
         match m.boundaries.get(&id) {
             Some(r) if r.org == org => {
                 m.boundaries.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dconsent_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        party: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "marital" | "heir" | "board" | "power") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        let party = party.trim();
+        if party.is_empty() || party.len() > 160 {
+            return Err(StoreError::Conflict("party".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.dconsents.insert(
+            id,
+            DeedConsentRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                kind: kind.into(),
+                party: party.into(),
+                verified: false,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dconsent_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<DeedConsentRow>, StoreError> {
+        let mut v: Vec<DeedConsentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dconsents
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dconsent_verify(&self, org: &str, id: i64, verified: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dconsents.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.verified = verified;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dconsent_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dconsents.get(&id) {
+            Some(r) if r.org == org => {
+                m.dconsents.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

@@ -5163,19 +5163,29 @@
   "id": "F-D13-015",
   "domain": "D13",
   "title": "Marital-property consent check",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0066_deed_consents.sql: deed_consents table (kind=marital, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/verify/delete, kind allowlist",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/consents + verify + delete (RBAC, audit)",
+   "apps/server/static/site.js: mrtRefresh card Persetujuan pasangan + hooks",
+   "apps/server/tests/api.rs: deed_consents_marital_and_heir e2e (verify flow, 403/404/401)"
+  ],
+  "audit_note": "Wave 99: full lifecycle live; verified by test (388/0)."
  },
  {
   "id": "F-D13-016",
   "domain": "D13",
   "title": "Heir consent verification",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0066_deed_consents.sql: deed_consents table (kind=heir, shared with marital)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: same CRUD + verify toggle",
+   "apps/server/src/lib.rs: same endpoints with kind=heir (RBAC, audit)",
+   "apps/server/static/site.js: hirRefresh card Persetujuan ahli waris + hooks",
+   "apps/server/tests/api.rs: heir unverified-by-default asserted, /app needles mrt-*/hir-*"
+  ],
+  "audit_note": "Wave 99: verified by test (388/0)."
  },
  {
   "id": "F-D13-017",

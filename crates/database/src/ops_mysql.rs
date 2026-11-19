@@ -6279,6 +6279,93 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dconsent_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        kind: &str,
+        party: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "marital" | "heir" | "board" | "power") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        let party = party.trim();
+        if party.is_empty() || party.len() > 160 {
+            return Err(StoreError::Conflict("party".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO deed_consents (org_id, ppat_id, kind, party, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(kind)
+        .bind(party)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dconsent_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<DeedConsentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, kind, party, verified, note FROM deed_consents WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DeedConsentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                party: x.get::<String, _>("party"),
+                verified: x.get::<u8, _>("verified") != 0,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn dconsent_verify(&self, org: &str, id: i64, verified: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE deed_consents SET verified=? WHERE id=? AND org_id=?")
+            .bind(if verified { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn dconsent_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM deed_consents WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

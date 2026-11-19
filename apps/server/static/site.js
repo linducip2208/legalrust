@@ -1707,6 +1707,56 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     bndRefresh();
   });
   on('bnd-reload', 'click', bndRefresh);
+  /* ---- property: deed consents (marital / heir) ---- */
+  function consentRow(prefix, x) {
+    var st = x.verified ? '<span class="badge bg-green-lt">terverifikasi</span>' : '<span class="badge bg-yellow-lt">menunggu</span>';
+    var act = (!x.verified ? '<button class="btn btn-sm" data-' + prefix + '-ok="' + x.id + '" type="button">Verifikasi</button> ' : '')
+      + '<button class="btn btn-sm btn-outline-danger" data-' + prefix + '-del="' + x.id + '" type="button">Hapus</button>';
+    return '<tr><td>' + x.id + '</td><td>' + esc(x.party) + '</td><td>' + st + '</td><td>' + act + '</td></tr>';
+  }
+  function consentRefresh(prefix, pidId, boxId, msgId, kind) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    var pid = pval(pidId);
+    if (!pid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; return; }
+    j('/api/v1/ppat/' + encodeURIComponent(pid) + '/consents').then(function (v) {
+      if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+      var rows = v.filter(function (x) { return x.kind === kind; });
+      box.innerHTML = rows.map(function (x) { return consentRow(prefix, x); }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada catatan.</td></tr>';
+      qsa('[data-' + prefix + '-ok]', function (b) {
+        b.addEventListener('click', async function () {
+          var r = await ppost('/api/v1/consents/' + b.getAttribute('data-' + prefix + '-ok') + '/verify', { verified: true });
+          if (!r.ok) { pmsg(msgId, 'Gagal (' + r.status + ').'); return; }
+          pmsg(msgId, '');
+          consentRefresh(prefix, pidId, boxId, msgId, kind);
+        });
+      });
+      qsa('[data-' + prefix + '-del]', function (b) {
+        b.addEventListener('click', async function () {
+          var r = await fetch('/api/v1/consents/' + b.getAttribute('data-' + prefix + '-del'), { method: 'DELETE', headers: H });
+          if (!r.ok) { pmsg(msgId, 'Gagal (' + r.status + ').'); return; }
+          pmsg(msgId, '');
+          consentRefresh(prefix, pidId, boxId, msgId, kind);
+        });
+      });
+    });
+  }
+  on('mrt-add', 'click', async function () {
+    if (!pval('mrt-ppat') || !pval('mrt-party')) { pmsg('mrt-msg', 'Isi ID akta dan nama pihak.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('mrt-ppat')) + '/consents', { kind: 'marital', party: pval('mrt-party') });
+    if (!r.ok) { pmsg('mrt-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('mrt-msg', '');
+    consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital');
+  });
+  on('mrt-reload', 'click', function () { consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); });
+  on('hir-add', 'click', async function () {
+    if (!pval('hir-ppat') || !pval('hir-party')) { pmsg('hir-msg', 'Isi ID akta dan nama pihak.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('hir-ppat')) + '/consents', { kind: 'heir', party: pval('hir-party') });
+    if (!r.ok) { pmsg('hir-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('hir-msg', '');
+    consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir');
+  });
+  on('hir-reload', 'click', function () { consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); });
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1880,7 +1930,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4041,6 +4091,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   mgRefresh();
   dsp2Refresh();
   bndRefresh();
+  consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital');
+  consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir');
   klapperRefresh();
   perfRefresh();
   volRefresh();
