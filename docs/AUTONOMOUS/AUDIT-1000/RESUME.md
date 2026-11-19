@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 111: retention + gated purge (main)
+- retention_rules + purge_requests (0075, Tx execute, SoD) + kartu + uji.
+- F-D11-011/012 NOT_STARTED->IMPLEMENTED (~73.9 verified). Workspace 400/0; registry ~26.8 (184 IMPLEMENTED); mean 28.1 (179 v).
+
 ## Done wave 110: authenticity verdict (main)
 - ppat_authenticity 5-aspect verdict (no table) + kartu + uji.
 - F-D13-003 PARTIAL->IMPLEMENTED (~73.6 verified). Workspace 399/0; registry ~26.7 (182 IMPLEMENTED); mean 28.0 (177 v). D13 CLOSED 40/40.

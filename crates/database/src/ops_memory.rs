@@ -118,6 +118,8 @@ struct Inner {
     ajbds: HashMap<i64, AjbDraftRow>,
     clinks: HashMap<i64, CertLinkRow>,
     bpns: HashMap<i64, BpnTrackRow>,
+    rrules: HashMap<i64, RetentionRuleRow>,
+    preqs: HashMap<i64, PurgeRequestRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2168,6 +2170,235 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn rrule_upsert(
+        &self,
+        org: &str,
+        entity: &str,
+        retain_years: i64,
+        action: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !rule_entity_ok(entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if !(1..=100).contains(&retain_years) {
+            return Err(StoreError::Conflict("retain_years 1..100".into()));
+        }
+        if !matches!(action, "archive" | "purge") {
+            return Err(StoreError::Conflict("action".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, r)) = m
+            .rrules
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.entity == entity)
+        {
+            r.retain_years = retain_years;
+            r.action = action.into();
+            r.active = true;
+            r.note = note.trim().into();
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.rrules.insert(
+            id,
+            RetentionRuleRow {
+                id,
+                org: org.into(),
+                entity: entity.into(),
+                retain_years,
+                action: action.into(),
+                active: true,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn rrule_list(&self, org: &str) -> Result<Vec<RetentionRuleRow>, StoreError> {
+        let mut v: Vec<RetentionRuleRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .rrules
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.entity.cmp(&b.entity));
+        Ok(v)
+    }
+    async fn rrule_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.rrules.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.active = active;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn rrule_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.rrules.get(&id) {
+            Some(r) if r.org == org => {
+                m.rrules.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn preq_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        reason: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if !purgeable(entity) {
+            return Err(StoreError::Conflict("entity not purgeable".into()));
+        }
+        if entity_id <= 0 {
+            return Err(StoreError::Conflict("entity_id".into()));
+        }
+        let reason = reason.trim();
+        if reason.len() < 5 || reason.len() > 500 {
+            return Err(StoreError::Conflict("reason 5..500".into()));
+        }
+        if requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("requested_by".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.preqs.insert(
+            id,
+            PurgeRequestRow {
+                id,
+                org: org.into(),
+                entity: entity.into(),
+                entity_id,
+                reason: reason.into(),
+                requested_by: requested_by.into(),
+                status: "requested".into(),
+                decided_by: String::new(),
+            },
+        );
+        Ok(id)
+    }
+    async fn preq_list(&self, org: &str) -> Result<Vec<PurgeRequestRow>, StoreError> {
+        let mut v: Vec<PurgeRequestRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .preqs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn preq_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .preqs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by.trim().is_empty() || decided_by == r.requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        r.status = if approve { "approved" } else { "rejected" }.into();
+        r.decided_by = decided_by.into();
+        Ok(r.status.clone())
+    }
+    async fn preq_execute(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let (entity, entity_id) = {
+            let m = self.inner.lock().unwrap();
+            let r = m
+                .preqs
+                .get(&id)
+                .filter(|r| r.org == org)
+                .ok_or(StoreError::NotFound)?;
+            if r.status != "approved" {
+                return Err(StoreError::Conflict("not approved".into()));
+            }
+            let rule_ok = m
+                .rrules
+                .values()
+                .any(|x| x.org == org && x.entity == r.entity && x.active && x.action == "purge");
+            if !rule_ok {
+                return Err(StoreError::Conflict("no active purge rule".into()));
+            }
+            (r.entity.clone(), r.entity_id)
+        };
+        // Dispatch to the owning table and verify org-scoped ownership first.
+        let mut m = self.inner.lock().unwrap();
+        let owned_and_removed = match entity.as_str() {
+            "bpn" => match m.bpns.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.bpns.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            "girik" => match m.girik.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.girik.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            "lhist" => match m.lhistory.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.lhistory.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            "uho" => match m.uhandovers.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.uhandovers.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            "preg" => match m.pregs.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.pregs.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            "nhoff" => match m.nhoffs.get(&entity_id) {
+                Some(r) if r.org == org => {
+                    m.nhoffs.remove(&entity_id);
+                    true
+                }
+                _ => false,
+            },
+            _ => return Err(StoreError::Conflict("entity not purgeable".into())),
+        };
+        if !owned_and_removed {
+            return Err(StoreError::Conflict("target missing".into()));
+        }
+        if let Some(r) = m.preqs.get_mut(&id).filter(|r| r.org == org) {
+            r.status = "executed".into();
+        }
+        Ok(())
     }
     async fn dpia_create(
         &self,

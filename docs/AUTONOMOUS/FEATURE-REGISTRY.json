@@ -4079,19 +4079,29 @@
   "id": "F-D11-011",
   "domain": "D11",
   "title": "Data-retention rule engine",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0075_retention_purge.sql: retention_rules table (unique entity per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: upsert(Tx)/list/active/delete + entity allowlist",
+   "apps/server/src/lib.rs: POST/GET /api/v1/retention-rules + active + delete (Create/Update/Delete + admin gate, audit)",
+   "apps/server/static/site.js: rtr card Aturan retensi + hooks (kepatuhan panel)",
+   "apps/server/tests/api.rs: retention_rules_and_gated_purge e2e (entity/years guards, lawyer 403)"
+  ],
+  "audit_note": "Wave 111: rule engine live; verified by test (400/0)."
  },
  {
   "id": "F-D11-012",
   "domain": "D11",
   "title": "Purge execution with approval",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0075_retention_purge.sql: purge_requests table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: request/decide(SoD)/execute(Tx, rule-gated)",
+   "apps/server/src/lib.rs: purge-requests + decide + execute (RBAC + admin gate, audit x3)",
+   "apps/server/static/site.js: prg2 card Permintaan purge + hooks (kepatuhan panel)",
+   "apps/server/tests/api.rs: self-approve 409, double-decide/execute 409, deed never purgeable, row gone asserted"
+  ],
+  "audit_note": "Wave 111: four-eyes purge live; deeds/legal holds excluded by design. Verified by test (400/0)."
  },
  {
   "id": "F-D11-013",

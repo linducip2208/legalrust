@@ -2249,6 +2249,268 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn rrule_upsert(
+        &self,
+        org: &str,
+        entity: &str,
+        retain_years: i64,
+        action: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !rule_entity_ok(entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if !(1..=100).contains(&retain_years) {
+            return Err(StoreError::Conflict("retain_years 1..100".into()));
+        }
+        if !matches!(action, "archive" | "purge") {
+            return Err(StoreError::Conflict("action".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<u64> =
+            sqlx::query("SELECT id FROM retention_rules WHERE org_id=? AND entity=?")
+                .bind(org)
+                .bind(entity)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        let id = match cur {
+            Some(id) => {
+                sqlx::query("UPDATE retention_rules SET retain_years=?, action=?, active=1, note=? WHERE id=?")
+                    .bind(retain_years)
+                    .bind(action)
+                    .bind(note.trim())
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_err)?;
+                id as i64
+            }
+            None => {
+                let r = sqlx::query(
+                    "INSERT INTO retention_rules (org_id, entity, retain_years, action, note) VALUES (?,?,?,?,?)",
+                )
+                .bind(org)
+                .bind(entity)
+                .bind(retain_years)
+                .bind(action)
+                .bind(note.trim())
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+                r.last_insert_id() as i64
+            }
+        };
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+    async fn rrule_list(&self, org: &str) -> Result<Vec<RetentionRuleRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, entity, retain_years, action, active, note FROM retention_rules WHERE org_id=? ORDER BY entity LIMIT 100")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RetentionRuleRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                entity: x.get::<String, _>("entity"),
+                retain_years: x.get::<i32, _>("retain_years") as i64,
+                action: x.get::<String, _>("action"),
+                active: x.get::<u8, _>("active") != 0,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn rrule_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE retention_rules SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn rrule_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM retention_rules WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn preq_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        reason: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if !purgeable(entity) {
+            return Err(StoreError::Conflict("entity not purgeable".into()));
+        }
+        if entity_id <= 0 {
+            return Err(StoreError::Conflict("entity_id".into()));
+        }
+        let reason = reason.trim();
+        if reason.len() < 5 || reason.len() > 500 {
+            return Err(StoreError::Conflict("reason 5..500".into()));
+        }
+        if requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("requested_by".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO purge_requests (org_id, entity, entity_id, reason, requested_by) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(entity)
+        .bind(entity_id as u64)
+        .bind(reason)
+        .bind(requested_by)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn preq_list(&self, org: &str) -> Result<Vec<PurgeRequestRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, entity, entity_id, reason, requested_by, status, decided_by FROM purge_requests WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PurgeRequestRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                entity: x.get::<String, _>("entity"),
+                entity_id: x.get::<u64, _>("entity_id") as i64,
+                reason: x.get::<String, _>("reason"),
+                requested_by: x.get::<String, _>("requested_by"),
+                status: x.get::<String, _>("status"),
+                decided_by: x.get::<String, _>("decided_by"),
+            })
+            .collect())
+    }
+    async fn preq_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        if decided_by.trim().is_empty() {
+            return Err(StoreError::Conflict("decided_by".into()));
+        }
+        let cur: Option<(String, String)> =
+            sqlx::query("SELECT requested_by, status FROM purge_requests WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| {
+                    (
+                        x.get::<String, _>("requested_by"),
+                        x.get::<String, _>("status"),
+                    )
+                });
+        let (requested_by, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        if status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by == requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        let to = if approve { "approved" } else { "rejected" };
+        sqlx::query("UPDATE purge_requests SET status=?, decided_by=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(decided_by)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(to.into())
+    }
+    async fn preq_execute(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<(String, u64, String)> = sqlx::query(
+            "SELECT entity, entity_id, status FROM purge_requests WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .map(|x| {
+            (
+                x.get::<String, _>("entity"),
+                x.get::<u64, _>("entity_id"),
+                x.get::<String, _>("status"),
+            )
+        });
+        let (entity, entity_id, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        if status != "approved" {
+            return Err(StoreError::Conflict("not approved".into()));
+        }
+        let rule: Option<String> = sqlx::query(
+            "SELECT action FROM retention_rules WHERE org_id=? AND entity=? AND active=1",
+        )
+        .bind(org)
+        .bind(&entity)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .map(|x| x.get::<String, _>("action"));
+        if rule.as_deref() != Some("purge") {
+            return Err(StoreError::Conflict("no active purge rule".into()));
+        }
+        let table_ok = purgeable(&entity);
+        if !table_ok {
+            return Err(StoreError::Conflict("entity not purgeable".into()));
+        }
+        let n = match entity.as_str() {
+            "bpn" => sqlx::query("DELETE FROM bpn_tracks WHERE id=? AND org_id=?"),
+            "girik" => sqlx::query("DELETE FROM girik_intakes WHERE id=? AND org_id=?"),
+            "lhist" => sqlx::query("DELETE FROM land_history WHERE id=? AND org_id=?"),
+            "uho" => sqlx::query("DELETE FROM unit_handovers WHERE id=? AND org_id=?"),
+            "preg" => sqlx::query("DELETE FROM protocol_register WHERE id=? AND org_id=?"),
+            _ => sqlx::query("DELETE FROM notary_handoffs WHERE id=? AND org_id=?"),
+        }
+        .bind(entity_id)
+        .bind(org)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::Conflict("target missing".into()));
+        }
+        sqlx::query("UPDATE purge_requests SET status='executed' WHERE id=?")
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

@@ -3679,6 +3679,86 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ropaRefresh();
   });
   on('ropa-reload', 'click', ropaRefresh);
+  /* ---- compliance: retention rules ---- */
+  async function rtrRefresh() {
+    var box = document.getElementById('rtr-list');
+    if (!box) return;
+    var v = await j('/api/v1/retention-rules');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var tgl = x.active ? 'nonaktifkan' : 'aktifkan';
+      return '<tr><td>' + badge(x.entity) + '</td><td>' + x.retain_years + ' th</td><td>' + badge(x.action) + '</td><td>' + (x.active ? 'ya' : 'tidak') + '</td><td><button class="btn btn-sm" data-rtr-tgl="' + x.id + '" data-rtr-to="' + (x.active ? '0' : '1') + '" type="button">' + tgl + '</button> <button class="btn btn-sm btn-outline-danger" data-rtr-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada aturan.</td></tr>';
+    qsa('[data-rtr-tgl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/retention-rules/' + b.getAttribute('data-rtr-tgl') + '/active', { active: b.getAttribute('data-rtr-to') === '1' });
+        if (!r.ok) { pmsg('rtr-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('rtr-msg', '');
+        rtrRefresh();
+      });
+    });
+    qsa('[data-rtr-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/retention-rules/' + b.getAttribute('data-rtr-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('rtr-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('rtr-msg', '');
+        rtrRefresh();
+      });
+    });
+  }
+  on('rtr-save', 'click', async function () {
+    var r = await ppost('/api/v1/retention-rules', { entity: pval('rtr-entity') || 'bpn', retain_years: +pval('rtr-years') || 5, action: pval('rtr-action') || 'archive' });
+    if (!r.ok) { pmsg('rtr-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('rtr-msg', '');
+    rtrRefresh();
+  });
+  on('rtr-reload', 'click', rtrRefresh);
+  /* ---- compliance: purge requests ---- */
+  async function prg2Refresh() {
+    var box = document.getElementById('prg2-list');
+    if (!box) return;
+    var v = await j('/api/v1/purge-requests');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '';
+      if (x.status === 'requested') act = '<button class="btn btn-sm" data-prg2-yes="' + x.id + '" type="button">Setujui</button> <button class="btn btn-sm btn-outline-danger" data-prg2-no="' + x.id + '" type="button">Tolak</button>';
+      else if (x.status === 'approved') act = '<button class="btn btn-sm btn-outline-danger" data-prg2-exe="' + x.id + '" type="button">Eksekusi</button>';
+      else act = '<span class="text-muted">' + x.status + '</span>';
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.entity) + ' #' + x.entity_id + ' <span class="text-muted">(' + esc(x.reason) + ')</span></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada permintaan.</td></tr>';
+    qsa('[data-prg2-yes]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/purge-requests/' + b.getAttribute('data-prg2-yes') + '/decide', { approve: true });
+        if (!r.ok) { pmsg('prg2-msg', 'Gagal (' + r.status + '). Bukan penyetuju / menyetujui sendiri?'); return; }
+        pmsg('prg2-msg', '');
+        prg2Refresh();
+      });
+    });
+    qsa('[data-prg2-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/purge-requests/' + b.getAttribute('data-prg2-no') + '/decide', { approve: false });
+        if (!r.ok) { pmsg('prg2-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('prg2-msg', '');
+        prg2Refresh();
+      });
+    });
+    qsa('[data-prg2-exe]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/purge-requests/' + b.getAttribute('data-prg2-exe') + '/execute', {});
+        if (!r.ok) { pmsg('prg2-msg', 'Gagal (' + r.status + '). Perlu aturan purge aktif?'); return; }
+        pmsg('prg2-msg', '');
+        prg2Refresh();
+      });
+    });
+  }
+  on('prg2-add', 'click', async function () {
+    if (!pval('prg2-id') || !pval('prg2-reason')) { pmsg('prg2-msg', 'Isi ID baris dan alasan.'); return; }
+    var r = await ppost('/api/v1/purge-requests', { entity: pval('prg2-entity') || 'bpn', entity_id: +pval('prg2-id'), reason: pval('prg2-reason') });
+    if (!r.ok) { pmsg('prg2-msg', 'Gagal (' + r.status + '). Entitas tidak dapat di-purge?'); return; }
+    pmsg('prg2-msg', '');
+    prg2Refresh();
+  });
+  on('prg2-reload', 'click', prg2Refresh);
   /* ---- compliance: DPIA assessments ---- */
   var DPIA_NEXT = { draft: 'review', review: 'approved' };
   async function dpiaRefresh() {
@@ -4552,7 +4632,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); scRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); rtrRefresh(); prg2Refresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); scRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -4631,6 +4711,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   whRefresh();
   kepRefresh();
   conRefresh();
+  rtrRefresh();
+  prg2Refresh();
   ropaRefresh();
   dpiaRefresh();
   breachRefresh();

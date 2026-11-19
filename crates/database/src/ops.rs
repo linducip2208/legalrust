@@ -355,6 +355,29 @@ pub struct BpnTrackRow {
     pub status: String,
     pub note: String,
 }
+/// Data-retention rule (entity -> years + end-of-life action).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetentionRuleRow {
+    pub id: i64,
+    pub org: String,
+    pub entity: String,
+    pub retain_years: i64,
+    pub action: String,
+    pub active: bool,
+    pub note: String,
+}
+/// Approval-gated purge request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PurgeRequestRow {
+    pub id: i64,
+    pub org: String,
+    pub entity: String,
+    pub entity_id: i64,
+    pub reason: String,
+    pub requested_by: String,
+    pub status: String,
+    pub decided_by: String,
+}
 /// Protocol register (in/out day-book of the protocol archive).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PregRow {
@@ -1590,6 +1613,36 @@ pub trait OpsStore: Send + Sync {
         -> Result<Vec<BpnTrackRow>, StoreError>;
     async fn bpn_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn bpn_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Data-retention rules.
+    async fn rrule_upsert(
+        &self,
+        org: &str,
+        entity: &str,
+        retain_years: i64,
+        action: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn rrule_list(&self, org: &str) -> Result<Vec<RetentionRuleRow>, StoreError>;
+    async fn rrule_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn rrule_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Approval-gated purge requests.
+    async fn preq_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        reason: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError>;
+    async fn preq_list(&self, org: &str) -> Result<Vec<PurgeRequestRow>, StoreError>;
+    async fn preq_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError>;
+    async fn preq_execute(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(
@@ -2535,6 +2588,33 @@ pub trait OpsStore: Send + Sync {
         ref_id: i64,
         created_by: &str,
     ) -> Result<(TrustEntryRow, TrustEntryRow), StoreError>;
+}
+
+/// Entities eligible for approval-gated purge (ephemeral tracker rows only;
+/// deeds, consents and vault pins are legal holds and can never be purged).
+pub(crate) fn purgeable(entity: &str) -> bool {
+    matches!(entity, "bpn" | "girik" | "lhist" | "uho" | "preg" | "nhoff")
+}
+
+/// Entities a retention rule may cover (purgeable set plus informational
+/// archive-only subjects).
+pub(crate) fn rule_entity_ok(entity: &str) -> bool {
+    purgeable(entity)
+        || matches!(
+            entity,
+            "deed"
+                | "ppat"
+                | "charge"
+                | "consent"
+                | "vault"
+                | "draft"
+                | "audit"
+                | "register"
+                | "batch"
+                | "unit"
+                | "kpr"
+                | "dispute"
+        )
 }
 
 #[async_trait::async_trait]

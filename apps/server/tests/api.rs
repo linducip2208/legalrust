@@ -8717,6 +8717,224 @@ async fn pbb_and_ppat_fee() {
 }
 
 #[tokio::test]
+async fn retention_rules_and_gated_purge() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "retpurge@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    // Lawyer cannot manage rules (admin gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"bpn","retain_years":5,"action":"purge"}"#,
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Unknown entity rejected; bad years rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"bpn","retain_years":999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"bpn","retain_years":3,"action":"purge","note":"BPN manual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Create a purgeable row, request purge, self-approve forbidden.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bpn-tracks",
+            r#"{"kind":"queue","ref_no":"Q-99"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/purge-requests",
+            &format!(r#"{{"entity":"bpn","entity_id":{tid},"reason":"lewat masa retensi"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Deed rows are legal holds, never purgeable.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/purge-requests",
+            r#"{"entity":"deed","entity_id":1,"reason":"coba hapus akta"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Execute before approval is rejected too.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/execute"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Second admin (same org, different sub) approves via invite flow.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"admin2@x.id","role":"office_admin"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"admin2@x.id","name":"Admin Dua","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let adm2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(res).await["status"],
+        serde_json::json!("approved")
+    );
+    // Re-decide rejected; owner executes (OfficeAdmin has no Delete by design).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/decide"),
+            r#"{"approve":false}"#,
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/execute"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/bpn-tracks?kind=queue", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["id"].as_i64() != Some(tid)));
+    // Execute twice rejected; audit trail recorded all four actions.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/purge-requests/{pid}/execute"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/purge-requests", &tok))
+        .await
+        .unwrap();
+    let pv = body_json(res).await;
+    assert!(pv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["status"] == "executed"));
+    for (act, ent) in [
+        ("retention.rule_saved", "rrule"),
+        ("retention.purge_requested", "preq"),
+        ("retention.purge_approved", "preq"),
+        ("retention.purged", "preq"),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(get(&format!("/api/v1/audit?entity={ent}"), &tok))
+            .await
+            .unwrap();
+        let rows = body_json(res).await;
+        assert!(
+            rows.as_array()
+                .unwrap()
+                .iter()
+                .any(|e| e["action"].as_str() == Some(act)),
+            "missing audit {act}"
+        );
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/purge-requests")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn certificate_authenticity_verdict() {
     use tower::ServiceExt;
     let a = app();
@@ -13969,6 +14187,14 @@ async fn uib_app_has_approvals_ui() {
         "con-subject",
         "con-grant",
         "con-list",
+        "rtr-entity",
+        "rtr-save",
+        "rtr-reload",
+        "rtr-list",
+        "prg2-entity",
+        "prg2-add",
+        "prg2-reload",
+        "prg2-list",
         "ropa-activity",
         "ropa-purpose",
         "ropa-add",
