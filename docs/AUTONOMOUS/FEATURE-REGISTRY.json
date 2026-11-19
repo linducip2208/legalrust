@@ -8164,19 +8164,27 @@
   "id": "F-D19-026",
   "domain": "D19",
   "title": "Request copy of deed extract",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0103: client_copy_requests table (forward-only)",
+   "ops.rs + memory + mysql: ccpr add/list/status + branch guards",
+   "lib.rs: portal + staff fulfill endpoints (RBAC)",
+   "site.js: copy request + track UI (portal card)",
+   "tests: portal_copy_requests_and_tracking e2e (bad branch 409, fulfill, track)"
+  ],
+  "audit_note": "Wave 162: copy requests live. Verified by test (452/0)."
  },
  {
   "id": "F-D19-027",
   "domain": "D19",
   "title": "Track request status",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/track (copies + doc_requests + appointments, identity scope)",
+   "site.js: track button (portal card)",
+   "tests: aggregate shape asserted, staff 403"
+  ],
+  "audit_note": "Wave 162: tracking live. Verified by test (452/0)."
  },
  {
   "id": "F-D19-028",

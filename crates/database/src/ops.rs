@@ -357,6 +357,16 @@ pub struct ClientMessageRow {
     pub sender: String,
     pub body: String,
 }
+/// Deed-copy request (requested->fulfilled/cancelled).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientCopyReqRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub deed_id: Option<i64>,
+    pub note: String,
+    pub status: String,
+}
 /// Satisfaction survey response (score 1-10).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSurveyRow {
@@ -2218,6 +2228,20 @@ pub trait OpsStore: Send + Sync {
         client_id: i64,
         matter_id: Option<i64>,
     ) -> Result<Vec<ClientMessageRow>, StoreError>;
+    /// Deed-copy requests (requested->fulfilled/cancelled; staff fulfills).
+    async fn ccpr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        deed_id: Option<i64>,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ccpr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCopyReqRow>, StoreError>;
+    async fn ccpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

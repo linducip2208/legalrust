@@ -3503,6 +3503,22 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.action) + ' · ' + esc(x.created) + '</span>'; }).join(' ') || 'Belum ada jejak.';
   });
+  on('ptl-copy', 'click', async function () {
+    var r = await fetch('/api/v1/portal/copies', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ note: pval('ptl-copy-note') || '' }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = 'Permintaan salinan tercatat.';
+  });
+  on('ptl-track', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/track', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.innerHTML = 'Salinan: ' + (v.copies || []).map(function (x) { return '#' + x.id + ' ' + x.status; }).join(', ')
+      + ' · Dok: ' + (v.doc_requests || []).map(function (x) { return '#' + x.id + ' ' + x.status; }).join(', ')
+      + ' · Janji: ' + (v.appointments || []).map(function (x) { return '#' + x.id + ' ' + x.status; }).join(', ');
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

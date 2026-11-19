@@ -3207,6 +3207,83 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn ccpr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        deed_id: Option<i64>,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_copy_requests (org_id, client_id, deed_id, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(deed_id.map(|v| v as u64))
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ccpr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCopyReqRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, deed_id, note, status FROM client_copy_requests WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, deed_id, note, status FROM client_copy_requests WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientCopyReqRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                deed_id: x.get::<Option<u64>, _>("deed_id").map(|v| v as i64),
+                note: x.get::<String, _>("note"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn ccpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_copy_requests WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("requested", "fulfilled") | ("requested", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_copy_requests SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

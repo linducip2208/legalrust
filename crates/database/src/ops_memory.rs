@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    ccprs: HashMap<i64, ClientCopyReqRow>,
     cmsgs: HashMap<i64, ClientMessageRow>,
     csvs: HashMap<i64, ClientSurveyRow>,
     mcamps: HashMap<i64, MarketingCampaignRow>,
@@ -3471,6 +3472,68 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| r.id);
         Ok(v)
+    }
+    async fn ccpr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        deed_id: Option<i64>,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ccprs.insert(
+            id,
+            ClientCopyReqRow {
+                id,
+                org: org.into(),
+                client_id,
+                deed_id,
+                note: note.trim().into(),
+                status: "requested".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ccpr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCopyReqRow>, StoreError> {
+        let mut v: Vec<ClientCopyReqRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ccprs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ccpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ccprs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("requested", "fulfilled") | ("requested", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
