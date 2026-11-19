@@ -1529,6 +1529,173 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn incident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let r = sqlx::query("INSERT INTO incident_logs (org_id, title, severity) VALUES (?,?,?)")
+            .bind(org)
+            .bind(title)
+            .bind(severity)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn incident_list(&self, org: &str) -> Result<Vec<IncidentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, severity, status FROM incident_logs WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| IncidentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                severity: x.get::<String, _>("severity"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn incident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "investigating" | "resolved" | "closed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM incident_logs WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "investigating")
+                | (Some("investigating"), "resolved")
+                | (Some("resolved"), "closed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE incident_logs SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn incident_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM incident_logs WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn capa_create(
+        &self,
+        org: &str,
+        title: &str,
+        cause: &str,
+        action: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO capa_items (org_id, title, cause, action) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(title)
+                .bind(cause.trim())
+                .bind(action.trim())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn capa_list(&self, org: &str) -> Result<Vec<CapaRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, cause, action, status FROM capa_items WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| CapaRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                cause: x.get::<String, _>("cause"),
+                action: x.get::<String, _>("action"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn capa_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_progress" | "done" | "verified") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM capa_items WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "in_progress")
+                | (Some("in_progress"), "done")
+                | (Some("done"), "verified")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE capa_items SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn capa_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM capa_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

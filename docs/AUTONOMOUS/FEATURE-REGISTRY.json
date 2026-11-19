@@ -4141,19 +4141,29 @@
   "id": "F-D11-020",
   "domain": "D11",
   "title": "Incident register & triage",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0026_incidents.sql: incident_logs table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: incident CRUD + open->investigating->resolved->closed chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/incidents + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: incRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: incident_and_capa_lifecycle e2e"
+  ],
+  "audit_note": "Wave 58: full lifecycle live; verified by test (347/0)."
  },
  {
   "id": "F-D11-021",
   "domain": "D11",
   "title": "Corrective-action (CAPA) tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0027_capa.sql: capa_items table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: capa CRUD + open->in_progress->done->verified chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/capa + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: capaRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: incident_and_capa_lifecycle e2e"
+  ],
+  "audit_note": "Wave 58: full lifecycle live; verified by test (347/0)."
  },
  {
   "id": "F-D11-022",

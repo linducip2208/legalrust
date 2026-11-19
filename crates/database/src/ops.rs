@@ -154,6 +154,25 @@ pub struct BreachRow {
     pub affected_count: i64,
     pub status: String,
 }
+/// Operational incident (non-PDP incidents, complaints, near-misses).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncidentRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub severity: String,
+    pub status: String,
+}
+/// Corrective Action / Preventive Action item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CapaRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub cause: String,
+    pub action: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -744,6 +763,27 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn breach_list(&self, org: &str) -> Result<Vec<BreachRow>, StoreError>;
     async fn breach_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// Operational incident register.
+    async fn incident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError>;
+    async fn incident_list(&self, org: &str) -> Result<Vec<IncidentRow>, StoreError>;
+    async fn incident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn incident_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// CAPA tracker.
+    async fn capa_create(
+        &self,
+        org: &str,
+        title: &str,
+        cause: &str,
+        action: &str,
+    ) -> Result<i64, StoreError>;
+    async fn capa_list(&self, org: &str) -> Result<Vec<CapaRow>, StoreError>;
+    async fn capa_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn capa_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

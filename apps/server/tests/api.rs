@@ -6434,6 +6434,141 @@ async fn webhook_failed_send_queues_retry() {
 }
 
 #[tokio::test]
+async fn incident_and_capa_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "inccapa@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/incidents",
+            r#"{"title":"X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/incidents",
+            r#"{"title":"Server down","severity":"critical"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["investigating", "resolved", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/incidents/{iid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "incident to {st}");
+    }
+    // CAPA full chain with cause/action.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/capa",
+            r#"{"title":"Tambah UPS","cause":"Listrik padam","action":"Beli UPS 2kVA"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "done", "verified"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/capa/{cid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "capa to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/incidents", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(iid) && r["status"] == "closed"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/capa", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["status"] == "verified"));
+    // Delete is Delete-gated; audit trail intact.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/capa/{cid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/incidents/{iid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=incident", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.incident_created"));
+}
+
+#[tokio::test]
 async fn vendor_register_and_dpa_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7507,6 +7642,14 @@ async fn uib_app_has_approvals_ui() {
         "vendor-add",
         "vendor-reload",
         "vendor-list",
+        "inc-title",
+        "inc-add",
+        "inc-reload",
+        "inc-list",
+        "capa-title",
+        "capa-add",
+        "capa-reload",
+        "capa-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

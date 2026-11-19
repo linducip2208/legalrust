@@ -1683,8 +1683,84 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     vendorRefresh();
   });
   on('vendor-reload', 'click', vendorRefresh);
+  /* ---- compliance: incidents ---- */
+  var INC_NEXT = { open: 'investigating', investigating: 'resolved', resolved: 'closed' };
+  async function incRefresh() {
+    var box = document.getElementById('inc-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/incidents');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = INC_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-inc-next="' + x.id + '" data-inc-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">ditutup</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-inc-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + badge(x.severity) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada insiden.</td></tr>';
+    qsa('[data-inc-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/incidents/' + b.getAttribute('data-inc-next') + '/status', { status: b.getAttribute('data-inc-to') });
+        if (!r.ok) { pmsg('inc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('inc-msg', '');
+        incRefresh();
+      });
+    });
+    qsa('[data-inc-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/incidents/' + b.getAttribute('data-inc-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('inc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('inc-msg', '');
+        incRefresh();
+      });
+    });
+  }
+  on('inc-add', 'click', async function () {
+    if (!pval('inc-title')) { pmsg('inc-msg', 'Isi judul insiden.'); return; }
+    var r = await ppost('/api/v1/compliance/incidents', { title: pval('inc-title'), severity: pval('inc-sev') || 'medium' });
+    if (!r.ok) { pmsg('inc-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('inc-msg', '');
+    incRefresh();
+  });
+  on('inc-reload', 'click', incRefresh);
+  /* ---- compliance: CAPA tracker ---- */
+  var CAPA_NEXT = { open: 'in_progress', in_progress: 'done', done: 'verified' };
+  async function capaRefresh() {
+    var box = document.getElementById('capa-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/capa');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = CAPA_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-capa-next="' + x.id + '" data-capa-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">terverifikasi</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-capa-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.cause) + '</td><td>' + esc(x.action) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada CAPA.</td></tr>';
+    qsa('[data-capa-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/capa/' + b.getAttribute('data-capa-next') + '/status', { status: b.getAttribute('data-capa-to') });
+        if (!r.ok) { pmsg('capa-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('capa-msg', '');
+        capaRefresh();
+      });
+    });
+    qsa('[data-capa-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/capa/' + b.getAttribute('data-capa-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('capa-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('capa-msg', '');
+        capaRefresh();
+      });
+    });
+  }
+  on('capa-add', 'click', async function () {
+    if (!pval('capa-title')) { pmsg('capa-msg', 'Isi judul tindakan.'); return; }
+    var r = await ppost('/api/v1/compliance/capa', { title: pval('capa-title'), cause: pval('capa-cause') || '', action: pval('capa-action') || '' });
+    if (!r.ok) { pmsg('capa-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('capa-msg', '');
+    capaRefresh();
+  });
+  on('capa-reload', 'click', capaRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -1726,6 +1802,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dpiaRefresh();
   breachRefresh();
   vendorRefresh();
+  incRefresh();
+  capaRefresh();
   whDlRefresh();
   intRefresh();
   intRefresh();

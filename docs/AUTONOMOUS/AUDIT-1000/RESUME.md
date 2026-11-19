@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 58: register insiden + CAPA tracker (main)
+- incident_logs + capa_items (migrations 0026/0027) + state machines + kartu kepatuhan + uji lifecycle.
+- F-D11-020/F-D11-021 PLANNED->IMPLEMENTED (~72.5 verified). Workspace 347/0; registry 19.9->~20.3 (82 IMPLEMENTED); mean ~21.5 (80 v).
+
 ## Done wave 57: monitor kesehatan integrasi (main)
 - /api/v1/integrations/health + kartu Jobs (tanpa bocor secret) + uji no-leak.
 - F-D21-031 51.8->70.9 PARTIAL (verified). Workspace 346/0; registry 19.9 (80 IMPLEMENTED); mean 21.4 (78 v).

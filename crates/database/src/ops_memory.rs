@@ -47,6 +47,8 @@ struct Inner {
     dpia: HashMap<i64, DpiaRow>,
     breach: HashMap<i64, BreachRow>,
     vendors: HashMap<i64, VendorRow>,
+    incidents: HashMap<i64, IncidentRow>,
+    capas: HashMap<i64, CapaRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1418,6 +1420,139 @@ impl OpsStore for MemoryOps {
         match m.vendors.get(&id) {
             Some(r) if r.org == org => {
                 m.vendors.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn incident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.incidents.insert(
+            id,
+            IncidentRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                severity: severity.into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn incident_list(&self, org: &str) -> Result<Vec<IncidentRow>, StoreError> {
+        let mut v: Vec<IncidentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .incidents
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn incident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .incidents
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "investigating") | ("investigating", "resolved") | ("resolved", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn incident_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.incidents.get(&id) {
+            Some(r) if r.org == org => {
+                m.incidents.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn capa_create(
+        &self,
+        org: &str,
+        title: &str,
+        cause: &str,
+        action: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.capas.insert(
+            id,
+            CapaRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                cause: cause.trim().into(),
+                action: action.trim().into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn capa_list(&self, org: &str) -> Result<Vec<CapaRow>, StoreError> {
+        let mut v: Vec<CapaRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .capas
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn capa_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .capas
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "in_progress") | ("in_progress", "done") | ("done", "verified")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn capa_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.capas.get(&id) {
+            Some(r) if r.org == org => {
+                m.capas.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
