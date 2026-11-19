@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 84: office performance + deed volume (main)
 - GET /api/v1/reports/office-performance + deed-volume + kartu akta + uji (derivasi, tanpa migrasi).
-- F-D12-026/027 PLANNED->IMPLEMENTED (~72.0 verified). Workspace 373/0; registry ~23.8 (130 IMPLEMENTED); mean ~24.7 (128 v).
+- F-D12-026/027 PLANNED->IMPLEMENTED (~72.0 verified). Workspace 373/0; registry ~23.8 (130 IMPLEMENTED); mean 24.8 (128 v).
 
 ## Done wave 83: ATK kind-tag + archive map (main)
 - inventory kind tag + archive_boxes (0053 ALTER+CREATE) + kartu + uji.
