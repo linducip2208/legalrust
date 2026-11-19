@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 81: witness pool + re-verification (main)
 - witnesses + rechecks (0051) + kartu klien + uji (re-verifikasi manual, eksternal BLOCKED).
-- F-D12-024/023 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 370/0; registry ~23.5 (124 IMPLEMENTED); mean ~24.3 (122 v).
+- F-D12-024/023 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 370/0; registry ~23.5 (124 IMPLEMENTED); mean 24.4 (122 v).
 
 ## Done wave 80: down-payments + klapper (main)
 - down_payments (0050) + klapper derivasi + kartu + uji.
