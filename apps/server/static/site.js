@@ -3442,6 +3442,43 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (m) { return '<span class="badge">' + esc(m.title) + ' · ' + esc(m.status) + ' · ' + m.documents + ' dok</span>'; }).join(' ') || 'Belum ada perkara.';
   });
+  on('ptl-inbox', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/doc-requests', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) {
+      var ack = x.status === 'requested' ? ' <button class="btn btn-sm" data-ptl-ack="' + x.id + '" type="button">Sudah diterima</button>' : '';
+      return '<span class="badge">' + esc(x.title) + ' · ' + esc(x.status) + ack + '</span>';
+    }).join(' ') || 'Inbox kosong.';
+    qsa('[data-ptl-ack]', function (b) {
+      b.addEventListener('click', async function () {
+        var rr = await fetch('/api/v1/portal/doc-requests/' + b.getAttribute('data-ptl-ack') + '/received', { method: 'POST', headers: ptlH() });
+        if (!rr.ok) { pmsg('ptl-msg', 'Gagal (' + rr.status + ').'); return; }
+        pmsg('ptl-msg', '');
+      });
+    });
+  });
+  on('ptl-upload', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var fi = document.getElementById('ptl-file');
+    if (!pval('ptl-mid') || !fi || !fi.files || !fi.files[0]) { pmsg('ptl-msg', 'Isi ID perkara dan pilih berkas.'); return; }
+    var f = fi.files[0];
+    var buf = await f.arrayBuffer().catch(function () { return null; });
+    if (!buf) { pmsg('ptl-msg', 'Gagal baca berkas.'); return; }
+    var bytes = new Uint8Array(buf);
+    var hash = await crypto.subtle.digest('SHA-256', bytes).then(function (h) {
+      return Array.prototype.map.call(new Uint8Array(h), function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    });
+    var meta = await fetch('/api/v1/documents', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ matter_id: +pval('ptl-mid'), name: f.name, mime: f.type || 'application/octet-stream', size: bytes.length, sha: hash }) });
+    if (!meta.ok) { pmsg('ptl-msg', 'Gagal metadata (' + meta.status + '). Perkara milik sendiri?'); return; }
+    var mv = await meta.json().catch(function () { return null; });
+    if (!mv) { pmsg('ptl-msg', 'Respons tak terduga.'); return; }
+    var up = await fetch('/api/v1/documents/' + mv.id + '/content', { method: 'PUT', headers: ptlH(), body: bytes });
+    if (!up.ok) { pmsg('ptl-msg', 'Gagal unggah (' + up.status + ').'); return; }
+    pmsg('ptl-msg', '');
+    if (out) out.textContent = 'Terunggah: dokumen #' + mv.id;
+  });
   /* ---- campaigns + participations (F-D02-022) ---- */
   async function mcpRefresh() {
     var box = document.getElementById('mcp-list');

@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 158: dasbor portal (main)
+## 2026-11-19 AUDIT-1000 wave 159: inbox + unggah portal (main)
+- Tenant guards + roundtrip; workspace **449 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 158: dasbor portal (main)
 - Isolation asserted; workspace **448 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 157: login portal (main)

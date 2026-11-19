@@ -7943,19 +7943,25 @@
   "id": "F-D19-005",
   "domain": "D19",
   "title": "Document request inbox",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/doc-requests + POST received (own-book, requested-only, RBAC)",
+   "site.js: inbox list + ack button (portal card)",
+   "tests: portal_inbox_and_secure_upload e2e (ack, foreign 404)"
+  ],
+  "audit_note": "Wave 159: portal inbox live; verification stays staff-side. Verified by test (449/0)."
  },
  {
   "id": "F-D19-006",
   "domain": "D19",
   "title": "Secure document upload",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: portal_doc_guard on create_doc/put_content/get_content (role=client, matter-owned, 404 oracle-free)",
+   "site.js: file upload flow (hash + metadata + PUT) in portal card",
+   "tests: own-matter roundtrip + cross-book create/upload/download 404s (tenant leak closed)"
+  ],
+  "audit_note": "Wave 159: secure portal upload live; shared routes hardened. Verified by test (449/0)."
  },
  {
   "id": "F-D19-007",

@@ -5689,6 +5689,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-me",
         "ptl-dash",
         "ptl-matters",
+        "ptl-inbox",
+        "ptl-upload",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11666,6 +11668,193 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_inbox_and_secure_upload() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal4@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let cli2 = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"PA","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ma = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"PB","client_id":{cli2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mb = body_json(res).await["id"].as_i64().unwrap();
+    // Staff seeds a doc request + other-client doc.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/doc-requests"),
+            r#"{"title":"KTP"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did_req = body_json(res).await["id"].as_i64().unwrap();
+    let body = b"milik B";
+    let sha = legalrust_document::sha256_hex(body);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mb},"name":"b.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, body.len()), Some(&tok))).await.unwrap();
+    let db = body_json(res).await["id"].as_i64().unwrap();
+    // Portal login for cli.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p4@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Inbox shows own request; ack moves requested->received; foreign ack 404s.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/doc-requests", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(did_req)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/portal/doc-requests/{did_req}/received"),
+            "{}",
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/doc-requests/999999/received",
+            "{}",
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Upload to own matter works end-to-end (metadata + bytes roundtrip).
+    let up = b"portal upload";
+    let usha = legalrust_document::sha256_hex(up);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{ma},"name":"p.txt","mime":"text/plain","size":{},"sha":"{usha}"}}"#, up.len()), Some(&ptok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK, "portal own-matter upload");
+    let du = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{du}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(up.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{du}/content"))
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Cross-book blocked: create under other matter, upload/download foreign doc.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"matter_id":{mb},"name":"x.txt","mime":"text/plain","size":1,"sha":"{}"}}"#,
+                "ab".repeat(32)
+            ),
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{db}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{db}/content"))
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
 
 #[tokio::test]
