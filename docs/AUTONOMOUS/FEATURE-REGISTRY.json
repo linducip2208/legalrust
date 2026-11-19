@@ -1120,10 +1120,13 @@
   "id": "F-D03-039",
   "domain": "D03",
   "title": "Matter SLA breach alerts",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/sla-breaches.csv (open+overdue only, Export + audit)",
+   "apps/server/static/site.js: rep-sla button",
+   "apps/server/tests/api.rs: SLA isolation (future/done excluded) + trail + needles"
+  ],
+  "audit_note": "Wave 54: SLA breach list live; auto-escalation notify pending."
  },
  {
   "id": "F-D03-040",

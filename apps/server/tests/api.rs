@@ -5410,6 +5410,7 @@ async fn uib_app_has_audit_jobs_ui() {
         "job-msg",
         "rep-matters",
         "rep-deadlines",
+        "rep-sla",
         "rep-posture",
         "rep-exec",
         "rep-msg",
@@ -7004,6 +7005,41 @@ async fn reports_deadline_compliance_and_posture() {
         .collect();
     assert!(acts.contains(&"report.deadlines_exported".to_string()));
     assert!(acts.contains(&"report.compliance_exported".to_string()));
+    // SLA breach list: only the overdue open task.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/sla-breaches.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sla = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        sla.starts_with("matter_id,matter_number,task_id,task_title,due,status\n"),
+        "was {sla}"
+    );
+    assert!(
+        sla.contains("Overdue terbuka") && sla.contains("2001-01-01 09:00:00"),
+        "was {sla}"
+    );
+    assert!(!sla.contains("Mendatang"), "future task leaked: {sla}");
+    assert!(!sla.contains("Selesai lampau"), "done task leaked: {sla}");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.sla_exported"));
 }
 
 #[tokio::test]

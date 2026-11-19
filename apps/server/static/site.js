@@ -1193,6 +1193,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
   on('rep-deadlines', 'click', function () { dlCsv('/api/v1/reports/deadline-compliance.csv', 'deadline-compliance.csv', 'rep-msg'); });
+  on('rep-sla', 'click', function () { dlCsv('/api/v1/reports/sla-breaches.csv', 'sla-breaches.csv', 'rep-msg'); });
   on('rep-posture', 'click', function () { dlCsv('/api/v1/reports/compliance-posture.csv', 'compliance-posture.csv', 'rep-msg'); });
   on('rep-exec', 'click', async function () {
     var box = document.getElementById('exec-sum');

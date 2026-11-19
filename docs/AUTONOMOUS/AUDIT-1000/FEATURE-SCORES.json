@@ -2008,19 +2008,19 @@
  {
   "feature_id": "F-D03-039",
   "domain": "D03",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 10,
-   "database": 10,
-   "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "backend": 75,
+   "database": 65,
+   "frontend": 60,
+   "business_logic": 70,
+   "security": 75,
+   "testing": 80,
+   "integration": 55,
+   "documentation": 50
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 66.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D03-040",
