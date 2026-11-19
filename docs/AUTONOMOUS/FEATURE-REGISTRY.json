@@ -3186,10 +3186,12 @@
   "id": "F-D09-006",
   "domain": "D09",
   "title": "Mobile approval inbox",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /m/inbox (touch-first page, decidable + idempotent decide, token auth)",
+   "apps/server/tests/api.rs: /m/inbox 200 with viewport + decidable + Idempotency-Key wiring asserted"
+  ],
+  "audit_note": "Wave 125: mobile inbox live (companion web page; native app out of scope). Verified by test (413/0)."
  },
  {
   "id": "F-D09-007",
@@ -3444,12 +3446,15 @@
   "id": "F-D09-027",
   "domain": "D09",
   "title": "Approval analytics (bottlenecks)",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs: GET /api/v1/reports/approvals-bottleneck.csv (stuck step/role per pending request)",
-   "apps/server/tests/api.rs: bottleneck stuck-step assertions"
+   "apps/server/tests/api.rs: bottleneck stuck-step assertions",
+   "apps/server/src/lib.rs: GET /api/v1/reports/approvals-trend (audit-window buckets, RBAC)",
+   "apps/server/static/site.js: trd card Tren persetujuan + hooks (appr panel)",
+   "apps/server/tests/api.rs: today bucket events/approved asserted, clamp, 401"
   ],
-  "audit_note": "Wave 52: bottleneck snapshot live; trend/history pending."
+  "audit_note": "Wave 125: bounded trend live (500-row window disclosed). PARTIAL->IMPLEMENTED, verified by test (413/0)."
  },
  {
   "id": "F-D09-028",

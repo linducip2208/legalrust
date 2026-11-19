@@ -9209,6 +9209,74 @@ async fn approval_attachments_and_archive() {
 }
 
 #[tokio::test]
+async fn approval_trend_and_mobile_inbox() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprtrend@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals-trend?days=7", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tv = body_json(res).await;
+    let row = tv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["date"] == today);
+    assert!(
+        row.is_some(),
+        "today bucket missing: {}",
+        serde_json::to_string(&tv).unwrap()
+    );
+    assert!(row.unwrap()["events"].as_i64().unwrap() >= 1);
+    assert!(row.unwrap()["approved"].as_i64().unwrap() >= 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals-trend?days=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["days"].as_i64().unwrap(), 1);
+    // Mobile inbox page renders without auth (auth happens client-side like /app login).
+    let (st, _, t) = page_get(&a, "/m/inbox").await;
+    assert_eq!(st, StatusCode::OK);
+    for n in [
+        "Inbox Persetujuan",
+        "viewport",
+        "decidable",
+        "Idempotency-Key",
+    ] {
+        assert!(t.contains(n), "/m/inbox missing {n}");
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/approvals-trend")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_routing_amount_and_risk() {
     use tower::ServiceExt;
     let a = app();
@@ -15479,6 +15547,9 @@ async fn uib_app_has_approvals_ui() {
         "qrm-reload",
         "qrm-list",
         "qrv-go",
+        "trd-days",
+        "trd-reload",
+        "trd-list",
         "appr-sim-out",
         "arc-status",
         "arc-reload",

@@ -5527,19 +5527,19 @@
  {
   "feature_id": "F-D09-006",
   "domain": "D09",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 82,
+   "database": 70,
+   "frontend": 76,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 72.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D09-007",
@@ -5884,18 +5884,18 @@
  {
   "feature_id": "F-D09-027",
   "domain": "D09",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 75,
-   "database": 65,
-   "frontend": 60,
-   "business_logic": 70,
-   "security": 75,
-   "testing": 78,
-   "integration": 50,
-   "documentation": 50
+   "backend": 82,
+   "database": 70,
+   "frontend": 76,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 65.4,
+  "overall_score": 72.5,
   "verified_8cat": true
  },
  {

@@ -3801,6 +3801,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('qrm-msg', '');
     qrmRefresh();
   });
+  /* ---- approval trend (F-D09-027) ---- */
+  async function trdRefresh() {
+    var box = document.getElementById('trd-list');
+    if (!box) return;
+    var d = parseInt(pval('trd-days'), 10);
+    if (!(d >= 1)) d = 30;
+    var v = await j('/api/v1/reports/approvals-trend?days=' + d);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x) {
+      return '<tr><td>' + esc(x.date) + '</td><td>' + x.events + '</td><td>' + x.approved + '</td><td>' + x.rejected + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada peristiwa pada jendela ini.</td></tr>';
+  }
+  on('trd-reload', 'click', trdRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3856,10 +3869,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); trdRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); trdRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4985,6 +4998,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   frzRefresh();
   rrRefresh();
   qrmRefresh();
+  trdRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();
