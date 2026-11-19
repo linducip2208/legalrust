@@ -14854,7 +14854,7 @@ async fn approvals_csv_export_lists_all_requests() {
     )
     .unwrap();
     assert!(
-        text.starts_with("id,title,entity,status,created,pending_steps\n"),
+        text.starts_with("id,title,entity,status,created,pending_steps,decided_by,steps\n"),
         "was {text}"
     );
     assert!(text.contains(&format!("{aid},")), "was {text}");
@@ -14878,6 +14878,50 @@ async fn approvals_csv_export_lists_all_requests() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Auditor-grade columns: decide, then actor + step detail appear; status filter scopes.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals.csv?status=approved", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(text.contains("1:office_admin:approved:"), "was {text}");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals.csv?status=rejected", &tok))
+        .await
+        .unwrap();
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(!text.contains(&format!("{aid},")), "was {text}");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals.csv?status=alien", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]

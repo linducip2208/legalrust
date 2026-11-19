@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 123: ekspor + matriks (main)
+- Ekspor auditor + matriks lengkap; workspace **411 passed, 0 failed**; F-D09-035/002 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 122: rantai + redaksi (main)
 - Rantai integritas + redaksi komentar; workspace **411 passed, 0 failed**; F-D09-036/038 IMPLEMENTED.
 

@@ -13966,16 +13966,23 @@ async fn appr_calendar(
 async fn approvals_csv_export(
     State(s): State<FullState>,
     headers: HeaderMap,
+    Query(q): Query<ArchiveQ>,
 ) -> Result<impl IntoResponse, AppError> {
     let u = auth_user(&headers, &s).await?;
     authorize(&u, Permission::Export)?;
+    let status = q.status.clone();
+    if let Some(ref st) = status {
+        if !["pending", "needs_rework", "approved", "rejected", "revoked"].contains(&st.as_str()) {
+            return Err(AppError::Validation("status".into()));
+        }
+    }
     let v = s
         .stores
         .ops
-        .appr_list(&u.claims.org, None)
+        .appr_list(&u.claims.org, status.as_deref())
         .await
         .map_err(map_store)?;
-    let mut csv = String::from("id,title,entity,status,created,pending_steps\n");
+    let mut csv = String::from("id,title,entity,status,created,pending_steps,decided_by,steps\n");
     for r in &v {
         let (_, steps) = s
             .stores
@@ -13984,14 +13991,29 @@ async fn approvals_csv_export(
             .await
             .map_err(map_store)?;
         let open = steps.iter().filter(|x| x.status == "pending").count();
+        let decided: Vec<String> = steps.iter().filter_map(|x| x.user.clone()).collect();
+        let detail: Vec<String> = steps
+            .iter()
+            .map(|x| {
+                format!(
+                    "{}:{}:{}:{}",
+                    x.step_no,
+                    x.role,
+                    x.status,
+                    x.user.clone().unwrap_or_else(|| "-".into())
+                )
+            })
+            .collect();
         csv.push_str(&format!(
-            "{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{}\n",
             r.id,
             csv_field(&r.title),
             csv_field(&r.entity),
             csv_field(&r.status),
             csv_field(&r.created),
-            open
+            open,
+            csv_field(&decided.join(";")),
+            csv_field(&detail.join(";")),
         ));
     }
     audit(

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 123: export + matrix (main)
+- approvals.csv auditor columns + filter; 002 verify-close via routing.
+- F-D09-035/002 PARTIAL->IMPLEMENTED (~72.3 verified). Workspace 411/0; registry ~27.9 (210 IMPLEMENTED); mean 29.5 (202 v).
+
 ## Done wave 122: chain + redaction (main)
 - approval_receipts (0080, hash chain) + redact endpoint + kartu + uji.
 - F-D09-036/038 NOT_STARTED/PLANNED->IMPLEMENTED (~73.0 verified). Workspace 411/0 (earlier single failure was a bad JS-rendered needle, fixed). Registry ~27.9 (208 IMPLEMENTED); mean 29.5 (202 v).
