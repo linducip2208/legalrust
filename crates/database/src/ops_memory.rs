@@ -146,6 +146,8 @@ struct Inner {
     ccnss: HashMap<i64, ClientConsentRow>,
     vips: HashMap<i64, ClientVipRow>,
     creds: HashMap<i64, ClientCreditRow>,
+    crems: HashMap<i64, ClientReminderRow>,
+    cfb: HashMap<i64, ClientFeedbackRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -189,6 +191,14 @@ fn cvip_ok(tier: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("tier".into()));
     }
     Ok(t)
+}
+
+fn crem_date_ok(on: &str) -> Result<String, StoreError> {
+    let d = on.trim();
+    if d.len() != 10 || d.as_bytes()[4] != b'-' {
+        return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+    }
+    Ok(d.into())
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -2993,6 +3003,149 @@ impl OpsStore for MemoryOps {
             .values()
             .find(|r| r.org == org && r.client_id == client_id)
             .cloned())
+    }
+    async fn crem_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        remind_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let remind_on = crem_date_ok(remind_on)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.crems.insert(
+            id,
+            ClientReminderRow {
+                id,
+                org: org.into(),
+                client_id,
+                title: title.into(),
+                remind_on,
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn crem_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+        upcoming_days: Option<i64>,
+    ) -> Result<Vec<ClientReminderRow>, StoreError> {
+        let horizon = upcoming_days.map(|d| {
+            (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(d.max(0)))
+                .format("%Y-%m-%d")
+                .to_string()
+        });
+        let mut v: Vec<ClientReminderRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .crems
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && client_id.map(|c| r.client_id == c).unwrap_or(true)
+                    && horizon
+                        .as_ref()
+                        .map(|h| r.remind_on.as_str() <= h.as_str())
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.remind_on.cmp(&b.remind_on));
+        Ok(v)
+    }
+    async fn crem_set_done(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.crems.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.done = done;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn crem_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.crems.get(&id) {
+            Some(r) if r.org == org => {
+                m.crems.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cfb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if client_id <= 0 || body.len() < 2 || body.len() > 2000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        if !matches!(kind, "feedback" | "complaint") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cfb.insert(
+            id,
+            ClientFeedbackRow {
+                id,
+                org: org.into(),
+                client_id,
+                kind: kind.into(),
+                body: body.into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cfb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientFeedbackRow>, StoreError> {
+        let mut v: Vec<ClientFeedbackRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cfb
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cfb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cfb
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.kind.as_str(), r.status.as_str(), to),
+            (_, "open", "ack")
+                | (_, "ack", "resolved")
+                | ("complaint", "open", "escalated")
+                | ("complaint", "escalated", "resolved")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

@@ -3208,6 +3208,62 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (out) out.innerHTML = 'Limit ' + fmtRp(v.limit_minor) + ' · eksposur ' + fmtRp(v.exposure_minor)
       + (v.over_limit ? ' <span class="badge bg-red-lt">LEWAT LIMIT</span>' : ' <span class="badge bg-green-lt">aman</span>');
   });
+  /* ---- reminders + feedback (F-D02-032/033) ---- */
+  async function crmRefresh() {
+    var box = document.getElementById('crm-list');
+    if (!box) return;
+    var qs = [];
+    if (pval('crm-cid')) qs.push('client_id=' + encodeURIComponent(pval('crm-cid')));
+    if (pval('crm-days')) qs.push('upcoming_days=' + encodeURIComponent(pval('crm-days')));
+    var v = await j('/api/v1/reminders' + (qs.length ? '?' + qs.join('&') : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.remind_on) + '</td><td>' + esc(x.title) + '</td><td>' + (x.done ? 'ya' : 'tidak') + '</td><td><button class="btn btn-sm" data-crm-tgl="' + x.id + '" data-crm-to="' + (x.done ? '0' : '1') + '" type="button">Alih</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada pengingat.</td></tr>';
+    qsa('[data-crm-tgl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/reminders/' + b.getAttribute('data-crm-tgl') + '/done', { done: b.getAttribute('data-crm-to') === '1' });
+        if (!r.ok) { pmsg('crm2-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('crm2-msg', '');
+        crmRefresh();
+      });
+    });
+  }
+  on('crm-add', 'click', async function () {
+    if (!pval('crm-cid') || !pval('crm-title') || !pval('crm-on')) { pmsg('crm2-msg', 'Isi klien, judul, tanggal.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('crm-cid')) + '/reminders', { title: pval('crm-title'), remind_on: pval('crm-on') });
+    if (!r.ok) { pmsg('crm2-msg', 'Gagal (' + r.status + '). Format tanggal?'); return; }
+    pmsg('crm2-msg', '');
+    crmRefresh();
+  });
+  on('crm2-reload', 'click', crmRefresh);
+  async function cfbRefresh() {
+    var box = document.getElementById('cfb-list');
+    if (!box) return;
+    var v = await j('/api/v1/feedback' + (pval('cfb-cid') ? '?client_id=' + encodeURIComponent(pval('cfb-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'open' ? '<button class="btn btn-sm" data-cfb-next="' + x.id + '" data-cfb-to="ack" type="button">Ack</button> ' : (x.status === 'ack' || (x.kind === 'complaint' && x.status === 'escalated') ? '<button class="btn btn-sm" data-cfb-next="' + x.id + '" data-cfb-to="resolved" type="button">Selesai</button> ' : '<span class="text-muted">' + x.status + '</span> ');
+      if (x.kind === 'complaint' && x.status === 'open') act += '<button class="btn btn-sm btn-outline-danger" data-cfb-next="' + x.id + '" data-cfb-to="escalated" type="button">Eskalasi</button> ';
+      return '<tr><td>' + badge(x.kind) + '</td><td>' + esc(x.body) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada umpan balik.</td></tr>';
+    qsa('[data-cfb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/feedback/' + b.getAttribute('data-cfb-next') + '/status', { status: b.getAttribute('data-cfb-to') });
+        if (!r.ok) { pmsg('crm2-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('crm2-msg', '');
+        cfbRefresh();
+      });
+    });
+  }
+  on('cfb-add', 'click', async function () {
+    if (!pval('cfb-cid') || !pval('cfb-body')) { pmsg('crm2-msg', 'Isi ID klien dan isi.'); return; }
+    var r = await ppost('/api/v1/feedback', { client_id: +pval('cfb-cid'), kind: pval('cfb-kind') || 'feedback', body: pval('cfb-body') });
+    if (!r.ok) { pmsg('crm2-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('crm2-msg', '');
+    cfbRefresh();
+  });
+  on('cfb-reload', 'click', cfbRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4039,6 +4095,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ccrRefresh();
   cemRefresh();
   vipRefresh();
+  crmRefresh();
+  cfbRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

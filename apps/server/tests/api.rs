@@ -5651,6 +5651,12 @@ async fn crm_app_contains_crm_ids() {
         "vip-add",
         "vip-list",
         "crd-go",
+        "crm-cid",
+        "crm-add",
+        "crm-list",
+        "cfb-cid",
+        "cfb-add",
+        "cfb-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11128,6 +11134,159 @@ async fn client_roster_and_consents() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/employees"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_reminders_and_feedback() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clirem@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/reminders"),
+            r#"{"title":"Ultah","remind_on":"2027-01-01"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/999999/reminders",
+            r#"{"title":"Hari H","remind_on":"2027-01-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/reminders"),
+            r#"{"title":"x","remind_on":"baddate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/reminders"),
+            r#"{"title":"Ultah","remind_on":"2027-01-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    // Upcoming window excludes far-future... 2027 is within 3650 days.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reminders?upcoming_days=3650", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid)));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reminders?upcoming_days=1", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["id"].as_i64() != Some(rid)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/reminders/{rid}/done"),
+            r#"{"done":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Feedback: complaint escalates, feedback cannot.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/feedback",
+            &format!(r#"{{"client_id":{cli},"kind":"complaint","body":"Lambat sekali"}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/feedback/{fid}/status"),
+            r#"{"status":"resolved"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["escalated", "resolved"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/feedback/{fid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#,),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "fb to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/feedback",
+            &format!(r#"{{"client_id":{cli},"kind":"feedback","body":"Bagus"}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let gid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/feedback/{gid}/status"),
+            r#"{"status":"escalated"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/feedback?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 2);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reminders")
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -2745,6 +2745,181 @@ impl OpsStore for MysqlOps {
             note: x.get::<String, _>("note"),
         }))
     }
+    async fn crem_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        remind_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let d = remind_on.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_reminders (org_id, client_id, title, remind_on) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(title)
+        .bind(d)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn crem_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+        upcoming_days: Option<i64>,
+    ) -> Result<Vec<ClientReminderRow>, StoreError> {
+        let horizon = upcoming_days.map(|d| {
+            (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(d.max(0)))
+                .format("%Y-%m-%d")
+                .to_string()
+        });
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, title, remind_on, done FROM client_reminders WHERE org_id=? AND client_id=? ORDER BY remind_on LIMIT 500")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, title, remind_on, done FROM client_reminders WHERE org_id=? ORDER BY remind_on LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .filter_map(|x| {
+                let r = ClientReminderRow {
+                    id: x.get::<u64, _>("id") as i64,
+                    org: x.get::<String, _>("org_id"),
+                    client_id: x.get::<u64, _>("client_id") as i64,
+                    title: x.get::<String, _>("title"),
+                    remind_on: x.get::<String, _>("remind_on"),
+                    done: x.get::<u8, _>("done") != 0,
+                };
+                if horizon
+                    .as_ref()
+                    .is_some_and(|h| r.remind_on.as_str() > h.as_str())
+                {
+                    None
+                } else {
+                    Some(r)
+                }
+            })
+            .collect())
+    }
+    async fn crem_set_done(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE client_reminders SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn crem_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_reminders WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cfb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if client_id <= 0 || body.len() < 2 || body.len() > 2000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        if !matches!(kind, "feedback" | "complaint") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_feedback (org_id, client_id, kind, body) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(kind)
+        .bind(body)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cfb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientFeedbackRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, kind, body, status FROM client_feedback WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, kind, body, status FROM client_feedback WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientFeedbackRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                kind: x.get::<String, _>("kind"),
+                body: x.get::<String, _>("body"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn cfb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<(String, String)> =
+            sqlx::query("SELECT kind, status FROM client_feedback WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| (x.get::<String, _>("kind"), x.get::<String, _>("status")));
+        let (kind, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (kind.as_str(), status.as_str(), to),
+            (_, "open", "ack")
+                | (_, "ack", "resolved")
+                | ("complaint", "open", "escalated")
+                | ("complaint", "escalated", "resolved")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_feedback SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

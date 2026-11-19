@@ -761,19 +761,29 @@
   "id": "F-D02-032",
   "domain": "D02",
   "title": "Client birthday / key-date reminders",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0094: client_reminders table (forward-only)",
+   "ops.rs + memory + mysql: add/list(windowed)/done/delete",
+   "lib.rs: reminder endpoints + upcoming feed (RBAC)",
+   "site.js: reminder card + hooks (klien panel)",
+   "tests: window in/out + done toggle + ghost/403/401 asserted"
+  ],
+  "audit_note": "Wave 146: reminders live. Verified by test (436/0)."
  },
  {
   "id": "F-D02-033",
   "domain": "D02",
   "title": "Client feedback & complaint handling",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0094: client_feedback table (kind check, forward-only)",
+   "ops.rs + memory + mysql: add/list/status + complaint-only escalation",
+   "lib.rs: feedback endpoints (RBAC)",
+   "site.js: feedback card + hooks (klien panel)",
+   "tests: complaint escalate/resolve + feedback cannot escalate asserted"
+  ],
+  "audit_note": "Wave 146: feedback/complaints live. Verified by test (436/0)."
  },
  {
   "id": "F-D02-034",

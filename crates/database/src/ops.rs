@@ -296,6 +296,26 @@ pub struct ClientCreditRow {
     pub limit_minor: i64,
     pub note: String,
 }
+/// Client key-date reminder.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientReminderRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub title: String,
+    pub remind_on: String,
+    pub done: bool,
+}
+/// Client feedback / complaint.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientFeedbackRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub kind: String,
+    pub body: String,
+    pub status: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2006,6 +2026,36 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: i64,
     ) -> Result<Option<ClientCreditRow>, StoreError>;
+    /// Key-date reminders.
+    async fn crem_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        remind_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn crem_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+        upcoming_days: Option<i64>,
+    ) -> Result<Vec<ClientReminderRow>, StoreError>;
+    async fn crem_set_done(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    async fn crem_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Feedback & complaints (open->ack->resolved; complaints can be escalated).
+    async fn cfb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        kind: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cfb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientFeedbackRow>, StoreError>;
+    async fn cfb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

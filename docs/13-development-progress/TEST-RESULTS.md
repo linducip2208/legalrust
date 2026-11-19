@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 145: VIP + kredit (main)
+## 2026-11-19 AUDIT-1000 wave 146: pengingat + umpan balik (main)
+- Window + branches + guards; workspace **436 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 145: VIP + kredit (main)
 - Flags + exposure math; workspace **435 passed, 0 failed**.
 
 ## 2026-11-19 AUDIT-1000 wave 144: roster + kanal (main)
