@@ -1961,8 +1961,82 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     dsarRefresh();
   });
   on('dsar-reload', 'click', dsarRefresh);
+  /* ---- compliance: ethics declarations ---- */
+  async function ethicsRefresh() {
+    var box = document.getElementById('ethics-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/ethics');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'submitted' ? '<button class="btn btn-sm" data-ethics-next="' + x.id + '" type="button">→ acknowledged</button> ' : '<span class="text-muted">diketahui</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-ethics-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.declarant) + '</td><td>' + esc(x.year) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada deklarasi.</td></tr>';
+    qsa('[data-ethics-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/ethics/' + b.getAttribute('data-ethics-next') + '/status', { status: 'acknowledged' });
+        if (!r.ok) { pmsg('ethics-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ethics-msg', '');
+        ethicsRefresh();
+      });
+    });
+    qsa('[data-ethics-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/ethics/' + b.getAttribute('data-ethics-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ethics-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ethics-msg', '');
+        ethicsRefresh();
+      });
+    });
+  }
+  on('ethics-add', 'click', async function () {
+    if (!pval('ethics-who') || !pval('ethics-stmt')) { pmsg('ethics-msg', 'Isi pendeklarasi dan pernyataan.'); return; }
+    var r = await ppost('/api/v1/compliance/ethics', { declarant: pval('ethics-who'), year: pval('ethics-year') || '', statement: pval('ethics-stmt') });
+    if (!r.ok) { pmsg('ethics-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ethics-msg', '');
+    ethicsRefresh();
+  });
+  on('ethics-reload', 'click', ethicsRefresh);
+  /* ---- compliance: gift register ---- */
+  var GIFT_NEXT = { logged: 'reviewed', reviewed: 'cleared' };
+  async function giftRefresh() {
+    var box = document.getElementById('gift-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/gifts');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = GIFT_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-gift-next="' + x.id + '" data-gift-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-gift-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.direction) + '</td><td>' + esc(x.description) + ' <span class="text-muted">(' + esc(x.counterpart) + ')</span></td><td>' + esc(x.given_at) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada catatan gratifikasi.</td></tr>';
+    qsa('[data-gift-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/gifts/' + b.getAttribute('data-gift-next') + '/status', { status: b.getAttribute('data-gift-to') });
+        if (!r.ok) { pmsg('gift-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('gift-msg', '');
+        giftRefresh();
+      });
+    });
+    qsa('[data-gift-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/gifts/' + b.getAttribute('data-gift-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('gift-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('gift-msg', '');
+        giftRefresh();
+      });
+    });
+  }
+  on('gift-add', 'click', async function () {
+    if (!pval('gift-desc')) { pmsg('gift-msg', 'Isi uraian hadiah.'); return; }
+    var r = await ppost('/api/v1/compliance/gifts', { direction: pval('gift-dir') || 'received', description: pval('gift-desc'), counterpart: pval('gift-who') || '', given_at: pval('gift-at') || '' });
+    if (!r.ok) { pmsg('gift-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('gift-msg', '');
+    giftRefresh();
+  });
+  on('gift-reload', 'click', giftRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2013,6 +2087,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   riskRefresh();
   riskHmRefresh();
   dsarRefresh();
+  ethicsRefresh();
+  giftRefresh();
   whDlRefresh();
   intRefresh();
 })();

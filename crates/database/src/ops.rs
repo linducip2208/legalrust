@@ -216,6 +216,27 @@ pub struct DsarRow {
     pub due_date: String,
     pub status: String,
 }
+/// Ethics & independence declaration (annual affirmation).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EthicsRow {
+    pub id: i64,
+    pub org: String,
+    pub declarant: String,
+    pub year: String,
+    pub statement: String,
+    pub status: String,
+}
+/// Gift & hospitality entry (gratifikasi control).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GiftRow {
+    pub id: i64,
+    pub org: String,
+    pub direction: String,
+    pub description: String,
+    pub counterpart: String,
+    pub given_at: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -874,6 +895,29 @@ pub trait OpsStore: Send + Sync {
     async fn dsar_list(&self, org: &str) -> Result<Vec<DsarRow>, StoreError>;
     async fn dsar_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn dsar_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Ethics & independence declarations.
+    async fn ethics_create(
+        &self,
+        org: &str,
+        declarant: &str,
+        year: &str,
+        statement: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ethics_list(&self, org: &str) -> Result<Vec<EthicsRow>, StoreError>;
+    async fn ethics_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn ethics_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Gift & hospitality register.
+    async fn gift_create(
+        &self,
+        org: &str,
+        direction: &str,
+        description: &str,
+        counterpart: &str,
+        given_at: &str,
+    ) -> Result<i64, StoreError>;
+    async fn gift_list(&self, org: &str) -> Result<Vec<GiftRow>, StoreError>;
+    async fn gift_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn gift_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

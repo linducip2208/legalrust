@@ -6672,6 +6672,171 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn ethics_and_gift_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ethicsgift@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Ethics: submitted -> acknowledged, then frozen.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/ethics",
+            r#"{"declarant":"BB","statement":"SS"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/ethics",
+            r#"{"declarant":"Budi","year":"2026","statement":"Bebas konflik kepentingan"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/ethics/{eid}/status"),
+            r#"{"status":"acknowledged"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/ethics/{eid}/status"),
+            r#"{"status":"submitted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Gifts: bad direction rejected; logged -> reviewed -> cleared.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/gifts",
+            r#"{"direction":"sideways","description":"DD"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/gifts",
+            r#"{"direction":"received","description":"Parsel","counterpart":"Vendor X","given_at":"2026-01-05"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let gid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["reviewed", "cleared"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/gifts/{gid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "gift to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/ethics", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid) && r["status"] == "acknowledged"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/gifts", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(gid) && r["status"] == "cleared"));
+    // Delete is Delete-gated; creation audited.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/gifts/{gid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/ethics/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=ethics", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.ethics_created"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=gift", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.gift_created"));
+}
+
+#[tokio::test]
 async fn dsar_rights_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -8140,6 +8305,14 @@ async fn uib_app_has_approvals_ui() {
         "dsar-add",
         "dsar-reload",
         "dsar-list",
+        "ethics-who",
+        "ethics-add",
+        "ethics-reload",
+        "ethics-list",
+        "gift-desc",
+        "gift-add",
+        "gift-reload",
+        "gift-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

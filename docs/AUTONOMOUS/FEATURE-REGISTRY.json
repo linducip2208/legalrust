@@ -4135,19 +4135,29 @@
   "id": "F-D11-017",
   "domain": "D11",
   "title": "Ethics & independence declarations",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0032_ethics.sql: ethics_declarations table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: ethics CRUD + submitted->acknowledged chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/ethics + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: ethicsRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: ethics_and_gift_lifecycle e2e"
+  ],
+  "audit_note": "Wave 65: full lifecycle live; verified by test (354/0)."
  },
  {
   "id": "F-D11-018",
   "domain": "D11",
   "title": "Gift & hospitality register",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0033_gifts.sql: gift_register table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: gift CRUD + logged->reviewed->cleared/returned chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/gifts + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: giftRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: ethics_and_gift_lifecycle e2e (bad direction 409)"
+  ],
+  "audit_note": "Wave 65: full lifecycle live; verified by test (354/0)."
  },
  {
   "id": "F-D11-019",

@@ -2063,6 +2063,184 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ethics_create(
+        &self,
+        org: &str,
+        declarant: &str,
+        year: &str,
+        statement: &str,
+    ) -> Result<i64, StoreError> {
+        let declarant = declarant.trim();
+        if declarant.is_empty() || declarant.len() > 120 {
+            return Err(StoreError::Conflict("declarant".into()));
+        }
+        if statement.trim().is_empty() || statement.len() > 2000 {
+            return Err(StoreError::Conflict("statement".into()));
+        }
+        let y: String = year.trim().chars().take(4).collect();
+        let r = sqlx::query(
+            "INSERT INTO ethics_declarations (org_id, declarant, year, statement) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(declarant)
+        .bind(y)
+        .bind(statement.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ethics_list(&self, org: &str) -> Result<Vec<EthicsRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, declarant, year, statement, status FROM ethics_declarations WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| EthicsRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                declarant: x.get::<String, _>("declarant"),
+                year: x.get::<String, _>("year"),
+                statement: x.get::<String, _>("statement"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn ethics_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if to != "acknowledged" {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM ethics_declarations WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("submitted") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE ethics_declarations SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn ethics_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM ethics_declarations WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn gift_create(
+        &self,
+        org: &str,
+        direction: &str,
+        description: &str,
+        counterpart: &str,
+        given_at: &str,
+    ) -> Result<i64, StoreError> {
+        let description = description.trim();
+        if description.is_empty() || description.len() > 255 {
+            return Err(StoreError::Conflict("description".into()));
+        }
+        if !matches!(direction, "given" | "received") {
+            return Err(StoreError::Conflict("direction".into()));
+        }
+        if given_at.len() > 10 {
+            return Err(StoreError::Conflict("given_at".into()));
+        }
+        let who: String = counterpart.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO gift_register (org_id, direction, description, counterpart, given_at) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(direction)
+        .bind(description)
+        .bind(who)
+        .bind(given_at.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn gift_list(&self, org: &str) -> Result<Vec<GiftRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, direction, description, counterpart, given_at, status FROM gift_register WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| GiftRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                direction: x.get::<String, _>("direction"),
+                description: x.get::<String, _>("description"),
+                counterpart: x.get::<String, _>("counterpart"),
+                given_at: x.get::<String, _>("given_at"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn gift_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "reviewed" | "cleared" | "returned") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM gift_register WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("logged"), "reviewed")
+                | (Some("reviewed"), "cleared")
+                | (Some("reviewed"), "returned")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE gift_register SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn gift_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM gift_register WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

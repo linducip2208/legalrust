@@ -53,6 +53,8 @@ struct Inner {
     trainings: HashMap<i64, TrainingRow>,
     risks: HashMap<i64, RiskRow>,
     dsars: HashMap<i64, DsarRow>,
+    ethics: HashMap<i64, EthicsRow>,
+    gifts: HashMap<i64, GiftRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1845,6 +1847,145 @@ impl OpsStore for MemoryOps {
         match m.dsars.get(&id) {
             Some(r) if r.org == org => {
                 m.dsars.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ethics_create(
+        &self,
+        org: &str,
+        declarant: &str,
+        year: &str,
+        statement: &str,
+    ) -> Result<i64, StoreError> {
+        let declarant = declarant.trim();
+        if declarant.is_empty() || declarant.len() > 120 {
+            return Err(StoreError::Conflict("declarant".into()));
+        }
+        if statement.trim().is_empty() || statement.len() > 2000 {
+            return Err(StoreError::Conflict("statement".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ethics.insert(
+            id,
+            EthicsRow {
+                id,
+                org: org.into(),
+                declarant: declarant.into(),
+                year: year.trim().chars().take(4).collect(),
+                statement: statement.trim().into(),
+                status: "submitted".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ethics_list(&self, org: &str) -> Result<Vec<EthicsRow>, StoreError> {
+        let mut v: Vec<EthicsRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ethics
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ethics_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ethics
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if !matches!((r.status.as_str(), to), ("submitted", "acknowledged")) {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn ethics_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.ethics.get(&id) {
+            Some(r) if r.org == org => {
+                m.ethics.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn gift_create(
+        &self,
+        org: &str,
+        direction: &str,
+        description: &str,
+        counterpart: &str,
+        given_at: &str,
+    ) -> Result<i64, StoreError> {
+        let description = description.trim();
+        if description.is_empty() || description.len() > 255 {
+            return Err(StoreError::Conflict("description".into()));
+        }
+        if !matches!(direction, "given" | "received") {
+            return Err(StoreError::Conflict("direction".into()));
+        }
+        if given_at.len() > 10 {
+            return Err(StoreError::Conflict("given_at".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.gifts.insert(
+            id,
+            GiftRow {
+                id,
+                org: org.into(),
+                direction: direction.into(),
+                description: description.into(),
+                counterpart: counterpart.trim().chars().take(120).collect(),
+                given_at: given_at.trim().into(),
+                status: "logged".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn gift_list(&self, org: &str) -> Result<Vec<GiftRow>, StoreError> {
+        let mut v: Vec<GiftRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .gifts
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn gift_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .gifts
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("logged", "reviewed") | ("reviewed", "cleared") | ("reviewed", "returned")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn gift_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.gifts.get(&id) {
+            Some(r) if r.org == org => {
+                m.gifts.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

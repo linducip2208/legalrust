@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 65: ethics declarations + gift register (main)
+- ethics_declarations (0032) + gift_register (0033) + kartu kepatuhan + uji lifecycle.
+- F-D11-017/018 PLANNED/NOT_STARTED->IMPLEMENTED (~72.6 verified). Workspace 354/0; registry ~21.4 (93 IMPLEMENTED); mean ~22.1 (91 v).
+
 ## Done wave 64: data-subject rights DSAR (main)
 - dsar_requests (migration 0031) melayani akses/penghapusan/perbaikan + kartu kepatuhan + uji.
 - F-D11-003/004/005 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 353/0; registry ~21.2 (91 IMPLEMENTED); mean ~22.0 (89 v).

@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 65: ethics + gifts (main)
+- Lifecycle + guards + audit; workspace **354 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 64: DSAR rights (main)
 - Tiga kinds + bad-kind + audit; workspace **353 passed, 0 failed**.
 
