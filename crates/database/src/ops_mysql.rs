@@ -5754,6 +5754,71 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn pbb_add(
+        &self,
+        org: &str,
+        nop: &str,
+        tax_year: &str,
+        result: &str,
+        checked_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let nop = nop.trim();
+        if nop.is_empty() || nop.len() > 40 {
+            return Err(StoreError::Conflict("nop".into()));
+        }
+        if tax_year.len() != 4 || tax_year.parse::<u32>().is_err() {
+            return Err(StoreError::Conflict("tax_year YYYY".into()));
+        }
+        if !matches!(result, "paid" | "unpaid" | "unknown") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if checked_on.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO pbb_checks (org_id, nop, tax_year, result, checked_on, note) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(nop)
+        .bind(tax_year)
+        .bind(result)
+        .bind(checked_on.trim())
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn pbb_list(&self, org: &str) -> Result<Vec<PbbRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, nop, tax_year, result, checked_on, note FROM pbb_checks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PbbRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                nop: x.get::<String, _>("nop"),
+                tax_year: x.get::<String, _>("tax_year"),
+                result: x.get::<String, _>("result"),
+                checked_on: x.get::<String, _>("checked_on"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn pbb_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM pbb_checks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

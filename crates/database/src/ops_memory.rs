@@ -98,6 +98,7 @@ struct Inner {
     pparties: HashMap<i64, PpatPartyRow>,
     chandovers: HashMap<i64, CertHandoverRow>,
     zones: HashMap<i64, ZoneRow>,
+    pbb: HashMap<i64, PbbRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4935,6 +4936,67 @@ impl OpsStore for MemoryOps {
         match m.zones.get(&id) {
             Some(r) if r.org == org => {
                 m.zones.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn pbb_add(
+        &self,
+        org: &str,
+        nop: &str,
+        tax_year: &str,
+        result: &str,
+        checked_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let nop = nop.trim();
+        if nop.is_empty() || nop.len() > 40 {
+            return Err(StoreError::Conflict("nop".into()));
+        }
+        if tax_year.len() != 4 || tax_year.parse::<u32>().is_err() {
+            return Err(StoreError::Conflict("tax_year YYYY".into()));
+        }
+        if !matches!(result, "paid" | "unpaid" | "unknown") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if checked_on.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.pbb.insert(
+            id,
+            PbbRow {
+                id,
+                org: org.into(),
+                nop: nop.into(),
+                tax_year: tax_year.into(),
+                result: result.into(),
+                checked_on: checked_on.trim().into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn pbb_list(&self, org: &str) -> Result<Vec<PbbRow>, StoreError> {
+        let mut v: Vec<PbbRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pbb
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn pbb_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.pbb.get(&id) {
+            Some(r) if r.org == org => {
+                m.pbb.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

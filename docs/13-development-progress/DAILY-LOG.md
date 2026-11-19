@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 94: PBB + fee (main)
+- Verifikasi PBB + fee PPAT; workspace **383 passed, 0 failed**; F-D13-036/020 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 93: zones + worksheets (main)
 - ZNT/NJOP + kalkulator pajak; workspace **382 passed, 0 failed**; F-D13-031/018/019 IMPLEMENTED.
 

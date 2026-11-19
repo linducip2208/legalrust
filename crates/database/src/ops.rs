@@ -177,6 +177,17 @@ pub struct ZoneRow {
     pub area_name: String,
     pub njop_minor: i64,
 }
+/// Manual PBB status verification log.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PbbRow {
+    pub id: i64,
+    pub org: String,
+    pub nop: String,
+    pub tax_year: String,
+    pub result: String,
+    pub checked_on: String,
+    pub note: String,
+}
 /// Operational incident (non-PDP incidents, complaints, near-misses).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncidentRow {
@@ -1856,6 +1867,18 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn zone_list(&self, org: &str) -> Result<Vec<ZoneRow>, StoreError>;
     async fn zone_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Manual PBB status verification log.
+    async fn pbb_add(
+        &self,
+        org: &str,
+        nop: &str,
+        tax_year: &str,
+        result: &str,
+        checked_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn pbb_list(&self, org: &str) -> Result<Vec<PbbRow>, StoreError>;
+    async fn pbb_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

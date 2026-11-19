@@ -3590,6 +3590,10 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "zone-list",
         "tax-value",
         "tax-calc",
+        "pbb-nop",
+        "pbb-add",
+        "pbb-reload",
+        "pbb-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8507,6 +8511,93 @@ async fn staff_productivity_and_waiting_analytics() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/reports/waiting-analytics")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn pbb_and_ppat_fee() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pbbfee@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/pbb-checks",
+            r#"{"nop":"X","tax_year":"2026"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/pbb-checks",
+            r#"{"nop":"32.73.010.001.001-0001.0","tax_year":"20XX","result":"paid"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/pbb-checks", r#"{"nop":"32.73.010.001.001-0001.0","tax_year":"2026","result":"paid","checked_on":"2026-02-01"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/pbb-checks", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["result"] == "paid"));
+    // PPAT fee: 1% x 2.000.000.000 = 20.000.000; rejects non-positive.
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/worksheets/ppat-fee?value_minor=2000000000",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let f = body_json(res).await;
+    assert_eq!(f["fee_minor"].as_i64().unwrap(), 20_000_000);
+    assert_eq!(f["rate_pct"].as_f64().unwrap(), 1.0);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/worksheets/ppat-fee?value_minor=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=pbb", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.pbb_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/pbb-checks")
                 .body(Body::empty())
                 .unwrap(),
         )

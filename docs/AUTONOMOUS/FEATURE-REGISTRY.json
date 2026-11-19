@@ -5188,10 +5188,15 @@
   "id": "F-D13-020",
   "domain": "D13",
   "title": "PBB status verification",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0062_pbb.sql: pbb_checks table (manual log; external check BLOCKED, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped add/list/delete, YYYY + result allowlists",
+   "apps/server/src/lib.rs: POST/GET /api/v1/pbb-checks + delete (RBAC, audit)",
+   "apps/server/static/site.js: pbbRefresh card Verifikasi PBB + hooks",
+   "apps/server/tests/api.rs: bad year 409, Delete-gate, 401"
+  ],
+  "audit_note": "Wave 94: verified by test (383/0)."
  },
  {
   "id": "F-D13-021",
@@ -5343,10 +5348,13 @@
   "id": "F-D13-036",
   "domain": "D13",
   "title": "PPAT fee worksheet",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/worksheets/ppat-fee (honorarium maks 1%, saturating math)",
+   "apps/server/static/site.js: tax-calc card (fee row) + hooks",
+   "apps/server/tests/api.rs: 1% x 2M = 20jt asserted; zero rejected 422; 401"
+  ],
+  "audit_note": "Wave 94: calculator, not fee advice; verified by test (383/0)."
  },
  {
   "id": "F-D13-037",

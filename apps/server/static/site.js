@@ -1533,13 +1533,41 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var npoptkp = pval('tax-npoptkp');
     var p = await j('/api/v1/worksheets/pph?value_minor=' + v);
     var b = await j('/api/v1/worksheets/bphtb?npop=' + v + (npoptkp ? '&npoptkp=' + encodeURIComponent(npoptkp) : ''));
-    if (!p || !b) { pmsg('tax-msg', 'Gagal menghitung.'); if (box) box.innerHTML = ''; return; }
+    var f = await j('/api/v1/worksheets/ppat-fee?value_minor=' + v);
+    if (!p || !b || !f) { pmsg('tax-msg', 'Gagal menghitung.'); if (box) box.innerHTML = ''; return; }
     pmsg('tax-msg', '');
     if (box) box.innerHTML = '<div class="table-responsive"><table class="table card-table"><tbody>'
       + '<tr><td>PPh (' + p.rate_pct + '%)</td><td><strong>' + fmtRp(p.tax_minor) + '</strong></td></tr>'
       + '<tr><td>BPHTB (' + b.rate_pct + '% × (' + fmtRp(b.npop) + ' − ' + fmtRp(b.npoptkp) + '))</td><td><strong>' + fmtRp(b.tax_minor) + '</strong></td></tr>'
+      + '<tr><td>Fee PPAT maks (' + f.rate_pct + '%)</td><td><strong>' + fmtRp(f.fee_minor) + '</strong></td></tr>'
       + '</tbody></table></div>';
   });
+  /* ---- property: PBB checks ---- */
+  async function pbbRefresh() {
+    var box = document.getElementById('pbb-list');
+    if (!box) return;
+    var v = await j('/api/v1/pbb-checks');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.nop) + '</td><td>' + esc(x.tax_year) + '</td><td>' + badge(x.result) + '</td><td><button class="btn btn-sm btn-outline-danger" data-pbb-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada verifikasi.</td></tr>';
+    qsa('[data-pbb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/pbb-checks/' + b.getAttribute('data-pbb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('pbb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('pbb-msg', '');
+        pbbRefresh();
+      });
+    });
+  }
+  on('pbb-add', 'click', async function () {
+    if (!pval('pbb-nop') || !pval('pbb-year')) { pmsg('pbb-msg', 'Isi NOP dan tahun (YYYY).'); return; }
+    var r = await ppost('/api/v1/pbb-checks', { nop: pval('pbb-nop'), tax_year: pval('pbb-year'), result: pval('pbb-res') || 'unknown', checked_on: pval('pbb-on') || '', note: '' });
+    if (!r.ok) { pmsg('pbb-msg', 'Gagal (' + r.status + '). Tahun harus YYYY.'); return; }
+    pmsg('pbb-msg', '');
+    pbbRefresh();
+  });
+  on('pbb-reload', 'click', pbbRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1657,7 +1685,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('cho-reload', 'click', choRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3817,6 +3845,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   sboxRefresh();
   sealRefresh();
   zoneRefresh();
+  pbbRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();

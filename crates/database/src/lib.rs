@@ -41,7 +41,7 @@ pub use ops::{
     MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
     MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
     MarketingSubscriberRow, MeetingRow, MpdTransferRow, NotifRow, OcrFieldRow, OcrJobRow,
-    OfficeHoursRow, OfficeIncidentRow, OpsStore, PaymentRow, PbookRow, PdpObligationRow,
+    OfficeHoursRow, OfficeIncidentRow, OpsStore, PaymentRow, PbbRow, PbookRow, PdpObligationRow,
     PhandoverRow, PolicyAckRow, PolicyRow, PpatPartyRow, PpatRow, PriceRow, QuotationItemRow,
     QuotationRow, RagHit, RecheckRow, RegChangeRow, RiskRow, RopaRow, RosterRow, SelfcheckRow,
     ShareRow, SopRow, StorageBoxRow, TemplateRow, TrainingEvidenceRow, TrainingRow,
