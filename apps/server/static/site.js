@@ -1872,6 +1872,42 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('');
   }
   on('pdb-reload', 'click', pdbRefresh);
+  /* ---- property: notary monthly pack + MPN pack ---- */
+  async function nmpRefresh() {
+    var box = document.getElementById('nmp-list');
+    if (!box) return;
+    var mo = pval('nmp-month');
+    var v = await j('/api/v1/reports/notary-monthly-pack' + (mo ? '?month=' + encodeURIComponent(mo) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var tot = document.getElementById('nmp-total');
+    if (tot) tot.textContent = 'Bulan ' + v.month + ' — ' + v.ppat_total + ' akta, ' + v.dashboard.total_deeds + ' total berjalan';
+    box.innerHTML = (v.ppat_rows || []).map(function (x) {
+      return '<tr><td>' + badge(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + x.n + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada akta bulan ini.</td></tr>';
+  }
+  on('nmp-reload', 'click', nmpRefresh);
+  async function mpnRefresh() {
+    var box = document.getElementById('mpn-list');
+    if (!box) return;
+    var v = await j('/api/v1/reports/mpn-pack');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var gen = document.getElementById('mpn-gen');
+    if (gen) gen.textContent = 'Dibuat ' + v.generated_at;
+    var rows = [
+      ['Entri register protokol', v.protocol_entries],
+      ['Purge menunggu/tersetujui', v.pending_purges],
+      ['Aturan retensi aktif', v.active_retention_rules],
+      ['Peristiwa properti terkini', (v.recent_property_events || []).length],
+    ];
+    box.innerHTML = rows.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td><strong>' + r[1] + '</strong></td></tr>';
+    }).join('');
+    var ev = document.getElementById('mpn-events');
+    if (ev) ev.innerHTML = (v.recent_property_events || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.action) + ' <span class="text-muted">(' + esc(x.entity) + ')</span></td><td>' + esc(x.created) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada peristiwa.</td></tr>';
+  }
+  on('mpn-reload', 'click', mpnRefresh);
   /* ---- property: foreign guardrail ---- */
   on('fgd-check', 'click', async function () {
     var out = document.getElementById('fgd-out');
@@ -2440,7 +2476,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); vltRefresh(); bpnRefresh('verification', 'bpnv-ref', 'bpnv-list', 'bpnv-msg'); bpnRefresh('queue', 'bpnq-ref', 'bpnq-list', 'bpnq-msg'); bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nmpRefresh(); mpnRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); vltRefresh(); bpnRefresh('verification', 'bpnv-ref', 'bpnv-list', 'bpnv-msg'); bpnRefresh('queue', 'bpnq-ref', 'bpnq-list', 'bpnq-msg'); bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3333,10 +3369,13 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var box = document.getElementById('audit-rows');
     if (!box) return;
     var sel = document.getElementById('audit-entity');
-    var ent = sel && sel.value ? '?entity=' + encodeURIComponent(sel.value) : '';
+    var act = document.getElementById('audit-actor');
+    var qs = [];
+    if (sel && sel.value) qs.push('entity=' + encodeURIComponent(sel.value));
+    if (act && act.value.trim()) qs.push('actor=' + encodeURIComponent(act.value.trim()));
     box.innerHTML = '<tr><td colspan="5" class="text-muted">Memuat…</td></tr>';
     try {
-      var r = await fetch('/api/v1/audit' + ent, { headers: H });
+      var r = await fetch('/api/v1/audit' + (qs.length ? '?' + qs.join('&') : ''), { headers: H });
       if (r.status === 401) { location.href = '/login'; return; }
       if (r.status === 403) {
         box.innerHTML = '<tr><td colspan="5" class="text-muted">Tidak ada akses.</td></tr>';
@@ -3370,6 +3409,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('audit-reload', 'click', loadAudit);
   on('audit-entity', 'change', loadAudit);
+  on('audit-actor', 'change', loadAudit);
   on('job-btn', 'click', async function () {
     var kind = pval('job-kind');
     if (!kind) { pmsg('job-msg', 'Isi jenis job dulu.'); return; }
@@ -4716,6 +4756,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   uhoRefresh();
   rpmRefresh();
   pdbRefresh();
+  nmpRefresh();
+  mpnRefresh();
   nhoRefresh();
   grkRefresh();
   dvbRefresh();

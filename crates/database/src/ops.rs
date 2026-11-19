@@ -2542,6 +2542,7 @@ pub trait OpsStore: Send + Sync {
         &self,
         org: &str,
         entity: Option<&str>,
+        actor: Option<&str>,
         limit: i64,
     ) -> Result<Vec<AuditRow>, StoreError>;
     async fn audit_add(

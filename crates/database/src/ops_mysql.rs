@@ -8162,12 +8162,15 @@ impl OpsStore for MysqlOps {
         &self,
         org: &str,
         entity: Option<&str>,
+        actor: Option<&str>,
         limit: i64,
     ) -> Result<Vec<AuditRow>, StoreError> {
-        let rows = if let Some(e) = entity {
-            sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
-        } else {
-            sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?
+        let like = actor.map(|q| format!("%{q}%"));
+        let rows = match (entity, like) {
+            (Some(e), Some(l)) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(e), None) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, Some(l)) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, None) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
         };
         Ok(rows
             .into_iter()

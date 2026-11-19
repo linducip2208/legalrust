@@ -819,7 +819,10 @@ mod tests {
         let v = ops.webhook_list("org1", Some("outbound")).await.unwrap();
         assert!(v.iter().any(|r| r.status == "rejected"));
         // Dead-letter alert lands in the tenant audit trail.
-        let audits = ops.audit_list("org1", Some("webhook"), 50).await.unwrap();
+        let audits = ops
+            .audit_list("org1", Some("webhook"), None, 50)
+            .await
+            .unwrap();
         assert!(audits.iter().any(|a| a.action == "webhook.dead_letter"));
     }
 

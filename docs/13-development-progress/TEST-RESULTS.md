@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 113: D12 close (main)
+- Packs + actor LIKE + rescore; workspace **402 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 112: schedule + AML (main)
 - Cutoff math + weights + guards; workspace **401 passed, 0 failed**.
 

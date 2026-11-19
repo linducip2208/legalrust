@@ -723,6 +723,7 @@ impl OpsStore for MemoryOps {
         &self,
         org: &str,
         entity: Option<&str>,
+        actor: Option<&str>,
         limit: i64,
     ) -> Result<Vec<AuditRow>, StoreError> {
         let _ = org;
@@ -734,6 +735,7 @@ impl OpsStore for MemoryOps {
             .iter()
             .rev()
             .filter(|a| entity.is_none_or(|e| a.entity == e))
+            .filter(|a| actor.is_none_or(|q| a.actor.as_deref().is_some_and(|x| x.contains(q))))
             .take(limit.max(0) as usize)
             .cloned()
             .collect())

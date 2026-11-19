@@ -4529,19 +4529,27 @@
   "id": "F-D12-005",
   "domain": "D12",
   "title": "Monthly notary report pack",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
-  ]
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)",
+   "apps/server/src/lib.rs: GET /api/v1/reports/notary-monthly-pack (month + dashboard bundle, RBAC)",
+   "apps/server/static/site.js: nmp card Paket laporan bulanan + hooks",
+   "apps/server/tests/api.rs: pack mirrors monthly buckets + dashboard, 401 asserted"
+  ],
+  "audit_note": "Wave 113: monthly pack live; PARTIAL->IMPLEMENTED, verified by test (402/0)."
  },
  {
   "id": "F-D12-006",
   "domain": "D12",
   "title": "MPN supervision response pack",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
-  ]
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)",
+   "apps/server/src/lib.rs: GET /api/v1/reports/mpn-pack (register + purges + rules + recent events, RBAC)",
+   "apps/server/static/site.js: mpn card Paket respons MPN + hooks",
+   "apps/server/tests/api.rs: register count + preg event present + 401 asserted"
+  ],
+  "audit_note": "Wave 113: supervision pack live; PARTIAL->IMPLEMENTED, verified by test (402/0)."
  },
  {
   "id": "F-D12-007",
@@ -4575,10 +4583,13 @@
   "id": "F-D12-009",
   "domain": "D12",
   "title": "Staff role matrix (notary office)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/roles/matrix (least-privilege sets)",
+   "apps/server/static/site.js: loadRoleMatrix + role-matrix table (pengaturan panel)",
+   "apps/server/tests/api.rs: role_matrix_lists_least_privilege_sets e2e (12 roles, owner 12 perms, auditor gates, 401)"
+  ],
+  "audit_note": "Wave 113: verify-only rescore; matrix live since earlier wave (402/0 green)."
  },
  {
   "id": "F-D12-010",
@@ -4910,12 +4921,17 @@
   "id": "F-D12-034",
   "domain": "D12",
   "title": "Office audit trail",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
    "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "migrations/0001_foundation.sql: audit_events",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: audit_list actor LIKE filter",
+   "apps/server/src/lib.rs: AuditQ.actor + audit-actor input (audit tab)",
+   "apps/server/static/site.js: loadAudit actor param + change wiring",
+   "apps/server/tests/api.rs: own-sub hits, nonsense misses, /app + site.js needles"
+  ],
+  "audit_note": "Wave 113: office trail actor-scoped; PARTIAL->IMPLEMENTED, verified by test (402/0). D12 CLOSED 40/40."
  },
  {
   "id": "F-D12-035",

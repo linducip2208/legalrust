@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 113: D12 close (main)
+- Paket notaris/MPN + filter aktor + matriks peran; workspace **402 passed, 0 failed**; D12 40/40.
+
 ## 2026-11-19 AUDIT-1000 wave 112: schedule + AML (main)
 - Jadwal retensi protokol + skor AML; workspace **401 passed, 0 failed**; F-D11-013/015 IMPLEMENTED.
 

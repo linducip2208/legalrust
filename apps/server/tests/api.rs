@@ -3647,6 +3647,12 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "rpm-list",
         "pdb-reload",
         "pdb-list",
+        "nmp-month",
+        "nmp-reload",
+        "nmp-list",
+        "mpn-reload",
+        "mpn-list",
+        "mpn-events",
         "fgd-sub",
         "fgd-check",
         "fgd-out",
@@ -5639,6 +5645,7 @@ async fn uib_app_has_audit_jobs_ui() {
         "p-audit",
         "p-jobs",
         "audit-entity",
+        "audit-actor",
         "audit-rows",
         "audit-reload",
         "audit-msg",
@@ -5744,6 +5751,7 @@ async fn uib_site_js_wires_batch_widgets() {
         "audit-rows",
         "job-rows",
         "audit-entity",
+        "audit-actor",
         "job-kind",
         "rep-matters",
         "keu-csv",
@@ -8708,6 +8716,90 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn office_audit_actor_filter_and_report_packs() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "auditpack@x.id").await;
+    // Actor filter: own sub matches, nonsense matches nothing.
+    let me = legalrust_auth::validate_token(b"test-secret-0123456789-0123456789ab", &tok)
+        .expect("decode")
+        .sub;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/audit?actor={me}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?actor=tidak-ada-aktor-ini", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 0);
+    // Notary monthly pack mirrors monthly buckets.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"NP/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let month = chrono::Utc::now().format("%Y-%m").to_string();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/notary-monthly-pack?month={month}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pk = body_json(res).await;
+    assert_eq!(pk["month"].as_str().unwrap(), month);
+    assert_eq!(pk["ppat_total"].as_i64().unwrap(), 1);
+    assert_eq!(pk["dashboard"]["total_deeds"].as_i64().unwrap(), 1);
+    // MPN pack reflects register + rules + recent events.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-register",
+            r#"{"book_ref":"B-1","party":"PT X"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/mpn-pack", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mp = body_json(res).await;
+    assert_eq!(mp["protocol_entries"].as_i64().unwrap(), 1);
+    assert!(mp["recent_property_events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.preg_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/mpn-pack")
                 .body(Body::empty())
                 .unwrap(),
         )
