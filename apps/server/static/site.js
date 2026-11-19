@@ -1642,6 +1642,71 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     mgRefresh();
   });
   on('mg-reload', 'click', mgRefresh);
+  /* ---- property: dispute flags ---- */
+  var DSP2_NEXT = { flagged: 'in_review', in_review: 'cleared' };
+  async function dsp2Refresh() {
+    var box = document.getElementById('dsp2-list');
+    if (!box) return;
+    var v = await j('/api/v1/land-disputes');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DSP2_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-dsp2-next="' + x.id + '" data-dsp2-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-dsp2-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.parcel_ref) + '</td><td>' + badge(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada flag.</td></tr>';
+    qsa('[data-dsp2-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/land-disputes/' + b.getAttribute('data-dsp2-next') + '/status', { status: b.getAttribute('data-dsp2-to') });
+        if (!r.ok) { pmsg('dsp2-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dsp2-msg', '');
+        dsp2Refresh();
+      });
+    });
+    qsa('[data-dsp2-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/land-disputes/' + b.getAttribute('data-dsp2-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dsp2-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dsp2-msg', '');
+        dsp2Refresh();
+      });
+    });
+  }
+  on('dsp2-add', 'click', async function () {
+    if (!pval('dsp2-parcel') || !pval('dsp2-desc')) { pmsg('dsp2-msg', 'Isi bidang dan uraian.'); return; }
+    var r = await ppost('/api/v1/land-disputes', { parcel_ref: pval('dsp2-parcel'), kind: pval('dsp2-kind') || 'sengketa', description: pval('dsp2-desc') });
+    if (!r.ok) { pmsg('dsp2-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dsp2-msg', '');
+    dsp2Refresh();
+  });
+  on('dsp2-reload', 'click', dsp2Refresh);
+  /* ---- property: boundary checks ---- */
+  async function bndRefresh() {
+    var box = document.getElementById('bnd-list');
+    if (!box) return;
+    var v = await j('/api/v1/boundary-checks');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var rc = x.result === 'match' ? '<span class="badge bg-green-lt">cocok</span>' : (x.result === 'mismatch' ? '<span class="badge bg-red-lt">selisih</span>' : '<span class="badge bg-yellow-lt">tunda</span>');
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.parcel_ref) + '</td><td>' + x.declared_area + ' vs ' + x.measured_area + ' m²</td><td>' + rc + '</td><td><button class="btn btn-sm btn-outline-danger" data-bnd-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada verifikasi.</td></tr>';
+    qsa('[data-bnd-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/boundary-checks/' + b.getAttribute('data-bnd-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('bnd-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('bnd-msg', '');
+        bndRefresh();
+      });
+    });
+  }
+  on('bnd-add', 'click', async function () {
+    if (!pval('bnd-parcel')) { pmsg('bnd-msg', 'Isi bidang.'); return; }
+    var r = await ppost('/api/v1/boundary-checks', { parcel_ref: pval('bnd-parcel'), declared_area: +pval('bnd-decl') || 0, measured_area: +pval('bnd-meas') || 0, checked_on: pval('bnd-on') || '' });
+    if (!r.ok) { pmsg('bnd-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('bnd-msg', '');
+    bndRefresh();
+  });
+  on('bnd-reload', 'click', bndRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1815,7 +1880,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3974,6 +4039,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   rdyRefresh();
   spRefresh();
   mgRefresh();
+  dsp2Refresh();
+  bndRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

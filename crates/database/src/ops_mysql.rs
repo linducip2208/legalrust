@@ -6121,6 +6121,164 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ldispute_create(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        kind: &str,
+        description: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        let description = description.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if !matches!(kind, "sengketa" | "batas" | "ganda" | "lainnya") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if description.is_empty() || description.len() > 2000 {
+            return Err(StoreError::Conflict("description".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO land_disputes (org_id, parcel_ref, kind, description) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(parcel_ref)
+        .bind(kind)
+        .bind(description)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ldispute_list(&self, org: &str) -> Result<Vec<LandDisputeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, parcel_ref, kind, description, status FROM land_disputes WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| LandDisputeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                parcel_ref: x.get::<String, _>("parcel_ref"),
+                kind: x.get::<String, _>("kind"),
+                description: x.get::<String, _>("description"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn ldispute_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_review" | "cleared") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM land_disputes WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("flagged"), "in_review") | (Some("in_review"), "cleared")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE land_disputes SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn ldispute_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM land_disputes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn bndry_add(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        declared_area: i64,
+        measured_area: i64,
+        checked_on: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if declared_area < 0 || measured_area < 0 {
+            return Err(StoreError::Conflict("area".into()));
+        }
+        if checked_on.len() > 10 {
+            return Err(StoreError::Conflict("checked_on".into()));
+        }
+        let result = if declared_area == 0 || measured_area == 0 {
+            "pending"
+        } else if declared_area == measured_area {
+            "match"
+        } else {
+            "mismatch"
+        };
+        let r = sqlx::query(
+            "INSERT INTO boundary_checks (org_id, parcel_ref, declared_area, measured_area, result, checked_on) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(parcel_ref)
+        .bind(declared_area)
+        .bind(measured_area)
+        .bind(result)
+        .bind(checked_on.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn bndry_list(&self, org: &str) -> Result<Vec<BoundaryRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, parcel_ref, declared_area, measured_area, result, checked_on FROM boundary_checks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| BoundaryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                parcel_ref: x.get::<String, _>("parcel_ref"),
+                declared_area: x.get::<i64, _>("declared_area"),
+                measured_area: x.get::<i64, _>("measured_area"),
+                result: x.get::<String, _>("result"),
+                checked_on: x.get::<String, _>("checked_on"),
+            })
+            .collect())
+    }
+    async fn bndry_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM boundary_checks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

@@ -102,6 +102,8 @@ struct Inner {
     pbb: HashMap<i64, PbbRow>,
     lsplits: HashMap<i64, LandSplitRow>,
     lmerges: HashMap<i64, LandMergeRow>,
+    ldisputes: HashMap<i64, LandDisputeRow>,
+    boundaries: HashMap<i64, BoundaryRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -5240,6 +5242,143 @@ impl OpsStore for MemoryOps {
         match m.lmerges.get(&id) {
             Some(r) if r.org == org => {
                 m.lmerges.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ldispute_create(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        kind: &str,
+        description: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        let description = description.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if !matches!(kind, "sengketa" | "batas" | "ganda" | "lainnya") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if description.is_empty() || description.len() > 2000 {
+            return Err(StoreError::Conflict("description".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ldisputes.insert(
+            id,
+            LandDisputeRow {
+                id,
+                org: org.into(),
+                parcel_ref: parcel_ref.into(),
+                kind: kind.into(),
+                description: description.into(),
+                status: "flagged".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ldispute_list(&self, org: &str) -> Result<Vec<LandDisputeRow>, StoreError> {
+        let mut v: Vec<LandDisputeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ldisputes
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ldispute_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ldisputes
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("flagged", "in_review") | ("in_review", "cleared")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn ldispute_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.ldisputes.get(&id) {
+            Some(r) if r.org == org => {
+                m.ldisputes.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn bndry_add(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        declared_area: i64,
+        measured_area: i64,
+        checked_on: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if declared_area < 0 || measured_area < 0 {
+            return Err(StoreError::Conflict("area".into()));
+        }
+        if checked_on.len() > 10 {
+            return Err(StoreError::Conflict("checked_on".into()));
+        }
+        let result = if declared_area == 0 || measured_area == 0 {
+            "pending"
+        } else if declared_area == measured_area {
+            "match"
+        } else {
+            "mismatch"
+        };
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.boundaries.insert(
+            id,
+            BoundaryRow {
+                id,
+                org: org.into(),
+                parcel_ref: parcel_ref.into(),
+                declared_area,
+                measured_area,
+                result: result.into(),
+                checked_on: checked_on.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn bndry_list(&self, org: &str) -> Result<Vec<BoundaryRow>, StoreError> {
+        let mut v: Vec<BoundaryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .boundaries
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn bndry_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.boundaries.get(&id) {
+            Some(r) if r.org == org => {
+                m.boundaries.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

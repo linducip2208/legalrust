@@ -208,6 +208,27 @@ pub struct LandMergeRow {
     pub merge_date: String,
     pub status: String,
 }
+/// Land dispute flag & hold.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LandDisputeRow {
+    pub id: i64,
+    pub org: String,
+    pub parcel_ref: String,
+    pub kind: String,
+    pub description: String,
+    pub status: String,
+}
+/// Boundary & area verification (result auto-derived from measurements).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoundaryRow {
+    pub id: i64,
+    pub org: String,
+    pub parcel_ref: String,
+    pub declared_area: i64,
+    pub measured_area: i64,
+    pub result: String,
+    pub checked_on: String,
+}
 /// Operational incident (non-PDP incidents, complaints, near-misses).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncidentRow {
@@ -1948,6 +1969,28 @@ pub trait OpsStore: Send + Sync {
     async fn lmerge_list(&self, org: &str) -> Result<Vec<LandMergeRow>, StoreError>;
     async fn lmerge_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn lmerge_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Land dispute flag & hold.
+    async fn ldispute_create(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        kind: &str,
+        description: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ldispute_list(&self, org: &str) -> Result<Vec<LandDisputeRow>, StoreError>;
+    async fn ldispute_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn ldispute_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Boundary & area verification.
+    async fn bndry_add(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        declared_area: i64,
+        measured_area: i64,
+        checked_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn bndry_list(&self, org: &str) -> Result<Vec<BoundaryRow>, StoreError>;
+    async fn bndry_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

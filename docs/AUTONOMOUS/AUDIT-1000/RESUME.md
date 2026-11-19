@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 98: dispute flags + boundary checks (main)
+- land_disputes + boundary_checks (0065) + kartu + uji.
+- F-D13-032/033 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 387/0; registry ~25.5 (158 IMPLEMENTED); mean 26.7 (156 v).
+
 ## Done wave 97: land split + merge trackers (main)
 - land_splits + land_merges (0064) + kartu + uji.
 - F-D13-011/012 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 386/0; registry ~25.4 (156 IMPLEMENTED); mean 26.6 (154 v).

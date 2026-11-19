@@ -5338,19 +5338,29 @@
   "id": "F-D13-032",
   "domain": "D13",
   "title": "Land-dispute flag & hold",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0065_land_dispute_boundary.sql: land_disputes table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + flagged->in_review->cleared",
+   "apps/server/src/lib.rs: POST/GET /api/v1/land-disputes + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dsp2Refresh card Flag sengketa + hooks",
+   "apps/server/tests/api.rs: land_disputes_and_boundary e2e (kind allowlist 409, chain)"
+  ],
+  "audit_note": "Wave 98: full lifecycle live; verified by test (387/0)."
  },
  {
   "id": "F-D13-033",
   "domain": "D13",
   "title": "Boundary & area verification",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0065_land_dispute_boundary.sql: boundary_checks table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: auto-derived match/mismatch/pending",
+   "apps/server/src/lib.rs: POST/GET /api/v1/boundary-checks + delete (RBAC, audit)",
+   "apps/server/static/site.js: bndRefresh card Verifikasi batas & luas + hooks",
+   "apps/server/tests/api.rs: match + mismatch asserted, /app needles dsp2-*/bnd-*"
+  ],
+  "audit_note": "Wave 98: verified by test (387/0)."
  },
  {
   "id": "F-D13-034",

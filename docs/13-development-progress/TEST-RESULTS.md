@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 98: dispute + boundary (main)
+- Chains + auto-result + guards + audit; workspace **387 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 97: split + merge (main)
 - Chains + guards + audit; workspace **386 passed, 0 failed**.
 

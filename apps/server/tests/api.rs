@@ -3610,6 +3610,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "mg-add",
         "mg-reload",
         "mg-list",
+        "dsp2-parcel",
+        "dsp2-add",
+        "dsp2-reload",
+        "dsp2-list",
+        "bnd-parcel",
+        "bnd-add",
+        "bnd-reload",
+        "bnd-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8614,6 +8622,116 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn land_disputes_and_boundary() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dispbnd@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-disputes",
+            r#"{"parcel_ref":"X","description":"Y"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-disputes",
+            r#"{"parcel_ref":"SHM 5","kind":"batas","description":"Sengketa batas utara"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-disputes",
+            r#"{"parcel_ref":"SHM 6","kind":"alien","description":"DD"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["in_review", "cleared"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/land-disputes/{did}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "dispute to {st}");
+    }
+    // Boundary: auto-derived match/mismatch/pending.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/boundary-checks",
+            r#"{"parcel_ref":"SHM 5","declared_area":1000,"measured_area":998}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/boundary-checks",
+            r#"{"parcel_ref":"SHM 6","declared_area":500,"measured_area":500}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/boundary-checks", &tok))
+        .await
+        .unwrap();
+    let bv = body_json(res).await;
+    assert!(bv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["parcel_ref"] == "SHM 5" && r["result"] == "mismatch"));
+    assert!(bv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["parcel_ref"] == "SHM 6" && r["result"] == "match"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=ldispute", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.ldispute_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/land-disputes")
                 .body(Body::empty())
                 .unwrap(),
         )
