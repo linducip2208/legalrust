@@ -95,7 +95,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Migration 0022; clause CRUD + version bump + kartu akta + revisi/hapus.
 - F-D06-002 NOT_STARTED->IMPLEMENTED (76.9). Workspace 331/0; registry 20.0 (75 IMPLEMENTED); mean 20.2 (56 v).
 
-## Done wave 37: DPIA + breach log 72 jam (main)
+## Done wave 37: DPIA + breach log 72 jam (main) [dikoreksi ke F-D11-007/008]
 - Migrations 0020/0021; CRUD + guarded transitions + kepatuhan UI cards + audit.
 - F-D13-007/008 -> IMPLEMENTED (76.9). Workspace 330/0; registry 19.9 (74 IMPLEMENTED); mean 20.1 (55 v).
 
