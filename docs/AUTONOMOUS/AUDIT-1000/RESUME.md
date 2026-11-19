@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 54: daftar pelanggaran SLA (main)
 - sla-breaches.csv (hanya overdue terbuka) + tombol + trail; F-D03-039 PLANNED->PARTIAL (66.2).
-- Workspace 344/0; registry 19.9 (79 IMPLEMENTED); 8-cat mean 21.1 (70 v).
+- Workspace 344/0; registry 19.9 (79 IMPLEMENTED); 8-cat mean 21.2 (74 v).
 
 ## Done wave 51: ringkasan eksekutif (main)
 - Snapshot 9 metrik lintas modul + kartu ringkas; F-D20-039 PLANNED->PARTIAL (68.2).
