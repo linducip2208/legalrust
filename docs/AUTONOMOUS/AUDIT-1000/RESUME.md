@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 97: land split + merge trackers (main)
 - land_splits + land_merges (0064) + kartu + uji.
-- F-D13-011/012 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 386/0; registry ~25.3 (156 IMPLEMENTED); mean ~26.4 (154 v).
+- F-D13-011/012 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 386/0; registry ~25.4 (156 IMPLEMENTED); mean 26.6 (154 v).
 
 ## Done wave 96: APHT/SKMHT charges + expiry monitor (main)
 - deed_charges (0063, upsert+Tx) + monitor + kartu + uji.
