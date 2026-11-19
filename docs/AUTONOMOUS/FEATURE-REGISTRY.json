@@ -3480,10 +3480,13 @@
   "id": "F-D09-035",
   "domain": "D09",
   "title": "Approval export (auditor)",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/approvals.csv (Export + audit)",
+   "apps/server/static/site.js: appr-csv button",
+   "apps/server/tests/api.rs: approvals_csv_export_lists_all_requests + needles"
+  ],
+  "audit_note": "Wave 55: auditor export live; per-auditor scoping pending."
  },
  {
   "id": "F-D09-036",

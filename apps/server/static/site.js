@@ -1410,6 +1410,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     apprRefresh();
   });
   on('appr-reload', 'click', apprRefresh);
+  on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
   async function apprNotifRefresh() {

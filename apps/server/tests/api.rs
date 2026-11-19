@@ -6895,6 +6895,53 @@ async fn executive_summary_aggregates_modules() {
 }
 
 #[tokio::test]
+async fn approvals_csv_export_lists_all_requests() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprexp@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("id,title,entity,status,created,pending_steps\n"),
+        "was {text}"
+    );
+    assert!(text.contains(&format!("{aid},")), "was {text}");
+    assert!(text.contains("pending"), "was {text}");
+    // Auditor (View+Export) may export; unauthenticated may not.
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/approvals.csv", &auditor))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/approvals.csv")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn reports_deadline_compliance_and_posture() {
     use tower::ServiceExt;
     let a = app();
@@ -7351,6 +7398,7 @@ async fn uib_app_has_approvals_ui() {
         "appr-no",
         "appr-rw",
         "appr-revoke",
+        "appr-csv",
         "appr-dmsg",
         "appr-err",
         "appr-notif-list",

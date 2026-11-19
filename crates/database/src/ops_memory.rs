@@ -747,6 +747,10 @@ impl OpsStore for MemoryOps {
                 title: title.into(),
                 status: "pending".into(),
                 created_by: created_by.into(),
+                created: chrono::Utc::now()
+                    .naive_utc()
+                    .format("%Y-%m-%d %H:%M:%S")
+                    .to_string(),
             },
         );
         for (no, role) in steps {

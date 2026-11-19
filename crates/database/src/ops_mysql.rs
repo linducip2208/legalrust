@@ -27,6 +27,10 @@ fn appr_req_row(x: sqlx::mysql::MySqlRow) -> ApprovalReqRow {
         title: x.get::<String, _>("title"),
         status: x.get::<String, _>("status"),
         created_by: x.get::<String, _>("created_by"),
+        created: x
+            .try_get::<chrono::NaiveDateTime, _>("created_at")
+            .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or_default(),
     }
 }
 fn appr_step_row(x: sqlx::mysql::MySqlRow) -> ApprovalStepRow {
@@ -713,10 +717,10 @@ impl OpsStore for MysqlOps {
         status: Option<&str>,
     ) -> Result<Vec<ApprovalReqRow>, StoreError> {
         let rows = if let Some(s) = status {
-            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE org_id=? AND status=? ORDER BY id DESC LIMIT 200")
+            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by, created_at FROM approval_requests WHERE org_id=? AND status=? ORDER BY id DESC LIMIT 200")
                 .bind(org).bind(s).fetch_all(&self.pool).await.map_err(db_err)?
         } else {
-            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by, created_at FROM approval_requests WHERE org_id=? ORDER BY id DESC LIMIT 200")
                 .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
         };
         Ok(rows.into_iter().map(appr_req_row).collect())
@@ -726,7 +730,7 @@ impl OpsStore for MysqlOps {
         org: &str,
         id: i64,
     ) -> Result<(ApprovalReqRow, Vec<ApprovalStepRow>), StoreError> {
-        let x = sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by FROM approval_requests WHERE id=? AND org_id=?")
+        let x = sqlx::query("SELECT id, org_id, entity, entity_id, title, status, created_by, created_at FROM approval_requests WHERE id=? AND org_id=?")
             .bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
         let fs = sqlx::query("SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? ORDER BY step_no")
             .bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;

@@ -23,6 +23,8 @@ pub struct ApprovalReqRow {
     pub title: String,
     pub status: String,
     pub created_by: String,
+    /// Creation timestamp `YYYY-MM-DD HH:MM:SS` (age/overdue math).
+    pub created: String,
 }
 #[derive(Debug, Clone)]
 pub struct ApprovalStepRow {
