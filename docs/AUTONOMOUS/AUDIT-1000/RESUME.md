@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 67: training evidence + audit findings (main)
 - training_evidence (0034) + audit_findings (0035) + kartu kepatuhan + uji.
-- F-D11-024/026 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 356/0; registry ~21.8 (97 IMPLEMENTED); mean ~22.3 (95 v).
+- F-D11-024/026 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 356/0; registry ~21.8 (97 IMPLEMENTED); mean 22.5 (95 v).
 
 ## Done wave 66: compliance dashboard + exporter (main)
 - GET /api/v1/compliance/posture + GET /api/v1/reports/compliance.csv + kartu dasbor kepatuhan.
