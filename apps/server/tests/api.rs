@@ -5700,6 +5700,9 @@ async fn crm_app_contains_crm_ids() {
         "ptl-activity",
         "ptl-copy",
         "ptl-track",
+        "ptl-ch",
+        "ptl-pref-save",
+        "ptl-pref",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11677,6 +11680,90 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_consent_and_prefs() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal8@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let cli2 = mk_crm_client(&a, &tok).await;
+    // Staff seeds a consent for cli2 only.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli2}/consents"),
+            r#"{"channel":"email","allowed":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p8@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Empty prefs; set email=false; bad channel 409; other client's rows invisible.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/consents", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/consents",
+            r#"{"channel":"sms","allowed":true}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/consents",
+            r#"{"channel":"email","allowed":false}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/consents", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["channel"] == "email" && r["allowed"] == false));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/consents", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

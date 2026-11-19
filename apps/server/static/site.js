@@ -3519,6 +3519,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       + ' · Dok: ' + (v.doc_requests || []).map(function (x) { return '#' + x.id + ' ' + x.status; }).join(', ')
       + ' · Janji: ' + (v.appointments || []).map(function (x) { return '#' + x.id + ' ' + x.status; }).join(', ');
   });
+  on('ptl-pref-save', 'click', async function () {
+    var el = document.getElementById('ptl-allow');
+    var r = await fetch('/api/v1/portal/consents', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ channel: pval('ptl-ch') || 'email', allowed: !!(el && el.checked) }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+  });
+  on('ptl-pref', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/consents', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.channel) + ': ' + (x.allowed ? 'ya' : 'tidak') + '</span>'; }).join(' ') || 'Belum ada preferensi.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');
