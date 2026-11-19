@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 71: control tests + audit plans (main)
 - control_tests (0040) + jadwal jatuh tempo + audit_plans (0041) + kartu + uji.
-- F-D11-028/025 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 360/0; registry ~22.5 (104 IMPLEMENTED); mean ~22.9 (102 v).
+- F-D11-028/025 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 360/0; registry ~22.5 (104 IMPLEMENTED); mean 23.0 (102 v).
 
 ## Done wave 70: compliance alert feed (main)
 - GET /api/v1/compliance/alerts (6 jenis turunan) + kartu Peringatan + posture/CSV 19 register.
