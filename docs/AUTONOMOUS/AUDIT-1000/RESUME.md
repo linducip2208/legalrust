@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 85: storage boxes + MPD transfers (main)
 - storage_boxes + mpd_transfers (0054) + kartu akta + uji.
-- F-D12-021/022 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 374/0; registry ~23.9 (132 IMPLEMENTED); mean ~24.8 (130 v).
+- F-D12-021/022 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 374/0; registry ~23.9 (132 IMPLEMENTED); mean 24.9 (130 v).
 
 ## Done wave 84: office performance + deed volume (main)
 - GET /api/v1/reports/office-performance + deed-volume + kartu akta + uji (derivasi, tanpa migrasi).
