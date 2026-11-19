@@ -9595,6 +9595,84 @@ async fn quorum_rounds_and_dual_override() {
 }
 
 #[tokio::test]
+async fn approval_api_token_for_integrations() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apitoken@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Mint an integration token, then drive approvals with it (no session).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/tokens",
+            r#"{"name":"erp-bridge"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let raw = body_json(res).await["token"].as_str().unwrap().to_string();
+    assert!(raw.starts_with("lr_"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals", &raw))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(aid)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&raw),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Revoked tokens stop working.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/auth/tokens", &tok))
+        .await
+        .unwrap();
+    let tid = body_json(res).await.as_array().unwrap()[0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/auth/tokens/{tid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals", &raw))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_conditional_and_amendment() {
     use tower::ServiceExt;
     let a = app();

@@ -3361,13 +3361,14 @@
   "id": "F-D09-020",
   "domain": "D09",
   "title": "Substitute approver rules",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "migrations/0023_delegations.sql + delegation_set/list/delegators",
    "apps/server/src/lib.rs: decide honors active delegation + approval.delegated audit + UI card",
-   "apps/server/tests/api.rs: delegation e2e (member decides via delegation)"
+   "apps/server/tests/api.rs: delegation e2e (member decides via delegation)",
+   "wave 124: verify-only close; delegated decide path covered by delegation e2e + bulk/delegate gates (412/0 green)"
   ],
-  "audit_note": "Wave 53: substitute mechanism live via delegation."
+  "audit_note": "Wave 124: substitute mechanism confirmed live; PARTIAL->IMPLEMENTED (verify-only)."
  },
  {
   "id": "F-D09-021",
@@ -3478,10 +3479,12 @@
   "id": "F-D09-030",
   "domain": "D09",
   "title": "Approval API for integrations",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: POST /api/v1/auth/tokens (lr_*, hashed, expiring) + Bearer fallback in auth_user",
+   "apps/server/tests/api.rs: approval_api_token_for_integrations (mint -> list -> decide -> revoke -> 401)"
+  ],
+  "audit_note": "Wave 124: token-driven integration path proven live. Verified by test (412/0)."
  },
  {
   "id": "F-D09-031",

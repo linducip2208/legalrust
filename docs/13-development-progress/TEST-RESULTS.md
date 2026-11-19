@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 124: token + substitut (main)
+- Token lifecycle + rescore; workspace **412 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 123: ekspor + matriks (main)
 - Columns + filter + rescore; workspace **411 passed, 0 failed**.
 
