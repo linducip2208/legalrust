@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 133: duplikat + manifest (main)
+- Groups + pins + search roundtrip; workspace **421 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 132: folder + dasbor (main)
 - Tree + splits + guards; workspace **420 passed, 0 failed**.
 

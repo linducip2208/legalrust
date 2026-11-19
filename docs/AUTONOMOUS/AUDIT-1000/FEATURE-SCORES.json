@@ -2246,19 +2246,19 @@
  {
   "feature_id": "F-D04-013",
   "domain": "D04",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 82,
+   "database": 70,
+   "frontend": 75,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 72.4,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D04-014",
@@ -2280,19 +2280,19 @@
  {
   "feature_id": "F-D04-015",
   "domain": "D04",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 82,
+   "database": 70,
+   "frontend": 75,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 72.4,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D04-016",
@@ -2569,19 +2569,19 @@
  {
   "feature_id": "F-D04-032",
   "domain": "D04",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 82,
+   "database": 70,
+   "frontend": 75,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 72.4,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D04-033",
@@ -2637,19 +2637,19 @@
  {
   "feature_id": "F-D04-036",
   "domain": "D04",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 82,
+   "database": 70,
+   "frontend": 75,
+   "business_logic": 77,
+   "security": 79,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 72.4,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D04-037",

@@ -9658,6 +9658,84 @@ async fn approval_policy_versions_and_fast_track() {
 }
 
 #[tokio::test]
+async fn document_duplicates_manifest_and_auto_index() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docdup@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"kata kunci zebra unik";
+    let sha = legalrust_document::sha256_hex(content);
+    for name in ["ganda-a.txt", "ganda-b.txt"] {
+        let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"{name}","mime":"text/plain","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let did = body_json(res).await["id"].as_i64().unwrap();
+        let res = a
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/api/v1/documents/{did}/content"))
+                    .method("PUT")
+                    .header(
+                        "authorization",
+                        format!("Bearer {tok}")
+                            .parse::<axum::http::HeaderValue>()
+                            .unwrap(),
+                    )
+                    .body(Body::from(content.to_vec()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    // Duplicates collide on sha.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/duplicates", &tok))
+        .await
+        .unwrap();
+    let dv = body_json(res).await;
+    assert!(dv["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|g| g["count"].as_i64() == Some(2)));
+    // Manifest for the matter.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/export-manifest"), &tok))
+        .await
+        .unwrap();
+    let mv = body_json(res).await;
+    assert_eq!(mv["files"].as_i64().unwrap(), 2);
+    assert_eq!(mv["bytes"].as_i64().unwrap(), (content.len() * 2) as i64);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/999999/export-manifest", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Auto-index: searchable without an explicit index call.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/rag/search?q=zebra", &tok))
+        .await
+        .unwrap();
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents/duplicates")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn document_folders_and_dashboard() {
     use tower::ServiceExt;
     let a = app();

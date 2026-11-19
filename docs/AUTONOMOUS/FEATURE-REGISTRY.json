@@ -1312,13 +1312,18 @@
   "id": "F-D04-013",
   "domain": "D04",
   "title": "Full-text content indexing",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3474-3475 rag index/search routes; :1080 rag_search",
    "rag_index rejects non-text/* (binary parsing not supported)",
    "crates/database/src/ops.rs:339 rag_put, :340 rag_search",
-   "migrations/0007_ai_finance.sql: rag_chunks"
-  ]
+   "migrations/0007_ai_finance.sql: rag_chunks",
+   "apps/server/src/lib.rs: put_content auto-indexes text/* into RAG chunks (best-effort) + existing /rag/index|search roundtrip asserted",
+   "  shared slice:",
+   "  - apps/server/static/site.js: duplicates strip + per-folder Manifest buttons + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_duplicates_manifest_and_auto_index e2e (collision, manifest bytes, ghost 404, auto-search, 401)"
+  ],
+  "audit_note": "Wave 133: duplicates/manifest/index live. Verified by test (421/0)."
  },
  {
   "id": "F-D04-014",
@@ -1333,12 +1338,17 @@
   "id": "F-D04-015",
   "domain": "D04",
   "title": "Duplicate document detection",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
    "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
-   "migrations/0002_core.sql: documents, document_versions"
-  ]
+   "migrations/0002_core.sql: documents, document_versions",
+   "apps/server/src/lib.rs: GET /api/v1/documents/duplicates (sha grouping, RBAC)",
+   "  shared slice:",
+   "  - apps/server/static/site.js: duplicates strip + per-folder Manifest buttons + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_duplicates_manifest_and_auto_index e2e (collision, manifest bytes, ghost 404, auto-search, 401)"
+  ],
+  "audit_note": "Wave 133: duplicates/manifest/index live. Verified by test (421/0)."
  },
  {
   "id": "F-D04-016",
@@ -1527,10 +1537,15 @@
   "id": "F-D04-032",
   "domain": "D04",
   "title": "Document export manifest",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)"
-  ]
+   "apps/server/src/lib.rs:1287 matters_csv + :1659 report_matters (CSV only, no PDF/XLSX/BI)",
+   "apps/server/src/lib.rs: GET /api/v1/matters/{id}/export-manifest (pins + bytes, RBAC)",
+   "  shared slice:",
+   "  - apps/server/static/site.js: duplicates strip + per-folder Manifest buttons + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_duplicates_manifest_and_auto_index e2e (collision, manifest bytes, ghost 404, auto-search, 401)"
+  ],
+  "audit_note": "Wave 133: duplicates/manifest/index live. Verified by test (421/0)."
  },
  {
   "id": "F-D04-033",
@@ -1565,12 +1580,17 @@
   "id": "F-D04-036",
   "domain": "D04",
   "title": "Document OCR queue trigger",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
    "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields",
+   "apps/server/src/lib.rs: search queue trigger on text upload live; image OCR stays manual (engine external)",
+   "  shared slice:",
+   "  - apps/server/static/site.js: duplicates strip + per-folder Manifest buttons + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_duplicates_manifest_and_auto_index e2e (collision, manifest bytes, ghost 404, auto-search, 401)"
+  ],
+  "audit_note": "Wave 133: duplicates/manifest/index live. Verified by test (421/0)."
  },
  {
   "id": "F-D04-037",

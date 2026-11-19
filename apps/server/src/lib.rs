@@ -847,6 +847,15 @@ async fn put_content(
         .add_version(&u.claims.org, id, &key, &sha)
         .await
         .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    // Search queue trigger (F-D04-036): text uploads index themselves into
+    // the RAG chunks immediately; image/scanned OCR stays a manual job
+    // (engine-dependent). Best-effort: never fail the upload itself.
+    if d.mime.starts_with("text/") {
+        if let Ok(text) = String::from_utf8(body.to_vec()) {
+            let chunks = legalrust_rag::chunk_text(&text, 800, 100);
+            let _ = s.stores.ops.rag_put(id, &chunks).await;
+        }
+    }
     Ok(Json(json!({"version": v.version_no})))
 }
 async fn get_content(
@@ -15447,6 +15456,73 @@ async fn doc_stats(
 }
 // ---------- end document slice: folders + dashboard ----------
 
+// ---------- document slice: duplicates + export manifest ----------
+// Duplicate detection (F-D04-015): SHA-256 pins make exact duplicates a
+// group-by; same content under different names still collides.
+async fn doc_duplicates(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let docs = s
+        .stores
+        .core
+        .list_docs(&u.claims.org, None)
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    let mut groups: std::collections::BTreeMap<String, Vec<Value>> =
+        std::collections::BTreeMap::new();
+    for d in docs {
+        groups
+            .entry(d.sha.clone())
+            .or_default()
+            .push(json!({"id": d.id, "name": d.name, "matter_id": d.matter_id}));
+    }
+    let dups: Vec<Value> = groups
+        .into_iter()
+        .filter(|(_, v)| v.len() > 1)
+        .map(|(sha, v)| json!({"sha": sha, "count": v.len(), "docs": v}))
+        .collect();
+    Ok(Json(json!({"groups": dups})))
+}
+// Export manifest (F-D04-032): per-matter bundle listing with pins + bytes.
+async fn doc_manifest(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(mid): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    s.stores
+        .core
+        .get_matter(&u.claims.org, mid)
+        .await
+        .map_err(|_| AppError::NotFound("matter".into()))?;
+    let docs = s
+        .stores
+        .core
+        .list_docs(&u.claims.org, Some(mid))
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    let mut rows = Vec::new();
+    let mut bytes = 0u64;
+    for d in docs {
+        let (_, vs) = s
+            .stores
+            .core
+            .get_doc(&u.claims.org, d.id)
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+        bytes += d.size;
+        rows.push(json!({"id": d.id, "name": d.name, "mime": d.mime, "size": d.size, "sha": d.sha, "versions": vs.len()}));
+    }
+    Ok(Json(
+        json!({"matter_id": mid, "files": rows.len(), "bytes": bytes, "entries": rows}),
+    ))
+}
+// ---------- end document slice: duplicates + manifest ----------
+
 // ---------- approval slice: quorum rounds + dual-control override ----------
 // Quorum M-of-N (F-D09-014): parallel member sign-off per entity. Tally:
 // approves>=required -> met; rejects>members-required -> failed.
@@ -17690,6 +17766,8 @@ pub fn build_router(state: FullState) -> Router {
             post(dmeta_set).get(dmeta_list).delete(dmeta_delete),
         )
         .route("/api/v1/documents/by-tag", get(dmeta_by_tag))
+        .route("/api/v1/documents/duplicates", get(doc_duplicates))
+        .route("/api/v1/matters/{id}/export-manifest", get(doc_manifest))
         .route(
             "/api/v1/documents/{id}/lock",
             post(dlock_lock).get(dlock_get),
