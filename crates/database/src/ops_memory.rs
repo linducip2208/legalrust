@@ -44,6 +44,7 @@ struct Inner {
     consents: HashMap<i64, ConsentRow>,
     ropa: HashMap<i64, RopaRow>,
     ppat: HashMap<i64, PpatRow>,
+    ppat_month: HashMap<i64, String>,
     dpia: HashMap<i64, DpiaRow>,
     breach: HashMap<i64, BreachRow>,
     vendors: HashMap<i64, VendorRow>,
@@ -120,6 +121,16 @@ impl MemoryOps {
         m.seq += 1;
         m.seq
     }
+}
+fn month_ok(month: &str) -> Result<(), StoreError> {
+    let ok = month.len() == 7
+        && month.as_bytes()[4] == b'-'
+        && month[..4].chars().all(|c| c.is_ascii_digit())
+        && month[5..].chars().all(|c| c.is_ascii_digit());
+    if !ok {
+        return Err(StoreError::Conflict("month YYYY-MM".into()));
+    }
+    Ok(())
 }
 #[async_trait::async_trait]
 impl OpsStore for MemoryOps {
@@ -1278,6 +1289,8 @@ impl OpsStore for MemoryOps {
                 status: "draft".into(),
             },
         );
+        m.ppat_month
+            .insert(id, chrono::Utc::now().format("%Y-%m").to_string());
         Ok(id)
     }
     async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError> {
@@ -1309,6 +1322,79 @@ impl OpsStore for MemoryOps {
         }
         r.status = to.into();
         Ok(())
+    }
+    async fn ppat_monthly(
+        &self,
+        org: &str,
+        month: &str,
+    ) -> Result<Vec<PpatMonthlyRow>, StoreError> {
+        month_ok(month)?;
+        let m = self.inner.lock().unwrap();
+        let mut buckets: std::collections::HashMap<(String, String), i64> =
+            std::collections::HashMap::new();
+        for r in m.ppat.values().filter(|r| r.org == org) {
+            if m.ppat_month.get(&r.id).map(|s| s.as_str()) == Some(month) {
+                *buckets
+                    .entry((r.deed_kind.clone(), r.status.clone()))
+                    .or_insert(0) += 1;
+            }
+        }
+        let mut v: Vec<PpatMonthlyRow> = buckets
+            .into_iter()
+            .map(|((kind, status), n)| PpatMonthlyRow { kind, status, n })
+            .collect();
+        v.sort_by(|a, b| a.kind.cmp(&b.kind).then(a.status.cmp(&b.status)));
+        Ok(v)
+    }
+    async fn ppat_dashboard(&self, org: &str) -> Result<PpatDashboard, StoreError> {
+        let m = self.inner.lock().unwrap();
+        let mut by: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+        let mut total = 0i64;
+        for r in m.ppat.values().filter(|r| r.org == org) {
+            total += 1;
+            *by.entry(r.deed_kind.clone()).or_insert(0) += 1;
+        }
+        let mut by_kind: Vec<PpatMonthlyRow> = by
+            .into_iter()
+            .map(|(kind, n)| PpatMonthlyRow {
+                kind,
+                status: String::new(),
+                n,
+            })
+            .collect();
+        by_kind.sort_by(|a, b| a.kind.cmp(&b.kind));
+        let horizon = (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(30))
+            .format("%Y-%m-%d")
+            .to_string();
+        let charges_due_30 = m
+            .charges
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && !r.valid_until.trim().is_empty()
+                    && r.valid_until.as_str() <= horizon.as_str()
+            })
+            .count() as i64;
+        Ok(PpatDashboard {
+            total_deeds: total,
+            by_kind,
+            unverified_consents: m
+                .dconsents
+                .values()
+                .filter(|r| r.org == org && !r.verified)
+                .count() as i64,
+            charges_due_30,
+            open_disputes: m
+                .ldisputes
+                .values()
+                .filter(|r| r.org == org && r.status != "cleared")
+                .count() as i64,
+            pending_handovers: m
+                .uhandovers
+                .values()
+                .filter(|r| r.org == org && r.status != "delivered")
+                .count() as i64,
+        })
     }
     async fn dpia_create(
         &self,

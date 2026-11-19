@@ -1258,6 +1258,97 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ppat_monthly(
+        &self,
+        org: &str,
+        month: &str,
+    ) -> Result<Vec<PpatMonthlyRow>, StoreError> {
+        let ok = month.len() == 7
+            && month.as_bytes()[4] == b'-'
+            && month[..4].chars().all(|c| c.is_ascii_digit())
+            && month[5..].chars().all(|c| c.is_ascii_digit());
+        if !ok {
+            return Err(StoreError::Conflict("month YYYY-MM".into()));
+        }
+        let rows = sqlx::query(
+            "SELECT deed_kind, status, COUNT(*) AS n FROM ppat_entries WHERE org_id=? AND DATE_FORMAT(created_at,'%Y-%m')=? GROUP BY deed_kind, status ORDER BY deed_kind, status",
+        )
+        .bind(org)
+        .bind(month)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PpatMonthlyRow {
+                kind: x.get::<String, _>("deed_kind"),
+                status: x.get::<String, _>("status"),
+                n: x.get::<i64, _>("n"),
+            })
+            .collect())
+    }
+    async fn ppat_dashboard(&self, org: &str) -> Result<PpatDashboard, StoreError> {
+        let total: i64 = sqlx::query("SELECT COUNT(*) AS n FROM ppat_entries WHERE org_id=?")
+            .bind(org)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(db_err)?
+            .get::<i64, _>("n");
+        let kinds = sqlx::query("SELECT deed_kind, COUNT(*) AS n FROM ppat_entries WHERE org_id=? GROUP BY deed_kind ORDER BY deed_kind")
+            .bind(org)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+        let by_kind: Vec<PpatMonthlyRow> = kinds
+            .into_iter()
+            .map(|x| PpatMonthlyRow {
+                kind: x.get::<String, _>("deed_kind"),
+                status: String::new(),
+                n: x.get::<i64, _>("n"),
+            })
+            .collect();
+        let unverified_consents: i64 =
+            sqlx::query("SELECT COUNT(*) AS n FROM deed_consents WHERE org_id=? AND verified=0")
+                .bind(org)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(db_err)?
+                .get::<i64, _>("n");
+        let horizon = (chrono::Utc::now().naive_utc().date() + chrono::Duration::days(30))
+            .format("%Y-%m-%d")
+            .to_string();
+        let charges_due_30: i64 = sqlx::query("SELECT COUNT(*) AS n FROM deed_charges WHERE org_id=? AND valid_until<>'' AND valid_until<=?")
+            .bind(org)
+            .bind(horizon)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(db_err)?
+            .get::<i64, _>("n");
+        let open_disputes: i64 = sqlx::query(
+            "SELECT COUNT(*) AS n FROM land_disputes WHERE org_id=? AND status<>'cleared'",
+        )
+        .bind(org)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db_err)?
+        .get::<i64, _>("n");
+        let pending_handovers: i64 = sqlx::query(
+            "SELECT COUNT(*) AS n FROM unit_handovers WHERE org_id=? AND status<>'delivered'",
+        )
+        .bind(org)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(db_err)?
+        .get::<i64, _>("n");
+        Ok(PpatDashboard {
+            total_deeds: total,
+            by_kind,
+            unverified_consents,
+            charges_due_30,
+            open_disputes,
+            pending_handovers,
+        })
+    }
     async fn dpia_create(
         &self,
         org: &str,

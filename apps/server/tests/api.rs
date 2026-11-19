@@ -3642,6 +3642,11 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "uho-add",
         "uho-reload",
         "uho-list",
+        "rpm-month",
+        "rpm-reload",
+        "rpm-list",
+        "pdb-reload",
+        "pdb-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8646,6 +8651,92 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn ppat_monthly_report_and_dashboard() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ppatrep@x.id").await;
+    for (num, kind) in [("R/1", "ajb"), ("R/2", "hibah"), ("R/3", "ajb")] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/ppat",
+                &format!(r#"{{"number":"{num}","deed_kind":"{kind}","seller":"AA","buyer":"BB"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let month = chrono::Utc::now().format("%Y-%m").to_string();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/reports/ppat-monthly?month={month}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rep = body_json(res).await;
+    assert_eq!(rep["month"].as_str().unwrap(), month);
+    assert_eq!(rep["total"].as_i64().unwrap(), 3);
+    assert!(rep["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["kind"] == "ajb" && r["n"].as_i64() == Some(2)));
+    // Bad month rejected; default month works.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ppat-monthly?month=20XX", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ppat-monthly", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["total"].as_i64().unwrap(), 3);
+    // Dashboard reflects deeds + open items.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-disputes",
+            r#"{"parcel_ref":"SHM 1","kind":"sengketa","description":"DD"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ppat-dashboard", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let d = body_json(res).await;
+    assert_eq!(d["total_deeds"].as_i64().unwrap(), 3);
+    assert_eq!(d["open_disputes"].as_i64().unwrap(), 1);
+    assert!(d["by_kind"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["kind"] == "hibah" && r["n"].as_i64() == Some(1)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/ppat-dashboard")
                 .body(Body::empty())
                 .unwrap(),
         )

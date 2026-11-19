@@ -139,6 +139,23 @@ pub struct PpatRow {
     pub object_desc: String,
     pub status: String,
 }
+/// Monthly PPAT aggregate bucket (kind x status count).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PpatMonthlyRow {
+    pub kind: String,
+    pub status: String,
+    pub n: i64,
+}
+/// PPAT office dashboard snapshot.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PpatDashboard {
+    pub total_deeds: i64,
+    pub by_kind: Vec<PpatMonthlyRow>,
+    pub unverified_consents: i64,
+    pub charges_due_30: i64,
+    pub open_disputes: i64,
+    pub pending_handovers: i64,
+}
 /// UU PDP DPIA assessment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DpiaRow {
@@ -1325,6 +1342,11 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ppat_list(&self, org: &str) -> Result<Vec<PpatRow>, StoreError>;
     async fn ppat_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// PPAT monthly report buckets (kind x status) for `month` = YYYY-MM.
+    async fn ppat_monthly(&self, org: &str, month: &str)
+        -> Result<Vec<PpatMonthlyRow>, StoreError>;
+    /// PPAT office dashboard snapshot (cross-table counts).
+    async fn ppat_dashboard(&self, org: &str) -> Result<PpatDashboard, StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

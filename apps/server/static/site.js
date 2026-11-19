@@ -1839,6 +1839,39 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     uhoRefresh();
   });
   on('uho-reload', 'click', uhoRefresh);
+  /* ---- property: PPAT monthly report + dashboard ---- */
+  async function rpmRefresh() {
+    var box = document.getElementById('rpm-list');
+    if (!box) return;
+    var mo = pval('rpm-month');
+    var v = await j('/api/v1/reports/ppat-monthly' + (mo ? '?month=' + encodeURIComponent(mo) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var tot = document.getElementById('rpm-total');
+    if (tot) tot.textContent = 'Bulan ' + v.month + ' — total ' + v.total + ' akta';
+    box.innerHTML = (v.rows || []).map(function (x) {
+      return '<tr><td>' + badge(x.kind) + '</td><td>' + badge(x.status) + '</td><td>' + x.n + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada akta bulan ini.</td></tr>';
+  }
+  on('rpm-reload', 'click', rpmRefresh);
+  async function pdbRefresh() {
+    var box = document.getElementById('pdb-list');
+    if (!box) return;
+    var v = await j('/api/v1/ppat-dashboard');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var kinds = (v.by_kind || []).map(function (x) { return x.kind + ': ' + x.n; }).join(', ') || '—';
+    var rows = [
+      ['Total akta', v.total_deeds],
+      ['Per jenis', kinds],
+      ['Persetujuan belum verifikasi', v.unverified_consents],
+      ['Pembebanan jatuh tempo ≤30 hari', v.charges_due_30],
+      ['Sengketa terbuka', v.open_disputes],
+      ['Serah terima tertunda', v.pending_handovers],
+    ];
+    box.innerHTML = rows.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td><strong>' + r[1] + '</strong></td></tr>';
+    }).join('');
+  }
+  on('pdb-reload', 'click', pdbRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2012,7 +2045,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4179,6 +4212,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power');
   lhiRefresh();
   uhoRefresh();
+  rpmRefresh();
+  pdbRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 102: PPAT monthly report + dashboard (main)
+- ppat_monthly + ppat_dashboard aggregates (no migration) + kartu + uji.
+- F-D13-029/037 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 391/0; registry ~25.9 (166 IMPLEMENTED); mean 27.2 (164 v).
+
 ## Done wave 101: land history + BAST handover (main)
 - land_history + unit_handovers (0067) + kartu + uji.
 - F-D13-013/024 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 390/0; registry ~25.8 (164 IMPLEMENTED); mean 27.1 (162 v).

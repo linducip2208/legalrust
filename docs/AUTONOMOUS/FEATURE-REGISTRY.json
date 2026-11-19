@@ -5331,10 +5331,15 @@
   "id": "F-D13-029",
   "domain": "D13",
   "title": "PPAT monthly report",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: ppat_monthly (kind x status buckets, YYYY-MM)",
+   "crates/database/src/ops_memory.rs: ppat_month creation stamp for parity",
+   "apps/server/src/lib.rs: GET /api/v1/reports/ppat-monthly (RBAC, default current month)",
+   "apps/server/static/site.js: rpmRefresh card Laporan bulanan + hooks",
+   "apps/server/tests/api.rs: ppat_monthly_report_and_dashboard e2e (counts, bad-month 409)"
+  ],
+  "audit_note": "Wave 102: full lifecycle live; verified by test (391/0)."
  },
  {
   "id": "F-D13-030",
@@ -5425,10 +5430,14 @@
   "id": "F-D13-037",
   "domain": "D13",
   "title": "PPAT dashboard",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: ppat_dashboard (6-metric snapshot)",
+   "apps/server/src/lib.rs: GET /api/v1/ppat-dashboard (RBAC)",
+   "apps/server/static/site.js: pdbRefresh card Dasbor PPAT + hooks",
+   "apps/server/tests/api.rs: dashboard totals + by_kind + open_disputes + 401 asserted"
+  ],
+  "audit_note": "Wave 102: verified by test (391/0)."
  },
  {
   "id": "F-D13-038",
