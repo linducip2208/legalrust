@@ -1923,8 +1923,46 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('risk-reload', 'click', function () { riskRefresh(); riskHmRefresh(); });
   on('risk-hm-reload', 'click', riskHmRefresh);
+  /* ---- compliance: data-subject rights (DSAR) ---- */
+  var DSAR_NEXT = { open: 'in_review', in_review: 'fulfilled' };
+  async function dsarRefresh() {
+    var box = document.getElementById('dsar-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/dsar');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DSAR_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-dsar-next="' + x.id + '" data-dsar-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-dsar-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.subject) + '</td><td>' + badge(x.kind) + '</td><td>' + esc(x.due_date) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada permintaan hak subjek.</td></tr>';
+    qsa('[data-dsar-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/dsar/' + b.getAttribute('data-dsar-next') + '/status', { status: b.getAttribute('data-dsar-to') });
+        if (!r.ok) { pmsg('dsar-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dsar-msg', '');
+        dsarRefresh();
+      });
+    });
+    qsa('[data-dsar-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/dsar/' + b.getAttribute('data-dsar-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dsar-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dsar-msg', '');
+        dsarRefresh();
+      });
+    });
+  }
+  on('dsar-add', 'click', async function () {
+    if (!pval('dsar-subject') || !pval('dsar-detail')) { pmsg('dsar-msg', 'Isi subjek dan rincian.'); return; }
+    var r = await ppost('/api/v1/compliance/dsar', { subject: pval('dsar-subject'), kind: pval('dsar-kind') || 'access', detail: pval('dsar-detail'), due_date: pval('dsar-due') || '' });
+    if (!r.ok) { pmsg('dsar-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dsar-msg', '');
+    dsarRefresh();
+  });
+  on('dsar-reload', 'click', dsarRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -1974,6 +2012,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   trnRefresh();
   riskRefresh();
   riskHmRefresh();
+  dsarRefresh();
   whDlRefresh();
   intRefresh();
 })();

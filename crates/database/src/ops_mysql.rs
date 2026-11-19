@@ -1966,6 +1966,103 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dsar_create(
+        &self,
+        org: &str,
+        subject: &str,
+        kind: &str,
+        detail: &str,
+        due: &str,
+    ) -> Result<i64, StoreError> {
+        let subject = subject.trim();
+        if subject.is_empty() || subject.len() > 160 {
+            return Err(StoreError::Conflict("subject".into()));
+        }
+        if !matches!(kind, "access" | "deletion" | "rectification") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if detail.trim().is_empty() || detail.len() > 2000 {
+            return Err(StoreError::Conflict("detail".into()));
+        }
+        if due.len() > 10 {
+            return Err(StoreError::Conflict("due_date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO dsar_requests (org_id, subject, kind, detail, due_date) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(subject)
+        .bind(kind)
+        .bind(detail.trim())
+        .bind(due.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dsar_list(&self, org: &str) -> Result<Vec<DsarRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, subject, kind, detail, due_date, status FROM dsar_requests WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DsarRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                subject: x.get::<String, _>("subject"),
+                kind: x.get::<String, _>("kind"),
+                detail: x.get::<String, _>("detail"),
+                due_date: x.get::<String, _>("due_date"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn dsar_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_review" | "fulfilled" | "rejected") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM dsar_requests WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "in_review")
+                | (Some("in_review"), "fulfilled")
+                | (Some("in_review"), "rejected")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE dsar_requests SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dsar_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM dsar_requests WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

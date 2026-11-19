@@ -6672,6 +6672,77 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn dsar_rights_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dsar@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/dsar",
+            r#"{"subject":"X","detail":"Y"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Unknown kind rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/dsar",
+            r#"{"subject":"SS","kind":"alien","detail":"DD"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for kind in ["access", "deletion", "rectification"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/compliance/dsar",
+                &format!(r#"{{"subject":"NIK-001","kind":"{kind}","detail":"Mohon {kind}","due_date":"2026-12-31"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "dsar kind {kind}");
+        let rid = body_json(res).await["id"].as_i64().unwrap();
+        for st in ["in_review", "fulfilled"] {
+            let res = a
+                .clone()
+                .oneshot(post(
+                    &format!("/api/v1/compliance/dsar/{rid}/status"),
+                    &format!(r#"{{"status":"{st}"}}"#),
+                    Some(&tok),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK, "dsar {kind} to {st}");
+        }
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/dsar", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 3);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=dsar", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.dsar_created"));
+}
+
+#[tokio::test]
 async fn risk_register_and_heatmap() {
     use tower::ServiceExt;
     let a = app();
@@ -8065,6 +8136,10 @@ async fn uib_app_has_approvals_ui() {
         "risk-reload",
         "risk-list",
         "risk-hm",
+        "dsar-subject",
+        "dsar-add",
+        "dsar-reload",
+        "dsar-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

@@ -3964,28 +3964,43 @@
   "id": "F-D11-003",
   "domain": "D11",
   "title": "Data-subject access request (DSAR)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0031_dsar.sql: dsar_requests table (kind access/deletion/rectification, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dsar CRUD + open->in_review->fulfilled/rejected chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dsar + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dsarRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: dsar_rights_lifecycle e2e (all 3 kinds, bad-kind 409)"
+  ],
+  "audit_note": "Wave 64: one table serves all three rights; verified by test (353/0)."
  },
  {
   "id": "F-D11-004",
   "domain": "D11",
   "title": "Data-subject deletion request",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0031_dsar.sql: dsar_requests table (kind access/deletion/rectification, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dsar CRUD + open->in_review->fulfilled/rejected chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dsar + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dsarRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: dsar_rights_lifecycle e2e (all 3 kinds, bad-kind 409)"
+  ],
+  "audit_note": "Wave 64: one table serves all three rights; verified by test (353/0)."
  },
  {
   "id": "F-D11-005",
   "domain": "D11",
   "title": "Rectification request workflow",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0031_dsar.sql: dsar_requests table (kind access/deletion/rectification, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dsar CRUD + open->in_review->fulfilled/rejected chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dsar + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dsarRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: dsar_rights_lifecycle e2e (all 3 kinds, bad-kind 409)"
+  ],
+  "audit_note": "Wave 64: one table serves all three rights; verified by test (353/0)."
  },
  {
   "id": "F-D11-006",

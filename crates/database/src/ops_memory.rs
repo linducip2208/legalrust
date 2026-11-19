@@ -52,6 +52,7 @@ struct Inner {
     regchanges: HashMap<i64, RegChangeRow>,
     trainings: HashMap<i64, TrainingRow>,
     risks: HashMap<i64, RiskRow>,
+    dsars: HashMap<i64, DsarRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1767,6 +1768,83 @@ impl OpsStore for MemoryOps {
         match m.risks.get(&id) {
             Some(r) if r.org == org => {
                 m.risks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dsar_create(
+        &self,
+        org: &str,
+        subject: &str,
+        kind: &str,
+        detail: &str,
+        due: &str,
+    ) -> Result<i64, StoreError> {
+        let subject = subject.trim();
+        if subject.is_empty() || subject.len() > 160 {
+            return Err(StoreError::Conflict("subject".into()));
+        }
+        if !matches!(kind, "access" | "deletion" | "rectification") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if detail.trim().is_empty() || detail.len() > 2000 {
+            return Err(StoreError::Conflict("detail".into()));
+        }
+        if due.len() > 10 {
+            return Err(StoreError::Conflict("due_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.dsars.insert(
+            id,
+            DsarRow {
+                id,
+                org: org.into(),
+                subject: subject.into(),
+                kind: kind.into(),
+                detail: detail.trim().into(),
+                due_date: due.trim().into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dsar_list(&self, org: &str) -> Result<Vec<DsarRow>, StoreError> {
+        let mut v: Vec<DsarRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dsars
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dsar_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dsars
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "in_review") | ("in_review", "fulfilled") | ("in_review", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn dsar_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dsars.get(&id) {
+            Some(r) if r.org == org => {
+                m.dsars.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

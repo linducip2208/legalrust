@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 64: DSAR rights (main)
+- Satu tabel tiga hak + kartu kepatuhan; workspace **353 passed, 0 failed**; F-D11-003/004/005 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 63: risk register + heatmap (main)
 - Register skor + peta panas + kartu kepatuhan; workspace **352 passed, 0 failed**; F-D11-037/038 IMPLEMENTED.
 
