@@ -560,6 +560,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       return '<option value="' + esc(x.id) + '">' + esc(x.email) + ' — ' + esc((x.roles || []).join(', ') || 'tanpa peran') + '</option>';
     }).join('') || '<option value="">Tidak ada pengguna.</option>';
   }
+  /* ---- SoD conflict check (F-D14-038): advisory, never auto-revokes ---- */
+  async function sodRefresh() {
+    var box = document.getElementById('sod-list');
+    if (!box) return;
+    var uid = pval('role-uid');
+    if (!uid) { box.innerHTML = '<p class="text-muted">Pilih pengguna dulu.</p>'; return; }
+    var v = await j('/api/v1/roles/sod?user=' + encodeURIComponent(uid));
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat (perlu hak Assign).</p>'; return; }
+    box.innerHTML = '<p>Hak: ' + v.permissions.map(function (p) { return '<span class="badge">' + esc(p) + '</span>'; }).join(' ') + '</p>'
+      + ((v.conflicts || []).length
+        ? '<div class="alert alert-warning">Konflik SoD: ' + v.conflicts.map(function (c) { return esc(c.pair.join(' + ')) + ' — ' + esc(c.reason); }).join('; ') + '</div>'
+        : '<p class="text-muted">Tidak ada konflik SoD.</p>');
+  }
+  on('sod-btn', 'click', sodRefresh);
   /* ---- role catalog matrix (least-privilege reference) ---- */
   async function loadRoleMatrix() {
     var box = document.getElementById('role-matrix');

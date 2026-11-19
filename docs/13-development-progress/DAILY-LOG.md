@@ -151,6 +151,9 @@
 ## 2026-11-19 AUDIT-1000 wave 48: akurasi OCR (main)
 - Telemetri confidence nyata + CSV; workspace **342 passed, 0 failed**; F-D20-010 PARTIAL (64.1).
 
+## 2026-11-19 AUDIT-1000 wave 50: SoD check (main)
+- Advisory 3 pasangan + kartu + test; workspace **343 passed, 0 failed**; F-D14-038 70.5.
+
 ## 2026-11-19 AUDIT-1000 wave 47: register vendor + DPA (main)
 - CRUD + DPA workflow + kartu kepatuhan; workspace **339 passed, 0 failed**; F-D11-009/010 IMPLEMENTED.
 

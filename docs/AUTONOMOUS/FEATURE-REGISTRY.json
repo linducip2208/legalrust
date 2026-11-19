@@ -5427,8 +5427,12 @@
   "evidence": [
    "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
    "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
-   "authorize() checks per endpoint"
-  ]
+   "authorize() checks per endpoint",
+   "apps/server/src/lib.rs: GET /api/v1/roles/sod?user= (Assign-gated, 3 conflict pairs, org-checked)",
+   "apps/server/static/site.js: sod-btn card + per-user conflict rendering",
+   "apps/server/tests/api.rs: sod_check_flags_risky_pairs (3 pairs + 403 + 404) + needles"
+  ],
+  "audit_note": " Wave 50: SoD advisory check live; stays PARTIAL (warn-only, no enforcement)."
  },
  {
   "id": "F-D14-039",

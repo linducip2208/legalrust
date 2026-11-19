@@ -47,6 +47,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Aggregate per-tipe + CSV + tombol + trail; F-D20-010 NOT_STARTED->PARTIAL (64.1).
 - Workspace 342/0; registry 19.8 (77 IMPLEMENTED); 8-cat mean 20.8 (67 v).
 
+## Done wave 50: SoD conflict check (main)
+- GET /api/v1/roles/sod + kartu Cek SoD (3 pasangan, advisory); F-D14-038 67.9->70.5 PARTIAL.
+- Workspace 343/0; registry 19.9 (77 IMPLEMENTED); 8-cat mean 21.0 (68 v).
+
 ## Done wave 47: register vendor + DPA (main)
 - CRUD + DPA workflow + kartu kepatuhan + audit; F-D11-009/010 -> IMPLEMENTED (75.6/73.1).
 - /skor page removed from user UI per owner request (API + registry retained as evidence).

@@ -4565,6 +4565,54 @@ async fn session_console_lists_and_revokes_others() {
 }
 
 #[tokio::test]
+async fn sod_check_flags_risky_pairs() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sodown@x.id").await;
+    // Owner holds broad permissions: self-approval-style pairs conflict.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/roles/sod", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(!v["permissions"].as_array().unwrap().is_empty());
+    let pairs: Vec<String> = v["conflicts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["pair"][0].as_str().unwrap().to_string() + "+" + c["pair"][1].as_str().unwrap())
+        .collect();
+    assert!(
+        pairs.contains(&"Assign+Download".to_string()),
+        "pairs: {pairs:?}"
+    );
+    assert!(
+        pairs.contains(&"Sign+Verify".to_string()),
+        "pairs: {pairs:?}"
+    );
+    assert!(
+        pairs.contains(&"Create+Approve".to_string()),
+        "pairs: {pairs:?}"
+    );
+    // Auditor lacks Assign: forbidden. Unknown user: 404.
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/roles/sod", &auditor))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/roles/sod?user=nobody", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn role_matrix_lists_least_privilege_sets() {
     use tower::ServiceExt;
     let a = app();
@@ -4984,6 +5032,8 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
         "tok-btn",
         "tok-list",
         "tok-days",
+        "sod-btn",
+        "sod-list",
         "role-matrix",
         "sess-list",
         "sess-reload",
