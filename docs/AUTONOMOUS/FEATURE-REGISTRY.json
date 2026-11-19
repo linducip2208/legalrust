@@ -597,19 +597,27 @@
   "id": "F-D02-019",
   "domain": "D02",
   "title": "Client referral tracking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0089: client_referrals table (dup guard, forward-only)",
+   "ops.rs + memory + mysql: cref add/list/delete",
+   "lib.rs: referral endpoints (existence-verified, RBAC)",
+   "site.js: referral card + hooks (klien panel)",
+   "tests: client_referrals_and_ltv e2e (self/ghost/dup, 403/401)"
+  ],
+  "audit_note": "Wave 141: referrals live. Verified by test (431/0)."
  },
  {
   "id": "F-D02-020",
   "domain": "D02",
   "title": "Client lifetime value view",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET lifetime-value (matters + invoiced + open + paid derivation, RBAC)",
+   "site.js: LTV calculator + hooks (klien panel)",
+   "tests: partial-payment math asserted (1jt/400rb/600rb), empty zeroes, ghost 404"
+  ],
+  "audit_note": "Wave 141: LTV derivation live. Verified by test (431/0)."
  },
  {
   "id": "F-D02-021",

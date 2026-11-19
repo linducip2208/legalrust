@@ -2909,6 +2909,95 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ckiRefresh();
   });
   on('cki-reload', 'click', ckiRefresh);
+  /* ---- fee arrangements + doc requests (F-D02-015/016; wired wave 141, card shipped wave 140) ---- */
+  async function cfeeRefresh() {
+    var box = document.getElementById('cfee-list');
+    if (!box) return;
+    if (!pval('cfee-cid')) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID klien lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cfee-cid')) + '/fees');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + badge(x.kind) + '</td><td>' + fmtRp(x.amount_minor) + '</td><td><button class="btn btn-sm btn-outline-danger" data-cfee-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada skema.</td></tr>';
+    qsa('[data-cfee-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/client-fees/' + b.getAttribute('data-cfee-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cfee-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cfee-msg', '');
+        cfeeRefresh();
+      });
+    });
+  }
+  on('cfee-add', 'click', async function () {
+    if (!pval('cfee-cid') || !pval('cfee-name')) { pmsg('cfee-msg', 'Isi ID klien dan nama.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cfee-cid')) + '/fees', { name: pval('cfee-name'), kind: pval('cfee-kind') || 'hourly', amount_minor: +pval('cfee-amt') || 0 });
+    if (!r.ok) { pmsg('cfee-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cfee-msg', '');
+    cfeeRefresh();
+  });
+  on('cfee-reload', 'click', cfeeRefresh);
+  var CDRQ_NEXT = { requested: 'received', received: 'verified' };
+  async function cdrqRefresh() {
+    var box = document.getElementById('cdrq-list');
+    if (!box) return;
+    if (!pval('cdrq-cid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID klien lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cdrq-cid')) + '/doc-requests');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = CDRQ_NEXT[x.status];
+      var act = nx ? '<button class="btn btn-sm" data-cdrq-next="' + x.id + '" data-cdrq-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">' + x.status + '</span>';
+      return '<tr><td>' + esc(x.title) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada permintaan.</td></tr>';
+    qsa('[data-cdrq-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/doc-requests/' + b.getAttribute('data-cdrq-next') + '/status', { status: b.getAttribute('data-cdrq-to') });
+        if (!r.ok) { pmsg('cfee-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cfee-msg', '');
+        cdrqRefresh();
+      });
+    });
+  }
+  on('cdrq-add', 'click', async function () {
+    if (!pval('cdrq-cid') || !pval('cdrq-title')) { pmsg('cfee-msg', 'Isi ID klien dan judul.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cdrq-cid')) + '/doc-requests', { title: pval('cdrq-title') });
+    if (!r.ok) { pmsg('cfee-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cfee-msg', '');
+    cdrqRefresh();
+  });
+  on('cdrq-reload', 'click', cdrqRefresh);
+  /* ---- referrals + LTV (F-D02-019/020) ---- */
+  async function crfRefresh() {
+    var box = document.getElementById('crf-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-referrals');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.referrer_id + '</td><td>#' + x.referred_id + '</td><td><button class="btn btn-sm btn-outline-danger" data-crf-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada referral.</td></tr>';
+    qsa('[data-crf-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/client-referrals/' + b.getAttribute('data-crf-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('crf-msg', 'Gagal (' + r.status + ').'); return; }
+        crfRefresh();
+      });
+    });
+  }
+  on('crf-add', 'click', async function () {
+    if (!pval('crf-from') || !pval('crf-to')) { pmsg('crf-msg', 'Isi kedua ID klien.'); return; }
+    var r = await ppost('/api/v1/client-referrals', { referrer_id: +pval('crf-from'), referred_id: +pval('crf-to') });
+    if (!r.ok) { pmsg('crf-msg', 'Gagal (' + r.status + '). Ganda / diri sendiri?'); return; }
+    pmsg('crf-msg', '');
+    crfRefresh();
+  });
+  on('crf-reload', 'click', crfRefresh);
+  on('ltv-go', 'click', async function () {
+    var out = document.getElementById('ltv-out');
+    var cid = pval('crf-from') || pval('crf-to');
+    if (!cid) { if (out) out.textContent = 'Isi ID klien (salah satu kolom).'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(cid) + '/lifetime-value');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.textContent = 'Klien #' + v.client_id + ': ' + v.matters + ' perkara · tagihan ' + fmtRp(v.invoiced_minor) + ' · terbuka ' + fmtRp(v.open_minor) + ' · lunas ' + fmtRp(v.paid_minor);
+  });
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -3732,6 +3821,9 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   csgRefresh();
   ckoRefresh();
   ctmRefresh();
+  cfeeRefresh();
+  cdrqRefresh();
+  crfRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

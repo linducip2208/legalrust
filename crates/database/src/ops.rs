@@ -216,6 +216,24 @@ pub struct ClientDocReqRow {
     pub status: String,
     pub note: String,
 }
+/// Client referral edge (who referred whom).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientReferralRow {
+    pub id: i64,
+    pub org: String,
+    pub referrer_id: i64,
+    pub referred_id: i64,
+    pub note: String,
+}
+/// Client lifetime value snapshot (derived, not stored).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientLtv {
+    pub client_id: i64,
+    pub matters: i64,
+    pub invoiced_minor: i64,
+    pub open_minor: i64,
+    pub paid_minor: i64,
+}
 /// Document metadata value (tags = repeated rows on tag-kind fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocMetaRow {
@@ -1789,6 +1807,20 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ClientDocReqRow>, StoreError>;
     async fn cdreq_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cdreq_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Client referrals.
+    async fn cref_add(
+        &self,
+        org: &str,
+        referrer_id: i64,
+        referred_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cref_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientReferralRow>, StoreError>;
+    async fn cref_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

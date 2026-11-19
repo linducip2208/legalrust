@@ -138,6 +138,7 @@ struct Inner {
     cchits: HashMap<i64, ClientCheckItemRow>,
     cfees: HashMap<i64, ClientFeeRow>,
     cdreqs: HashMap<i64, ClientDocReqRow>,
+    crefs: HashMap<i64, ClientReferralRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -2282,6 +2283,71 @@ impl OpsStore for MemoryOps {
         match m.cdreqs.get(&id) {
             Some(r) if r.org == org => {
                 m.cdreqs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cref_add(
+        &self,
+        org: &str,
+        referrer_id: i64,
+        referred_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if referrer_id <= 0 || referred_id <= 0 || referrer_id == referred_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.crefs
+            .values()
+            .any(|r| r.org == org && r.referrer_id == referrer_id && r.referred_id == referred_id)
+        {
+            return Err(StoreError::Conflict("already referred".into()));
+        }
+        let id = self.next(&mut m);
+        m.crefs.insert(
+            id,
+            ClientReferralRow {
+                id,
+                org: org.into(),
+                referrer_id,
+                referred_id,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cref_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientReferralRow>, StoreError> {
+        let mut v: Vec<ClientReferralRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .crefs
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && client_id
+                        .map(|c| r.referrer_id == c || r.referred_id == c)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cref_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.crefs.get(&id) {
+            Some(r) if r.org == org => {
+                m.crefs.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

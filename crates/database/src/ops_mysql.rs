@@ -2023,6 +2023,60 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cref_add(
+        &self,
+        org: &str,
+        referrer_id: i64,
+        referred_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if referrer_id <= 0 || referred_id <= 0 || referrer_id == referred_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_referrals (org_id, referrer_id, referred_id, note) VALUES (?,?,?,?)")
+            .bind(org).bind(referrer_id as u64).bind(referred_id as u64).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cref_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientReferralRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, referrer_id, referred_id, note FROM client_referrals WHERE org_id=? AND (referrer_id=? OR referred_id=?) ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, referrer_id, referred_id, note FROM client_referrals WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientReferralRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                referrer_id: x.get::<u64, _>("referrer_id") as i64,
+                referred_id: x.get::<u64, _>("referred_id") as i64,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cref_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_referrals WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

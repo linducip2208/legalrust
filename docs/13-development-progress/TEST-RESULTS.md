@@ -35,6 +35,9 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 141: referral + LTV (main)
+- Referral guards + LTV math + repair; workspace **431 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 140: fee + permintaan (main)
 - Chains + guards + audit; workspace **430 passed, 0 failed**.
 

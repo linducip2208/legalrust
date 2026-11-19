@@ -5627,6 +5627,10 @@ async fn crm_app_contains_crm_ids() {
         "cfee-list",
         "cdrq-cid",
         "cdrq-add",
+        "crf-from",
+        "crf-add",
+        "crf-list",
+        "ltv-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -10981,6 +10985,139 @@ async fn client_communication_timeline() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/timeline"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_referrals_and_ltv() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliref@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let c1 = mk_crm_client(&a, &tok).await;
+    let c2 = mk_crm_client(&a, &tok).await;
+    // Auditor cannot create (Create gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-referrals",
+            &format!(r#"{{"referrer_id":{c1},"referred_id":{c2}}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Self-link + ghost rejected; dup 409s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-referrals",
+            &format!(r#"{{"referrer_id":{c1},"referred_id":{c1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-referrals",
+            r#"{"referrer_id":999999,"referred_id":999998}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-referrals",
+            &format!(r#"{{"referrer_id":{c1},"referred_id":{c2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-referrals",
+            &format!(r#"{{"referrer_id":{c1},"referred_id":{c2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/client-referrals?client_id={c1}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid)));
+    // LTV: one matter, one invoice, partial payment.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"M1","client_id":{c1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let iid = mk_invoice(&a, &tok, mid, 1_000_000).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":400000,"method":"transfer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{c1}/lifetime-value"), &tok))
+        .await
+        .unwrap();
+    let lv = body_json(res).await;
+    assert_eq!(lv["matters"].as_i64().unwrap(), 1);
+    assert_eq!(lv["invoiced_minor"].as_i64().unwrap(), 1_000_000);
+    assert_eq!(lv["paid_minor"].as_i64().unwrap(), 400_000);
+    assert_eq!(lv["open_minor"].as_i64().unwrap(), 600_000);
+    // Empty client zeroes; ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{c2}/lifetime-value"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["paid_minor"].as_i64().unwrap(), 0);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients/999999/lifetime-value", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-referrals")
                 .body(Body::empty())
                 .unwrap(),
         )
