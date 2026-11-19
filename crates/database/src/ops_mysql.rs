@@ -3212,6 +3212,186 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn mcamp_add(&self, org: &str, name: &str, channel: &str) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.len() < 2 || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let c = channel.trim().to_lowercase();
+        if !["email", "phone", "visit", "event", "ads"].contains(&c.as_str()) {
+            return Err(StoreError::Conflict("channel".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO marketing_campaigns (org_id, name, channel) VALUES (?,?,?)")
+                .bind(org)
+                .bind(name)
+                .bind(&c)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mcamp_list(&self, org: &str) -> Result<Vec<MarketingCampaignRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, channel, status FROM marketing_campaigns WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MarketingCampaignRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                channel: x.get::<String, _>("channel"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn mcamp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM marketing_campaigns WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("planned", "active")
+                | ("active", "done")
+                | ("planned", "cancelled")
+                | ("active", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE marketing_campaigns SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn mcamp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM marketing_campaigns WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cpart_add(
+        &self,
+        org: &str,
+        campaign_id: i64,
+        client_id: i64,
+    ) -> Result<i64, StoreError> {
+        if campaign_id <= 0 || client_id <= 0 {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let own: Option<u64> =
+            sqlx::query("SELECT id FROM marketing_campaigns WHERE id=? AND org_id=?")
+                .bind(campaign_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        if own.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO campaign_participations (org_id, campaign_id, client_id) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(campaign_id as u64)
+        .bind(client_id as u64)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cpart_list(
+        &self,
+        org: &str,
+        campaign_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<CampaignPartRow>, StoreError> {
+        // Static statements per filter combination: the clippy dynamic-SQL lint forbids format!.
+        let rows = match (campaign_id, client_id) {
+            (Some(camp), Some(cli)) => sqlx::query("SELECT id, org_id, campaign_id, client_id, response FROM campaign_participations WHERE org_id=? AND campaign_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(camp as u64).bind(cli as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(camp), None) => sqlx::query("SELECT id, org_id, campaign_id, client_id, response FROM campaign_participations WHERE org_id=? AND campaign_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(camp as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, Some(cli)) => sqlx::query("SELECT id, org_id, campaign_id, client_id, response FROM campaign_participations WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(cli as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, None) => sqlx::query("SELECT id, org_id, campaign_id, client_id, response FROM campaign_participations WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| CampaignPartRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                campaign_id: x.get::<u64, _>("campaign_id") as i64,
+                client_id: x.get::<u64, _>("client_id") as i64,
+                response: x.get::<String, _>("response"),
+            })
+            .collect())
+    }
+    async fn cpart_set_response(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT response FROM campaign_participations WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("response"));
+        let response = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (response.as_str(), to),
+            ("invited", "responded")
+                | ("invited", "declined")
+                | ("responded", "converted")
+                | ("responded", "declined")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE campaign_participations SET response=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cpart_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM campaign_participations WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

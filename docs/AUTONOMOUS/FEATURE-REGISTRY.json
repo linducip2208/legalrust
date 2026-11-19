@@ -655,10 +655,15 @@
   "id": "F-D02-022",
   "domain": "D02",
   "title": "Marketing campaign tracking",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0098: marketing_campaigns + campaign_participations tables (forward-only)",
+   "ops.rs + memory + mysql: mcamp add/list/status/delete + cpart add/list/response/delete",
+   "lib.rs: campaign + participation endpoints (existence-verified, RBAC)",
+   "site.js: campaign card + hooks (klien panel)",
+   "tests: campaign_tracking e2e (chains, dup/ghost guards, 403/401)"
+  ],
+  "audit_note": "Wave 150: campaign tracking live. Verified by test (440/0)."
  },
  {
   "id": "F-D02-023",

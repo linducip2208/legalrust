@@ -355,6 +355,24 @@ pub struct ClientSurveyRow {
     pub score: i64,
     pub comment: String,
 }
+/// Marketing campaign (planned->active->done).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MarketingCampaignRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub channel: String,
+    pub status: String,
+}
+/// Per-client campaign participation (invited->responded->converted, or declined).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CampaignPartRow {
+    pub id: i64,
+    pub org: String,
+    pub campaign_id: i64,
+    pub client_id: i64,
+    pub response: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2153,6 +2171,25 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: Option<i64>,
     ) -> Result<Vec<ClientSurveyRow>, StoreError>;
+    /// Campaigns (planned->active->done) + participations (invited->responded->converted/declined).
+    async fn mcamp_add(&self, org: &str, name: &str, channel: &str) -> Result<i64, StoreError>;
+    async fn mcamp_list(&self, org: &str) -> Result<Vec<MarketingCampaignRow>, StoreError>;
+    async fn mcamp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn mcamp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn cpart_add(
+        &self,
+        org: &str,
+        campaign_id: i64,
+        client_id: i64,
+    ) -> Result<i64, StoreError>;
+    async fn cpart_list(
+        &self,
+        org: &str,
+        campaign_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<CampaignPartRow>, StoreError>;
+    async fn cpart_set_response(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cpart_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

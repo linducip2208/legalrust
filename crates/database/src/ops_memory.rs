@@ -152,6 +152,8 @@ struct Inner {
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
     csvs: HashMap<i64, ClientSurveyRow>,
+    mcamps: HashMap<i64, MarketingCampaignRow>,
+    cparts: HashMap<i64, CampaignPartRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -218,6 +220,14 @@ fn cnr_ok(channel: &str, target: &str) -> Result<(String, String), StoreError> {
         return Err(StoreError::Conflict("email".into()));
     }
     Ok((c, t.into()))
+}
+
+fn mcamp_ok(channel: &str) -> Result<String, StoreError> {
+    let c = channel.trim().to_lowercase();
+    if !["email", "phone", "visit", "event", "ads"].contains(&c.as_str()) {
+        return Err(StoreError::Conflict("channel".into()));
+    }
+    Ok(c)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3422,6 +3432,163 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| -r.id);
         Ok(v)
+    }
+    async fn mcamp_add(&self, org: &str, name: &str, channel: &str) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.len() < 2 || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let channel = mcamp_ok(channel)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mcamps.insert(
+            id,
+            MarketingCampaignRow {
+                id,
+                org: org.into(),
+                name: name.into(),
+                channel,
+                status: "planned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn mcamp_list(&self, org: &str) -> Result<Vec<MarketingCampaignRow>, StoreError> {
+        let mut v: Vec<MarketingCampaignRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mcamps
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn mcamp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .mcamps
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "active")
+                | ("active", "done")
+                | ("planned", "cancelled")
+                | ("active", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn mcamp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mcamps.get(&id) {
+            Some(r) if r.org == org => {
+                m.mcamps.remove(&id);
+                let kids: Vec<i64> = m
+                    .cparts
+                    .iter()
+                    .filter(|(_, v)| v.campaign_id == id)
+                    .map(|(k, _)| *k)
+                    .collect();
+                for k in kids {
+                    m.cparts.remove(&k);
+                }
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cpart_add(
+        &self,
+        org: &str,
+        campaign_id: i64,
+        client_id: i64,
+    ) -> Result<i64, StoreError> {
+        if campaign_id <= 0 || client_id <= 0 {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.mcamps.get(&campaign_id) {
+            Some(r) if r.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if m.cparts
+            .values()
+            .any(|r| r.org == org && r.campaign_id == campaign_id && r.client_id == client_id)
+        {
+            return Err(StoreError::Conflict("already participating".into()));
+        }
+        let id = self.next(&mut m);
+        m.cparts.insert(
+            id,
+            CampaignPartRow {
+                id,
+                org: org.into(),
+                campaign_id,
+                client_id,
+                response: "invited".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cpart_list(
+        &self,
+        org: &str,
+        campaign_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<CampaignPartRow>, StoreError> {
+        let mut v: Vec<CampaignPartRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cparts
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && campaign_id.map(|c| r.campaign_id == c).unwrap_or(true)
+                    && client_id.map(|c| r.client_id == c).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cpart_set_response(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cparts
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.response.as_str(), to),
+            ("invited", "responded")
+                | ("invited", "declined")
+                | ("responded", "converted")
+                | ("responded", "declined")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.response = to.into();
+        Ok(())
+    }
+    async fn cpart_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cparts.get(&id) {
+            Some(r) if r.org == org => {
+                m.cparts.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

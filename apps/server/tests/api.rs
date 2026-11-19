@@ -5669,6 +5669,9 @@ async fn crm_app_contains_crm_ids() {
         "cpi-list",
         "csv-cid",
         "csv-add",
+        "mcp-name",
+        "mcp-add",
+        "mcp-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11640,6 +11643,149 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn campaign_tracking() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clicamp@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + bad channel rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/campaigns",
+            r#"{"name":"Edu Notaris"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/campaigns",
+            r#"{"name":"Edu Notaris","channel":"sms"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/campaigns",
+            r#"{"name":"Edu Notaris","channel":"event"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Skip-ahead rejected; chain planned->active->done.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/campaigns/{mid}/status"),
+            r#"{"status":"done"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["active", "done"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/campaigns/{mid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#,),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "campaign to {st}");
+    }
+    // Participations: ghost 404s, dup 409s, response chain guarded.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/campaigns/{mid}/participants"),
+            r#"{"client_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/campaigns/{mid}/participants"),
+            &format!(r#"{{"client_id":{cli}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/campaigns/{mid}/participants"),
+            &format!(r#"{{"client_id":{cli}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/participations/{pid}/response"),
+            r#"{"response":"converted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["responded", "converted"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/participations/{pid}/response"),
+                &format!(r#"{{"response":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "participation to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/participations?campaign_id={mid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["response"] == "converted"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/campaigns")
                 .body(Body::empty())
                 .unwrap(),
         )

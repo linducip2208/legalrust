@@ -3372,6 +3372,42 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     csvRefresh();
   });
   on('csv-reload', 'click', csvRefresh);
+  /* ---- campaigns + participations (F-D02-022) ---- */
+  async function mcpRefresh() {
+    var box = document.getElementById('mcp-list');
+    if (!box) return;
+    var v = await j('/api/v1/campaigns');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'planned' ? '<button class="btn btn-sm" data-mcp-next="' + x.id + '" data-mcp-to="active" type="button">Aktifkan</button> '
+        : (x.status === 'active' ? '<button class="btn btn-sm" data-mcp-next="' + x.id + '" data-mcp-to="done" type="button">Selesai</button> ' : '<span class="text-muted">' + x.status + '</span> ');
+      if (pval('mcp-cid')) act += '<button class="btn btn-sm btn-outline-secondary" data-mcp-join="' + x.id + '" type="button">+ klien</button> ';
+      return '<tr><td>' + esc(x.name) + '</td><td>' + badge(x.channel) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada kampanye.</td></tr>';
+    qsa('[data-mcp-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/campaigns/' + b.getAttribute('data-mcp-next') + '/status', { status: b.getAttribute('data-mcp-to') });
+        if (!r.ok) { pmsg('mcp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mcp-msg', '');
+        mcpRefresh();
+      });
+    });
+    qsa('[data-mcp-join]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/campaigns/' + b.getAttribute('data-mcp-join') + '/participants', { client_id: +pval('mcp-cid') });
+        if (!r.ok) { pmsg('mcp-msg', 'Gagal (' + r.status + '). Ganda / klien?'); return; }
+        pmsg('mcp-msg', '');
+      });
+    });
+  }
+  on('mcp-add', 'click', async function () {
+    if (!pval('mcp-name')) { pmsg('mcp-msg', 'Isi nama kampanye.'); return; }
+    var r = await ppost('/api/v1/campaigns', { name: pval('mcp-name'), channel: pval('mcp-channel') || 'email' });
+    if (!r.ok) { pmsg('mcp-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mcp-msg', '');
+    mcpRefresh();
+  });
+  on('mcp-reload', 'click', mcpRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4208,6 +4244,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   celRefresh();
   cpiRefresh();
   csvRefresh();
+  mcpRefresh();
   vipRefresh();
   apptRefresh();
   queueRefresh();

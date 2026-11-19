@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 150: campaign tracking (main)
+- marketing_campaigns + participations (0098, response chain) + kartu + uji.
+- F-D02-022 PLANNED->IMPLEMENTED (~72.4 verified). Workspace 440/0; registry ~30.0 (272 IMPLEMENTED); mean 33.3 (262 v).
+
 ## Done wave 149: portal invites + surveys (main)
 - client_portal_invites + client_surveys (0097, token-once + avg) + kartu + uji.
 - F-D02-017/018 PLANNED->IMPLEMENTED (~72.6 verified). Workspace 439/0; registry ~29.9 (271 IMPLEMENTED); mean 33.3 (261 v).
