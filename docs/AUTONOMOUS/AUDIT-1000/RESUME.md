@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 80: down-payments + klapper (main)
 - down_payments (0050) + klapper derivasi + kartu + uji.
-- F-D12-013/002 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 369/0; registry ~23.4 (122 IMPLEMENTED); mean ~24.1 (120 v).
+- F-D12-013/002 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 369/0; registry ~23.4 (122 IMPLEMENTED); mean 24.3 (120 v).
 
 ## Done wave 79: visitor log + announcements (main)
 - visitors + announcements (0049, nomor dipakai ulang setelah 0049 lama ditarik pre-push) + kartu + uji.
