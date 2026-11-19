@@ -1144,6 +1144,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     a.remove();
   }
   on('rep-matters', 'click', function () { dlCsv('/api/v1/reports/matters.csv', 'matters.csv', 'rep-msg'); });
+  on('rep-deadlines', 'click', function () { dlCsv('/api/v1/reports/deadline-compliance.csv', 'deadline-compliance.csv', 'rep-msg'); });
+  on('rep-posture', 'click', function () { dlCsv('/api/v1/reports/compliance-posture.csv', 'compliance-posture.csv', 'rep-msg'); });
   on('keu-csv', 'click', function () { dlCsv('/api/v1/reports/matters-csv', 'matters.csv', 'keu-msg'); });
   on('ar-csv', 'click', function () { dlCsv('/api/v1/reports/ar-aging.csv', 'ar-aging.csv', 'ar-msg'); });
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals-bottleneck.csv', 'approvals-bottleneck.csv', 'ar-msg'); });

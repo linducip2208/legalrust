@@ -7479,10 +7479,13 @@
   "id": "F-D20-013",
   "domain": "D20",
   "title": "Deadline compliance report",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/deadline-compliance.csv (Export + audit)",
+   "apps/server/static/site.js: rep-deadlines button",
+   "apps/server/tests/api.rs: counts incl. done-exclusion + trail + needles"
+  ],
+  "audit_note": "Wave 44: deadline compliance report live."
  },
  {
   "id": "F-D20-014",
@@ -7518,10 +7521,13 @@
   "id": "F-D20-017",
   "domain": "D20",
   "title": "Compliance posture report",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/compliance-posture.csv (Export + audit)",
+   "apps/server/static/site.js: rep-posture button",
+   "apps/server/tests/api.rs: snapshot counts + trail + needles"
+  ],
+  "audit_note": "Wave 44: compliance posture snapshot live."
  },
  {
   "id": "F-D20-018",

@@ -5209,6 +5209,8 @@ async fn uib_app_has_audit_jobs_ui() {
         "job-btn",
         "job-msg",
         "rep-matters",
+        "rep-deadlines",
+        "rep-posture",
         "rep-msg",
         "keu-csv",
         "keu-msg",
@@ -6553,6 +6555,119 @@ async fn trust_csv_export_returns_ledger() {
         .unwrap()
         .iter()
         .any(|e| e["action"] == "report.trust_csv_exported"));
+}
+
+#[tokio::test]
+async fn reports_deadline_compliance_and_posture() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "repcmp@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // One overdue open task, one future open task, one done overdue task.
+    for (title, due) in [
+        ("Overdue terbuka", Some("2001-01-01 09:00:00")),
+        ("Mendatang", Some("2031-01-01 09:00:00")),
+        ("Selesai lampau", Some("2001-01-01 09:00:00")),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/matters/{mid}/tasks"),
+                &format!(r#"{{"title":"{title}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        let tid = body_json(res).await["id"].as_i64().unwrap();
+        if let Some(d) = due {
+            let res = a
+                .clone()
+                .oneshot(post(
+                    &format!("/api/v1/tasks/{tid}/due"),
+                    &format!(r#"{{"due":"{d}"}}"#),
+                    Some(&tok),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+        if title == "Selesai lampau" {
+            for st in ["in_progress", "done"] {
+                let res = a
+                    .clone()
+                    .oneshot(post(
+                        &format!("/api/v1/tasks/{tid}"),
+                        &format!(r#"{{"status":"{st}"}}"#),
+                        Some(&tok),
+                    ))
+                    .await
+                    .unwrap();
+                assert_eq!(res.status(), StatusCode::OK, "task to {st}");
+            }
+        }
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/deadline-compliance.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("matter_id,number,title,total_tasks,open_tasks,overdue_tasks\n"),
+        "was {text}"
+    );
+    let row = text
+        .lines()
+        .find(|l| l.contains("M1") || l.contains(&mid.to_string()))
+        .expect("matter row");
+    assert!(row.ends_with(",3,2,1"), "row was {row}");
+    // Posture snapshot reflects obligations created in this org.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/obligations",
+            r#"{"title":"Retensi","category":"retention"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/compliance-posture.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(text.starts_with("domain,metric,value\n"), "was {text}");
+    assert!(text.contains("obligation,open,1"), "was {text}");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    let acts: Vec<String> = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|e| e["action"].as_str().map(str::to_string))
+        .collect();
+    assert!(acts.contains(&"report.deadlines_exported".to_string()));
+    assert!(acts.contains(&"report.compliance_exported".to_string()));
 }
 
 #[tokio::test]

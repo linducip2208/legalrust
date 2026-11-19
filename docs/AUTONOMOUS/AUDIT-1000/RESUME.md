@@ -43,6 +43,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 44: kepatuhan tenggat + postur kepatuhan (main)
+- deadline-compliance.csv + compliance-posture.csv + tombol + trail.
+- F-D20-013 PLANNED->PARTIAL (68.8); F-D20-017 PLANNED->PARTIAL (68.5).
+- Workspace 337/0; registry 19.9; mean 20.6 (64 v).
+
 ## Done wave 43: laporan bottleneck + profitabilitas (main)
 - approvals-bottleneck.csv (stuck step/role) + profitability.csv (per-client) + audit.
 - F-D20-012/014 PLANNED->PARTIAL (67.9/67.2). Workspace 336/0; registry 19.9; mean 20.5 (62 v).

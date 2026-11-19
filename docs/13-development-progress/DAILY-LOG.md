@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-18 AUDIT-1000 wave 44: tenggat + postur (main)
+- Dua laporan + trail; workspace **337 passed, 0 failed**; F-D20-013/017 PARTIAL.
+
 ## 2026-11-18 AUDIT-1000 wave 43: bottleneck + profitabilitas (main)
 - Dua laporan CSV + trail; workspace **336 passed, 0 failed**; F-D20-012/014 PARTIAL.
 
