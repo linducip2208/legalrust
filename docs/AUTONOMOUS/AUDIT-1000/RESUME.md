@@ -45,7 +45,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 48: telemetri akurasi OCR (main)
 - Aggregate per-tipe + CSV + tombol + trail; F-D20-010 NOT_STARTED->PARTIAL (64.1).
-- Workspace 342/0; registry 19.8 (77 IMPLEMENTED); 8-cat mean 20.9 (67 v).
+- Workspace 342/0; registry 19.8 (77 IMPLEMENTED); 8-cat mean 20.8 (67 v).
 
 ## Done wave 47: register vendor + DPA (main)
 - CRUD + DPA workflow + kartu kepatuhan + audit; F-D11-009/010 -> IMPLEMENTED (75.6/73.1).
