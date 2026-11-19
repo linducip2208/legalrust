@@ -130,6 +130,8 @@ struct Inner {
     receipts: HashMap<i64, ReceiptRow>,
     pols: HashMap<i64, PolicySnapRow>,
     dlcs: HashMap<i64, DocLifecycleRow>,
+    mfields: HashMap<i64, MetaFieldRow>,
+    dmeta: HashMap<i64, DocMetaRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -154,6 +156,34 @@ fn month_ok(month: &str) -> Result<(), StoreError> {
     }
     Ok(())
 }
+fn meta_key_ok(key: &str) -> Result<String, StoreError> {
+    let k = key.trim().to_lowercase();
+    if k.len() < 2
+        || k.len() > 60
+        || !k
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(StoreError::Conflict("key".into()));
+    }
+    Ok(k)
+}
+fn meta_value_ok(kind: &str, value: &str) -> Result<String, StoreError> {
+    let v = value.trim();
+    if v.is_empty() || v.len() > 500 {
+        return Err(StoreError::Conflict("value".into()));
+    }
+    let ok = match kind {
+        "number" => v.parse::<i64>().is_ok(),
+        "date" => v.len() == 10 && v.as_bytes()[4] == b'-',
+        _ => true,
+    };
+    if !ok {
+        return Err(StoreError::Conflict("number/date".into()));
+    }
+    Ok(v.into())
+}
+
 fn qround_tally(members: usize, required: i64, approves: usize, rejects: usize) -> &'static str {
     if approves as i64 >= required {
         "met"
@@ -1424,6 +1454,169 @@ impl OpsStore for MemoryOps {
             }
             None => Err(StoreError::NotFound),
         }
+    }
+    async fn mfield_add(
+        &self,
+        org: &str,
+        key: &str,
+        kind: &str,
+        required: bool,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let key = meta_key_ok(key)?;
+        if !matches!(kind, "text" | "number" | "date" | "tag") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.mfields.values().any(|r| r.org == org && r.key == key) {
+            return Err(StoreError::Conflict("key taken".into()));
+        }
+        let id = self.next(&mut m);
+        m.mfields.insert(
+            id,
+            MetaFieldRow {
+                id,
+                org: org.into(),
+                key,
+                kind: kind.into(),
+                required,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn mfield_list(&self, org: &str) -> Result<Vec<MetaFieldRow>, StoreError> {
+        let mut v: Vec<MetaFieldRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mfields
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.key.cmp(&b.key));
+        Ok(v)
+    }
+    async fn mfield_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let key = match m.mfields.get(&id) {
+            Some(r) if r.org == org => r.key.clone(),
+            _ => return Err(StoreError::NotFound),
+        };
+        if m.dmeta.values().any(|r| r.org == org && r.key == key) {
+            return Err(StoreError::Conflict("field in use".into()));
+        }
+        m.mfields.remove(&id);
+        Ok(())
+    }
+    async fn dmeta_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: &str,
+    ) -> Result<i64, StoreError> {
+        if doc_id <= 0 {
+            return Err(StoreError::Conflict("doc_id".into()));
+        }
+        let key = meta_key_ok(key)?;
+        let mut m = self.inner.lock().unwrap();
+        let kind = m
+            .mfields
+            .values()
+            .find(|r| r.org == org && r.key == key)
+            .map(|r| r.kind.clone())
+            .ok_or(StoreError::Conflict("unknown field".into()))?;
+        let value = meta_value_ok(&kind, value)?;
+        if kind != "tag" {
+            if let Some((id, _)) = m
+                .dmeta
+                .iter()
+                .find(|(_, r)| r.org == org && r.doc_id == doc_id && r.key == key)
+            {
+                let id = *id;
+                m.dmeta.get_mut(&id).unwrap().value = value;
+                return Ok(id);
+            }
+        }
+        let id = self.next(&mut m);
+        m.dmeta.insert(
+            id,
+            DocMetaRow {
+                id,
+                org: org.into(),
+                doc_id,
+                key,
+                value,
+            },
+        );
+        Ok(id)
+    }
+    async fn dmeta_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocMetaRow>, StoreError> {
+        let mut v: Vec<DocMetaRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dmeta
+            .values()
+            .filter(|r| r.org == org && r.doc_id == doc_id)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.key.cmp(&b.key).then(a.id.cmp(&b.id)));
+        Ok(v)
+    }
+    async fn dmeta_delete(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: Option<&str>,
+    ) -> Result<u64, StoreError> {
+        let key = meta_key_ok(key)?;
+        let mut m = self.inner.lock().unwrap();
+        let ids: Vec<i64> = m
+            .dmeta
+            .iter()
+            .filter(|(_, r)| {
+                r.org == org
+                    && r.doc_id == doc_id
+                    && r.key == key
+                    && value.map(|x| r.value == x).unwrap_or(true)
+            })
+            .map(|(id, _)| *id)
+            .collect();
+        if ids.is_empty() {
+            return Err(StoreError::NotFound);
+        }
+        for id in &ids {
+            m.dmeta.remove(id);
+        }
+        Ok(ids.len() as u64)
+    }
+    async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError> {
+        let tag = tag.trim();
+        if tag.is_empty() || tag.len() > 500 {
+            return Err(StoreError::Conflict("tag".into()));
+        }
+        let m = self.inner.lock().unwrap();
+        let tag_kinds: Vec<String> = m
+            .mfields
+            .values()
+            .filter(|r| r.org == org && r.kind == "tag")
+            .map(|r| r.key.clone())
+            .collect();
+        let mut v: Vec<DocMetaRow> = m
+            .dmeta
+            .values()
+            .filter(|r| r.org == org && r.value == tag && tag_kinds.contains(&r.key))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

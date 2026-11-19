@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 128: doc metadata (main)
+- meta_fields + doc_meta (0083) + schema validation + kartu + uji.
+- F-D04-005/006/037 PLANNED/NOT_STARTED->IMPLEMENTED (~72.5 verified). Workspace 416/0; registry ~28.1 (224 IMPLEMENTED); mean 30.4 (214 v).
+
 ## Done wave 127: doc lifecycle (main)
 - doc_lifecycle (0082) + CoreStore::delete_doc + gates + kartu + uji.
 - F-D04-007/008/009/010/031 NOT_STARTED/PLANNED->IMPLEMENTED (~73.2 verified). Workspace 415/0; registry ~28.0 (221 IMPLEMENTED); mean 30.2 (211 v).

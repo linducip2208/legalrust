@@ -142,6 +142,25 @@ pub struct DocLifecycleRow {
     pub retain_until: String,
     pub note: String,
 }
+/// Metadata field definition (schema).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MetaFieldRow {
+    pub id: i64,
+    pub org: String,
+    pub key: String,
+    pub kind: String,
+    pub required: bool,
+    pub note: String,
+}
+/// Document metadata value (tags = repeated rows on tag-kind fields).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocMetaRow {
+    pub id: i64,
+    pub org: String,
+    pub doc_id: i64,
+    pub key: String,
+    pub value: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1546,6 +1565,33 @@ pub trait OpsStore: Send + Sync {
     async fn dlc_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLifecycleRow>, StoreError>;
     async fn dlc_due(&self, org: &str) -> Result<Vec<DocLifecycleRow>, StoreError>;
     async fn dlc_clear(&self, org: &str, doc_id: i64) -> Result<(), StoreError>;
+    /// Metadata schema + values.
+    async fn mfield_add(
+        &self,
+        org: &str,
+        key: &str,
+        kind: &str,
+        required: bool,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mfield_list(&self, org: &str) -> Result<Vec<MetaFieldRow>, StoreError>;
+    async fn mfield_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn dmeta_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: &str,
+    ) -> Result<i64, StoreError>;
+    async fn dmeta_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocMetaRow>, StoreError>;
+    async fn dmeta_delete(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: Option<&str>,
+    ) -> Result<u64, StoreError>;
+    async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

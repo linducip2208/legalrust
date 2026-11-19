@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 128: metadata (main)
+- Kind guards + upsert + guards; workspace **416 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 127: lifecycle (main)
 - Flags + Tx delete + wipe + guards; workspace **415 passed, 0 failed**.
 

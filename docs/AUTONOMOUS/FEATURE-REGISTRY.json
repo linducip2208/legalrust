@@ -1187,19 +1187,31 @@
   "id": "F-D04-005",
   "domain": "D04",
   "title": "Document metadata schema",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "metadata schema: kind-checked field registry; shared slice:",
+   "  - migrations/0083_doc_meta.sql: meta_fields + doc_meta tables (kind check, unique key, tag index, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: schema CRUD + kind-validated set/upsert + tag search",
+   "  - apps/server/src/lib.rs: POST/GET/DELETE meta-fields + doc meta set/list/delete + by-tag (RBAC, audit)",
+   "  - apps/server/static/site.js: metadata card (schema + values + tag search) + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_metadata_schema_values_tags e2e (gates, kinds, upsert, in-use guard, 404/401)"
+  ],
+  "audit_note": "Wave 128: metadata layer live. Verified by test (416/0)."
  },
  {
   "id": "F-D04-006",
   "domain": "D04",
   "title": "Custom metadata fields",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "custom fields: free schema definition per org; shared slice:",
+   "  - migrations/0083_doc_meta.sql: meta_fields + doc_meta tables (kind check, unique key, tag index, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: schema CRUD + kind-validated set/upsert + tag search",
+   "  - apps/server/src/lib.rs: POST/GET/DELETE meta-fields + doc meta set/list/delete + by-tag (RBAC, audit)",
+   "  - apps/server/static/site.js: metadata card (schema + values + tag search) + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_metadata_schema_values_tags e2e (gates, kinds, upsert, in-use guard, 404/401)"
+  ],
+  "audit_note": "Wave 128: metadata layer live. Verified by test (416/0)."
  },
  {
   "id": "F-D04-007",
@@ -1531,10 +1543,16 @@
   "id": "F-D04-037",
   "domain": "D04",
   "title": "Document tagging",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "tagging: tag-kind accumulation + by-tag retrieval; shared slice:",
+   "  - migrations/0083_doc_meta.sql: meta_fields + doc_meta tables (kind check, unique key, tag index, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: schema CRUD + kind-validated set/upsert + tag search",
+   "  - apps/server/src/lib.rs: POST/GET/DELETE meta-fields + doc meta set/list/delete + by-tag (RBAC, audit)",
+   "  - apps/server/static/site.js: metadata card (schema + values + tag search) + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_metadata_schema_values_tags e2e (gates, kinds, upsert, in-use guard, 404/401)"
+  ],
+  "audit_note": "Wave 128: metadata layer live. Verified by test (416/0)."
  },
  {
   "id": "F-D04-038",

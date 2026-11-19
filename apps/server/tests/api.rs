@@ -5600,6 +5600,12 @@ async fn crm_app_contains_crm_ids() {
         "dlc-reload",
         "dlc-del",
         "dlc-due",
+        "mtf-key",
+        "mtf-add",
+        "mtf-reload",
+        "mtf-list",
+        "mtm-doc",
+        "mtm-set",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9631,6 +9637,229 @@ async fn approval_policy_versions_and_fast_track() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_metadata_schema_values_tags() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docmeta@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let content = b"meta-bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"m.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Auditor may not define fields (Create gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/meta-fields",
+            r#"{"key":"nomor","kind":"text"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Define fields; dup rejected; bad kind rejected.
+    for (key, kind) in [
+        ("nomor_arsip", "text"),
+        ("nilai", "number"),
+        ("tanggal", "date"),
+        ("label", "tag"),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/meta-fields",
+                &format!(r#"{{"key":"{key}","kind":"{kind}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "field {key}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/meta-fields",
+            r#"{"key":"nomor_arsip","kind":"text"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/meta-fields",
+            r#"{"key":"xx","kind":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Values: unknown field rejected; kind validation enforced.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/meta"),
+            r#"{"key":"ghost","value":"x"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/meta"),
+            r#"{"key":"nilai","value":"bukan-angka"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/meta"),
+            r#"{"key":"tanggal","value":"2026"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Scalar upsert (same id twice), tags accumulate.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/meta"),
+            r#"{"key":"nomor_arsip","value":"A-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let first = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/meta"),
+            r#"{"key":"nomor_arsip","value":"A-2"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["id"].as_i64().unwrap(), first);
+    for t in ["penting", "shm"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/documents/{did}/meta"),
+                &format!(r#"{{"key":"label","value":"{t}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/meta"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 3);
+    // Tag search + targeted delete.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/by-tag?tag=penting", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/meta?key=label&value=shm"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/by-tag?tag=shm", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Field in use cannot be deleted.
+    let fields = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/meta-fields", &tok))
+            .await
+            .unwrap(),
+    )
+    .await;
+    let fid = fields
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["key"] == "nomor_arsip")
+        .unwrap()["id"]
+        .as_i64()
+        .unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/meta-fields/{fid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/meta-fields")
                 .body(Body::empty())
                 .unwrap(),
         )

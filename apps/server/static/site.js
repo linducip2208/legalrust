@@ -3196,6 +3196,54 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (out) out.textContent = 'Terhapus permanen (' + v.objects_wiped + '/' + v.objects_total + ' objek).';
     dlcDueRefresh();
   });
+  /* ---- document metadata (F-D04-005/006/037) ---- */
+  async function mtfRefresh() {
+    var box = document.getElementById('mtf-list');
+    if (!box) return;
+    var v = await j('/api/v1/meta-fields');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.key) + '</td><td>' + badge(x.kind) + '</td><td><button class="btn btn-sm btn-outline-danger" data-mtf-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada field.</td></tr>';
+    qsa('[data-mtf-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/meta-fields/' + b.getAttribute('data-mtf-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mtf-msg', 'Gagal (' + r.status + '). Dipakai nilai?'); return; }
+        pmsg('mtf-msg', '');
+        mtfRefresh();
+      });
+    });
+  }
+  on('mtf-add', 'click', async function () {
+    if (!pval('mtf-key')) { pmsg('mtf-msg', 'Isi kunci field.'); return; }
+    var r = await ppost('/api/v1/meta-fields', { key: pval('mtf-key'), kind: pval('mtf-kind') || 'text' });
+    if (!r.ok) { pmsg('mtf-msg', 'Gagal (' + r.status + '). Kunci ganda?'); return; }
+    pmsg('mtf-msg', '');
+    mtfRefresh();
+  });
+  on('mtf-reload', 'click', mtfRefresh);
+  async function mtmLoad() {
+    var out = document.getElementById('mtm-out');
+    if (!pval('mtm-doc')) { if (out) out.textContent = 'Isi ID dokumen.'; return; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(pval('mtm-doc')) + '/meta');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = v.map(function (x) { return '<span class="badge">' + esc(x.key) + '=' + esc(x.value) + '</span>'; }).join(' ') || 'Belum ada nilai.';
+  }
+  on('mtm-set', 'click', async function () {
+    if (!pval('mtm-doc') || !pval('mtm-key') || !pval('mtm-val')) { pmsg('mtm-msg', 'Isi dokumen, kunci, nilai.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('mtm-doc')) + '/meta', { key: pval('mtm-key'), value: pval('mtm-val') });
+    if (!r.ok) { pmsg('mtm-msg', 'Gagal (' + r.status + '). Field terdaftar? Jenis cocok?'); return; }
+    pmsg('mtm-msg', '');
+    mtmLoad();
+  });
+  on('mtm-load', 'click', mtmLoad);
+  on('mtm-find', 'click', async function () {
+    var out = document.getElementById('mtm-out');
+    if (!pval('mtm-tag')) { pmsg('mtm-msg', 'Isi tag.'); return; }
+    var v = await j('/api/v1/documents/by-tag?tag=' + encodeURIComponent(pval('mtm-tag')));
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = v.map(function (x) { return '<span class="badge">dok #' + x.doc_id + ' (' + esc(x.key) + ')</span>'; }).join(' ') || 'Tidak ada dokumen dengan tag itu.';
+  });
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5168,6 +5216,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dclRefresh();
   dlcRefresh();
   dlcDueRefresh();
+  mtfRefresh();
   sopRefresh();
   oinRefresh();
   dpRefresh();

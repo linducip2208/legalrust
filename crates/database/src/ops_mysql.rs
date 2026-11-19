@@ -1308,6 +1308,218 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn mfield_add(
+        &self,
+        org: &str,
+        key: &str,
+        kind: &str,
+        required: bool,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let k = key.trim().to_lowercase();
+        if k.len() < 2
+            || k.len() > 60
+            || !k
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            return Err(StoreError::Conflict("key".into()));
+        }
+        if !matches!(kind, "text" | "number" | "date" | "tag") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO meta_fields (org_id, field_key, kind, required, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(&k)
+        .bind(kind)
+        .bind(if required { 1u8 } else { 0u8 })
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mfield_list(&self, org: &str) -> Result<Vec<MetaFieldRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, field_key, kind, required, note FROM meta_fields WHERE org_id=? ORDER BY field_key LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MetaFieldRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                key: x.get::<String, _>("field_key"),
+                kind: x.get::<String, _>("kind"),
+                required: x.get::<u8, _>("required") != 0,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn mfield_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let key: Option<String> =
+            sqlx::query("SELECT field_key FROM meta_fields WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("field_key"));
+        let key = match key {
+            Some(k) => k,
+            None => return Err(StoreError::NotFound),
+        };
+        let used: Option<u64> =
+            sqlx::query("SELECT id FROM doc_meta WHERE org_id=? AND field_key=? LIMIT 1")
+                .bind(org)
+                .bind(&key)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        if used.is_some() {
+            return Err(StoreError::Conflict("field in use".into()));
+        }
+        sqlx::query("DELETE FROM meta_fields WHERE id=?")
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dmeta_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: &str,
+    ) -> Result<i64, StoreError> {
+        if doc_id <= 0 {
+            return Err(StoreError::Conflict("doc_id".into()));
+        }
+        let k = key.trim().to_lowercase();
+        if k.len() < 2 || k.len() > 60 {
+            return Err(StoreError::Conflict("key".into()));
+        }
+        let kind: Option<String> =
+            sqlx::query("SELECT kind FROM meta_fields WHERE org_id=? AND field_key=?")
+                .bind(org)
+                .bind(&k)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("kind"));
+        let kind = match kind {
+            Some(k) => k,
+            None => return Err(StoreError::Conflict("unknown field".into())),
+        };
+        let v = value.trim();
+        if v.is_empty() || v.len() > 500 {
+            return Err(StoreError::Conflict("value".into()));
+        }
+        let kind_ok = match kind.as_str() {
+            "number" => v.parse::<i64>().is_ok(),
+            "date" => v.len() == 10 && v.as_bytes()[4] == b'-',
+            _ => true,
+        };
+        if !kind_ok {
+            return Err(StoreError::Conflict("number/date".into()));
+        }
+        // Non-tag fields upsert (one row per doc+key); tags accumulate rows.
+        if kind != "tag" {
+            let cur: Option<u64> =
+                sqlx::query("SELECT id FROM doc_meta WHERE org_id=? AND doc_id=? AND field_key=?")
+                    .bind(org)
+                    .bind(doc_id as u64)
+                    .bind(&k)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?
+                    .map(|x| x.get::<u64, _>("id"));
+            if let Some(id) = cur {
+                sqlx::query("UPDATE doc_meta SET field_value=? WHERE id=?")
+                    .bind(v)
+                    .bind(id)
+                    .execute(&self.pool)
+                    .await
+                    .map_err(db_err)?;
+                return Ok(id as i64);
+            }
+        }
+        let r = sqlx::query(
+            "INSERT INTO doc_meta (org_id, doc_id, field_key, field_value) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(doc_id as u64)
+        .bind(&k)
+        .bind(v)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dmeta_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocMetaRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, doc_id, field_key, field_value FROM doc_meta WHERE org_id=? AND doc_id=? ORDER BY field_key, id LIMIT 200")
+            .bind(org).bind(doc_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DocMetaRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                doc_id: x.get::<u64, _>("doc_id") as i64,
+                key: x.get::<String, _>("field_key"),
+                value: x.get::<String, _>("field_value"),
+            })
+            .collect())
+    }
+    async fn dmeta_delete(
+        &self,
+        org: &str,
+        doc_id: i64,
+        key: &str,
+        value: Option<&str>,
+    ) -> Result<u64, StoreError> {
+        let k = key.trim().to_lowercase();
+        let n = if let Some(v) = value {
+            sqlx::query("DELETE FROM doc_meta WHERE org_id=? AND doc_id=? AND field_key=? AND field_value=?")
+                .bind(org).bind(doc_id as u64).bind(&k).bind(v)
+                .execute(&self.pool).await.map_err(db_err)?.rows_affected()
+        } else {
+            sqlx::query("DELETE FROM doc_meta WHERE org_id=? AND doc_id=? AND field_key=?")
+                .bind(org)
+                .bind(doc_id as u64)
+                .bind(&k)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?
+                .rows_affected()
+        };
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(n)
+    }
+    async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError> {
+        let tag = tag.trim();
+        if tag.is_empty() || tag.len() > 500 {
+            return Err(StoreError::Conflict("tag".into()));
+        }
+        let rows = sqlx::query("SELECT m.id, m.org_id, m.doc_id, m.field_key, m.field_value FROM doc_meta m JOIN meta_fields f ON f.org_id=m.org_id AND f.field_key=m.field_key AND f.kind='tag' WHERE m.org_id=? AND m.field_value=? ORDER BY m.id DESC LIMIT 200")
+            .bind(org).bind(tag).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DocMetaRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                doc_id: x.get::<u64, _>("doc_id") as i64,
+                key: x.get::<String, _>("field_key"),
+                value: x.get::<String, _>("field_value"),
+            })
+            .collect())
+    }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(
         &self,
