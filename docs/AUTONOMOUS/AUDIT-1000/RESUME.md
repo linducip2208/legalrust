@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 77: cash book + advances (main)
 - cash_entries + advances (0047, saldo derivasi) + kartu keu + uji.
-- F-D12-015/016 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 366/0; registry ~23.1 (116 IMPLEMENTED); mean ~23.7 (114 v).
+- F-D12-015/016 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 366/0; registry ~23.1 (116 IMPLEMENTED); mean 23.9 (114 v).
 
 ## Done wave 76: price list + quotations (main)
 - price_items + quotations/items (0046, snapshot Tx) + kartu keu + uji.
