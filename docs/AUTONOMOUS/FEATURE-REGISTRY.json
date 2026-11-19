@@ -8141,19 +8141,26 @@
   "id": "F-D19-022",
   "domain": "D19",
   "title": "Profile & contacts editor",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/profile (identity + employees + consents)",
+   "site.js: profil button (portal card)",
+   "tests: portal_profile_and_company_users e2e (identity resolved, staff 403)"
+  ],
+  "audit_note": "Wave 167: portal profile live. Verified by test (457/0)."
  },
  {
   "id": "F-D19-023",
   "domain": "D19",
   "title": "Company users management",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "ops.rs + memory + mysql: cemp_set_contact (length guard)",
+   "lib.rs: portal add/delete/contact-update, own-book enforced (foreign 404)",
+   "site.js: add-user row (portal card)",
+   "tests: own lifecycle + foreign untouchable asserted"
+  ],
+  "audit_note": "Wave 167: company users live. Verified by test (457/0)."
  },
  {
   "id": "F-D19-024",

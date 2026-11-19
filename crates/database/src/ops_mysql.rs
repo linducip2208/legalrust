@@ -2581,6 +2581,24 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn cemp_set_contact(&self, org: &str, id: i64, contact: &str) -> Result<(), StoreError> {
+        let contact = contact.trim();
+        if contact.len() > 160 {
+            return Err(StoreError::Conflict("contact".into()));
+        }
+        let n = sqlx::query("UPDATE client_employees SET contact=? WHERE id=? AND org_id=?")
+            .bind(contact)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn cemp_set_role(
         &self,
         org: &str,

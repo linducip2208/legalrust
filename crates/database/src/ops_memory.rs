@@ -2907,6 +2907,20 @@ impl OpsStore for MemoryOps {
             _ => Err(StoreError::NotFound),
         }
     }
+    async fn cemp_set_contact(&self, org: &str, id: i64, contact: &str) -> Result<(), StoreError> {
+        let contact = contact.trim();
+        if contact.len() > 160 {
+            return Err(StoreError::Conflict("contact".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.cemps.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.contact = contact.into();
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
     async fn cemp_set_role(
         &self,
         org: &str,

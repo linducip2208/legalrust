@@ -5709,6 +5709,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-quote",
         "ptl-fb",
         "ptl-fb-send",
+        "ptl-profile",
+        "ptl-emp-add",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11686,6 +11688,128 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_profile_and_company_users() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal12@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let cli2 = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p12@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Profile resolves own identity + roster.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/profile", &ptok))
+        .await
+        .unwrap();
+    let pv = body_json(res).await;
+    assert_eq!(pv["client"]["id"].as_i64().unwrap(), cli);
+    // Manage own users; foreign ids 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/employees",
+            r#"{"name":"Sekretaris","contact":"s@x.id"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/portal/employees/{eid}/contact"),
+            r#"{"contact":"baru@x.id"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/employees/999999/contact",
+            r#"{"contact":"z@x.id"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Staff employee of the other client is untouchable through the portal.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli2}/employees"),
+            r#"{"name":"Orang Lain"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let other = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/portal/employees/{other}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/portal/employees/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/profile", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

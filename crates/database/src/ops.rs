@@ -2096,6 +2096,8 @@ pub trait OpsStore: Send + Sync {
     /// Contact-role assignment (primary/billing/technical/other).
     async fn cemp_set_role(&self, org: &str, id: i64, contact_role: &str)
         -> Result<(), StoreError>;
+    /// Contact-info update (phone/email string, length-guarded).
+    async fn cemp_set_contact(&self, org: &str, id: i64, contact: &str) -> Result<(), StoreError>;
     /// Channel consent center (upsert per client+channel, list).
     async fn ccns_set(
         &self,

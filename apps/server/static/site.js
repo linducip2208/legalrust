@@ -3589,6 +3589,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.kind) + ': ' + esc(x.body) + ' · ' + esc(x.status) + '</span>'; }).join(' ') || 'Belum ada umpan balik.';
   });
+  on('ptl-profile', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/profile', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.innerHTML = '<strong>' + esc(v.client.display_name) + '</strong> · ' + (v.employees || []).map(function (e) { return esc(e.name) + ' (' + esc(e.contact || '-') + ')'; }).join(', ');
+  });
+  on('ptl-emp-add', 'click', async function () {
+    if (!pval('ptl-emp-name')) { pmsg('ptl-msg', 'Isi nama karyawan.'); return; }
+    var r = await fetch('/api/v1/portal/employees', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ name: pval('ptl-emp-name'), contact: pval('ptl-emp-contact') || '' }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');
