@@ -1,6 +1,6 @@
 -- 0066 deed consent checks (marital + heir). Forward-only.
-// kind is VARCHAR so board/power consents can reuse this table later
-// without a new migration.
+-- kind is VARCHAR so board/power consents can reuse this table later
+-- without a new migration.
 CREATE TABLE deed_consents (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   org_id CHAR(36) NOT NULL,
