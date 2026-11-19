@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 104: girik intake + lease terms (main)
+- girik_intakes + lease_terms (0069) + kartu + uji.
+- F-D13-021/010 NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 393/0; registry ~26.1 (170 IMPLEMENTED); mean 27.5 (168 v).
+
 ## Done wave 103: foreign guardrail + notary handoff (main)
 - fguard matrix (no table) + notary_handoffs (0068) + kartu + uji.
 - F-D13-035/026 PLANNED->IMPLEMENTED (~72.9 verified). Workspace 392/0; registry ~26.0 (168 IMPLEMENTED); mean 27.4 (166 v).

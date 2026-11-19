@@ -5103,10 +5103,15 @@
   "id": "F-D13-010",
   "domain": "D13",
   "title": "Royalty/lease deed support",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0069_girik_lease.sql: lease_terms table (unique per deed, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: upsert/get/delete + duration guard",
+   "apps/server/src/lib.rs: POST/GET/DELETE /api/v1/ppat/{id}/lease with total_minor (RBAC, audit)",
+   "apps/server/static/site.js: lse card Ketentuan sewa + total display + hooks",
+   "apps/server/tests/api.rs: upsert replace + total 60jt->36jt + zero-duration 409 asserted"
+  ],
+  "audit_note": "Wave 104: verified by test (393/0)."
  },
  {
   "id": "F-D13-011",
@@ -5248,10 +5253,15 @@
   "id": "F-D13-021",
   "domain": "D13",
   "title": " girik/adat land intake",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0069_girik_lease.sql: girik_intakes table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + draft->verified->converted",
+   "apps/server/src/lib.rs: POST/GET /api/v1/girik-intakes + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: grkRefresh card Intake girik + hooks",
+   "apps/server/tests/api.rs: girik_intake_and_lease_terms e2e (chain, 403, 401)"
+  ],
+  "audit_note": "Wave 104: full lifecycle live; verified by test (393/0)."
  },
  {
   "id": "F-D13-022",

@@ -1919,6 +1919,72 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     nhoRefresh();
   });
   on('nho-reload', 'click', nhoRefresh);
+  /* ---- property: girik intake ---- */
+  var GRK_NEXT = { draft: 'verified', verified: 'converted' };
+  async function grkRefresh() {
+    var box = document.getElementById('grk-list');
+    if (!box) return;
+    var v = await j('/api/v1/girik-intakes');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = GRK_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-grk-next="' + x.id + '" data-grk-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">terkonversi</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-grk-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.letter_c_ref) + '</td><td>' + esc(x.holder) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada intake girik.</td></tr>';
+    qsa('[data-grk-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/girik-intakes/' + b.getAttribute('data-grk-next') + '/status', { status: b.getAttribute('data-grk-to') });
+        if (!r.ok) { pmsg('grk-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('grk-msg', '');
+        grkRefresh();
+      });
+    });
+    qsa('[data-grk-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/girik-intakes/' + b.getAttribute('data-grk-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('grk-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('grk-msg', '');
+        grkRefresh();
+      });
+    });
+  }
+  on('grk-add', 'click', async function () {
+    if (!pval('grk-ref') || !pval('grk-holder')) { pmsg('grk-msg', 'Isi referensi dan pemegang.'); return; }
+    var r = await ppost('/api/v1/girik-intakes', { letter_c_ref: pval('grk-ref'), holder: pval('grk-holder'), area_minor: +pval('grk-area') || 0, village: pval('grk-vil') || '' });
+    if (!r.ok) { pmsg('grk-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('grk-msg', '');
+    grkRefresh();
+  });
+  on('grk-reload', 'click', grkRefresh);
+  /* ---- property: lease terms ---- */
+  function lseShow(x) {
+    var out = document.getElementById('lse-out');
+    if (!out) return;
+    if (!x) { out.textContent = 'Belum ada ketentuan sewa untuk akta ini.'; return; }
+    out.innerHTML = 'Sewa ' + fmtRp(x.monthly_minor) + '/bln × ' + x.duration_months + ' bln = <strong>' + fmtRp(x.total_minor) + '</strong> · deposit ' + fmtRp(x.deposit_minor) + ' · mulai ' + esc(x.start_date);
+  }
+  on('lse-save', 'click', async function () {
+    if (!pval('lse-ppat')) { pmsg('lse-msg', 'Isi ID akta.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('lse-ppat')) + '/lease', { monthly_minor: +pval('lse-month') || 0, duration_months: +pval('lse-dur') || 0, start_date: pval('lse-start') || '', deposit_minor: +pval('lse-dep') || 0 });
+    if (!r.ok) { pmsg('lse-msg', 'Gagal (' + r.status + '). Akta tidak ada / durasi 1–1200?'); return; }
+    pmsg('lse-msg', '');
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pval('lse-ppat')) + '/lease');
+    lseShow(v);
+  });
+  on('lse-load', 'click', async function () {
+    if (!pval('lse-ppat')) { pmsg('lse-msg', 'Isi ID akta.'); return; }
+    pmsg('lse-msg', '');
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pval('lse-ppat')) + '/lease');
+    lseShow(v);
+  });
+  on('lse-del', 'click', async function () {
+    if (!pval('lse-ppat')) { pmsg('lse-msg', 'Isi ID akta.'); return; }
+    var r = await fetch('/api/v1/ppat/' + encodeURIComponent(pval('lse-ppat')) + '/lease', { method: 'DELETE', headers: H });
+    if (!r.ok) { pmsg('lse-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('lse-msg', '');
+    lseShow(null);
+  });
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2092,7 +2158,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4262,6 +4328,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   rpmRefresh();
   pdbRefresh();
   nhoRefresh();
+  grkRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

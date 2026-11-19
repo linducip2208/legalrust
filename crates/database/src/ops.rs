@@ -267,6 +267,30 @@ pub struct NotaryHandoffRow {
     pub received: bool,
     pub note: String,
 }
+/// Girik/adat land intake record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GirikRow {
+    pub id: i64,
+    pub org: String,
+    pub letter_c_ref: String,
+    pub holder: String,
+    pub area_minor: i64,
+    pub village: String,
+    pub status: String,
+    pub note: String,
+}
+/// Lease-deed terms (one row per deed).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeaseTermRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub monthly_minor: i64,
+    pub duration_months: i64,
+    pub start_date: String,
+    pub deposit_minor: i64,
+    pub note: String,
+}
 /// Land-history (riwayat tanah) record entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LandHistoryRow {
@@ -1377,6 +1401,33 @@ pub trait OpsStore: Send + Sync {
         received: bool,
     ) -> Result<(), StoreError>;
     async fn nhoff_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Girik/adat land intake.
+    async fn girik_add(
+        &self,
+        org: &str,
+        letter_c_ref: &str,
+        holder: &str,
+        area_minor: i64,
+        village: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn girik_list(&self, org: &str) -> Result<Vec<GirikRow>, StoreError>;
+    async fn girik_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn girik_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Lease-deed terms (one row per deed, upsert).
+    #[allow(clippy::too_many_arguments)]
+    async fn lease_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        monthly_minor: i64,
+        duration_months: i64,
+        start_date: &str,
+        deposit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn lease_get(&self, org: &str, ppat_id: i64) -> Result<Option<LeaseTermRow>, StoreError>;
+    async fn lease_delete(&self, org: &str, ppat_id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

@@ -1435,6 +1435,204 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn girik_add(
+        &self,
+        org: &str,
+        letter_c_ref: &str,
+        holder: &str,
+        area_minor: i64,
+        village: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let letter_c_ref = letter_c_ref.trim();
+        let holder = holder.trim();
+        if letter_c_ref.is_empty() || letter_c_ref.len() > 120 {
+            return Err(StoreError::Conflict("letter_c_ref".into()));
+        }
+        if holder.is_empty() || holder.len() > 160 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if area_minor < 0 {
+            return Err(StoreError::Conflict("area".into()));
+        }
+        if village.len() > 120 || note.len() > 500 {
+            return Err(StoreError::Conflict("village/note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO girik_intakes (org_id, letter_c_ref, holder, area_minor, village, note) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(letter_c_ref)
+        .bind(holder)
+        .bind(area_minor)
+        .bind(village.trim())
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn girik_list(&self, org: &str) -> Result<Vec<GirikRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, letter_c_ref, holder, area_minor, village, status, note FROM girik_intakes WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| GirikRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                letter_c_ref: x.get::<String, _>("letter_c_ref"),
+                holder: x.get::<String, _>("holder"),
+                area_minor: x.get::<i64, _>("area_minor"),
+                village: x.get::<String, _>("village"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn girik_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "verified" | "converted") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM girik_intakes WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("draft"), "verified") | (Some("verified"), "converted")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE girik_intakes SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn girik_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM girik_intakes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn lease_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        monthly_minor: i64,
+        duration_months: i64,
+        start_date: &str,
+        deposit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if monthly_minor < 0 || deposit_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if !(1..=1200).contains(&duration_months) {
+            return Err(StoreError::Conflict("duration 1..1200".into()));
+        }
+        if start_date.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("date/note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<u64> =
+            sqlx::query("SELECT id FROM lease_terms WHERE org_id=? AND ppat_id=?")
+                .bind(org)
+                .bind(ppat_id as u64)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        let id = match cur {
+            Some(id) => {
+                sqlx::query("UPDATE lease_terms SET monthly_minor=?, duration_months=?, start_date=?, deposit_minor=?, note=? WHERE id=?")
+                    .bind(monthly_minor)
+                    .bind(duration_months)
+                    .bind(start_date.trim())
+                    .bind(deposit_minor)
+                    .bind(note.trim())
+                    .bind(id)
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(db_err)?;
+                id as i64
+            }
+            None => {
+                let r = sqlx::query(
+                    "INSERT INTO lease_terms (org_id, ppat_id, monthly_minor, duration_months, start_date, deposit_minor, note) VALUES (?,?,?,?,?,?,?)",
+                )
+                .bind(org)
+                .bind(ppat_id as u64)
+                .bind(monthly_minor)
+                .bind(duration_months)
+                .bind(start_date.trim())
+                .bind(deposit_minor)
+                .bind(note.trim())
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+                r.last_insert_id() as i64
+            }
+        };
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+    async fn lease_get(&self, org: &str, ppat_id: i64) -> Result<Option<LeaseTermRow>, StoreError> {
+        let row = sqlx::query("SELECT id, org_id, ppat_id, monthly_minor, duration_months, start_date, deposit_minor, note FROM lease_terms WHERE org_id=? AND ppat_id=?")
+            .bind(org).bind(ppat_id as u64).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(row.map(|x| LeaseTermRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            ppat_id: x.get::<u64, _>("ppat_id") as i64,
+            monthly_minor: x.get::<i64, _>("monthly_minor"),
+            duration_months: x.get::<i32, _>("duration_months") as i64,
+            start_date: x.get::<String, _>("start_date"),
+            deposit_minor: x.get::<i64, _>("deposit_minor"),
+            note: x.get::<String, _>("note"),
+        }))
+    }
+    async fn lease_delete(&self, org: &str, ppat_id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM lease_terms WHERE org_id=? AND ppat_id=?")
+            .bind(org)
+            .bind(ppat_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

@@ -109,6 +109,8 @@ struct Inner {
     lhistory: HashMap<i64, LandHistoryRow>,
     uhandovers: HashMap<i64, UnitHandoverRow>,
     nhoffs: HashMap<i64, NotaryHandoffRow>,
+    girik: HashMap<i64, GirikRow>,
+    leases: HashMap<i64, LeaseTermRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1470,6 +1472,164 @@ impl OpsStore for MemoryOps {
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn girik_add(
+        &self,
+        org: &str,
+        letter_c_ref: &str,
+        holder: &str,
+        area_minor: i64,
+        village: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let letter_c_ref = letter_c_ref.trim();
+        let holder = holder.trim();
+        if letter_c_ref.is_empty() || letter_c_ref.len() > 120 {
+            return Err(StoreError::Conflict("letter_c_ref".into()));
+        }
+        if holder.is_empty() || holder.len() > 160 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if area_minor < 0 {
+            return Err(StoreError::Conflict("area".into()));
+        }
+        if village.len() > 120 || note.len() > 500 {
+            return Err(StoreError::Conflict("village/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.girik.insert(
+            id,
+            GirikRow {
+                id,
+                org: org.into(),
+                letter_c_ref: letter_c_ref.into(),
+                holder: holder.into(),
+                area_minor,
+                village: village.trim().into(),
+                status: "draft".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn girik_list(&self, org: &str) -> Result<Vec<GirikRow>, StoreError> {
+        let mut v: Vec<GirikRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .girik
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn girik_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .girik
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "verified") | ("verified", "converted")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn girik_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.girik.get(&id) {
+            Some(r) if r.org == org => {
+                m.girik.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn lease_upsert(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        monthly_minor: i64,
+        duration_months: i64,
+        start_date: &str,
+        deposit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if monthly_minor < 0 || deposit_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if !(1..=1200).contains(&duration_months) {
+            return Err(StoreError::Conflict("duration 1..1200".into()));
+        }
+        if start_date.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("date/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if let Some((id, r)) = m
+            .leases
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.ppat_id == ppat_id)
+        {
+            r.monthly_minor = monthly_minor;
+            r.duration_months = duration_months;
+            r.start_date = start_date.trim().into();
+            r.deposit_minor = deposit_minor;
+            r.note = note.trim().into();
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.leases.insert(
+            id,
+            LeaseTermRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                monthly_minor,
+                duration_months,
+                start_date: start_date.trim().into(),
+                deposit_minor,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn lease_get(&self, org: &str, ppat_id: i64) -> Result<Option<LeaseTermRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .leases
+            .values()
+            .find(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned())
+    }
+    async fn lease_delete(&self, org: &str, ppat_id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let id = m
+            .leases
+            .iter()
+            .find(|(_, r)| r.org == org && r.ppat_id == ppat_id)
+            .map(|(id, _)| *id);
+        match id {
+            Some(id) => {
+                m.leases.remove(&id);
+                Ok(())
+            }
+            None => Err(StoreError::NotFound),
         }
     }
     async fn dpia_create(

@@ -3654,6 +3654,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "nho-add",
         "nho-reload",
         "nho-list",
+        "grk-ref",
+        "grk-add",
+        "grk-reload",
+        "grk-list",
+        "lse-ppat",
+        "lse-save",
+        "lse-load",
+        "lse-del",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8658,6 +8666,124 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn girik_intake_and_lease_terms() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "giriklease@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/girik-intakes",
+            r#"{"letter_c_ref":"C 1","holder":"Pak Tani"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/girik-intakes",
+            r#"{"letter_c_ref":"C 1","holder":"Pak Tani","area_minor":5000,"village":"Sukamaju"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let gid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["verified", "converted"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/girik-intakes/{gid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "girik to {st}");
+    }
+    // Lease terms upsert on a sewa deed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"LS/1","deed_kind":"sewa","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/lease"),
+            r#"{"monthly_minor":5000000,"duration_months":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/ppat/{pid}/lease"), r#"{"monthly_minor":5000000,"duration_months":12,"start_date":"2026-06-01","deposit_minor":5000000}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/lease"), &tok))
+        .await
+        .unwrap();
+    let lv = body_json(res).await;
+    assert_eq!(lv["total_minor"].as_i64().unwrap(), 60_000_000);
+    // Upsert replaces.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/lease"),
+            r#"{"monthly_minor":6000000,"duration_months":6}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/lease"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["total_minor"].as_i64().unwrap(),
+        36_000_000
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=lease", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.lease_saved"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/girik-intakes")
                 .body(Body::empty())
                 .unwrap(),
         )
