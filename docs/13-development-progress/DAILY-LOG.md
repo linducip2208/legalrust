@@ -152,7 +152,7 @@
 - Telemetri confidence nyata + CSV; workspace **342 passed, 0 failed**; F-D20-010 PARTIAL (64.1).
 
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
-- Verifikasi bukti; F-D11-039 IMPLEMENTED (76.9), F-D09-027 PARTIAL (68.1). Tanpa perubahan kode.
+- Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
 ## 2026-11-19 AUDIT-1000 wave 51: ringkasan eksekutif (main)
 - Snapshot + kartu; workspace **344 passed, 0 failed**; F-D20-039 PARTIAL (68.2).
