@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 79: visitor log + announcements (main)
 - visitors + announcements (0049, nomor dipakai ulang setelah 0049 lama ditarik pre-push) + kartu + uji.
-- F-D12-037/032 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 368/0; registry ~23.3 (120 IMPLEMENTED); mean ~24.0 (118 v).
+- F-D12-037/032 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 368/0; registry ~23.3 (120 IMPLEMENTED); mean 24.1 (118 v).
 
 ## Done wave 78: inventory + meterai usage (main)
 - inventory_items + meterai_usage (0048, atomic decrement Tx) + kartu keu + uji.
