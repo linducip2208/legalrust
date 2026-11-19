@@ -4107,10 +4107,13 @@
   "id": "F-D11-013",
   "domain": "D11",
   "title": "Protocol retention (25-year) scheduler",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/protocol-retention?years=N (cutoff math, RBAC)",
+   "apps/server/static/site.js: pret card Jadwal retensi protokol + hooks (kepatuhan panel)",
+   "apps/server/tests/api.rs: protocol_retention_and_aml_scores e2e (due/excluded, years guard 422)"
+  ],
+  "audit_note": "Wave 112: 25-year default schedule live (manual ledger; auto-disposal stays BLOCKED). Verified by test (401/0)."
  },
  {
   "id": "F-D11-014",
@@ -4126,10 +4129,13 @@
   "id": "F-D11-015",
   "domain": "D11",
   "title": "AML/CFT risk scoring",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/aml-scores (documented weights over clients/matters/open-AR, RBAC)",
+   "apps/server/static/site.js: aml card Skor risiko AML + hooks (kepatuhan panel)",
+   "apps/server/tests/api.rs: corp 65/high + individual 10/low asserted, 401 asserted"
+  ],
+  "audit_note": "Wave 112: screening heuristic live (screening input, not a verdict). Verified by test (401/0)."
  },
  {
   "id": "F-D11-016",

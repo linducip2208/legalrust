@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 112: schedule + AML (main)
+- Cutoff math + weights + guards; workspace **401 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 111: retention + purge (main)
 - SoD + Tx execute + guards; workspace **400 passed, 0 failed**.
 

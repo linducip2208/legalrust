@@ -8717,6 +8717,125 @@ async fn pbb_and_ppat_fee() {
 }
 
 #[tokio::test]
+async fn protocol_retention_and_aml_scores() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "retaml@x.id").await;
+    // Retention: one ancient entry, one fresh.
+    for (date, book, deed) in [
+        ("1990-01-01", "B-OLD", "1/1990"),
+        ("2026-11-01", "B-NEW", "2/2026"),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/protocol-register", &format!(r#"{{"entry_date":"{date}","book_ref":"{book}","deed_no":"{deed}","party":"PT X"}}"#), Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/protocol-retention?years=25", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rv = body_json(res).await;
+    assert!(rv["due"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["deed_no"] == "1/1990"));
+    assert!(rv["due"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["deed_no"] != "2/2026"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/protocol-retention?years=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // AML: corporate heavyweight vs clean individual.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"PT Raksasa","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let corp = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Budi","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    for i in 1..=3 {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/matters",
+                &format!(r#"{{"title":"M{i}","client_id":{corp}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        let mid = body_json(res).await["id"].as_i64().unwrap();
+        if i <= 2 {
+            let res = a
+                .clone()
+                .oneshot(post(
+                    &format!("/api/v1/matters/{mid}/invoices"),
+                    r#"{"total_minor":500000000}"#,
+                    Some(&tok),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+        }
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/aml-scores", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sv = body_json(res).await;
+    let corp_row = sv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["client_id"].as_i64() == Some(corp))
+        .unwrap()
+        .clone();
+    assert_eq!(corp_row["score"].as_i64().unwrap(), 65);
+    assert_eq!(corp_row["band"], serde_json::json!("high"));
+    assert!(sv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["name"] == "Budi" && r["score"].as_i64() == Some(10) && r["band"] == "low"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/aml-scores")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn retention_rules_and_gated_purge() {
     use tower::ServiceExt;
     let a = app();
@@ -14195,6 +14314,11 @@ async fn uib_app_has_approvals_ui() {
         "prg2-add",
         "prg2-reload",
         "prg2-list",
+        "pret-years",
+        "pret-reload",
+        "pret-list",
+        "aml-reload",
+        "aml-list",
         "ropa-activity",
         "ropa-purpose",
         "ropa-add",

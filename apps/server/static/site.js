@@ -3759,6 +3759,33 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     prg2Refresh();
   });
   on('prg2-reload', 'click', prg2Refresh);
+  /* ---- compliance: protocol retention schedule ---- */
+  async function pretRefresh() {
+    var box = document.getElementById('pret-list');
+    if (!box) return;
+    var yrs = parseInt(pval('pret-years'), 10);
+    if (!(yrs >= 1)) yrs = 25;
+    var v = await j('/api/v1/reports/protocol-retention?years=' + yrs);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var cut = document.getElementById('pret-cut');
+    if (cut) cut.textContent = 'Batas ' + v.cutoff + ' — ' + v.due_count + ' entri jatuh tempo';
+    box.innerHTML = (v.due || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.entry_date) + '</td><td>' + esc(x.book_ref) + '</td><td>' + esc(x.deed_no) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada yang jatuh tempo.</td></tr>';
+  }
+  on('pret-reload', 'click', pretRefresh);
+  /* ---- compliance: AML scores ---- */
+  async function amlRefresh() {
+    var box = document.getElementById('aml-list');
+    if (!box) return;
+    var v = await j('/api/v1/aml-scores');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x) {
+      var bc = x.band === 'high' ? '<span class="badge bg-red-lt">tinggi</span>' : (x.band === 'medium' ? '<span class="badge bg-yellow-lt">sedang</span>' : '<span class="badge bg-green-lt">rendah</span>');
+      return '<tr><td>' + esc(x.name) + ' <span class="text-muted">(' + esc(x.kind) + ', ' + x.matters + ' perkara)</span></td><td><strong>' + x.score + '</strong></td><td>' + bc + '</td><td>' + esc((x.factors || []).join('; ')) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada klien.</td></tr>';
+  }
+  on('aml-reload', 'click', amlRefresh);
   /* ---- compliance: DPIA assessments ---- */
   var DPIA_NEXT = { draft: 'review', review: 'approved' };
   async function dpiaRefresh() {
@@ -4632,7 +4659,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); rtrRefresh(); prg2Refresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); scRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); rtrRefresh(); prg2Refresh(); pretRefresh(); amlRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); scRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -4713,6 +4740,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   conRefresh();
   rtrRefresh();
   prg2Refresh();
+  pretRefresh();
+  amlRefresh();
   ropaRefresh();
   dpiaRefresh();
   breachRefresh();
