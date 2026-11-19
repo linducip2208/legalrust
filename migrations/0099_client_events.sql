@@ -7,7 +7,7 @@ CREATE TABLE client_events (
   held_on VARCHAR(10) NOT NULL DEFAULT '',
   status VARCHAR(20) NOT NULL DEFAULT 'planned',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_cev_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_clev_org FOREIGN KEY (org_id) REFERENCES organizations (id),
   KEY ix_cev_org_date (org_id, held_on)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE event_attendances (
