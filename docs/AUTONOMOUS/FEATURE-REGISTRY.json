@@ -8225,10 +8225,13 @@
   "id": "F-D19-029",
   "domain": "D19",
   "title": "Accessibility (WCAG) support",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: portal live-region (role=status aria-live), labeled inputs, nav landmark in /app shell",
+   "tests: aria-live + aria-label needles asserted in /app HTML",
+   "Note: first pass (labels/landmarks/live regions), not a full WCAG audit"
+  ],
+  "audit_note": "Wave 169: a11y pass one live. Verified by test (459/0)."
  },
  {
   "id": "F-D19-030",
@@ -8276,10 +8279,13 @@
   "id": "F-D19-034",
   "domain": "D19",
   "title": "Portal SLA display",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/sla (overdue/due-soon/on-track from task dues, identity scope)",
+   "site.js: SLA button (portal card)",
+   "tests: portal_sla_and_accessibility e2e (breach + rows asserted, staff 403)"
+  ],
+  "audit_note": "Wave 169: portal SLA live. Verified by test (459/0)."
  },
  {
   "id": "F-D19-035",

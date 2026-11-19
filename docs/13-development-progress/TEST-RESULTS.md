@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 168: rating + notis (main)
+## 2026-11-19 AUDIT-1000 wave 169: SLA + aksesibilitas (main)
+- Breach + landmarks; workspace **459 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 168: rating + notis (main)
 - Live rules + math; workspace **458 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 167: profil + user portal (main)

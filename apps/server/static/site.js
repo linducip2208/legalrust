@@ -3616,6 +3616,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return null; });
     if (out && v) out.innerHTML = esc(v.notice) + ' ' + (v.schedules || []).map(function (x) { return '<span class="badge">' + esc(x.entity) + ': ' + x.retain_years + ' thn</span>'; }).join(' ');
   });
+  on('ptl-sla', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/sla', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.innerHTML = v.breached
+      ? '<span class="badge bg-red-lt">' + v.overdue.length + ' lewat batas</span> ' + v.overdue.map(function (x) { return '<span class="badge">' + esc(x.task) + ' · ' + esc(x.due) + '</span>'; }).join(' ')
+      : '<span class="badge bg-green-lt">tepat waktu</span> · ' + v.on_track + ' tugas jalan, ' + (v.due_soon || []).length + ' dekat batas.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 169: portal SLA + a11y pass (main)
+- portal SLA derivation + labels/landmarks/live-regions + kartu + uji; no migration.
+- F-D19-034 NOT_STARTED->IMPLEMENTED, F-D19-029 NOT_STARTED->IMPLEMENTED (~72.4 verified, first pass). Workspace 459/0; registry ~31.9 (308 IMPLEMENTED); mean 35.4 (298 v).
+
 ## Done wave 168: ratings + retention notice (main)
 - portal_ratings (0105) + live retention notice + kartu + uji.
 - F-D19-039/040 NOT_STARTED/PLANNED->IMPLEMENTED (~73.0 verified). Workspace 458/0; registry ~31.8 (306 IMPLEMENTED); mean 35.3 (296 v).
