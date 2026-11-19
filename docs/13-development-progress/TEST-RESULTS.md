@@ -35,6 +35,9 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 143: merge + koreksi (main)
+- Cross-store legs + SoD + guards; workspace **433 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 142: pipeline + win-back (main)
 - Chains + guards; workspace **432 passed, 0 failed**.
 

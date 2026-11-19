@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 143: merge + corrections (main)
+- CoreStore update/repoint/delete-if-empty + cmerge Tx + corrections (0091) + kartu + uji.
+- F-D02-025/026 NOT_STARTED->IMPLEMENTED (~73.2 verified). Workspace 433/0; registry ~29.3 (259 IMPLEMENTED); mean 32.4 (249 v).
+
 ## Done wave 142: pipeline + win-back (main)
 - client_opps + client_winbacks (0090, stage chains) + kartu + uji.
 - F-D02-021/024 PLANNED/NOT_STARTED->IMPLEMENTED (~72.4 verified). Workspace 432/0; registry ~29.2 (257 IMPLEMENTED); mean 32.3 (247 v).

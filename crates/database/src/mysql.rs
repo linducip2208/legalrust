@@ -442,6 +442,143 @@ impl CoreStore for MysqlStores {
             status: x.get::<String, _>("status"),
         })
     }
+    async fn update_client(
+        &self,
+        org: &str,
+        id: i64,
+        name: Option<&str>,
+        kind: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<ClientRow, StoreError> {
+        if let Some(n) = name {
+            if n.trim().len() < 2 || n.len() > 255 {
+                return Err(StoreError::Conflict("name".into()));
+            }
+        }
+        if let Some(k) = kind {
+            if !["individual", "corporate"].contains(&k) {
+                return Err(StoreError::Conflict("kind".into()));
+            }
+        }
+        if let Some(st) = status {
+            if !["active", "archived"].contains(&st) {
+                return Err(StoreError::Conflict("status".into()));
+            }
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let exists: bool = sqlx::query("SELECT id FROM clients WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .is_some();
+        if !exists {
+            return Err(StoreError::NotFound);
+        }
+        if let Some(n) = name {
+            sqlx::query("UPDATE clients SET display_name=? WHERE id=?")
+                .bind(n.trim())
+                .bind(id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        if let Some(k) = kind {
+            sqlx::query("UPDATE clients SET kind=? WHERE id=?")
+                .bind(k)
+                .bind(id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        if let Some(st) = status {
+            sqlx::query("UPDATE clients SET status=? WHERE id=?")
+                .bind(st)
+                .bind(id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        let x =
+            sqlx::query("SELECT id, org_id, kind, display_name, status FROM clients WHERE id=?")
+                .bind(id as u64)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(ClientRow {
+            id: x.get::<u64, _>("id") as i64,
+            org_id: x.get::<String, _>("org_id"),
+            kind: x.get::<String, _>("kind"),
+            display_name: x.get::<String, _>("display_name"),
+            status: x.get::<String, _>("status"),
+        })
+    }
+    async fn repoint_matters(
+        &self,
+        org: &str,
+        from_client: i64,
+        to_client: i64,
+    ) -> Result<u64, StoreError> {
+        if from_client == to_client {
+            return Err(StoreError::Conflict("same client".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        for cid in [from_client, to_client] {
+            let ok: bool = sqlx::query("SELECT id FROM clients WHERE id=? AND org_id=?")
+                .bind(cid as u64)
+                .bind(org)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .is_some();
+            if !ok {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let n = sqlx::query("UPDATE matters SET client_id=? WHERE org_id=? AND client_id=?")
+            .bind(to_client as u64)
+            .bind(org)
+            .bind(from_client as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        tx.commit().await.map_err(db_err)?;
+        Ok(n)
+    }
+    async fn delete_client_if_empty(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let exists: bool = sqlx::query("SELECT id FROM clients WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .is_some();
+        if !exists {
+            return Err(StoreError::NotFound);
+        }
+        let used: bool =
+            sqlx::query("SELECT id FROM matters WHERE org_id=? AND client_id=? LIMIT 1")
+                .bind(org)
+                .bind(id as u64)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .is_some();
+        if used {
+            return Err(StoreError::Conflict("client has matters".into()));
+        }
+        sqlx::query("DELETE FROM clients WHERE id=?")
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(())
+    }
     async fn create_task(
         &self,
         org: &str,

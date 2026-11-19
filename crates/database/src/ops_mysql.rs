@@ -2259,6 +2259,288 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cmerge_execute(
+        &self,
+        org: &str,
+        keep_id: i64,
+        drop_id: i64,
+    ) -> Result<(), StoreError> {
+        if keep_id <= 0 || drop_id <= 0 || keep_id == drop_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        // Caller verifies both clients exist in this org (FKs would reject ghosts).
+        // Static statements per table: the clippy dynamic-SQL lint forbids format!.
+        for table in [
+            "meetings",
+            "checklists",
+            "fees",
+            "doc_requests",
+            "opps",
+            "winbacks",
+            "corrections",
+            "segments",
+        ] {
+            match table {
+                "meetings" => sqlx::query(
+                    "UPDATE client_meetings SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+                "checklists" => sqlx::query(
+                    "UPDATE client_checklists SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+                "fees" => {
+                    sqlx::query("UPDATE client_fees SET client_id=? WHERE org_id=? AND client_id=?")
+                        .bind(keep_id as u64)
+                        .bind(org)
+                        .bind(drop_id as u64)
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(db_err)?
+                }
+                "doc_requests" => sqlx::query(
+                    "UPDATE client_doc_requests SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+                "opps" => {
+                    sqlx::query("UPDATE client_opps SET client_id=? WHERE org_id=? AND client_id=?")
+                        .bind(keep_id as u64)
+                        .bind(org)
+                        .bind(drop_id as u64)
+                        .execute(&mut *tx)
+                        .await
+                        .map_err(db_err)?
+                }
+                "winbacks" => sqlx::query(
+                    "UPDATE client_winbacks SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+                "corrections" => sqlx::query(
+                    "UPDATE client_corrections SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+                _ => sqlx::query(
+                    "UPDATE client_segments SET client_id=? WHERE org_id=? AND client_id=?",
+                )
+                .bind(keep_id as u64)
+                .bind(org)
+                .bind(drop_id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?,
+            };
+        }
+        // client_tags has no org column on the link; tags themselves are per-org.
+        sqlx::query("UPDATE IGNORE client_tag_links SET client_id=? WHERE client_id=?")
+            .bind(keep_id as u64)
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("DELETE FROM client_tag_links WHERE client_id=?")
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        // Hierarchy links on either side; drop exact duplicates from the remap.
+        sqlx::query("UPDATE client_links SET child_id=? WHERE org_id=? AND child_id=?")
+            .bind(keep_id as u64)
+            .bind(org)
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("UPDATE client_links SET parent_id=? WHERE org_id=? AND parent_id=?")
+            .bind(keep_id as u64)
+            .bind(org)
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("DELETE l1 FROM client_links l1 JOIN client_links l2 ON l1.org_id=l2.org_id AND l1.child_id=l2.child_id AND l1.parent_id=l2.parent_id AND l1.id>l2.id WHERE l1.org_id=?")
+            .bind(org).execute(&mut *tx).await.map_err(db_err)?;
+        // Referrals on either side; drop remap duplicates.
+        sqlx::query("UPDATE client_referrals SET referrer_id=? WHERE org_id=? AND referrer_id=?")
+            .bind(keep_id as u64)
+            .bind(org)
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("UPDATE client_referrals SET referred_id=? WHERE org_id=? AND referred_id=?")
+            .bind(keep_id as u64)
+            .bind(org)
+            .bind(drop_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("DELETE r1 FROM client_referrals r1 JOIN client_referrals r2 ON r1.org_id=r2.org_id AND r1.referrer_id=r2.referrer_id AND r1.referred_id=r2.referred_id AND r1.id>r2.id WHERE r1.org_id=?")
+            .bind(org).execute(&mut *tx).await.map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(())
+    }
+    async fn ccor_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        field: &str,
+        old_value: &str,
+        new_value: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if !matches!(field, "display_name" | "kind" | "status") {
+            return Err(StoreError::Conflict("field".into()));
+        }
+        let new_value = new_value.trim();
+        if new_value.is_empty() || new_value.len() > 255 {
+            return Err(StoreError::Conflict("new_value".into()));
+        }
+        if old_value.len() > 255 || requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("request".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_corrections (org_id, client_id, field, old_value, new_value, requested_by) VALUES (?,?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(field).bind(old_value).bind(new_value).bind(requested_by)
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ccor_get(&self, org: &str, id: i64) -> Result<ClientCorrectionRow, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, client_id, field, old_value, new_value, status, requested_by, decided_by FROM client_corrections WHERE id=? AND org_id=?")
+            .bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        Ok(ClientCorrectionRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            client_id: x.get::<u64, _>("client_id") as i64,
+            field: x.get::<String, _>("field"),
+            old_value: x.get::<String, _>("old_value"),
+            new_value: x.get::<String, _>("new_value"),
+            status: x.get::<String, _>("status"),
+            requested_by: x.get::<String, _>("requested_by"),
+            decided_by: x.get::<String, _>("decided_by"),
+        })
+    }
+    async fn ccor_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCorrectionRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, field, old_value, new_value, status, requested_by, decided_by FROM client_corrections WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, field, old_value, new_value, status, requested_by, decided_by FROM client_corrections WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientCorrectionRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                field: x.get::<String, _>("field"),
+                old_value: x.get::<String, _>("old_value"),
+                new_value: x.get::<String, _>("new_value"),
+                status: x.get::<String, _>("status"),
+                requested_by: x.get::<String, _>("requested_by"),
+                decided_by: x.get::<String, _>("decided_by"),
+            })
+            .collect())
+    }
+    async fn ccor_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        if decided_by.trim().is_empty() {
+            return Err(StoreError::Conflict("decided_by".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<(String, String)> = sqlx::query(
+            "SELECT requested_by, status FROM client_corrections WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .map(|x| {
+            (
+                x.get::<String, _>("requested_by"),
+                x.get::<String, _>("status"),
+            )
+        });
+        let (requested_by, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        if status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by == requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        let to = if approve { "approved" } else { "rejected" };
+        sqlx::query("UPDATE client_corrections SET status=?, decided_by=? WHERE id=?")
+            .bind(to)
+            .bind(decided_by)
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(to.into())
+    }
+    async fn ccor_mark_applied(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE client_corrections SET status='applied' WHERE id=? AND org_id=? AND status='approved'")
+            .bind(id as u64).bind(org).execute(&self.pool).await.map_err(db_err)?.rows_affected();
+        if n == 0 {
+            let exists: bool =
+                sqlx::query("SELECT id FROM client_corrections WHERE id=? AND org_id=?")
+                    .bind(id as u64)
+                    .bind(org)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?
+                    .is_some();
+            return Err(if exists {
+                StoreError::Conflict("not approved".into())
+            } else {
+                StoreError::NotFound
+            });
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

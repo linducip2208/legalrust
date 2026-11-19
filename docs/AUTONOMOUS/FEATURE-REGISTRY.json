@@ -669,19 +669,28 @@
   "id": "F-D02-025",
   "domain": "D02",
   "title": "Client data merge & dedupe",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "store.rs + memory.rs + mysql.rs: CoreStore update/repoint/delete-if-empty + OpsStore cmerge_execute (Tx/lock)",
+   "lib.rs: POST /clients/merge (admin gate, validated, audited)",
+   "site.js: merge card + hooks (klien panel)",
+   "tests: merge e2e (matter moved, fees follow, drop deleted, SoD n/a, 403/404/401)"
+  ],
+  "audit_note": "Wave 143: merge live, each leg atomic + retry-safe. Verified by test (433/0)."
  },
  {
   "id": "F-D02-026",
   "domain": "D02",
   "title": "Client data correction request",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0091: client_corrections table (field check, forward-only)",
+   "ops.rs + memory + mysql: request/decide(SoD)/apply-mark",
+   "lib.rs: correction endpoints; apply writes via CoreStore then marks applied",
+   "site.js: correction card + hooks (klien panel)",
+   "tests: self-approve 409, second-admin flow, apply writes name, re-apply 409"
+  ],
+  "audit_note": "Wave 143: corrections live. Verified by test (433/0)."
  },
  {
   "id": "F-D02-027",

@@ -174,6 +174,24 @@ pub trait CoreStore: Send + Sync {
     ) -> Result<MatterRow, StoreError>;
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError>;
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError>;
+    /// Partial client update (only `Some` fields change; validates values).
+    async fn update_client(
+        &self,
+        org: &str,
+        id: i64,
+        name: Option<&str>,
+        kind: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<ClientRow, StoreError>;
+    /// Move all matters from one client to another (same org). Returns count.
+    async fn repoint_matters(
+        &self,
+        org: &str,
+        from_client: i64,
+        to_client: i64,
+    ) -> Result<u64, StoreError>;
+    /// Delete a client only when no matters reference it.
+    async fn delete_client_if_empty(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn create_task(&self, org: &str, matter: i64, title: &str)
         -> Result<TaskRow, StoreError>;
     async fn list_tasks(&self, org: &str, matter: i64) -> Result<Vec<TaskRow>, StoreError>;

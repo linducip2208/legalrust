@@ -141,6 +141,7 @@ struct Inner {
     crefs: HashMap<i64, ClientReferralRow>,
     copps: HashMap<i64, ClientOppRow>,
     cwbs: HashMap<i64, ClientWinbackRow>,
+    ccors: HashMap<i64, ClientCorrectionRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -2507,6 +2508,250 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn cmerge_execute(
+        &self,
+        org: &str,
+        keep_id: i64,
+        drop_id: i64,
+    ) -> Result<(), StoreError> {
+        if keep_id <= 0 || drop_id <= 0 || keep_id == drop_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        // Caller (API layer) verifies both clients exist in this org.
+        for v in m
+            .meetings
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            v.client_id = keep_id;
+        }
+        for r in m.chlinks.values_mut().filter(|r| r.org == org) {
+            if r.child_id == drop_id {
+                r.child_id = keep_id;
+            }
+            if r.parent_id == drop_id {
+                r.parent_id = keep_id;
+            }
+        }
+        // Drop exact-duplicate hierarchy links created by the remap.
+        let mut seen = std::collections::HashSet::new();
+        let dups: Vec<i64> = m
+            .chlinks
+            .iter()
+            .filter(|(_, r)| r.org == org)
+            .filter_map(|(id, r)| {
+                if !seen.insert((r.child_id, r.parent_id)) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for id in dups {
+            m.chlinks.remove(&id);
+        }
+        for r in m
+            .csegs
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        let mut seen_tag = std::collections::HashSet::new();
+        let dup_tags: Vec<i64> = m
+            .csegs
+            .iter()
+            .filter(|(_, r)| r.org == org)
+            .filter_map(|(id, r)| {
+                if !seen_tag.insert((r.client_id, r.tag.clone())) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for id in dup_tags {
+            m.csegs.remove(&id);
+        }
+        for r in m
+            .cchks
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        for r in m
+            .cfees
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        for r in m
+            .cdreqs
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        for r in m.crefs.values_mut().filter(|r| r.org == org) {
+            if r.referrer_id == drop_id {
+                r.referrer_id = keep_id;
+            }
+            if r.referred_id == drop_id {
+                r.referred_id = keep_id;
+            }
+        }
+        let mut seen_ref = std::collections::HashSet::new();
+        let dup_refs: Vec<i64> = m
+            .crefs
+            .iter()
+            .filter(|(_, r)| r.org == org)
+            .filter_map(|(id, r)| {
+                if !seen_ref.insert((r.referrer_id, r.referred_id)) {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for id in dup_refs {
+            m.crefs.remove(&id);
+        }
+        for r in m
+            .copps
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        for r in m
+            .cwbs
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        for r in m
+            .ccors
+            .values_mut()
+            .filter(|r| r.org == org && r.client_id == drop_id)
+        {
+            r.client_id = keep_id;
+        }
+        let links: Vec<(i64, i64)> = m.crm_links.iter().cloned().collect();
+        for (tag, client) in links {
+            if client == drop_id && m.crm_tags.get(&tag).is_some_and(|t| t.org == org) {
+                m.crm_links.remove(&(tag, client));
+                m.crm_links.insert((tag, keep_id));
+            }
+        }
+        Ok(())
+    }
+    async fn ccor_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        field: &str,
+        old_value: &str,
+        new_value: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        if !matches!(field, "display_name" | "kind" | "status") {
+            return Err(StoreError::Conflict("field".into()));
+        }
+        let new_value = new_value.trim();
+        if new_value.is_empty() || new_value.len() > 255 {
+            return Err(StoreError::Conflict("new_value".into()));
+        }
+        if old_value.len() > 255 || requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("request".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ccors.insert(
+            id,
+            ClientCorrectionRow {
+                id,
+                org: org.into(),
+                client_id,
+                field: field.into(),
+                old_value: old_value.into(),
+                new_value: new_value.into(),
+                status: "requested".into(),
+                requested_by: requested_by.into(),
+                decided_by: String::new(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ccor_get(&self, org: &str, id: i64) -> Result<ClientCorrectionRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .ccors
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
+    async fn ccor_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCorrectionRow>, StoreError> {
+        let mut v: Vec<ClientCorrectionRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ccors
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ccor_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ccors
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by.trim().is_empty() || decided_by == r.requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        r.status = if approve { "approved" } else { "rejected" }.into();
+        r.decided_by = decided_by.into();
+        Ok(r.status.clone())
+    }
+    async fn ccor_mark_applied(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .ccors
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "approved" {
+            return Err(StoreError::Conflict("not approved".into()));
+        }
+        r.status = "applied".into();
+        Ok(())
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

@@ -308,6 +308,87 @@ impl CoreStore for MemoryStores {
             .cloned()
             .ok_or(StoreError::NotFound)
     }
+    async fn update_client(
+        &self,
+        org: &str,
+        id: i64,
+        name: Option<&str>,
+        kind: Option<&str>,
+        status: Option<&str>,
+    ) -> Result<ClientRow, StoreError> {
+        if let Some(n) = name {
+            if n.trim().len() < 2 || n.len() > 255 {
+                return Err(StoreError::Conflict("name".into()));
+            }
+        }
+        if let Some(k) = kind {
+            if !["individual", "corporate"].contains(&k) {
+                return Err(StoreError::Conflict("kind".into()));
+            }
+        }
+        if let Some(st) = status {
+            if !["active", "archived"].contains(&st) {
+                return Err(StoreError::Conflict("status".into()));
+            }
+        }
+        let mut m = self.inner.lock().unwrap();
+        let c = m
+            .clients
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        if let Some(n) = name {
+            c.display_name = n.trim().into();
+        }
+        if let Some(k) = kind {
+            c.kind = k.into();
+        }
+        if let Some(st) = status {
+            c.status = st.into();
+        }
+        Ok(c.clone())
+    }
+    async fn repoint_matters(
+        &self,
+        org: &str,
+        from_client: i64,
+        to_client: i64,
+    ) -> Result<u64, StoreError> {
+        if from_client == to_client {
+            return Err(StoreError::Conflict("same client".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        for cid in [from_client, to_client] {
+            if m.clients.get(&cid).filter(|x| x.org_id == org).is_none() {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let mut n = 0u64;
+        for mt in m
+            .matters
+            .values_mut()
+            .filter(|x| x.org_id == org && x.client_id == Some(from_client))
+        {
+            mt.client_id = Some(to_client);
+            n += 1;
+        }
+        Ok(n)
+    }
+    async fn delete_client_if_empty(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.clients.get(&id) {
+            Some(c) if c.org_id == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if m.matters
+            .values()
+            .any(|x| x.org_id == org && x.client_id == Some(id))
+        {
+            return Err(StoreError::Conflict("client has matters".into()));
+        }
+        m.clients.remove(&id);
+        Ok(())
+    }
     async fn create_task(
         &self,
         org: &str,

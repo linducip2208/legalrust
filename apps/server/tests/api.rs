@@ -5637,6 +5637,11 @@ async fn crm_app_contains_crm_ids() {
         "cwb-cid",
         "cwb-add",
         "cwb-list",
+        "mrg-keep",
+        "mrg-go",
+        "ccr-cid",
+        "ccr-add",
+        "ccr-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11260,6 +11265,204 @@ async fn client_referrals_and_ltv() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_merge_and_corrections() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "climerge@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let k1 = mk_crm_client(&a, &tok).await;
+    let k2 = mk_crm_client(&a, &tok).await;
+    // Admin gate: lawyer cannot merge.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/merge",
+            &format!(r#"{{"keep_id":{k1},"drop_id":{k2}}}"#,),
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Self-merge + ghost rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/merge",
+            &format!(r#"{{"keep_id":{k1},"drop_id":{k1}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/merge",
+            r#"{"keep_id":999999,"drop_id":999998}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Seed drop-client rows: matter + tag + fee.
+    let mid = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"Pindah","client_id":{k2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{k2},"tag":"prioritas"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{k2}/fees"),
+            r#"{"name":"Retainer","kind":"retainer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Merge moves the matter and deletes the drop client.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/merge",
+            &format!(r#"{{"keep_id":{k1},"drop_id":{k2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["merged_matters"].as_i64().unwrap(), 1);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{k1}/fees"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["name"] == "Retainer"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=client", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "client.merged"));
+    // Correction: request -> self-approve forbidden -> second admin approves -> apply writes.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-corrections",
+            &format!(r#"{{"client_id":{k1},"field":"display_name","new_value":"PT Baru Jaya"}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-corrections/{cid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"cadmin@x.id","role":"office_admin"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"cadmin@x.id","name":"CA","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    let adm2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-corrections/{cid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Apply before approve is impossible here (already approved); apply now.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-corrections/{cid}/apply"),
+            "{}",
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["id"].as_i64() == Some(k1) && c["display_name"] == "PT Baru Jaya"));
+    // Re-apply rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-corrections/{cid}/apply"),
+            "{}",
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/clients/merge")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(format!(r#"{{"keep_id":{k1},"drop_id":{k1}}}"#)))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let _ = mid;
 }
 
 #[tokio::test]

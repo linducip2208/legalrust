@@ -246,6 +246,19 @@ pub struct ClientWinbackRow {
     pub status: String,
     pub note: String,
 }
+/// Client data correction request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientCorrectionRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub field: String,
+    pub old_value: String,
+    pub new_value: String,
+    pub status: String,
+    pub requested_by: String,
+    pub decided_by: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -1873,6 +1886,34 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ClientWinbackRow>, StoreError>;
     async fn cwb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cwb_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Move every ops-side client row from one client to another (matters
+    /// and meetings move via CoreStore; deletion via delete_client_if_empty).
+    async fn cmerge_execute(&self, org: &str, keep_id: i64, drop_id: i64)
+        -> Result<(), StoreError>;
+    /// Data correction requests (field-scoped, SoD: requester != decider).
+    async fn ccor_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        field: &str,
+        old_value: &str,
+        new_value: &str,
+        requested_by: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ccor_get(&self, org: &str, id: i64) -> Result<ClientCorrectionRow, StoreError>;
+    async fn ccor_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientCorrectionRow>, StoreError>;
+    async fn ccor_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError>;
+    async fn ccor_mark_applied(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

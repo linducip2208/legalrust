@@ -3072,6 +3072,60 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     cwbRefresh();
   });
   on('cwb-reload', 'click', cwbRefresh);
+  /* ---- merge + corrections (F-D02-025/026) ---- */
+  on('mrg-go', 'click', async function () {
+    if (!pval('mrg-keep') || !pval('mrg-drop')) { pmsg('mrg-msg', 'Isi kedua ID klien.'); return; }
+    var r = await ppost('/api/v1/clients/merge', { keep_id: +pval('mrg-keep'), drop_id: +pval('mrg-drop') });
+    if (!r.ok) { pmsg('mrg-msg', 'Gagal (' + r.status + '). Perlu admin; klien harus ada.'); return; }
+    var v = await r.json();
+    pmsg('mrg-msg', '');
+    var out = document.getElementById('mrg-msg');
+    if (out) out.innerHTML = '<span class="text-muted">Digabung: ' + v.merged_matters + ' perkara pindah.</span>';
+  });
+  async function ccrRefresh() {
+    var box = document.getElementById('ccr-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-corrections' + (pval('ccr-cid') ? '?client_id=' + encodeURIComponent(pval('ccr-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'requested'
+        ? '<button class="btn btn-sm" data-ccr-yes="' + x.id + '" type="button">Setujui</button> <button class="btn btn-sm btn-outline-danger" data-ccr-no="' + x.id + '" type="button">Tolak</button>'
+        : (x.status === 'approved' ? '<button class="btn btn-sm btn-outline-secondary" data-ccr-apply="' + x.id + '" type="button">Terapkan</button>' : '<span class="text-muted">' + x.status + '</span>');
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.field) + '</td><td>' + esc(x.new_value) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada permintaan.</td></tr>';
+    qsa('[data-ccr-yes]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/client-corrections/' + b.getAttribute('data-ccr-yes') + '/decide', { approve: true });
+        if (!r.ok) { pmsg('mrg-msg', 'Gagal (' + r.status + '). Penyetuju harus orang berbeda?'); return; }
+        pmsg('mrg-msg', '');
+        ccrRefresh();
+      });
+    });
+    qsa('[data-ccr-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/client-corrections/' + b.getAttribute('data-ccr-no') + '/decide', { approve: false });
+        if (!r.ok) { pmsg('mrg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mrg-msg', '');
+        ccrRefresh();
+      });
+    });
+    qsa('[data-ccr-apply]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/client-corrections/' + b.getAttribute('data-ccr-apply') + '/apply', {});
+        if (!r.ok) { pmsg('mrg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mrg-msg', '');
+        ccrRefresh();
+      });
+    });
+  }
+  on('ccr-add', 'click', async function () {
+    if (!pval('ccr-cid') || !pval('ccr-new')) { pmsg('mrg-msg', 'Isi ID klien dan nilai baru.'); return; }
+    var r = await ppost('/api/v1/client-corrections', { client_id: +pval('ccr-cid'), field: pval('ccr-field') || 'display_name', new_value: pval('ccr-new') });
+    if (!r.ok) { pmsg('mrg-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mrg-msg', '');
+    ccrRefresh();
+  });
+  on('ccr-reload', 'click', ccrRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -3900,6 +3954,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   crfRefresh();
   oppRefresh();
   cwbRefresh();
+  ccrRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();
