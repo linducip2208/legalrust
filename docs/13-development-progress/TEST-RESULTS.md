@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 154: retensi prospek (main)
+## 2026-11-19 AUDIT-1000 wave 155: 360 + peran kontak (main)
+- Aggregation + allowlist; workspace **445 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 154: retensi prospek (main)
 - SoD + cascade arms; workspace **444 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 153: dasbor + expiry (main)

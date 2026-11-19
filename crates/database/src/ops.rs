@@ -268,6 +268,7 @@ pub struct ClientEmployeeRow {
     pub name: String,
     pub role: String,
     pub contact: String,
+    pub contact_role: String,
 }
 /// Client channel consent (opt in/out per channel).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -2071,6 +2072,9 @@ pub trait OpsStore: Send + Sync {
         client_id: i64,
     ) -> Result<Vec<ClientEmployeeRow>, StoreError>;
     async fn cemp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Contact-role assignment (primary/billing/technical/other).
+    async fn cemp_set_role(&self, org: &str, id: i64, contact_role: &str)
+        -> Result<(), StoreError>;
     /// Channel consent center (upsert per client+channel, list).
     async fn ccns_set(
         &self,

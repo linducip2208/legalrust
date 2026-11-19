@@ -249,6 +249,14 @@ fn crisk_ok(level: &str) -> Result<String, StoreError> {
     Ok(l)
 }
 
+fn crole_ok(role: &str) -> Result<String, StoreError> {
+    let r = role.trim().to_lowercase();
+    if !["primary", "billing", "technical", "other"].contains(&r.as_str()) {
+        return Err(StoreError::Conflict("contact_role".into()));
+    }
+    Ok(r)
+}
+
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
     let c = channel.trim().to_lowercase();
     if !["email", "phone", "visit", "newsletter"].contains(&c.as_str()) {
@@ -2857,6 +2865,7 @@ impl OpsStore for MemoryOps {
                 name: name.into(),
                 role: role.trim().into(),
                 contact: contact.trim().into(),
+                contact_role: "other".into(),
             },
         );
         Ok(id)
@@ -2883,6 +2892,22 @@ impl OpsStore for MemoryOps {
         match m.cemps.get(&id) {
             Some(r) if r.org == org => {
                 m.cemps.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cemp_set_role(
+        &self,
+        org: &str,
+        id: i64,
+        contact_role: &str,
+    ) -> Result<(), StoreError> {
+        let contact_role = crole_ok(contact_role)?;
+        let mut m = self.inner.lock().unwrap();
+        match m.cemps.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.contact_role = contact_role;
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

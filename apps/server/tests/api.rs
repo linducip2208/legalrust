@@ -5679,6 +5679,9 @@ async fn crm_app_contains_crm_ids() {
         "crs-save",
         "cact-go",
         "cdash-go",
+        "cem-crole",
+        "ov-cid",
+        "ov-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11650,6 +11653,96 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_overview_and_contact_roles() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cli360@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    // Role allowlist guarded; ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/employees/999999/role",
+            r#"{"contact_role":"primary"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/employees"),
+            r#"{"name":"Budi","role":"Direktur"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/employees/{eid}/role"),
+            r#"{"contact_role":"sekretaris"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/employees/{eid}/role"),
+            r#"{"contact_role":"primary"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // 360 aggregates the seeded book.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"M360","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/overview"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ov = body_json(res).await;
+    assert_eq!(ov["matters"].as_i64().unwrap(), 1);
+    assert!(ov["employees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["contact_role"] == "primary"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients/999999/overview", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/clients/{cli}/overview"))
                 .body(Body::empty())
                 .unwrap(),
         )

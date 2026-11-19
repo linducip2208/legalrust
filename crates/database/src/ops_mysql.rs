@@ -2556,8 +2556,8 @@ impl OpsStore for MysqlOps {
         if role.len() > 120 || contact.len() > 160 {
             return Err(StoreError::Conflict("role/contact".into()));
         }
-        let r = sqlx::query("INSERT INTO client_employees (org_id, client_id, name, role, contact) VALUES (?,?,?,?,?)")
-            .bind(org).bind(client_id as u64).bind(name).bind(role.trim()).bind(contact.trim())
+        let r = sqlx::query("INSERT INTO client_employees (org_id, client_id, name, role, contact, contact_role) VALUES (?,?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(name).bind(role.trim()).bind(contact.trim()).bind("other")
             .execute(&self.pool).await.map_err(db_err)?;
         Ok(r.last_insert_id() as i64)
     }
@@ -2566,7 +2566,7 @@ impl OpsStore for MysqlOps {
         org: &str,
         client_id: i64,
     ) -> Result<Vec<ClientEmployeeRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, client_id, name, role, contact FROM client_employees WHERE org_id=? AND client_id=? ORDER BY id LIMIT 200")
+        let rows = sqlx::query("SELECT id, org_id, client_id, name, role, contact, contact_role FROM client_employees WHERE org_id=? AND client_id=? ORDER BY id LIMIT 200")
             .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
@@ -2577,8 +2577,32 @@ impl OpsStore for MysqlOps {
                 name: x.get::<String, _>("name"),
                 role: x.get::<String, _>("role"),
                 contact: x.get::<String, _>("contact"),
+                contact_role: x.get::<String, _>("contact_role"),
             })
             .collect())
+    }
+    async fn cemp_set_role(
+        &self,
+        org: &str,
+        id: i64,
+        contact_role: &str,
+    ) -> Result<(), StoreError> {
+        let r = contact_role.trim().to_lowercase();
+        if !["primary", "billing", "technical", "other"].contains(&r.as_str()) {
+            return Err(StoreError::Conflict("contact_role".into()));
+        }
+        let n = sqlx::query("UPDATE client_employees SET contact_role=? WHERE id=? AND org_id=?")
+            .bind(&r)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
     }
     async fn cemp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM client_employees WHERE id=? AND org_id=?")

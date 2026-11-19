@@ -428,12 +428,16 @@
   "id": "F-D02-005",
   "domain": "D02",
   "title": "Contact management & roles",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
-   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables"
-  ]
+   "migrations/0101: contact_role column on client_employees (forward-only)",
+   "ops.rs + memory + mysql: cemp_set_role + allowlist (primary/billing/technical/other)",
+   "lib.rs: POST /api/v1/employees/{id}/role + contact_role in roster payloads (RBAC)",
+   "site.js: roster role badges + assignment row (klien panel)",
+   "tests: overview_and_contact_roles e2e (bad role 409, ghost 404)",
+   "Prior: public contact/demo/subscribe + mkt fns + user roles system already live"
+  ],
+  "audit_note": "Wave 155: contact roles close the PARTIAL gap. Verified by test (445/0)."
  },
  {
   "id": "F-D02-006",
@@ -836,11 +840,13 @@
   "id": "F-D02-035",
   "domain": "D02",
   "title": "Client search (360 view)",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:3476 GET /api/v1/search; :1107 global_search (keyword, org-scoped)",
-   "apps/server/src/lib.rs:1080 rag_search (text chunks only; no tantivy/vector/stemming)"
-  ]
+   "lib.rs: GET /api/v1/clients/{id}/overview (identity, matters + LTV, fees, checklists, reminders, VIP, risk, consents, employees)",
+   "site.js: 360 card + hooks (klien panel)",
+   "tests: seeded book asserted, ghost 404, 401; builds on live global search"
+  ],
+  "audit_note": "Wave 155: 360 view live, read-only aggregation. Verified by test (445/0)."
  },
  {
   "id": "F-D02-036",

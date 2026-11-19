@@ -3134,7 +3134,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cem-cid')) + '/employees');
     if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
     box.innerHTML = v.map(function (x) {
-      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.role || '—') + '</td><td><button class="btn btn-sm btn-outline-danger" data-cem-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.role || '—') + ' <span class="badge">' + esc(x.contact_role || 'other') + '</span></td><td><button class="btn btn-sm btn-outline-danger" data-cem-del="' + x.id + '" type="button">Hapus</button></td></tr>';
     }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada karyawan.</td></tr>';
     qsa('[data-cem-del]', function (b) {
       b.addEventListener('click', async function () {
@@ -3153,6 +3153,23 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     cemRefresh();
   });
   on('cem-reload', 'click', cemRefresh);
+  on('cem-role-save', 'click', async function () {
+    if (!pval('cem-eid')) { pmsg('cem-msg', 'Isi ID karyawan.'); return; }
+    var r = await ppost('/api/v1/employees/' + encodeURIComponent(pval('cem-eid')) + '/role', { contact_role: pval('cem-crole') || 'other' });
+    if (!r.ok) { pmsg('cem-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cem-msg', '');
+    cemRefresh();
+  });
+  /* ---- 360 overview (F-D02-035) ---- */
+  on('ov-go', 'click', async function () {
+    var out = document.getElementById('ov-out');
+    if (!pval('ov-cid')) { if (out) out.textContent = 'Isi ID klien.'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('ov-cid')) + '/overview');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = '<strong>' + esc((v.client || {}).display_name || '#?') + '</strong> · ' + v.matters + ' perkara · tagihan '
+      + fmtRp(v.invoiced_minor) + ' · terbuka ' + fmtRp(v.open_minor) + ' · pengingat ' + v.pending_reminders.length
+      + ' · checklist ' + v.open_checklists.length + ' · risiko ' + esc(((v.risk || {}).level) || '—');
+  });
   async function ccnRefresh() {
     var out = document.getElementById('ccn-out');
     if (!pval('cem-cid')) { if (out) out.textContent = 'Isi ID klien.'; return; }
