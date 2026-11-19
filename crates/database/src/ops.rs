@@ -595,6 +595,26 @@ pub struct BackupCheckRow {
     pub result: String,
     pub note: String,
 }
+/// Compliance self-check run (manual assessment scores).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelfcheckRow {
+    pub id: i64,
+    pub org: String,
+    pub period: String,
+    pub passed_items: i64,
+    pub total_items: i64,
+    pub note: String,
+}
+/// Protocol year-end seal (book-count snapshot + seal chain).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct YearSealRow {
+    pub id: i64,
+    pub org: String,
+    pub year: String,
+    pub book_count: i64,
+    pub note: String,
+    pub status: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1746,6 +1766,22 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn bcheck_list(&self, org: &str) -> Result<Vec<BackupCheckRow>, StoreError>;
     async fn bcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Compliance self-check runs.
+    async fn selfcheck_add(
+        &self,
+        org: &str,
+        period: &str,
+        passed: i64,
+        total: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn selfcheck_list(&self, org: &str) -> Result<Vec<SelfcheckRow>, StoreError>;
+    async fn selfcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Protocol year-end sealing.
+    async fn sealy_prepare(&self, org: &str, year: &str, note: &str) -> Result<i64, StoreError>;
+    async fn sealy_list(&self, org: &str) -> Result<Vec<YearSealRow>, StoreError>;
+    async fn sealy_seal(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn sealy_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

@@ -4950,19 +4950,29 @@
   "id": "F-D12-039",
   "domain": "D12",
   "title": "Office compliance self-check",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0058_selfcheck_seals.sql: selfcheck_runs table (unique period per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped CRUD, passed<=total guard",
+   "apps/server/src/lib.rs: POST/GET /api/v1/selfchecks + delete (pct derived, RBAC, audit)",
+   "apps/server/static/site.js: scRefresh card Self-check in kepatuhan tab + hooks",
+   "apps/server/tests/api.rs: selfcheck_and_year_seals e2e (87.5% asserted, dup 409)"
+  ],
+  "audit_note": "Wave 89: full lifecycle live; verified by test (378/0)."
  },
  {
   "id": "F-D12-040",
   "domain": "D12",
   "title": "Protocol year-end sealing & handover",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0058_selfcheck_seals.sql: year_end_seals table (unique year per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: book_count snapshotted from pbooks at prepare; prepared->sealed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/year-seals + seal + delete (RBAC, audit)",
+   "apps/server/static/site.js: sealRefresh card Penyegelan in akta tab + hooks",
+   "apps/server/tests/api.rs: bad year 409, dup year 409, reseal 409"
+  ],
+  "audit_note": "Wave 89: verified by test (378/0)."
  },
  {
   "id": "F-D13-001",

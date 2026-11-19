@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 89: selfcheck + seals (main)
+- Snapshot + chains + guards; workspace **378 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 88: SOP + backup (main)
 - Chains + allowlists + guards; workspace **377 passed, 0 failed**.
 

@@ -93,6 +93,8 @@ struct Inner {
     feedback: HashMap<i64, FeedbackRow>,
     sops: HashMap<i64, SopRow>,
     bchecks: HashMap<i64, BackupCheckRow>,
+    selfchecks: HashMap<i64, SelfcheckRow>,
+    seals: HashMap<i64, YearSealRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4589,6 +4591,135 @@ impl OpsStore for MemoryOps {
         match m.bchecks.get(&id) {
             Some(r) if r.org == org => {
                 m.bchecks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn selfcheck_add(
+        &self,
+        org: &str,
+        period: &str,
+        passed: i64,
+        total: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let period = period.trim();
+        if period.is_empty() || period.len() > 20 {
+            return Err(StoreError::Conflict("period".into()));
+        }
+        if !(0..=total).contains(&passed) || total <= 0 || total > 1000 {
+            return Err(StoreError::Conflict("passed/total".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.selfchecks
+            .values()
+            .any(|r| r.org == org && r.period == period)
+        {
+            return Err(StoreError::Conflict("duplicate period".into()));
+        }
+        let id = self.next(&mut m);
+        m.selfchecks.insert(
+            id,
+            SelfcheckRow {
+                id,
+                org: org.into(),
+                period: period.into(),
+                passed_items: passed,
+                total_items: total,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn selfcheck_list(&self, org: &str) -> Result<Vec<SelfcheckRow>, StoreError> {
+        let mut v: Vec<SelfcheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .selfchecks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn selfcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.selfchecks.get(&id) {
+            Some(r) if r.org == org => {
+                m.selfchecks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn sealy_prepare(&self, org: &str, year: &str, note: &str) -> Result<i64, StoreError> {
+        let year = year.trim();
+        if year.len() != 4 || year.parse::<u32>().is_err() {
+            return Err(StoreError::Conflict("year YYYY".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.seals.values().any(|r| r.org == org && r.year == year) {
+            return Err(StoreError::Conflict("duplicate year".into()));
+        }
+        let count = m
+            .pbooks
+            .values()
+            .filter(|b| b.org == org && b.book_year == year)
+            .count() as i64;
+        let id = self.next(&mut m);
+        m.seals.insert(
+            id,
+            YearSealRow {
+                id,
+                org: org.into(),
+                year: year.into(),
+                book_count: count,
+                note: note.trim().into(),
+                status: "prepared".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn sealy_list(&self, org: &str) -> Result<Vec<YearSealRow>, StoreError> {
+        let mut v: Vec<YearSealRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .seals
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn sealy_seal(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .seals
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "prepared" {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = "sealed".into();
+        Ok(())
+    }
+    async fn sealy_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.seals.get(&id) {
+            Some(r) if r.org == org => {
+                m.seals.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

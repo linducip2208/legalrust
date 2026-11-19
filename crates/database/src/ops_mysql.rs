@@ -5351,6 +5351,159 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn selfcheck_add(
+        &self,
+        org: &str,
+        period: &str,
+        passed: i64,
+        total: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let period = period.trim();
+        if period.is_empty() || period.len() > 20 {
+            return Err(StoreError::Conflict("period".into()));
+        }
+        if !(0..=total).contains(&passed) || total <= 0 || total > 1000 {
+            return Err(StoreError::Conflict("passed/total".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO selfcheck_runs (org_id, period, passed_items, total_items, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(period)
+        .bind(passed)
+        .bind(total)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate period".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn selfcheck_list(&self, org: &str) -> Result<Vec<SelfcheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, period, passed_items, total_items, note FROM selfcheck_runs WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| SelfcheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                period: x.get::<String, _>("period"),
+                passed_items: x.get::<i64, _>("passed_items"),
+                total_items: x.get::<i64, _>("total_items"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn selfcheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM selfcheck_runs WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn sealy_prepare(&self, org: &str, year: &str, note: &str) -> Result<i64, StoreError> {
+        let year = year.trim();
+        if year.len() != 4 || year.parse::<u32>().is_err() {
+            return Err(StoreError::Conflict("year YYYY".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let count: i64 =
+            sqlx::query("SELECT COUNT(*) AS c FROM protocol_books WHERE org_id=? AND book_year=?")
+                .bind(org)
+                .bind(year)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(db_err)?
+                .get::<i64, _>("c");
+        let r = sqlx::query(
+            "INSERT INTO year_end_seals (org_id, year, book_count, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(year)
+        .bind(count)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate year".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn sealy_list(&self, org: &str) -> Result<Vec<YearSealRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, year, book_count, note, status FROM year_end_seals WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| YearSealRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                year: x.get::<String, _>("year"),
+                book_count: x.get::<i64, _>("book_count"),
+                note: x.get::<String, _>("note"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn sealy_seal(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM year_end_seals WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("prepared") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE year_end_seals SET status='sealed' WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn sealy_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM year_end_seals WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

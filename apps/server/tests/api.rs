@@ -3576,6 +3576,10 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "sbox-add",
         "sbox-reload",
         "sbox-list",
+        "seal-year",
+        "seal-add",
+        "seal-reload",
+        "seal-list",
         "perf-reload",
         "perf-sum",
         "vol-group",
@@ -8255,6 +8259,166 @@ async fn storage_boxes_and_mpd_transfers() {
 }
 
 #[tokio::test]
+async fn selfcheck_and_year_seals() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "scseal@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/selfchecks",
+            r#"{"period":"Q1","passed_items":1,"total_items":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // passed > total rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/selfchecks",
+            r#"{"period":"2026-Q1","passed_items":9,"total_items":8}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/selfchecks",
+            r#"{"period":"2026-Q1","passed_items":7,"total_items":8,"note":"OK"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/selfchecks",
+            r#"{"period":"2026-Q1","passed_items":1,"total_items":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/selfchecks", &tok))
+        .await
+        .unwrap();
+    let sc = body_json(res).await;
+    assert_eq!(sc.as_array().unwrap().len(), 1);
+    assert_eq!(sc[0]["pct"].as_f64().unwrap(), 87.5);
+    // Year seals: book count snapshot (0 books for 2026 in this org).
+    // Year must be YYYY; malformed years rejected by the store guard.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/year-seals",
+            r#"{"year":"20XX","note":"X"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/year-seals",
+            r#"{"year":"2026","note":"Tutup buku"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/year-seals", r#"{"year":"2026"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/year-seals/{sid}/seal"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/year-seals", &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert!(sv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(sid)
+            && r["status"] == "sealed"
+            && r["book_count"].as_i64().unwrap() == 0));
+    // Sealed books cannot be resealed; delete is Delete-gated.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/year-seals/{sid}/seal"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/year-seals/{sid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=selfcheck", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.selfcheck_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/selfchecks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn inventory_and_meterai_usage() {
     use tower::ServiceExt;
     let a = app();
@@ -11409,6 +11573,10 @@ async fn uib_app_has_approvals_ui() {
         "mcl-list",
         "score-reload",
         "score-list",
+        "sc-period",
+        "sc-add",
+        "sc-reload",
+        "sc-list",
         "regpack-csv",
         "ev-title",
         "ev-add",

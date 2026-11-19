@@ -1441,6 +1441,42 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     sboxRefresh();
   });
   on('sbox-reload', 'click', sboxRefresh);
+  /* ---- office: year-end seals ---- */
+  async function sealRefresh() {
+    var box = document.getElementById('seal-list');
+    if (!box) return;
+    var v = await j('/api/v1/year-seals');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'prepared' ? '<button class="btn btn-sm btn-success" data-seal-go="' + x.id + '" type="button">Segel</button> ' : '<span class="text-muted">disegel</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-seal-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.year) + '</td><td>' + x.book_count + ' buku</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada penyegelan.</td></tr>';
+    qsa('[data-seal-go]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/year-seals/' + b.getAttribute('data-seal-go') + '/seal', {});
+        if (!r.ok) { pmsg('seal-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('seal-msg', '');
+        sealRefresh();
+      });
+    });
+    qsa('[data-seal-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/year-seals/' + b.getAttribute('data-seal-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('seal-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('seal-msg', '');
+        sealRefresh();
+      });
+    });
+  }
+  on('seal-add', 'click', async function () {
+    if (!pval('seal-year')) { pmsg('seal-msg', 'Isi tahun (YYYY).'); return; }
+    var r = await ppost('/api/v1/year-seals', { year: pval('seal-year'), note: pval('seal-note') || '' });
+    if (!r.ok) { pmsg('seal-msg', 'Gagal (' + r.status + '). Tahun duplikat?'); return; }
+    pmsg('seal-msg', '');
+    sealRefresh();
+  });
+  on('seal-reload', 'click', sealRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1479,7 +1515,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('mpd-reload', 'click', mpdRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3484,6 +3520,32 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('');
   }
   on('score-reload', 'click', scoreRefresh);
+  /* ---- office: self-check runs ---- */
+  async function scRefresh() {
+    var box = document.getElementById('sc-list');
+    if (!box) return;
+    var v = await j('/api/v1/selfchecks');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.period) + '</td><td><strong>' + x.pct + '%</strong> <span class="text-muted">(' + x.passed_items + '/' + x.total_items + ')</span></td><td><button class="btn btn-sm btn-outline-danger" data-sc-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada self-check.</td></tr>';
+    qsa('[data-sc-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/selfchecks/' + b.getAttribute('data-sc-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('sc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sc-msg', '');
+        scRefresh();
+      });
+    });
+  }
+  on('sc-add', 'click', async function () {
+    if (!pval('sc-period') || !(+pval('sc-total') > 0)) { pmsg('sc-msg', 'Isi periode dan total butir.'); return; }
+    var r = await ppost('/api/v1/selfchecks', { period: pval('sc-period'), passed_items: +pval('sc-passed') || 0, total_items: +pval('sc-total'), note: pval('sc-note') || '' });
+    if (!r.ok) { pmsg('sc-msg', 'Gagal (' + r.status + '). Lolos ≤ total; periode unik.'); return; }
+    pmsg('sc-msg', '');
+    scRefresh();
+  });
+  on('sc-reload', 'click', scRefresh);
   on('regpack-csv', 'click', function () { dlCsv('/api/v1/reports/regulator-pack.csv', 'regulator-pack.csv', 'posture-msg'); });
   /* ---- compliance: evidence vault ---- */
   async function evRefresh() {
@@ -3536,7 +3598,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); mclRefresh(); scoreRefresh(); scRefresh(); evRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -3580,6 +3642,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   perfRefresh();
   volRefresh();
   sboxRefresh();
+  sealRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();
@@ -3607,6 +3670,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   aplanRefresh();
   mclRefresh();
   scoreRefresh();
+  scRefresh();
   evRefresh();
   postureRefresh();
   alertsRefresh();
