@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 160: portal invoices + booking (main)
+- portal invoices + appointments (identity scope, own-name key) + kartu + uji.
+- F-D19-009 PARTIAL->IMPLEMENTED, F-D19-011 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 450/0; registry ~30.9 (289 IMPLEMENTED); mean 34.3 (279 v).
+
 ## Done wave 159: portal inbox + secure upload (main)
 - portal inbox + ack + ownership guards on shared doc routes + kartu + uji.
 - F-D19-005 PLANNED->IMPLEMENTED, F-D19-006 NOT_STARTED->IMPLEMENTED (~73.6 verified). Workspace 449/0; registry ~30.7 (287 IMPLEMENTED); mean 34.2 (277 v).

@@ -5691,6 +5691,9 @@ async fn crm_app_contains_crm_ids() {
         "ptl-matters",
         "ptl-inbox",
         "ptl-upload",
+        "ptl-invoices",
+        "ptl-book",
+        "ptl-appts",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11668,6 +11671,86 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_invoices_and_booking() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal5@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"INV","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let iid = mk_invoice(&a, &tok, mid, 2_500_000).await;
+    let _ = iid;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p5@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Invoice visible with totals; booking roundtrip under own name.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/invoices", &ptok))
+        .await
+        .unwrap();
+    let iv = body_json(res).await;
+    assert!(iv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["total_minor"].as_i64() == Some(2_500_000)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/appointments",
+            r#"{"purpose":"Konsultasi","scheduled_at":"2027-06-01 10:00"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/appointments", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["purpose"] == "Konsultasi"));
+    // Staff is not a portal identity.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/invoices", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

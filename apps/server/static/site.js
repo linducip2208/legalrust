@@ -3459,6 +3459,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       });
     });
   });
+  on('ptl-invoices', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/invoices', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.number) + ' · ' + fmtRp(x.total_minor) + ' · ' + esc(x.status) + '</span>'; }).join(' ') || 'Belum ada tagihan.';
+  });
+  on('ptl-book', 'click', async function () {
+    if (!pval('ptl-purpose') || !pval('ptl-when')) { pmsg('ptl-msg', 'Isi keperluan dan waktu.'); return; }
+    var r = await fetch('/api/v1/portal/appointments', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ purpose: pval('ptl-purpose'), scheduled_at: pval('ptl-when') }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Format waktu?'); return; }
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = 'Booking tersimpan.';
+  });
+  on('ptl-appts', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/appointments', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.purpose) + ' · ' + esc(x.scheduled_at) + ' · ' + badge(x.status) + '</span>'; }).join(' ') || 'Belum ada janji.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

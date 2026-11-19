@@ -7987,11 +7987,14 @@
   "id": "F-D19-009",
   "domain": "D19",
   "title": "Invoice & payment view",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
-   "migrations/0008_ops.sql: document_shares"
-  ]
+   "lib.rs: GET /api/v1/portal/invoices (own matters, totals + matter-open, RBAC)",
+   "site.js: tagihan button (portal card)",
+   "tests: portal_invoices_and_booking e2e (totals asserted, staff 403)",
+   "Prior: staff invoice/payment flows already live (finance slice)"
+  ],
+  "audit_note": "Wave 160: portal invoice view live. Verified by test (450/0)."
  },
  {
   "id": "F-D19-010",
@@ -8006,10 +8009,13 @@
   "id": "F-D19-011",
   "domain": "D19",
   "title": "Appointment booking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: POST+GET /api/v1/portal/appointments (books under own display name, lists own)",
+   "site.js: booking form + list (portal card)",
+   "tests: booking roundtrip asserted; status flow stays staff-side"
+  ],
+  "audit_note": "Wave 160: portal booking live. Verified by test (450/0)."
  },
  {
   "id": "F-D19-012",
