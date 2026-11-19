@@ -5021,13 +5021,16 @@
   "id": "F-D13-003",
   "domain": "D13",
   "title": "Certificate authenticity checklist",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs: GET /api/v1/ppat/{id}/checklist (required fields per kind + flow position)",
    "apps/server/static/site.js: per-row Cek button with inline missing-fields",
-   "apps/server/tests/api.rs: checklist complete/gaps/404 assertions"
+   "apps/server/tests/api.rs: checklist complete/gaps/404 assertions",
+   "apps/server/src/lib.rs: GET /api/v1/ppat/{id}/authenticity (5-aspect live-data verdict, RBAC)",
+   "apps/server/static/site.js: aut card Verdict keaslian + hooks",
+   "apps/server/tests/api.rs: certificate_authenticity_verdict e2e (false->true across full chain, 404/401)"
   ],
-  "audit_note": "Wave 29: PPAT completeness checklist live; full certificate-authenticity flow still pending."
+  "audit_note": "Wave 110: full authenticity flow live (parcel checks stay per-bidang by design). PARTIAL->IMPLEMENTED, verified by test (399/0). D13 CLOSED 40/40."
  },
  {
   "id": "F-D13-004",

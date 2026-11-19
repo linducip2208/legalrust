@@ -3701,6 +3701,9 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "bpnr-add",
         "bpnr-reload",
         "bpnr-list",
+        "aut-ppat",
+        "aut-check",
+        "aut-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8705,6 +8708,143 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn certificate_authenticity_verdict() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "authverd@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"AV/1","deed_kind":"ajb","seller":"AA","buyer":"BB","object":"SHM 1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Bare deed fails with reasons.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/authenticity"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v0 = body_json(res).await;
+    assert_eq!(v0["verdict"], serde_json::json!(false));
+    assert!(!v0["reasons"].as_array().unwrap().is_empty());
+    // Build the full chain: consent verified + scan pinned + draft + BPN answered.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"marital","party":"Istri AA"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/consents/{cid}/verify"),
+            r#"{"verified":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let content = b"scan-shm";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"shm-av1.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/vault"),
+            &format!(r#"{{"doc_id":{did}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/ajb-drafts"),
+            r#"{"body":"Draf AJB yang cukup panjang untuk lolos validasi minimum."}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bpn-tracks",
+            r#"{"kind":"verification","ref_no":"V-AV1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["submitted", "answered"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/bpn-tracks/{bid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/authenticity"), &tok))
+        .await
+        .unwrap();
+    let v1 = body_json(res).await;
+    assert_eq!(
+        v1["verdict"],
+        serde_json::json!(true),
+        "checks: {}",
+        serde_json::to_string(&v1["checks"]).unwrap()
+    );
+    assert!(v1["reasons"].as_array().unwrap().is_empty());
+    // Ghost deed 404s; anon 401s.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ppat/999999/authenticity", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/ppat/{pid}/authenticity"))
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -2253,6 +2253,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   bpnWire('verification', 'bpnv-ref', 'bpnv-office', 'bpnv-add', 'bpnv-reload', 'bpnv-list', 'bpnv-msg');
   bpnWire('queue', 'bpnq-ref', 'bpnq-office', 'bpnq-add', 'bpnq-reload', 'bpnq-list', 'bpnq-msg');
   bpnWire('response', 'bpnr-ref', 'bpnr-office', 'bpnr-add', 'bpnr-reload', 'bpnr-list', 'bpnr-msg');
+  /* ---- property: authenticity verdict ---- */
+  on('aut-check', 'click', async function () {
+    var box = document.getElementById('aut-list');
+    var vd = document.getElementById('aut-verdict');
+    if (!pval('aut-ppat')) { pmsg('aut-msg', 'Isi ID akta.'); return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pval('aut-ppat')) + '/authenticity');
+    if (!v) { pmsg('aut-msg', 'Gagal memuat (akta tidak ada?).'); return; }
+    pmsg('aut-msg', '');
+    if (vd) vd.innerHTML = v.verdict ? '<span class="badge bg-green-lt">LENGKAP</span>' : '<span class="badge bg-red-lt">BELUM LENGKAP</span>';
+    if (!box) return;
+    box.innerHTML = (v.checks || []).map(function (x) {
+      return '<tr><td>' + esc(x.label) + '</td><td>' + (x.pass ? '<span class="badge bg-green-lt">lolos</span>' : '<span class="badge bg-red-lt">gagal</span>') + '</td><td>' + esc(x.detail) + '</td></tr>';
+    }).join('');
+  });
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -4606,8 +4620,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   vltRefresh();
   bpnRefresh('verification', 'bpnv-ref', 'bpnv-list', 'bpnv-msg');
   bpnRefresh('queue', 'bpnq-ref', 'bpnq-list', 'bpnq-msg');
-  bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg');
-  klapperRefresh();
+  bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg');  klapperRefresh();
   perfRefresh();
   volRefresh();
   sboxRefresh();
