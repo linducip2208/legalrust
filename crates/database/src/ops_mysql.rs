@@ -2541,6 +2541,105 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cemp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        role: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if role.len() > 120 || contact.len() > 160 {
+            return Err(StoreError::Conflict("role/contact".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_employees (org_id, client_id, name, role, contact) VALUES (?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(name).bind(role.trim()).bind(contact.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cemp_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientEmployeeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, name, role, contact FROM client_employees WHERE org_id=? AND client_id=? ORDER BY id LIMIT 200")
+            .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientEmployeeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                name: x.get::<String, _>("name"),
+                role: x.get::<String, _>("role"),
+                contact: x.get::<String, _>("contact"),
+            })
+            .collect())
+    }
+    async fn cemp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_employees WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn ccns_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        channel: &str,
+        allowed: bool,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let c = channel.trim().to_lowercase();
+        if !["email", "phone", "visit", "newsletter"].contains(&c.as_str()) {
+            return Err(StoreError::Conflict("channel".into()));
+        }
+        sqlx::query("INSERT INTO client_consents (org_id, client_id, channel, allowed) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE allowed=VALUES(allowed)")
+            .bind(org).bind(client_id as u64).bind(&c).bind(if allowed { 1u8 } else { 0u8 })
+            .execute(&self.pool).await.map_err(db_err)?;
+        let x: Option<u64> = sqlx::query(
+            "SELECT id FROM client_consents WHERE org_id=? AND client_id=? AND channel=?",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(&c)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .map(|x| x.get::<u64, _>("id"));
+        x.map(|v| v as i64).ok_or(StoreError::NotFound)
+    }
+    async fn ccns_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientConsentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, channel, allowed FROM client_consents WHERE org_id=? AND client_id=? ORDER BY channel")
+            .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientConsentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                channel: x.get::<String, _>("channel"),
+                allowed: x.get::<u8, _>("allowed") != 0,
+            })
+            .collect())
+    }
     async fn up_start(
         &self,
         org: &str,

@@ -5642,6 +5642,11 @@ async fn crm_app_contains_crm_ids() {
         "ccr-cid",
         "ccr-add",
         "ccr-list",
+        "cem-cid",
+        "cem-add",
+        "cem-list",
+        "ccn-channel",
+        "ccn-set",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -10996,6 +11001,129 @@ async fn client_communication_timeline() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/timeline"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_roster_and_consents() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliroster@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/employees"),
+            r#"{"name":"Sekretaris"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/999999/employees",
+            r#"{"name":"Hantu"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/employees"),
+            r#"{"name":"Direktur A","role":"Direktur"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/employees"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/employees/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Consents: upsert idempotent, bad channel rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/consents"),
+            r#"{"channel":"newsletter","allowed":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let first = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/consents"),
+            r#"{"channel":"newsletter","allowed":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["id"].as_i64().unwrap(), first);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/consents"),
+            r#"{"channel":"sms","allowed":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/consents"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["channel"] == "newsletter" && r["allowed"] == true));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/clients/{cli}/employees"))
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -35,6 +35,9 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 144: roster + kanal (main)
+- Upsert + guards; workspace **434 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 143: merge + koreksi (main)
 - Cross-store legs + SoD + guards; workspace **433 passed, 0 failed**.
 

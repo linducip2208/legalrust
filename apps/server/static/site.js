@@ -3126,6 +3126,49 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ccrRefresh();
   });
   on('ccr-reload', 'click', ccrRefresh);
+  /* ---- roster + consent center (F-D02-028/027) ---- */
+  async function cemRefresh() {
+    var box = document.getElementById('cem-list');
+    if (!box) return;
+    if (!pval('cem-cid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID klien lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cem-cid')) + '/employees');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.role || '—') + '</td><td><button class="btn btn-sm btn-outline-danger" data-cem-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada karyawan.</td></tr>';
+    qsa('[data-cem-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/employees/' + b.getAttribute('data-cem-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cem-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cem-msg', '');
+        cemRefresh();
+      });
+    });
+  }
+  on('cem-add', 'click', async function () {
+    if (!pval('cem-cid') || !pval('cem-name')) { pmsg('cem-msg', 'Isi ID klien dan nama.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cem-cid')) + '/employees', { name: pval('cem-name'), role: pval('cem-role') || '' });
+    if (!r.ok) { pmsg('cem-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cem-msg', '');
+    cemRefresh();
+  });
+  on('cem-reload', 'click', cemRefresh);
+  async function ccnRefresh() {
+    var out = document.getElementById('ccn-out');
+    if (!pval('cem-cid')) { if (out) out.textContent = 'Isi ID klien.'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cem-cid')) + '/consents');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = v.map(function (x) { return '<span class="badge">' + esc(x.channel) + ': ' + (x.allowed ? 'ya' : 'tidak') + '</span>'; }).join(' ') || 'Belum ada preferensi.';
+  }
+  on('ccn-set', 'click', async function () {
+    if (!pval('cem-cid')) { pmsg('cem-msg', 'Isi ID klien.'); return; }
+    var el = document.getElementById('ccn-allow');
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cem-cid')) + '/consents', { channel: pval('ccn-channel') || 'email', allowed: !!(el && el.checked) });
+    if (!r.ok) { pmsg('cem-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cem-msg', '');
+    ccnRefresh();
+  });
+  on('ccn-reload', 'click', ccnRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -3955,6 +3998,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   oppRefresh();
   cwbRefresh();
   ccrRefresh();
+  cemRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

@@ -259,6 +259,25 @@ pub struct ClientCorrectionRow {
     pub requested_by: String,
     pub decided_by: String,
 }
+/// Corporate employee roster entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientEmployeeRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub name: String,
+    pub role: String,
+    pub contact: String,
+}
+/// Client channel consent (opt in/out per channel).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientConsentRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub channel: String,
+    pub allowed: bool,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -1914,6 +1933,34 @@ pub trait OpsStore: Send + Sync {
         decided_by: &str,
     ) -> Result<String, StoreError>;
     async fn ccor_mark_applied(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Corporate employee roster.
+    async fn cemp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        role: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cemp_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientEmployeeRow>, StoreError>;
+    async fn cemp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Channel consent center (upsert per client+channel, list).
+    async fn ccns_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        channel: &str,
+        allowed: bool,
+    ) -> Result<i64, StoreError>;
+    async fn ccns_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientConsentRow>, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

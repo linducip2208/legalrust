@@ -142,6 +142,8 @@ struct Inner {
     copps: HashMap<i64, ClientOppRow>,
     cwbs: HashMap<i64, ClientWinbackRow>,
     ccors: HashMap<i64, ClientCorrectionRow>,
+    cemps: HashMap<i64, ClientEmployeeRow>,
+    ccnss: HashMap<i64, ClientConsentRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -177,6 +179,14 @@ fn chrel_ok(relation: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("relation".into()));
     }
     Ok(r)
+}
+
+fn ccns_ok(channel: &str) -> Result<String, StoreError> {
+    let c = channel.trim().to_lowercase();
+    if !["email", "phone", "visit", "newsletter"].contains(&c.as_str()) {
+        return Err(StoreError::Conflict("channel".into()));
+    }
+    Ok(c)
 }
 
 fn meta_key_ok(key: &str) -> Result<String, StoreError> {
@@ -2752,6 +2762,114 @@ impl OpsStore for MemoryOps {
         }
         r.status = "applied".into();
         Ok(())
+    }
+    async fn cemp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        role: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if role.len() > 120 || contact.len() > 160 {
+            return Err(StoreError::Conflict("role/contact".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cemps.insert(
+            id,
+            ClientEmployeeRow {
+                id,
+                org: org.into(),
+                client_id,
+                name: name.into(),
+                role: role.trim().into(),
+                contact: contact.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cemp_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientEmployeeRow>, StoreError> {
+        let mut v: Vec<ClientEmployeeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cemps
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn cemp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cemps.get(&id) {
+            Some(r) if r.org == org => {
+                m.cemps.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ccns_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        channel: &str,
+        allowed: bool,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let channel = ccns_ok(channel)?;
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, _)) = m
+            .ccnss
+            .iter()
+            .find(|(_, r)| r.org == org && r.client_id == client_id && r.channel == channel)
+        {
+            let id = *id;
+            m.ccnss.get_mut(&id).unwrap().allowed = allowed;
+            return Ok(id);
+        }
+        let id = self.next(&mut m);
+        m.ccnss.insert(
+            id,
+            ClientConsentRow {
+                id,
+                org: org.into(),
+                client_id,
+                channel,
+                allowed,
+            },
+        );
+        Ok(id)
+    }
+    async fn ccns_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientConsentRow>, StoreError> {
+        let mut v: Vec<ClientConsentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ccnss
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.channel.cmp(&b.channel));
+        Ok(v)
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

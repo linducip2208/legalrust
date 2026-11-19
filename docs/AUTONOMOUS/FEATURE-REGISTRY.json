@@ -696,19 +696,29 @@
   "id": "F-D02-027",
   "domain": "D02",
   "title": "Client consent & preference center",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0092: client_consents table (channel check, upsert key, forward-only)",
+   "ops.rs + memory + mysql: ccns upsert/list",
+   "lib.rs: consent endpoints (existence-verified, RBAC)",
+   "site.js: consent center card + hooks (klien panel)",
+   "tests: idempotent upsert + bad channel 409 asserted"
+  ],
+  "audit_note": "Wave 144: consent center live. Verified by test (434/0)."
  },
  {
   "id": "F-D02-028",
   "domain": "D02",
   "title": "Corporate client employee roster",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0092: client_employees table (forward-only)",
+   "ops.rs + memory + mysql: cemp add/list/delete",
+   "lib.rs: roster endpoints (existence-verified, RBAC)",
+   "site.js: roster card + hooks (klien panel)",
+   "tests: roster_and_consents e2e (403/404/401)"
+  ],
+  "audit_note": "Wave 144: roster live. Verified by test (434/0)."
  },
  {
   "id": "F-D02-029",
