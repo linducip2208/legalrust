@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 66: compliance dashboard + exporter (main)
 - GET /api/v1/compliance/posture + GET /api/v1/reports/compliance.csv + kartu dasbor kepatuhan.
-- F-D11-029/040 NOT_STARTED->IMPLEMENTED (~73.2 verified). Workspace 355/0; registry ~21.6 (95 IMPLEMENTED); mean ~22.2 (93 v).
+- F-D11-029/040 NOT_STARTED->IMPLEMENTED (~73.2 verified). Workspace 355/0; registry ~21.6 (95 IMPLEMENTED); mean 22.4 (93 v).
 
 ## Done wave 65: ethics declarations + gift register (main)
 - ethics_declarations (0032) + gift_register (0033) + kartu kepatuhan + uji lifecycle.
