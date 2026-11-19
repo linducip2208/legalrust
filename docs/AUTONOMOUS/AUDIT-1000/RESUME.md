@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 69: policy library + control library (main)
 - policies + acks (0038) + controls (0039) + kartu kepatuhan + uji.
-- F-D11-035/027 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 358/0; registry ~22.2 (101 IMPLEMENTED); mean ~22.7 (99 v).
+- F-D11-035/027 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 358/0; registry ~22.2 (101 IMPLEMENTED); mean 22.8 (99 v).
 
 ## Done wave 68: whistleblowing + waivers (main)
 - whistle_reports (0036) + exception_waivers (0037) + kartu kepatuhan + uji.
