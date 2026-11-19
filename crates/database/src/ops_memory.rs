@@ -111,6 +111,8 @@ struct Inner {
     nhoffs: HashMap<i64, NotaryHandoffRow>,
     girik: HashMap<i64, GirikRow>,
     leases: HashMap<i64, LeaseTermRow>,
+    dbatches: HashMap<i64, DevBatchRow>,
+    dunits: HashMap<i64, DevUnitRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1630,6 +1632,191 @@ impl OpsStore for MemoryOps {
                 Ok(())
             }
             None => Err(StoreError::NotFound),
+        }
+    }
+    async fn dbatch_add(
+        &self,
+        org: &str,
+        developer: &str,
+        batch_no: &str,
+        total_units: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let developer = developer.trim();
+        let batch_no = batch_no.trim();
+        if developer.is_empty() || developer.len() > 160 {
+            return Err(StoreError::Conflict("developer".into()));
+        }
+        if batch_no.is_empty() || batch_no.len() > 60 {
+            return Err(StoreError::Conflict("batch_no".into()));
+        }
+        if total_units < 0 {
+            return Err(StoreError::Conflict("total_units".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.dbatches
+            .values()
+            .any(|r| r.org == org && r.batch_no == batch_no)
+        {
+            return Err(StoreError::Conflict("batch_no taken".into()));
+        }
+        let id = self.next(&mut m);
+        m.dbatches.insert(
+            id,
+            DevBatchRow {
+                id,
+                org: org.into(),
+                developer: developer.into(),
+                batch_no: batch_no.into(),
+                total_units,
+                status: "planned".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dbatch_list(&self, org: &str) -> Result<Vec<DevBatchRow>, StoreError> {
+        let mut v: Vec<DevBatchRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dbatches
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dbatch_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dbatches
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "processing") | ("processing", "done")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn dbatch_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dbatches.get(&id) {
+            Some(r) if r.org == org => {
+                m.dbatches.remove(&id);
+                // Detach units (mirror ON DELETE SET NULL).
+                for u in m
+                    .dunits
+                    .values_mut()
+                    .filter(|u| u.org == org && u.batch_id == Some(id))
+                {
+                    u.batch_id = None;
+                }
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dunit_add(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+        unit_code: &str,
+        unit_type: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let unit_code = unit_code.trim();
+        if unit_code.is_empty() || unit_code.len() > 60 {
+            return Err(StoreError::Conflict("unit_code".into()));
+        }
+        if !matches!(
+            unit_type,
+            "rumah" | "ruko" | "apartemen" | "kavling" | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("unit_type".into()));
+        }
+        if price_minor < 0 {
+            return Err(StoreError::Conflict("price".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some(bid) = batch_id {
+            match m.dbatches.get(&bid) {
+                Some(b) if b.org == org => {}
+                _ => return Err(StoreError::NotFound),
+            }
+        }
+        if m.dunits
+            .values()
+            .any(|r| r.org == org && r.unit_code == unit_code)
+        {
+            return Err(StoreError::Conflict("unit_code taken".into()));
+        }
+        let id = self.next(&mut m);
+        m.dunits.insert(
+            id,
+            DevUnitRow {
+                id,
+                org: org.into(),
+                batch_id,
+                unit_code: unit_code.into(),
+                unit_type: unit_type.into(),
+                price_minor,
+                status: "available".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dunit_list(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+    ) -> Result<Vec<DevUnitRow>, StoreError> {
+        let mut v: Vec<DevUnitRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dunits
+            .values()
+            .filter(|r| r.org == org && batch_id.map(|b| r.batch_id == Some(b)).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dunit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dunits
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("available", "booked") | ("booked", "sold") | ("booked", "available")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn dunit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dunits.get(&id) {
+            Some(r) if r.org == org => {
+                m.dunits.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
         }
     }
     async fn dpia_create(

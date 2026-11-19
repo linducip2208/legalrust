@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 105: batch + unit (main)
+- Batch bulk + stok unit developer; workspace **394 passed, 0 failed**; F-D13-022/023 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 104: girik + sewa (main)
 - Intake girik + ketentuan sewa; workspace **393 passed, 0 failed**; F-D13-021/010 IMPLEMENTED.
 

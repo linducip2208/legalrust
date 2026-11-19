@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 105: batch + unit (main)
+- Chains + dup guards + link + audit; workspace **394 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 104: girik + sewa (main)
 - Chains + upsert totals + guards; workspace **393 passed, 0 failed**.
 

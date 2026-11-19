@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 105: developer batches + unit stock (main)
+- dev_batches + dev_units (0070, batch<->unit link) + kartu + uji.
+- F-D13-022/023 NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 394/0; registry ~26.2 (172 IMPLEMENTED); mean 27.6 (170 v).
+
 ## Done wave 104: girik intake + lease terms (main)
 - girik_intakes + lease_terms (0069) + kartu + uji.
 - F-D13-021/010 NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 393/0; registry ~26.1 (170 IMPLEMENTED); mean 27.5 (168 v).

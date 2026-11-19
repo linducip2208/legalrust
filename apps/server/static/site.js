@@ -1985,6 +1985,83 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('lse-msg', '');
     lseShow(null);
   });
+  /* ---- property: developer batches ---- */
+  var DVB_NEXT = { planned: 'processing', processing: 'done' };
+  async function dvbRefresh() {
+    var box = document.getElementById('dvb-list');
+    if (!box) return;
+    var v = await j('/api/v1/dev-batches');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DVB_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-dvb-next="' + x.id + '" data-dvb-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-dvb-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.developer) + '</td><td>' + esc(x.batch_no) + ' (' + x.total_units + ' unit)</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada batch.</td></tr>';
+    qsa('[data-dvb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/dev-batches/' + b.getAttribute('data-dvb-next') + '/status', { status: b.getAttribute('data-dvb-to') });
+        if (!r.ok) { pmsg('dvb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dvb-msg', '');
+        dvbRefresh();
+      });
+    });
+    qsa('[data-dvb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/dev-batches/' + b.getAttribute('data-dvb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dvb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dvb-msg', '');
+        dvbRefresh();
+      });
+    });
+  }
+  on('dvb-add', 'click', async function () {
+    if (!pval('dvb-dev') || !pval('dvb-no')) { pmsg('dvb-msg', 'Isi developer dan no. batch.'); return; }
+    var r = await ppost('/api/v1/dev-batches', { developer: pval('dvb-dev'), batch_no: pval('dvb-no'), total_units: +pval('dvb-total') || 0 });
+    if (!r.ok) { pmsg('dvb-msg', 'Gagal (' + r.status + '). No. batch ganda?'); return; }
+    pmsg('dvb-msg', '');
+    dvbRefresh();
+  });
+  on('dvb-reload', 'click', dvbRefresh);
+  /* ---- property: developer units ---- */
+  var DVU_NEXT = { available: 'booked', booked: 'sold' };
+  async function dvuRefresh() {
+    var box = document.getElementById('dvu-list');
+    if (!box) return;
+    var v = await j('/api/v1/dev-units');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DVU_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-dvu-next="' + x.id + '" data-dvu-to="' + nx + '" type="button">→ ' + nx + '</button> ' : (x.status === 'sold' ? '<span class="text-muted">terjual</span>' : '<button class="btn btn-sm" data-dvu-next="' + x.id + '" data-dvu-to="available" type="button">batalkan booking</button> '))
+        + ' <button class="btn btn-sm btn-outline-danger" data-dvu-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.unit_code) + '</td><td>' + badge(x.unit_type) + '</td><td>' + fmtRp(x.price_minor) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada unit.</td></tr>';
+    qsa('[data-dvu-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/dev-units/' + b.getAttribute('data-dvu-next') + '/status', { status: b.getAttribute('data-dvu-to') });
+        if (!r.ok) { pmsg('dvu-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dvu-msg', '');
+        dvuRefresh();
+      });
+    });
+    qsa('[data-dvu-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/dev-units/' + b.getAttribute('data-dvu-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dvu-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dvu-msg', '');
+        dvuRefresh();
+      });
+    });
+  }
+  on('dvu-add', 'click', async function () {
+    if (!pval('dvu-code')) { pmsg('dvu-msg', 'Isi kode unit.'); return; }
+    var bid = parseInt(pval('dvu-batch'), 10);
+    var r = await ppost('/api/v1/dev-units', { batch_id: isNaN(bid) ? null : bid, unit_code: pval('dvu-code'), unit_type: pval('dvu-type') || 'rumah', price_minor: +pval('dvu-price') || 0 });
+    if (!r.ok) { pmsg('dvu-msg', 'Gagal (' + r.status + '). Kode ganda / batch tidak ada?'); return; }
+    pmsg('dvu-msg', '');
+    dvuRefresh();
+  });
+  on('dvu-reload', 'click', dvuRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2158,7 +2235,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4329,6 +4406,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   pdbRefresh();
   nhoRefresh();
   grkRefresh();
+  dvbRefresh();
+  dvuRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

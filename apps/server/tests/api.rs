@@ -3662,6 +3662,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "lse-save",
         "lse-load",
         "lse-del",
+        "dvb-dev",
+        "dvb-add",
+        "dvb-reload",
+        "dvb-list",
+        "dvu-code",
+        "dvu-add",
+        "dvu-reload",
+        "dvu-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8666,6 +8674,151 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn dev_batches_and_units() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "devbatch@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/dev-batches",
+            r#"{"developer":"PT Maju","batch_no":"B-1"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/dev-batches",
+            r#"{"developer":"PT Maju","batch_no":"B-1","total_units":50}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    // Duplicate batch_no rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/dev-batches",
+            r#"{"developer":"PT Maju","batch_no":"B-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Skip-ahead rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/dev-batches/{bid}/status"),
+            r#"{"status":"done"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/dev-batches/{bid}/status"),
+            r#"{"status":"processing"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Units: ghost batch 404s; duplicate code 409s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/dev-units",
+            r#"{"batch_id":999999,"unit_code":"A-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/dev-units", &format!(r#"{{"batch_id":{bid},"unit_code":"A-1","unit_type":"rumah","price_minor":500000000}}"#), Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let uid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/dev-units",
+            r#"{"unit_code":"A-1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // available->sold direct rejected; booked->sold ok; filter by batch.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/dev-units/{uid}/status"),
+            r#"{"status":"sold"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["booked", "sold"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/dev-units/{uid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "unit to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/dev-units?batch_id={bid}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(uid) && r["status"] == "sold"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=dbatch", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.dbatch_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/dev-batches")
                 .body(Body::empty())
                 .unwrap(),
         )

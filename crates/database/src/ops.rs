@@ -291,6 +291,28 @@ pub struct LeaseTermRow {
     pub deposit_minor: i64,
     pub note: String,
 }
+/// Developer bulk-transaction batch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DevBatchRow {
+    pub id: i64,
+    pub org: String,
+    pub developer: String,
+    pub batch_no: String,
+    pub total_units: i64,
+    pub status: String,
+    pub note: String,
+}
+/// Developer unit stock entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DevUnitRow {
+    pub id: i64,
+    pub org: String,
+    pub batch_id: Option<i64>,
+    pub unit_code: String,
+    pub unit_type: String,
+    pub price_minor: i64,
+    pub status: String,
+}
 /// Land-history (riwayat tanah) record entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LandHistoryRow {
@@ -1428,6 +1450,34 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn lease_get(&self, org: &str, ppat_id: i64) -> Result<Option<LeaseTermRow>, StoreError>;
     async fn lease_delete(&self, org: &str, ppat_id: i64) -> Result<(), StoreError>;
+    /// Developer bulk-transaction batches.
+    async fn dbatch_add(
+        &self,
+        org: &str,
+        developer: &str,
+        batch_no: &str,
+        total_units: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn dbatch_list(&self, org: &str) -> Result<Vec<DevBatchRow>, StoreError>;
+    async fn dbatch_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn dbatch_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Developer unit stock registry.
+    async fn dunit_add(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+        unit_code: &str,
+        unit_type: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError>;
+    async fn dunit_list(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+    ) -> Result<Vec<DevUnitRow>, StoreError>;
+    async fn dunit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn dunit_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

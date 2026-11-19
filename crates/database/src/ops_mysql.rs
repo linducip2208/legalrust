@@ -1633,6 +1633,219 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dbatch_add(
+        &self,
+        org: &str,
+        developer: &str,
+        batch_no: &str,
+        total_units: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let developer = developer.trim();
+        let batch_no = batch_no.trim();
+        if developer.is_empty() || developer.len() > 160 {
+            return Err(StoreError::Conflict("developer".into()));
+        }
+        if batch_no.is_empty() || batch_no.len() > 60 {
+            return Err(StoreError::Conflict("batch_no".into()));
+        }
+        if total_units < 0 {
+            return Err(StoreError::Conflict("total_units".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO dev_batches (org_id, developer, batch_no, total_units, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(developer)
+        .bind(batch_no)
+        .bind(total_units)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dbatch_list(&self, org: &str) -> Result<Vec<DevBatchRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, developer, batch_no, total_units, status, note FROM dev_batches WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DevBatchRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                developer: x.get::<String, _>("developer"),
+                batch_no: x.get::<String, _>("batch_no"),
+                total_units: x.get::<i32, _>("total_units") as i64,
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn dbatch_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "processing" | "done") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM dev_batches WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("planned"), "processing") | (Some("processing"), "done")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE dev_batches SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dbatch_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM dev_batches WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn dunit_add(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+        unit_code: &str,
+        unit_type: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let unit_code = unit_code.trim();
+        if unit_code.is_empty() || unit_code.len() > 60 {
+            return Err(StoreError::Conflict("unit_code".into()));
+        }
+        if !matches!(
+            unit_type,
+            "rumah" | "ruko" | "apartemen" | "kavling" | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("unit_type".into()));
+        }
+        if price_minor < 0 {
+            return Err(StoreError::Conflict("price".into()));
+        }
+        if let Some(bid) = batch_id {
+            let own: Option<String> = sqlx::query("SELECT org_id FROM dev_batches WHERE id=?")
+                .bind(bid as u64)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("org_id"));
+            if own.as_deref() != Some(org) {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let r = sqlx::query(
+            "INSERT INTO dev_units (org_id, batch_id, unit_code, unit_type, price_minor) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(batch_id.map(|b| b as u64))
+        .bind(unit_code)
+        .bind(unit_type)
+        .bind(price_minor)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dunit_list(
+        &self,
+        org: &str,
+        batch_id: Option<i64>,
+    ) -> Result<Vec<DevUnitRow>, StoreError> {
+        let rows = if let Some(bid) = batch_id {
+            sqlx::query("SELECT id, org_id, batch_id, unit_code, unit_type, price_minor, status FROM dev_units WHERE org_id=? AND batch_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(bid as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, batch_id, unit_code, unit_type, price_minor, status FROM dev_units WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| DevUnitRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                batch_id: x.get::<Option<u64>, _>("batch_id").map(|b| b as i64),
+                unit_code: x.get::<String, _>("unit_code"),
+                unit_type: x.get::<String, _>("unit_type"),
+                price_minor: x.get::<i64, _>("price_minor"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn dunit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "booked" | "sold" | "available") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM dev_units WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("available"), "booked")
+                | (Some("booked"), "sold")
+                | (Some("booked"), "available")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE dev_units SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dunit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM dev_units WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

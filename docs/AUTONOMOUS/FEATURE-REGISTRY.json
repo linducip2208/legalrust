@@ -5267,19 +5267,29 @@
   "id": "F-D13-022",
   "domain": "D13",
   "title": "Developer bulk-transaction batch",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0070_dev_batch_stock.sql: dev_batches table (unique batch_no per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + planned->processing->done + detach-on-delete",
+   "apps/server/src/lib.rs: POST/GET /api/v1/dev-batches + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dvbRefresh card Batch bulk + hooks",
+   "apps/server/tests/api.rs: dev_batches_and_units e2e (dup 409, skip-ahead 409, 403/401)"
+  ],
+  "audit_note": "Wave 105: full lifecycle live; verified by test (394/0)."
  },
  {
   "id": "F-D13-023",
   "domain": "D13",
   "title": "Developer unit (stock) registry",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0070_dev_batch_stock.sql: dev_units table (FK batch SET NULL, unique code per org)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list-by-batch/booked/sold/cancel/delete",
+   "apps/server/src/lib.rs: POST/GET /api/v1/dev-units + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dvuRefresh card Stok unit + hooks",
+   "apps/server/tests/api.rs: ghost-batch 404, dup-code 409, direct-sold 409 asserted"
+  ],
+  "audit_note": "Wave 105: verified by test (394/0)."
  },
  {
   "id": "F-D13-024",
