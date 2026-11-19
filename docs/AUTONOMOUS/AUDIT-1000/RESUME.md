@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 75: appointments + queue board (main)
 - appointments (0045, slot ketat) + papan antrean derivasi + kartu klien + uji.
-- F-D12-010/011 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 364/0; registry ~22.9 (112 IMPLEMENTED); mean ~23.4 (110 v).
+- F-D12-010/011 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 364/0; registry ~22.9 (112 IMPLEMENTED); mean 23.6 (110 v).
 
 ## Done wave 74: protocol books + handover log (main, D12 opened)
 - protocol_books + protocol_handovers (0044) + kartu akta + uji.
