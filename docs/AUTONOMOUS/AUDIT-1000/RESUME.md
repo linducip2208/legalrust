@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 93: zone table + PPh/BPHTB worksheets (main)
+- zones (0061) + worksheet endpoints + kartu akta + uji (formula jujur, bukan advis).
+- F-D13-031/018/019 PLANNED/NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 382/0; registry ~24.9 (148 IMPLEMENTED); mean ~25.8 (146 v).
+
 ## Done wave 92: PPAT KYC bundle + handover receipts (main, D13 opened)
 - ppat_parties + cert_handovers (0060) + kartu akta + uji.
 - F-D13-014/028 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 381/0; registry ~24.8 (145 IMPLEMENTED); mean 25.8 (143 v).

@@ -168,6 +168,15 @@ pub struct BreachRow {
     pub affected_count: i64,
     pub status: String,
 }
+/// Zone (ZNT/NJOP) reference entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ZoneRow {
+    pub id: i64,
+    pub org: String,
+    pub area_code: String,
+    pub area_name: String,
+    pub njop_minor: i64,
+}
 /// Operational incident (non-PDP incidents, complaints, near-misses).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncidentRow {
@@ -1837,6 +1846,16 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<CertHandoverRow>, StoreError>;
     async fn chandover_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn chandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Zone (ZNT/NJOP) reference table.
+    async fn zone_create(
+        &self,
+        org: &str,
+        area_code: &str,
+        area_name: &str,
+        njop_minor: i64,
+    ) -> Result<i64, StoreError>;
+    async fn zone_list(&self, org: &str) -> Result<Vec<ZoneRow>, StoreError>;
+    async fn zone_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

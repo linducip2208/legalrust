@@ -97,6 +97,7 @@ struct Inner {
     seals: HashMap<i64, YearSealRow>,
     pparties: HashMap<i64, PpatPartyRow>,
     chandovers: HashMap<i64, CertHandoverRow>,
+    zones: HashMap<i64, ZoneRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4873,6 +4874,67 @@ impl OpsStore for MemoryOps {
         match m.chandovers.get(&id) {
             Some(r) if r.org == org => {
                 m.chandovers.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn zone_create(
+        &self,
+        org: &str,
+        area_code: &str,
+        area_name: &str,
+        njop_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let area_code = area_code.trim();
+        let area_name = area_name.trim();
+        if area_code.is_empty() || area_code.len() > 40 {
+            return Err(StoreError::Conflict("area_code".into()));
+        }
+        if area_name.is_empty() || area_name.len() > 200 {
+            return Err(StoreError::Conflict("area_name".into()));
+        }
+        if njop_minor < 0 {
+            return Err(StoreError::Conflict("njop".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.zones
+            .values()
+            .any(|z| z.org == org && z.area_code == area_code)
+        {
+            return Err(StoreError::Conflict("duplicate area_code".into()));
+        }
+        let id = self.next(&mut m);
+        m.zones.insert(
+            id,
+            ZoneRow {
+                id,
+                org: org.into(),
+                area_code: area_code.into(),
+                area_name: area_name.into(),
+                njop_minor,
+            },
+        );
+        Ok(id)
+    }
+    async fn zone_list(&self, org: &str) -> Result<Vec<ZoneRow>, StoreError> {
+        let mut v: Vec<ZoneRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .zones
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn zone_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.zones.get(&id) {
+            Some(r) if r.org == org => {
+                m.zones.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

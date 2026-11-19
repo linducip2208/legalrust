@@ -46,5 +46,5 @@ pub use ops::{
     QuotationRow, RagHit, RecheckRow, RegChangeRow, RiskRow, RopaRow, RosterRow, SelfcheckRow,
     ShareRow, SopRow, StorageBoxRow, TemplateRow, TrainingEvidenceRow, TrainingRow,
     TrustAccountRow, TrustEntryRow, UsageRow, VendorRow, VisitorRow, WaiverRow, WebhookDeliveryRow,
-    WebhookEndpointRow, WhistleRow, WitnessRow, YearSealRow,
+    WebhookEndpointRow, WhistleRow, WitnessRow, YearSealRow, ZoneRow,
 };

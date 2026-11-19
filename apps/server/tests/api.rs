@@ -3584,6 +3584,12 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "sbox-add",
         "sbox-reload",
         "sbox-list",
+        "zone-code",
+        "zone-add",
+        "zone-reload",
+        "zone-list",
+        "tax-value",
+        "tax-calc",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8501,6 +8507,128 @@ async fn staff_productivity_and_waiting_analytics() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/reports/waiting-analytics")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn zones_and_tax_worksheets() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "zonews@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/zones",
+            r#"{"area_code":"X","area_name":"Y","njop_minor":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/zones",
+            r#"{"area_code":"BDG-01","area_name":"Bandung Utara","njop_minor":500000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/zones",
+            r#"{"area_code":"BDG-01","area_name":"Dup","njop_minor":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // PPh: 2.5% x 1.000.000.000 = 25.000.000.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/worksheets/pph?value_minor=1000000000", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let p = body_json(res).await;
+    assert_eq!(p["tax_minor"].as_i64().unwrap(), 25_000_000);
+    assert_eq!(p["rate_pct"].as_f64().unwrap(), 2.5);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/worksheets/pph?value_minor=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // BPHTB: 5% x (200jt - 60jt) = 7jt; below NPOPTKP floors to zero.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/worksheets/bphtb?npop=200000000", &tok))
+        .await
+        .unwrap();
+    let b = body_json(res).await;
+    assert_eq!(b["npoptkp"].as_i64().unwrap(), 60_000_000);
+    assert_eq!(b["base_minor"].as_i64().unwrap(), 140_000_000);
+    assert_eq!(b["tax_minor"].as_i64().unwrap(), 7_000_000);
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/worksheets/bphtb?npop=50000000&npoptkp=60000000",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let b = body_json(res).await;
+    assert_eq!(b["base_minor"].as_i64().unwrap(), 0);
+    assert_eq!(b["tax_minor"].as_i64().unwrap(), 0);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/worksheets/bphtb?npop=-5", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Delete is Delete-gated; list + audit intact.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/zones/1")
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=zone", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.zone_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/worksheets/pph?value_minor=1")
                 .body(Body::empty())
                 .unwrap(),
         )

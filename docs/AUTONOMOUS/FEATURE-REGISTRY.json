@@ -5164,19 +5164,25 @@
   "id": "F-D13-018",
   "domain": "D13",
   "title": "Tax (PPh) computation worksheet",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/worksheets/pph (final 2.5%, saturating math, documented rule)",
+   "apps/server/static/site.js: tax-calc card (PPh row) + hooks",
+   "apps/server/tests/api.rs: 2.5% x 1M = 25000 asserted; zero rejected 422"
+  ],
+  "audit_note": "Wave 93: calculator, not tax advice; verified by test (382/0)."
  },
  {
   "id": "F-D13-019",
   "domain": "D13",
   "title": "BPHTB computation worksheet",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/worksheets/bphtb (5% x max(0,NPOP-NPOPTKP), default 60jt)",
+   "apps/server/static/site.js: tax-calc card (BPHTB row) + hooks",
+   "apps/server/tests/api.rs: 7jt case + floor-zero case asserted"
+  ],
+  "audit_note": "Wave 93: verified by test (382/0)."
  },
  {
   "id": "F-D13-020",
@@ -5287,10 +5293,15 @@
   "id": "F-D13-031",
   "domain": "D13",
   "title": "Zone (ZNT/NJOP) reference table",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0061_zones.sql: zones table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD",
+   "apps/server/src/lib.rs: POST/GET /api/v1/zones + delete (RBAC, audit)",
+   "apps/server/static/site.js: zoneRefresh card Tabel zona in akta tab + hooks",
+   "apps/server/tests/api.rs: zones_and_tax_worksheets e2e (dup 409, Delete-gate, 401)"
+  ],
+  "audit_note": "Wave 93: full lifecycle live; verified by test (382/0)."
  },
  {
   "id": "F-D13-032",

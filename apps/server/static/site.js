@@ -1499,6 +1499,47 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     sealRefresh();
   });
   on('seal-reload', 'click', sealRefresh);
+  /* ---- property: zones ---- */
+  async function zoneRefresh() {
+    var box = document.getElementById('zone-list');
+    if (!box) return;
+    var v = await j('/api/v1/zones');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.area_code) + ' <span class="text-muted">(' + esc(x.area_name) + ')</span></td><td>' + fmtRp(x.njop_minor) + '</td><td><button class="btn btn-sm btn-outline-danger" data-zone-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada zona.</td></tr>';
+    qsa('[data-zone-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/zones/' + b.getAttribute('data-zone-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('zone-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('zone-msg', '');
+        zoneRefresh();
+      });
+    });
+  }
+  on('zone-add', 'click', async function () {
+    if (!pval('zone-code') || !pval('zone-name')) { pmsg('zone-msg', 'Isi kode dan nama area.'); return; }
+    var r = await ppost('/api/v1/zones', { area_code: pval('zone-code'), area_name: pval('zone-name'), njop_minor: +pval('zone-njop') || 0 });
+    if (!r.ok) { pmsg('zone-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('zone-msg', '');
+    zoneRefresh();
+  });
+  on('zone-reload', 'click', zoneRefresh);
+  /* ---- property: tax worksheets ---- */
+  on('tax-calc', 'click', async function () {
+    var box = document.getElementById('tax-out');
+    var v = +pval('tax-value') || 0;
+    if (!(v > 0)) { pmsg('tax-msg', 'Isi nilai transaksi minor.'); return; }
+    var npoptkp = pval('tax-npoptkp');
+    var p = await j('/api/v1/worksheets/pph?value_minor=' + v);
+    var b = await j('/api/v1/worksheets/bphtb?npop=' + v + (npoptkp ? '&npoptkp=' + encodeURIComponent(npoptkp) : ''));
+    if (!p || !b) { pmsg('tax-msg', 'Gagal menghitung.'); if (box) box.innerHTML = ''; return; }
+    pmsg('tax-msg', '');
+    if (box) box.innerHTML = '<div class="table-responsive"><table class="table card-table"><tbody>'
+      + '<tr><td>PPh (' + p.rate_pct + '%)</td><td><strong>' + fmtRp(p.tax_minor) + '</strong></td></tr>'
+      + '<tr><td>BPHTB (' + b.rate_pct + '% × (' + fmtRp(b.npop) + ' − ' + fmtRp(b.npoptkp) + '))</td><td><strong>' + fmtRp(b.tax_minor) + '</strong></td></tr>'
+      + '</tbody></table></div>';
+  });
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1616,7 +1657,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('cho-reload', 'click', choRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3775,6 +3816,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   volRefresh();
   sboxRefresh();
   sealRefresh();
+  zoneRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();

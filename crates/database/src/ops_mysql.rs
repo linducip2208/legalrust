@@ -5690,6 +5690,70 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn zone_create(
+        &self,
+        org: &str,
+        area_code: &str,
+        area_name: &str,
+        njop_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let area_code = area_code.trim();
+        let area_name = area_name.trim();
+        if area_code.is_empty() || area_code.len() > 40 {
+            return Err(StoreError::Conflict("area_code".into()));
+        }
+        if area_name.is_empty() || area_name.len() > 200 {
+            return Err(StoreError::Conflict("area_name".into()));
+        }
+        if njop_minor < 0 {
+            return Err(StoreError::Conflict("njop".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO zones (org_id, area_code, area_name, njop_minor) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(area_code)
+        .bind(area_name)
+        .bind(njop_minor)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate area_code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn zone_list(&self, org: &str) -> Result<Vec<ZoneRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, area_code, area_name, njop_minor FROM zones WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ZoneRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                area_code: x.get::<String, _>("area_code"),
+                area_name: x.get::<String, _>("area_name"),
+                njop_minor: x.get::<i64, _>("njop_minor"),
+            })
+            .collect())
+    }
+    async fn zone_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM zones WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
