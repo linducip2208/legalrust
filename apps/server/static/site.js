@@ -3546,6 +3546,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.purpose) + ' · ' + esc(x.scheduled_at) + '</span>'; }).join(' ') || 'Tidak ada janji dekat.';
   });
+  on('ptl-dl', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/downloads', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.name) + ' (' + x.versions + ') <button class="btn btn-sm" data-ptl-dl="' + x.id + '" data-ptl-name="' + esc(x.name) + '" type="button">Unduh</button></span>'; }).join(' ') || 'Belum ada dokumen.';
+    qsa('[data-ptl-dl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/documents/' + b.getAttribute('data-ptl-dl') + '/content', { headers: ptlH() });
+        if (!r.ok) { pmsg('ptl-msg', 'Gagal unduh (' + r.status + ').'); return; }
+        var blob = await r.blob();
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = b.getAttribute('data-ptl-name') || 'dokumen';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      });
+    });
+  });
+  on('ptl-quote', 'click', async function () {
+    if (!pval('ptl-qtitle') || !pval('ptl-qneed')) { pmsg('ptl-msg', 'Isi judul dan uraian.'); return; }
+    var r = await fetch('/api/v1/portal/quote-requests', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ title: pval('ptl-qtitle'), need: pval('ptl-qneed') }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = 'Permintaan kutipan terkirim.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

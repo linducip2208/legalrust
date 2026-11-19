@@ -8082,12 +8082,13 @@
   "id": "F-D19-017",
   "domain": "D19",
   "title": "Quotation request form",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
-   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables"
-  ]
+   "lib.rs: POST /api/v1/portal/quote-requests (creates portal-quote lead + note in staff pipeline)",
+   "site.js: quote form (portal card)",
+   "tests: lead lands with source=portal-quote; staff 403 on portal route"
+  ],
+  "audit_note": "Wave 165: portal quote intake live. Verified by test (455/0)."
  },
  {
   "id": "F-D19-018",
@@ -8168,11 +8169,13 @@
   "id": "F-D19-025",
   "domain": "D19",
   "title": "Download center (receipts/copies)",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1530 share_create; :3497-3499 share + /shared/{token} routes (1-720h TTL, revocable)",
-   "migrations/0008_ops.sql: document_shares"
-  ]
+   "lib.rs: GET /api/v1/portal/downloads (own matters, version counts, guarded URLs)",
+   "site.js: authed blob download (portal card)",
+   "tests: list + authed roundtrip asserted; prior staff CSV trust tests green"
+  ],
+  "audit_note": "Wave 165: portal download center live. Verified by test (455/0)."
  },
  {
   "id": "F-D19-026",

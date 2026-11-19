@@ -5705,6 +5705,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-pref",
         "ptl-ann",
         "ptl-rem",
+        "ptl-dl",
+        "ptl-quote",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11682,6 +11684,124 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_downloads_and_quote_requests() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal10@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"MDL","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let body = b"unduhan portal";
+    let sha = legalrust_document::sha256_hex(body);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"dl.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, body.len()), Some(&tok))).await.unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p10@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Download center lists own doc with version + working authed download.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/downloads", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["id"].as_i64() == Some(did) && d["versions"].as_i64() == Some(1)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .header(
+                    "authorization",
+                    format!("Bearer {ptok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Quote request lands in the staff lead pipeline as a portal lead.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/quote-requests",
+            r#"{"title":"AJB","need":"Balik nama SHM"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/admin/leads", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|l| l["source"] == "portal-quote"));
+    // Staff is not a portal identity.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/downloads", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
