@@ -347,6 +347,16 @@ pub struct ClientPortalInviteRow {
     pub token: String,
     pub status: String,
 }
+/// Case message (client<->staff thread scoped to a client, optional matter).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientMessageRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub matter_id: Option<i64>,
+    pub sender: String,
+    pub body: String,
+}
 /// Satisfaction survey response (score 1-10).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSurveyRow {
@@ -2193,6 +2203,21 @@ pub trait OpsStore: Send + Sync {
         &self,
         token_hash: &str,
     ) -> Result<Option<ClientPortalInviteRow>, StoreError>;
+    /// Case messages (chronological per client, optional matter scope).
+    async fn cmsg_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+        sender: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cmsg_list(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<ClientMessageRow>, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

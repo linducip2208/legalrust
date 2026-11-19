@@ -3162,6 +3162,51 @@ impl OpsStore for MysqlOps {
             status: x.get::<String, _>("status"),
         }))
     }
+    async fn cmsg_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+        sender: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if client_id <= 0 || body.len() < 2 || body.len() > 2000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        if !["client", "staff"].contains(&sender) {
+            return Err(StoreError::Conflict("sender".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_messages (org_id, client_id, matter_id, sender, body) VALUES (?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(matter_id.map(|v| v as u64)).bind(sender).bind(body)
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cmsg_list(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<ClientMessageRow>, StoreError> {
+        // Static statements per filter: the clippy dynamic-SQL lint forbids format!.
+        let rows = match matter_id {
+            Some(mid) => sqlx::query("SELECT id, org_id, client_id, matter_id, sender, body FROM client_messages WHERE org_id=? AND client_id=? AND matter_id=? ORDER BY id ASC LIMIT 500")
+                .bind(org).bind(client_id as u64).bind(mid as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            None => sqlx::query("SELECT id, org_id, client_id, matter_id, sender, body FROM client_messages WHERE org_id=? AND client_id=? ORDER BY id ASC LIMIT 500")
+                .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientMessageRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                matter_id: x.get::<Option<u64>, _>("matter_id").map(|v| v as i64),
+                sender: x.get::<String, _>("sender"),
+                body: x.get::<String, _>("body"),
+            })
+            .collect())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

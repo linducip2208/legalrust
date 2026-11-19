@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 160: tagihan + booking portal (main)
+## 2026-11-19 AUDIT-1000 wave 161: pesan + audit portal (main)
+- Thread + scoped trail; workspace **451 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 160: tagihan + booking portal (main)
 - Scoped reads + own-name booking; workspace **450 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 159: inbox + unggah portal (main)

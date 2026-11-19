@@ -3481,6 +3481,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return []; });
     if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.purpose) + ' · ' + esc(x.scheduled_at) + ' · ' + badge(x.status) + '</span>'; }).join(' ') || 'Belum ada janji.';
   });
+  on('ptl-send', 'click', async function () {
+    if (!pval('ptl-text')) { pmsg('ptl-msg', 'Isi pesan.'); return; }
+    var r = await fetch('/api/v1/portal/messages', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ body: pval('ptl-text') }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = 'Terkirim.';
+  });
+  on('ptl-thread', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/messages', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.sender) + ': ' + esc(x.body) + '</span>'; }).join(' ') || 'Belum ada pesan.';
+  });
+  on('ptl-activity', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/activity', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return []; });
+    if (out) out.innerHTML = (v || []).map(function (x) { return '<span class="badge">' + esc(x.action) + ' · ' + esc(x.created) + '</span>'; }).join(' ') || 'Belum ada jejak.';
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

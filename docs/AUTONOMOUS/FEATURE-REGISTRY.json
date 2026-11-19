@@ -8030,10 +8030,15 @@
   "id": "F-D19-013",
   "domain": "D19",
   "title": "Case-message thread",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0102: client_messages table (sender check, forward-only)",
+   "ops.rs + memory + mysql: cmsg add/list + matter scope",
+   "lib.rs: staff + portal thread endpoints (path/body match enforced, RBAC)",
+   "site.js: thread UI (portal card)",
+   "tests: portal_messages_and_audit e2e (both sides, ghost 404)"
+  ],
+  "audit_note": "Wave 161: case-message thread live. Verified by test (451/0)."
  },
  {
   "id": "F-D19-014",
@@ -8206,10 +8211,13 @@
   "id": "F-D19-031",
   "domain": "D19",
   "title": "Portal audit trail",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/activity (own client rows from shared audit log)",
+   "site.js: jejak button (portal card)",
+   "tests: own trail + staff 403 asserted"
+  ],
+  "audit_note": "Wave 161: portal audit live. Verified by test (451/0)."
  },
  {
   "id": "F-D19-032",

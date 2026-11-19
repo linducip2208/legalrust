@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    cmsgs: HashMap<i64, ClientMessageRow>,
     csvs: HashMap<i64, ClientSurveyRow>,
     mcamps: HashMap<i64, MarketingCampaignRow>,
     cparts: HashMap<i64, CampaignPartRow>,
@@ -3418,6 +3419,58 @@ impl OpsStore for MemoryOps {
             .values()
             .find(|r| r.token == token_hash)
             .cloned())
+    }
+    async fn cmsg_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+        sender: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if client_id <= 0 || body.len() < 2 || body.len() > 2000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        if !["client", "staff"].contains(&sender) {
+            return Err(StoreError::Conflict("sender".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cmsgs.insert(
+            id,
+            ClientMessageRow {
+                id,
+                org: org.into(),
+                client_id,
+                matter_id,
+                sender: sender.into(),
+                body: body.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cmsg_list(
+        &self,
+        org: &str,
+        client_id: i64,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<ClientMessageRow>, StoreError> {
+        let mut v: Vec<ClientMessageRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cmsgs
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && r.client_id == client_id
+                    && matter_id.map(|x| r.matter_id == Some(x)).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
