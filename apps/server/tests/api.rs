@@ -5531,6 +5531,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "oin-add",
         "oin-reload",
         "oin-list",
+        "staff-reload",
+        "staff-list",
+        "wait-reload",
+        "wait-list",
         "bc-at",
         "bc-add",
         "bc-reload",
@@ -8410,6 +8414,81 @@ async fn selfcheck_and_year_seals() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/selfchecks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn staff_productivity_and_waiting_analytics() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "staffwait@x.id").await;
+    // Seed audited actions + one completed visit (15 minutes).
+    let _did = mk_deed(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/visitors",
+            r#"{"name":"Tamu A","check_in":"2026-04-01 09:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/visitors/{vid}/checkout"),
+            r#"{"check_out":"2026-04-01 09:15"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/staff-productivity", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let p = body_json(res).await;
+    assert!(p["sampled"].as_i64().unwrap() >= 3);
+    assert!(!p["by_actor"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/waiting-analytics", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let w = body_json(res).await;
+    assert_eq!(w["completed_visits"].as_i64().unwrap(), 1);
+    assert_eq!(w["avg_minutes"].as_f64().unwrap(), 15.0);
+    assert_eq!(w["max_minutes"].as_i64().unwrap(), 15);
+    assert!(w["by_day"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["day"] == "2026-04-01"));
+    // Empty org: nulls, not zeros.
+    let tok2 = reg(&a, "staffwait2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/waiting-analytics", &tok2))
+        .await
+        .unwrap();
+    let w = body_json(res).await;
+    assert_eq!(w["completed_visits"].as_i64().unwrap(), 0);
+    assert!(w["avg_minutes"].is_null());
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/waiting-analytics")
                 .body(Body::empty())
                 .unwrap(),
         )

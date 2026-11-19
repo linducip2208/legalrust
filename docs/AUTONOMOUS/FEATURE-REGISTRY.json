@@ -4814,19 +4814,25 @@
   "id": "F-D12-028",
   "domain": "D12",
   "title": "Staff productivity view",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/staff-productivity (audit-trail grouping, last 500)",
+   "apps/server/static/site.js: staffRefresh card Produktivitas in ringkas tab + hooks",
+   "apps/server/tests/api.rs: staff_productivity_and_waiting_analytics e2e (sampled counts, 401)"
+  ],
+  "audit_note": "Wave 90: honest activity counts, no fabricated scores; verified by test (379/0)."
  },
  {
   "id": "F-D12-029",
   "domain": "D12",
   "title": "Client waiting-time analytics",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/waiting-analytics (dwell avg/max + by-day, null when empty)",
+   "apps/server/static/site.js: waitRefresh card Analitik tunggu + hooks",
+   "apps/server/tests/api.rs: 15-minute visit asserted, null-on-empty, 401"
+  ],
+  "audit_note": "Wave 90: verified by test (379/0)."
  },
  {
   "id": "F-D12-030",

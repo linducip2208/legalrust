@@ -2289,6 +2289,32 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     oinRefresh();
   });
   on('oin-reload', 'click', oinRefresh);
+  /* ---- office: staff productivity ---- */
+  async function staffRefresh() {
+    var box = document.getElementById('staff-list');
+    var sum = document.getElementById('staff-sum');
+    if (!box) return;
+    var v = await j('/api/v1/reports/staff-productivity');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Sampel: ' + v.sampled + ' aksi audit terakhir.';
+    box.innerHTML = (v.by_actor || []).map(function (x) {
+      return '<tr><td>' + esc(x.actor) + '</td><td><strong>' + x.actions + '</strong></td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada aktivitas.</td></tr>';
+  }
+  on('staff-reload', 'click', staffRefresh);
+  /* ---- office: waiting analytics ---- */
+  async function waitRefresh() {
+    var box = document.getElementById('wait-list');
+    var sum = document.getElementById('wait-sum');
+    if (!box) return;
+    var v = await j('/api/v1/reports/waiting-analytics');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Kunjungan selesai: ' + v.completed_visits + ' • Rata-rata: ' + (v.avg_minutes === null || v.avg_minutes === undefined ? '—' : v.avg_minutes + ' mnt') + (v.max_minutes === null || v.max_minutes === undefined ? '' : ' • Maks: ' + v.max_minutes + ' mnt');
+    box.innerHTML = (v.by_day || []).map(function (x) {
+      return '<tr><td>' + esc(x.day) + '</td><td><strong>' + x.count + '</strong></td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada kunjungan selesai.</td></tr>';
+  }
+  on('wait-reload', 'click', waitRefresh);
   crmTags();
   crmRecent();
   apptRefresh();
@@ -2299,6 +2325,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   hrsRefresh();
   rosRefresh();
   levRefresh();
+  staffRefresh();
+  waitRefresh();
   annRefresh();
   /* ---- audit viewer + jobs queue (additive) ---- */
   async function dlCsv(url, filename, msgId) {
