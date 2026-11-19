@@ -1205,37 +1205,65 @@
   "id": "F-D04-007",
   "domain": "D04",
   "title": "Document retention schedule",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "retention schedule: retain_until + retention-due report live; shared slice:",
+   "  - migrations/0082_doc_lifecycle.sql: doc_lifecycle table (hold/archive/trash/retain_until, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dlc upsert/get/due/clear",
+   "  - crates/database/src/store.rs + memory.rs + mysql.rs: CoreStore::delete_doc (versions+meta Tx, keys out)",
+   "  - apps/server/src/lib.rs: POST/GET lifecycle + retention-due + DELETE secure (hold/trash gates, byte wipe, audit)",
+   "  - apps/server/static/site.js: dlc card Siklus hidup + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_lifecycle_hold_archive_trash_delete e2e (gates, wipe, audit, 404/401)"
+  ],
+  "audit_note": "Wave 127: doc lifecycle live. Verified by test (415/0)."
  },
  {
   "id": "F-D04-008",
   "domain": "D04",
   "title": "Document legal-hold application & release",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "legal hold: on_hold blocks secure deletion; release via flag off; shared slice:",
+   "  - migrations/0082_doc_lifecycle.sql: doc_lifecycle table (hold/archive/trash/retain_until, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dlc upsert/get/due/clear",
+   "  - crates/database/src/store.rs + memory.rs + mysql.rs: CoreStore::delete_doc (versions+meta Tx, keys out)",
+   "  - apps/server/src/lib.rs: POST/GET lifecycle + retention-due + DELETE secure (hold/trash gates, byte wipe, audit)",
+   "  - apps/server/static/site.js: dlc card Siklus hidup + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_lifecycle_hold_archive_trash_delete e2e (gates, wipe, audit, 404/401)"
+  ],
+  "audit_note": "Wave 127: doc lifecycle live. Verified by test (415/0)."
  },
  {
   "id": "F-D04-009",
   "domain": "D04",
   "title": "Document archiving",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "archiving: archived flag + out-of-due scope; shared slice:",
+   "  - migrations/0082_doc_lifecycle.sql: doc_lifecycle table (hold/archive/trash/retain_until, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dlc upsert/get/due/clear",
+   "  - crates/database/src/store.rs + memory.rs + mysql.rs: CoreStore::delete_doc (versions+meta Tx, keys out)",
+   "  - apps/server/src/lib.rs: POST/GET lifecycle + retention-due + DELETE secure (hold/trash gates, byte wipe, audit)",
+   "  - apps/server/static/site.js: dlc card Siklus hidup + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_lifecycle_hold_archive_trash_delete e2e (gates, wipe, audit, 404/401)"
+  ],
+  "audit_note": "Wave 127: doc lifecycle live. Verified by test (415/0)."
  },
  {
   "id": "F-D04-010",
   "domain": "D04",
   "title": "Secure document deletion",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "secure deletion: trashed-gate + meta/version Tx + byte wipe + audit; shared slice:",
+   "  - migrations/0082_doc_lifecycle.sql: doc_lifecycle table (hold/archive/trash/retain_until, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dlc upsert/get/due/clear",
+   "  - crates/database/src/store.rs + memory.rs + mysql.rs: CoreStore::delete_doc (versions+meta Tx, keys out)",
+   "  - apps/server/src/lib.rs: POST/GET lifecycle + retention-due + DELETE secure (hold/trash gates, byte wipe, audit)",
+   "  - apps/server/static/site.js: dlc card Siklus hidup + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_lifecycle_hold_archive_trash_delete e2e (gates, wipe, audit, 404/401)"
+  ],
+  "audit_note": "Wave 127: doc lifecycle live. Verified by test (415/0)."
  },
  {
   "id": "F-D04-011",
@@ -1438,10 +1466,17 @@
   "id": "F-D04-031",
   "domain": "D04",
   "title": "Trash / recycle bin with restore",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "trash/restore: trashed flag gate with restore path; shared slice:",
+   "  - migrations/0082_doc_lifecycle.sql: doc_lifecycle table (hold/archive/trash/retain_until, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dlc upsert/get/due/clear",
+   "  - crates/database/src/store.rs + memory.rs + mysql.rs: CoreStore::delete_doc (versions+meta Tx, keys out)",
+   "  - apps/server/src/lib.rs: POST/GET lifecycle + retention-due + DELETE secure (hold/trash gates, byte wipe, audit)",
+   "  - apps/server/static/site.js: dlc card Siklus hidup + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_lifecycle_hold_archive_trash_delete e2e (gates, wipe, audit, 404/401)"
+  ],
+  "audit_note": "Wave 127: doc lifecycle live. Verified by test (415/0)."
  },
  {
   "id": "F-D04-032",

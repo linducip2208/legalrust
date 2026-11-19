@@ -583,6 +583,40 @@ impl CoreStore for MysqlStores {
             })
             .collect())
     }
+    async fn delete_doc(&self, org: &str, id: i64) -> Result<Vec<String>, StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let own: Option<u64> = sqlx::query("SELECT id FROM documents WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<u64, _>("id"));
+        if own.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        let keys: Vec<String> =
+            sqlx::query("SELECT object_key FROM document_versions WHERE document_id=?")
+                .bind(id as u64)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .into_iter()
+                .map(|x| x.get::<String, _>("object_key"))
+                .collect();
+        sqlx::query("DELETE FROM document_versions WHERE document_id=?")
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        sqlx::query("DELETE FROM documents WHERE id=?")
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(keys)
+    }
     async fn add_version(
         &self,
         org: &str,

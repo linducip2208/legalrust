@@ -130,6 +130,18 @@ pub struct PolicySnapRow {
     pub payload: String,
     pub created_by: String,
 }
+/// Document lifecycle flags (retention hold / archive / trash).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocLifecycleRow {
+    pub id: i64,
+    pub org: String,
+    pub doc_id: i64,
+    pub on_hold: bool,
+    pub archived: bool,
+    pub trashed: bool,
+    pub retain_until: String,
+    pub note: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1519,6 +1531,21 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<(i64, i64), StoreError>;
     async fn pol_list(&self, org: &str) -> Result<Vec<PolicySnapRow>, StoreError>;
     async fn pol_get(&self, org: &str, version: i64) -> Result<PolicySnapRow, StoreError>;
+    /// Document lifecycle flags (upsert) + retention-due listing.
+    #[allow(clippy::too_many_arguments)]
+    async fn dlc_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        on_hold: Option<bool>,
+        archived: Option<bool>,
+        trashed: Option<bool>,
+        retain_until: Option<&str>,
+        note: Option<&str>,
+    ) -> Result<DocLifecycleRow, StoreError>;
+    async fn dlc_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLifecycleRow>, StoreError>;
+    async fn dlc_due(&self, org: &str) -> Result<Vec<DocLifecycleRow>, StoreError>;
+    async fn dlc_clear(&self, org: &str, doc_id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

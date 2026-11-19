@@ -129,6 +129,7 @@ struct Inner {
     qoverrides: HashMap<i64, QuorumOverrideRow>,
     receipts: HashMap<i64, ReceiptRow>,
     pols: HashMap<i64, PolicySnapRow>,
+    dlcs: HashMap<i64, DocLifecycleRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1314,6 +1315,115 @@ impl OpsStore for MemoryOps {
             .find(|r| r.org == org && r.version == version)
             .cloned()
             .ok_or(StoreError::NotFound)
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn dlc_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        on_hold: Option<bool>,
+        archived: Option<bool>,
+        trashed: Option<bool>,
+        retain_until: Option<&str>,
+        note: Option<&str>,
+    ) -> Result<DocLifecycleRow, StoreError> {
+        if doc_id <= 0 {
+            return Err(StoreError::Conflict("doc_id".into()));
+        }
+        if let Some(d) = retain_until {
+            if d.len() > 10 {
+                return Err(StoreError::Conflict("retain_until".into()));
+            }
+        }
+        if let Some(n) = note {
+            if n.len() > 500 {
+                return Err(StoreError::Conflict("note".into()));
+            }
+        }
+        let mut m = self.inner.lock().unwrap();
+        let cur = m
+            .dlcs
+            .values()
+            .find(|r| r.org == org && r.doc_id == doc_id)
+            .cloned();
+        let mut row = cur.unwrap_or(DocLifecycleRow {
+            id: 0,
+            org: org.into(),
+            doc_id,
+            on_hold: false,
+            archived: false,
+            trashed: false,
+            retain_until: String::new(),
+            note: String::new(),
+        });
+        if row.id == 0 {
+            row.id = self.next(&mut m);
+        }
+        if let Some(v) = on_hold {
+            row.on_hold = v;
+        }
+        if let Some(v) = archived {
+            row.archived = v;
+        }
+        if let Some(v) = trashed {
+            row.trashed = v;
+        }
+        if let Some(v) = retain_until {
+            row.retain_until = v.trim().into();
+        }
+        if let Some(v) = note {
+            row.note = v.trim().into();
+        }
+        m.dlcs.insert(row.id, row.clone());
+        Ok(row)
+    }
+    async fn dlc_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLifecycleRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .dlcs
+            .values()
+            .find(|r| r.org == org && r.doc_id == doc_id)
+            .cloned())
+    }
+    async fn dlc_due(&self, org: &str) -> Result<Vec<DocLifecycleRow>, StoreError> {
+        let today = chrono::Utc::now()
+            .naive_utc()
+            .date()
+            .format("%Y-%m-%d")
+            .to_string();
+        let mut v: Vec<DocLifecycleRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dlcs
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && !r.archived
+                    && !r.retain_until.trim().is_empty()
+                    && r.retain_until.as_str() <= today.as_str()
+            })
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.retain_until.cmp(&b.retain_until));
+        Ok(v)
+    }
+    async fn dlc_clear(&self, org: &str, doc_id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let id = m
+            .dlcs
+            .iter()
+            .find(|(_, r)| r.org == org && r.doc_id == doc_id)
+            .map(|(id, _)| *id);
+        match id {
+            Some(id) => {
+                m.dlcs.remove(&id);
+                Ok(())
+            }
+            None => Err(StoreError::NotFound),
+        }
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

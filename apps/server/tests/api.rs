@@ -5595,6 +5595,11 @@ async fn crm_app_contains_crm_ids() {
         "dcl-add",
         "dcl-reload",
         "dcl-list",
+        "dlc-doc",
+        "dlc-save",
+        "dlc-reload",
+        "dlc-del",
+        "dlc-due",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9626,6 +9631,190 @@ async fn approval_policy_versions_and_fast_track() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_lifecycle_hold_archive_trash_delete() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "doclife@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let content = b"lifecycle-bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"akta-lama.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Default state is clean.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/lifecycle"), &tok))
+        .await
+        .unwrap();
+    let lv = body_json(res).await;
+    assert_eq!(lv["on_hold"], serde_json::json!(false));
+    // Auditor cannot mutate lifecycle (Update gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lifecycle"),
+            r#"{"on_hold":true}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Ghost doc 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents/999999/lifecycle",
+            r#"{"on_hold":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Hold + past retention date -> due list (archived items are out of scope).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lifecycle"),
+            r#"{"on_hold":true,"retain_until":"2001-01-01","note":"arsip lama"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/retention-due", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did)));
+    // Hold blocks secure delete; un-trashed blocks too.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lifecycle"),
+            r#"{"on_hold":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Trash then delete: gone everywhere.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lifecycle"),
+            r#"{"trashed":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=document", &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "document.lifecycle_set"));
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "document.secure_deleted"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents/retention-due")
                 .body(Body::empty())
                 .unwrap(),
         )

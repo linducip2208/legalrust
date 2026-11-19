@@ -195,6 +195,9 @@ pub trait CoreStore: Send + Sync {
     async fn get_doc(&self, org: &str, id: i64)
         -> Result<(DocRow, Vec<DocVersionRow>), StoreError>;
     async fn list_docs(&self, org: &str, matter: Option<i64>) -> Result<Vec<DocRow>, StoreError>;
+    /// Secure deletion: removes versions + metadata, returning the storage
+    /// object keys so the caller can wipe bytes. Org-scoped.
+    async fn delete_doc(&self, org: &str, id: i64) -> Result<Vec<String>, StoreError>;
     async fn add_version(
         &self,
         org: &str,

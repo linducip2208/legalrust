@@ -1188,6 +1188,127 @@ impl OpsStore for MysqlOps {
         })
     }
     #[allow(clippy::too_many_arguments)]
+    async fn dlc_set(
+        &self,
+        org: &str,
+        doc_id: i64,
+        on_hold: Option<bool>,
+        archived: Option<bool>,
+        trashed: Option<bool>,
+        retain_until: Option<&str>,
+        note: Option<&str>,
+    ) -> Result<DocLifecycleRow, StoreError> {
+        if doc_id <= 0 {
+            return Err(StoreError::Conflict("doc_id".into()));
+        }
+        if let Some(d) = retain_until {
+            if d.len() > 10 {
+                return Err(StoreError::Conflict("retain_until".into()));
+            }
+        }
+        if let Some(n) = note {
+            if n.len() > 500 {
+                return Err(StoreError::Conflict("note".into()));
+            }
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<(u64, u8, u8, u8, String, String)> =
+            sqlx::query("SELECT id, on_hold, archived, trashed, retain_until, note FROM doc_lifecycle WHERE org_id=? AND doc_id=?")
+                .bind(org).bind(doc_id as u64).fetch_optional(&mut *tx).await.map_err(db_err)?
+                .map(|x| (x.get::<u64, _>("id"), x.get::<u8, _>("on_hold"), x.get::<u8, _>("archived"), x.get::<u8, _>("trashed"), x.get::<String, _>("retain_until"), x.get::<String, _>("note")));
+        let row = match cur {
+            Some((id, h, a, t, ru, n)) => DocLifecycleRow {
+                id: id as i64,
+                org: org.into(),
+                doc_id,
+                on_hold: on_hold.unwrap_or(h != 0),
+                archived: archived.unwrap_or(a != 0),
+                trashed: trashed.unwrap_or(t != 0),
+                retain_until: retain_until.map(|v| v.trim().to_string()).unwrap_or(ru),
+                note: note.map(|v| v.trim().to_string()).unwrap_or(n),
+            },
+            None => DocLifecycleRow {
+                id: 0,
+                org: org.into(),
+                doc_id,
+                on_hold: on_hold.unwrap_or(false),
+                archived: archived.unwrap_or(false),
+                trashed: trashed.unwrap_or(false),
+                retain_until: retain_until.unwrap_or("").trim().into(),
+                note: note.unwrap_or("").trim().into(),
+            },
+        };
+        let id = if row.id == 0 {
+            let r = sqlx::query("INSERT INTO doc_lifecycle (org_id, doc_id, on_hold, archived, trashed, retain_until, note) VALUES (?,?,?,?,?,?,?)")
+                .bind(org).bind(doc_id as u64)
+                .bind(if row.on_hold { 1u8 } else { 0u8 })
+                .bind(if row.archived { 1u8 } else { 0u8 })
+                .bind(if row.trashed { 1u8 } else { 0u8 })
+                .bind(&row.retain_until).bind(&row.note)
+                .execute(&mut *tx).await.map_err(db_err)?;
+            r.last_insert_id() as i64
+        } else {
+            sqlx::query("UPDATE doc_lifecycle SET on_hold=?, archived=?, trashed=?, retain_until=?, note=? WHERE id=?")
+                .bind(if row.on_hold { 1u8 } else { 0u8 })
+                .bind(if row.archived { 1u8 } else { 0u8 })
+                .bind(if row.trashed { 1u8 } else { 0u8 })
+                .bind(&row.retain_until).bind(&row.note).bind(row.id as u64)
+                .execute(&mut *tx).await.map_err(db_err)?;
+            row.id
+        };
+        tx.commit().await.map_err(db_err)?;
+        Ok(DocLifecycleRow { id, ..row })
+    }
+    async fn dlc_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLifecycleRow>, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, doc_id, on_hold, archived, trashed, retain_until, note FROM doc_lifecycle WHERE org_id=? AND doc_id=?")
+            .bind(org).bind(doc_id as u64).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(x.map(|x| DocLifecycleRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            doc_id: x.get::<u64, _>("doc_id") as i64,
+            on_hold: x.get::<u8, _>("on_hold") != 0,
+            archived: x.get::<u8, _>("archived") != 0,
+            trashed: x.get::<u8, _>("trashed") != 0,
+            retain_until: x.get::<String, _>("retain_until"),
+            note: x.get::<String, _>("note"),
+        }))
+    }
+    async fn dlc_due(&self, org: &str) -> Result<Vec<DocLifecycleRow>, StoreError> {
+        let today = chrono::Utc::now()
+            .naive_utc()
+            .date()
+            .format("%Y-%m-%d")
+            .to_string();
+        let rows = sqlx::query("SELECT id, org_id, doc_id, on_hold, archived, trashed, retain_until, note FROM doc_lifecycle WHERE org_id=? AND archived=0 AND retain_until<>'' AND retain_until<=? ORDER BY retain_until ASC LIMIT 200")
+            .bind(org).bind(today).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DocLifecycleRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                doc_id: x.get::<u64, _>("doc_id") as i64,
+                on_hold: x.get::<u8, _>("on_hold") != 0,
+                archived: x.get::<u8, _>("archived") != 0,
+                trashed: x.get::<u8, _>("trashed") != 0,
+                retain_until: x.get::<String, _>("retain_until"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn dlc_clear(&self, org: &str, doc_id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM doc_lifecycle WHERE org_id=? AND doc_id=?")
+            .bind(org)
+            .bind(doc_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    #[allow(clippy::too_many_arguments)]
     async fn qround_add(
         &self,
         org: &str,

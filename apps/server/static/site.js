@@ -3146,6 +3146,56 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     dclRefresh();
   });
   on('dcl-reload', 'click', dclRefresh);
+  /* ---- document lifecycle (F-D04-007/008/009/010/031) ---- */
+  function dlcChecked(id) {
+    var el = document.getElementById(id);
+    return !!(el && el.checked);
+  }
+  async function dlcRefresh() {
+    var out = document.getElementById('dlc-out');
+    var did = pval('dlc-doc');
+    if (out && !did) out.textContent = 'Isi ID dokumen lalu Muat.';
+    if (!did) return;
+    var v = await j('/api/v1/documents/' + encodeURIComponent(did) + '/lifecycle');
+    if (!v) { if (out) out.textContent = 'Gagal memuat (dokumen tidak ada?).'; return; }
+    if (out) out.innerHTML = 'Dokumen #' + v.doc_id + ': ' + (v.on_hold ? '<span class="badge bg-red-lt">HOLD</span> ' : '') + (v.archived ? '<span class="badge bg-green-lt">arsip</span> ' : '') + (v.trashed ? '<span class="badge bg-yellow-lt">sampah</span> ' : '<span class="text-muted">aktif</span>') + (v.retain_until ? ' · retensi s.d. ' + esc(v.retain_until) : '');
+    var h = document.getElementById('dlc-hold');
+    var ar = document.getElementById('dlc-arch');
+    var tr = document.getElementById('dlc-trash');
+    if (h) h.checked = !!v.on_hold;
+    if (ar) ar.checked = !!v.archived;
+    if (tr) tr.checked = !!v.trashed;
+    var du = document.getElementById('dlc-until');
+    if (du && !du.value) du.value = v.retain_until || '';
+  }
+  async function dlcDueRefresh() {
+    var box = document.getElementById('dlc-due');
+    if (!box) return;
+    var v = await j('/api/v1/documents/retention-due');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.doc_id + '</td><td>' + esc(x.retain_until) + '</td><td>' + (x.on_hold ? '<span class="badge bg-red-lt">HOLD</span>' : '—') + '</td><td>' + (x.archived ? 'arsip' : (x.trashed ? 'sampah' : 'aktif')) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada yang jatuh tempo.</td></tr>';
+  }
+  on('dlc-save', 'click', async function () {
+    if (!pval('dlc-doc')) { pmsg('dlc-msg', 'Isi ID dokumen.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlc-doc')) + '/lifecycle', { on_hold: dlcChecked('dlc-hold'), archived: dlcChecked('dlc-arch'), trashed: dlcChecked('dlc-trash'), retain_until: pval('dlc-until') || '' });
+    if (!r.ok) { pmsg('dlc-msg', 'Gagal (' + r.status + '). Dokumen tidak ada?'); return; }
+    pmsg('dlc-msg', '');
+    dlcRefresh();
+    dlcDueRefresh();
+  });
+  on('dlc-reload', 'click', function () { dlcRefresh(); dlcDueRefresh(); });
+  on('dlc-del', 'click', async function () {
+    if (!pval('dlc-doc')) { pmsg('dlc-msg', 'Isi ID dokumen.'); return; }
+    var r = await fetch('/api/v1/documents/' + encodeURIComponent(pval('dlc-doc')), { method: 'DELETE', headers: H });
+    if (!r.ok) { pmsg('dlc-msg', 'Gagal (' + r.status + '). Masukkan ke sampah dulu & lepas hold?'); return; }
+    var v = await r.json();
+    pmsg('dlc-msg', '');
+    var out = document.getElementById('dlc-out');
+    if (out) out.textContent = 'Terhapus permanen (' + v.objects_wiped + '/' + v.objects_total + ' objek).';
+    dlcDueRefresh();
+  });
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5116,6 +5166,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   aboxRefresh();
   useRefresh();
   dclRefresh();
+  dlcRefresh();
+  dlcDueRefresh();
   sopRefresh();
   oinRefresh();
   dpRefresh();

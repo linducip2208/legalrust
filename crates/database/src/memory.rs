@@ -416,6 +416,20 @@ impl CoreStore for MemoryStores {
             .cloned()
             .collect())
     }
+    async fn delete_doc(&self, org: &str, id: i64) -> Result<Vec<String>, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.docs.get(&id) {
+            Some(d) if d.org_id == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        m.docs.remove(&id);
+        Ok(m.versions
+            .remove(&id)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|v| v.object_key)
+            .collect())
+    }
     async fn add_version(
         &self,
         org: &str,
