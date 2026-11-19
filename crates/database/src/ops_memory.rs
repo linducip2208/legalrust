@@ -72,6 +72,8 @@ struct Inner {
     prices: HashMap<i64, PriceRow>,
     quotes: HashMap<i64, QuotationRow>,
     qitems: HashMap<i64, QuotationItemRow>,
+    cash: HashMap<i64, CashEntryRow>,
+    advances: HashMap<i64, AdvanceRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3122,6 +3124,133 @@ impl OpsStore for MemoryOps {
             Some(r) if r.org == org => {
                 m.quotes.remove(&id);
                 m.qitems.retain(|_, i| i.quotation_id != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cash_add(
+        &self,
+        org: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+        occurred_on: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "in" | "out") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 255 || occurred_on.len() > 10 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cash.insert(
+            id,
+            CashEntryRow {
+                id,
+                org: org.into(),
+                kind: kind.into(),
+                amount_minor,
+                note: note.trim().into(),
+                occurred_on: occurred_on.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cash_list(&self, org: &str) -> Result<Vec<CashEntryRow>, StoreError> {
+        let mut v: Vec<CashEntryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cash
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cash_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cash.get(&id) {
+            Some(r) if r.org == org => {
+                m.cash.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn advance_create(
+        &self,
+        org: &str,
+        holder: &str,
+        amount_minor: i64,
+        purpose: &str,
+    ) -> Result<i64, StoreError> {
+        let holder = holder.trim();
+        if holder.is_empty() || holder.len() > 120 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if purpose.len() > 255 {
+            return Err(StoreError::Conflict("purpose".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.advances.insert(
+            id,
+            AdvanceRow {
+                id,
+                org: org.into(),
+                holder: holder.into(),
+                amount_minor,
+                purpose: purpose.trim().into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn advance_list(&self, org: &str) -> Result<Vec<AdvanceRow>, StoreError> {
+        let mut v: Vec<AdvanceRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .advances
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn advance_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .advances
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "settled") | ("open", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn advance_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.advances.get(&id) {
+            Some(r) if r.org == org => {
+                m.advances.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

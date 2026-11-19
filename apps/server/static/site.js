@@ -535,6 +535,78 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     quotRefresh();
   });
   on('quot-reload', 'click', quotRefresh);
+  /* ---- office: cash book ---- */
+  async function cashRefresh() {
+    var box = document.getElementById('cash-list');
+    var sum = document.getElementById('cash-sum');
+    if (!box) return;
+    var v = await j('/api/v1/cashbook');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Saldo: ' + fmtRp(v.balance_minor);
+    box.innerHTML = (v.entries || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.kind) + ' <span class="text-muted">(' + esc(x.note) + ')</span></td><td>' + fmtRp(x.amount_minor) + '</td><td>' + esc(x.occurred_on) + '</td><td><button class="btn btn-sm btn-outline-danger" data-cash-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada mutasi kas.</td></tr>';
+    qsa('[data-cash-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/cashbook/' + b.getAttribute('data-cash-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cash-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cash-msg', '');
+        cashRefresh();
+      });
+    });
+  }
+  on('cash-add', 'click', async function () {
+    if (!(+pval('cash-amount') > 0)) { pmsg('cash-msg', 'Isi nominal minor.'); return; }
+    var r = await ppost('/api/v1/cashbook', { kind: pval('cash-kind') || 'in', amount_minor: +pval('cash-amount'), note: pval('cash-note') || '', occurred_on: pval('cash-date') || '' });
+    if (!r.ok) { pmsg('cash-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cash-msg', '');
+    cashRefresh();
+  });
+  on('cash-reload', 'click', cashRefresh);
+  /* ---- office: advances / IOU ---- */
+  async function advRefresh() {
+    var box = document.getElementById('adv-list');
+    if (!box) return;
+    var v = await j('/api/v1/advances');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'open' ? '<button class="btn btn-sm btn-success" data-adv-ok="' + x.id + '" type="button">Lunas</button> <button class="btn btn-sm btn-warning" data-adv-no="' + x.id + '" type="button">Batal</button> ' : '<span class="text-muted">final</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-adv-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.holder) + ' <span class="text-muted">(' + esc(x.purpose) + ')</span></td><td>' + fmtRp(x.amount_minor) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada panjar.</td></tr>';
+    qsa('[data-adv-ok]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/advances/' + b.getAttribute('data-adv-ok') + '/status', { status: 'settled' });
+        if (!r.ok) { pmsg('adv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('adv-msg', '');
+        advRefresh();
+      });
+    });
+    qsa('[data-adv-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/advances/' + b.getAttribute('data-adv-no') + '/status', { status: 'cancelled' });
+        if (!r.ok) { pmsg('adv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('adv-msg', '');
+        advRefresh();
+      });
+    });
+    qsa('[data-adv-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/advances/' + b.getAttribute('data-adv-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('adv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('adv-msg', '');
+        advRefresh();
+      });
+    });
+  }
+  on('adv-add', 'click', async function () {
+    if (!pval('adv-holder') || !(+pval('adv-amount') > 0)) { pmsg('adv-msg', 'Isi pemegang dan nominal.'); return; }
+    var r = await ppost('/api/v1/advances', { holder: pval('adv-holder'), amount_minor: +pval('adv-amount'), purpose: pval('adv-purpose') || '' });
+    if (!r.ok) { pmsg('adv-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('adv-msg', '');
+    advRefresh();
+  });
+  on('adv-reload', 'click', advRefresh);
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];
     if (!f) { document.getElementById('ue').textContent = 'Pilih berkas dulu.'; return; }
@@ -2763,6 +2835,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   alertsRefresh();
   priceRefresh();
   quotRefresh();
+  cashRefresh();
+  advRefresh();
   whDlRefresh();
   intRefresh();
 })();

@@ -4618,19 +4618,29 @@
   "id": "F-D12-015",
   "domain": "D12",
   "title": "Office cash book",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0047_cashbook.sql: cash_entries table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: immutable log CRUD",
+   "apps/server/src/lib.rs: POST/GET /api/v1/cashbook (derived balance) + delete (RBAC, audit)",
+   "apps/server/static/site.js: cashRefresh card Kas kantor in keu tab + hooks",
+   "apps/server/tests/api.rs: cashbook_and_advances e2e (bad kind/amount 409, balance 120000)"
+  ],
+  "audit_note": "Wave 77: full lifecycle live; verified by test (366/0)."
  },
  {
   "id": "F-D12-016",
   "domain": "D12",
   "title": "Office cash advance & IOU tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0047_cashbook.sql: advances table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + open->settled/cancelled",
+   "apps/server/src/lib.rs: POST/GET /api/v1/advances + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: advRefresh card Panjar/IOU + hooks",
+   "apps/server/tests/api.rs: cashbook_and_advances e2e (double-settle 409)"
+  ],
+  "audit_note": "Wave 77: verified by test (366/0)."
  },
  {
   "id": "F-D12-017",

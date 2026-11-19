@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 77: cash + advances (main)
+- Balance math + chains + guards; workspace **366 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 76: prices + quotations (main)
 - Snapshot math + chains + guards; workspace **365 passed, 0 failed**.
 

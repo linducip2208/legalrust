@@ -3622,6 +3622,149 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cash_add(
+        &self,
+        org: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+        occurred_on: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "in" | "out") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 255 || occurred_on.len() > 10 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO cash_entries (org_id, kind, amount_minor, note, occurred_on) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(kind)
+        .bind(amount_minor)
+        .bind(note.trim())
+        .bind(occurred_on.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cash_list(&self, org: &str) -> Result<Vec<CashEntryRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, kind, amount_minor, note, occurred_on FROM cash_entries WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| CashEntryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                kind: x.get::<String, _>("kind"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                note: x.get::<String, _>("note"),
+                occurred_on: x.get::<String, _>("occurred_on"),
+            })
+            .collect())
+    }
+    async fn cash_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM cash_entries WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn advance_create(
+        &self,
+        org: &str,
+        holder: &str,
+        amount_minor: i64,
+        purpose: &str,
+    ) -> Result<i64, StoreError> {
+        let holder = holder.trim();
+        if holder.is_empty() || holder.len() > 120 {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if purpose.len() > 255 {
+            return Err(StoreError::Conflict("purpose".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO advances (org_id, holder, amount_minor, purpose) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(holder)
+        .bind(amount_minor)
+        .bind(purpose.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn advance_list(&self, org: &str) -> Result<Vec<AdvanceRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, holder, amount_minor, purpose, status FROM advances WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AdvanceRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                holder: x.get::<String, _>("holder"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                purpose: x.get::<String, _>("purpose"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn advance_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "settled" | "cancelled") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM advances WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("open") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE advances SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn advance_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM advances WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

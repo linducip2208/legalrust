@@ -395,6 +395,26 @@ pub struct QuotationRow {
     pub total_minor: i64,
     pub status: String,
 }
+/// Office cash-book entry (immutable log; balance is derived).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CashEntryRow {
+    pub id: i64,
+    pub org: String,
+    pub kind: String,
+    pub amount_minor: i64,
+    pub note: String,
+    pub occurred_on: String,
+}
+/// Cash advance / IOU (panjar).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdvanceRow {
+    pub id: i64,
+    pub org: String,
+    pub holder: String,
+    pub amount_minor: i64,
+    pub purpose: String,
+    pub status: String,
+}
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuotationItemRow {
@@ -1269,6 +1289,28 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<QuotationItemRow>, StoreError>;
     async fn quote_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn quote_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office cash book (immutable log + derived balance).
+    async fn cash_add(
+        &self,
+        org: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+        occurred_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cash_list(&self, org: &str) -> Result<Vec<CashEntryRow>, StoreError>;
+    async fn cash_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Cash advance / IOU tracker.
+    async fn advance_create(
+        &self,
+        org: &str,
+        holder: &str,
+        amount_minor: i64,
+        purpose: &str,
+    ) -> Result<i64, StoreError>;
+    async fn advance_list(&self, org: &str) -> Result<Vec<AdvanceRow>, StoreError>;
+    async fn advance_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn advance_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

@@ -5476,6 +5476,14 @@ async fn uib_app_has_audit_jobs_ui() {
         "quot-add",
         "quot-reload",
         "quot-list",
+        "cash-amount",
+        "cash-add",
+        "cash-reload",
+        "cash-list",
+        "adv-holder",
+        "adv-add",
+        "adv-reload",
+        "adv-list",
         "bell",
         "bell-n",
         "bell-list",
@@ -6930,6 +6938,131 @@ async fn compliance_alerts_feed() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/compliance/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn cashbook_and_advances() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cashadv@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/cashbook",
+            r#"{"kind":"in","amount_minor":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Bad kind and non-positive amounts rejected.
+    for (payload, want) in [
+        (
+            r#"{"kind":"sideways","amount_minor":100}"#.to_string(),
+            StatusCode::CONFLICT,
+        ),
+        (
+            r#"{"kind":"in","amount_minor":0}"#.to_string(),
+            StatusCode::CONFLICT,
+        ),
+        (
+            r#"{"kind":"in","amount_minor":-5}"#.to_string(),
+            StatusCode::CONFLICT,
+        ),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/cashbook", &payload, Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "payload was {payload}");
+    }
+    for (kind, amt) in [("in", 100000), ("in", 50000), ("out", 30000)] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/cashbook",
+                &format!(r#"{{"kind":"{kind}","amount_minor":{amt},"note":"Uji"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/cashbook", &tok))
+        .await
+        .unwrap();
+    let cb = body_json(res).await;
+    assert_eq!(cb["balance_minor"].as_i64().unwrap(), 120000);
+    assert_eq!(cb["entries"].as_array().unwrap().len(), 3);
+    // Advances: open -> settled; double-settle rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/advances",
+            r#"{"holder":"Andi","amount_minor":200000,"purpose":"Operasional"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/advances/{vid}/status"),
+            r#"{"status":"settled"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/advances/{vid}/status"),
+            r#"{"status":"cancelled"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/advances", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(vid) && r["status"] == "settled"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=cash", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.cash_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/cashbook")
                 .body(Body::empty())
                 .unwrap(),
         )
