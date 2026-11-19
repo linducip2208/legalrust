@@ -195,6 +195,27 @@ pub struct ClientCheckItemRow {
     pub label: String,
     pub done: bool,
 }
+/// Client fee arrangement profile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientFeeRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub name: String,
+    pub kind: String,
+    pub amount_minor: i64,
+    pub note: String,
+}
+/// Client document request (fulfilment tracked by status).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientDocReqRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub title: String,
+    pub status: String,
+    pub note: String,
+}
 /// Document metadata value (tags = repeated rows on tag-kind fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocMetaRow {
@@ -1741,6 +1762,33 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ClientCheckItemRow>, StoreError>;
     async fn cchit_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
     async fn cchit_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Client fee arrangement profiles.
+    async fn cfee_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cfee_list(&self, org: &str, client_id: i64) -> Result<Vec<ClientFeeRow>, StoreError>;
+    async fn cfee_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Client document request tracker.
+    async fn cdreq_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cdreq_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientDocReqRow>, StoreError>;
+    async fn cdreq_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cdreq_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

@@ -1878,6 +1878,151 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cfee_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 120 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(
+            kind,
+            "hourly" | "fixed" | "retainer" | "success" | "pro_bono"
+        ) {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if amount_minor < 0 || note.len() > 500 {
+            return Err(StoreError::Conflict("amount/note".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_fees (org_id, client_id, name, kind, amount_minor, note) VALUES (?,?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(name).bind(kind).bind(amount_minor).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cfee_list(&self, org: &str, client_id: i64) -> Result<Vec<ClientFeeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, name, kind, amount_minor, note FROM client_fees WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientFeeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                name: x.get::<String, _>("name"),
+                kind: x.get::<String, _>("kind"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cfee_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_fees WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cdreq_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_doc_requests (org_id, client_id, title, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(title)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cdreq_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientDocReqRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, title, status, note FROM client_doc_requests WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).bind(client_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientDocReqRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                title: x.get::<String, _>("title"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cdreq_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_doc_requests WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("requested", "received")
+                | ("requested", "cancelled")
+                | ("received", "verified")
+                | ("received", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_doc_requests SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cdreq_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_doc_requests WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

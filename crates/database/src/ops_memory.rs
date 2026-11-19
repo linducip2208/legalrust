@@ -136,6 +136,8 @@ struct Inner {
     csegs: HashMap<i64, ClientSegRow>,
     cchks: HashMap<i64, ClientCheckRow>,
     cchits: HashMap<i64, ClientCheckItemRow>,
+    cfees: HashMap<i64, ClientFeeRow>,
+    cdreqs: HashMap<i64, ClientDocReqRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -2143,6 +2145,143 @@ impl OpsStore for MemoryOps {
         match m.cchits.get(&id) {
             Some(r) if r.org == org => {
                 m.cchits.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cfee_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        kind: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 120 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(
+            kind,
+            "hourly" | "fixed" | "retainer" | "success" | "pro_bono"
+        ) {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if amount_minor < 0 || note.len() > 500 {
+            return Err(StoreError::Conflict("amount/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cfees.insert(
+            id,
+            ClientFeeRow {
+                id,
+                org: org.into(),
+                client_id,
+                name: name.into(),
+                kind: kind.into(),
+                amount_minor,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cfee_list(&self, org: &str, client_id: i64) -> Result<Vec<ClientFeeRow>, StoreError> {
+        let mut v: Vec<ClientFeeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cfees
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cfee_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cfees.get(&id) {
+            Some(r) if r.org == org => {
+                m.cfees.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cdreq_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cdreqs.insert(
+            id,
+            ClientDocReqRow {
+                id,
+                org: org.into(),
+                client_id,
+                title: title.into(),
+                status: "requested".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cdreq_list(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Vec<ClientDocReqRow>, StoreError> {
+        let mut v: Vec<ClientDocReqRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cdreqs
+            .values()
+            .filter(|r| r.org == org && r.client_id == client_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cdreq_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cdreqs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("requested", "received")
+                | ("requested", "cancelled")
+                | ("received", "verified")
+                | ("received", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cdreq_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cdreqs.get(&id) {
+            Some(r) if r.org == org => {
+                m.cdreqs.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

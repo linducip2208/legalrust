@@ -5619,9 +5619,15 @@ async fn crm_app_contains_crm_ids() {
         "cko-list",
         "cki-lid",
         "cki-add",
-        "ctl-cid",
-        "ctl-reload",
-        "ctl-list",
+        "ctm-cid",
+        "ctm-reload",
+        "ctm-list",
+        "cfee-cid",
+        "cfee-add",
+        "cfee-list",
+        "cdrq-cid",
+        "cdrq-add",
+        "cdrq-list",
         "up-file",
         "up-go",
         "up-prog",
@@ -10730,6 +10736,172 @@ async fn client_onboarding_offboarding_checklists() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/checklists"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_fees_and_doc_requests() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clifee@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Auditor cannot create (Create gate).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/fees"),
+            r#"{"name":"Retainer","kind":"retainer"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Bad kind rejected; ghost client 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/fees"),
+            r#"{"name":"Skema X","kind":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/999999/fees",
+            r#"{"name":"Skema X"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/fees"),
+            r#"{"name":"Retainer 2026","kind":"retainer","amount_minor":120000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/fees"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(fid) && r["amount_minor"].as_i64() == Some(120000000)));
+    // Doc requests: chain requested->received->verified; skip-ahead rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/doc-requests"),
+            r#"{"title":"KTP para pihak"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/doc-requests/{did}/status"),
+            r#"{"status":"verified"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["received", "verified"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/doc-requests/{did}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "docreq to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/doc-requests"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(did) && r["status"] == "verified"));
+    // Delete fee; ghost delete 404s.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/client-fees/{fid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-fees/999999")
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=client", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "client.doc_requested"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/clients/{cli}/fees"))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -17916,8 +18088,8 @@ async fn uib_app_has_approvals_ui() {
         "pol-list",
         "ctl-code",
         "ctl-add",
-        "ctl-reload",
-        "ctl-list",
+        "ctm-reload",
+        "ctm-list",
         "ctdue-reload",
         "ctdue-list",
         "ctest-ctl",

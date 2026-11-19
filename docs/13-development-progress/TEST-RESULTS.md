@@ -35,6 +35,9 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 140: fee + permintaan (main)
+- Chains + guards + audit; workspace **430 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 139: linimasa klien (main)
 - Aggregation + rescore; workspace **429 passed, 0 failed**.
 

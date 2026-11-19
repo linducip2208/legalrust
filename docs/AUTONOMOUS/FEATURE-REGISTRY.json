@@ -551,19 +551,29 @@
   "id": "F-D02-015",
   "domain": "D02",
   "title": "Client fee arrangement profiles",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0088: client_fees table (kind check, forward-only)",
+   "ops.rs + memory + mysql: cfee add/list/delete + allowlists",
+   "lib.rs: POST/GET fees + DELETE (existence-verified, RBAC)",
+   "site.js: fee card + hooks (klien panel)",
+   "tests: client_fees_and_doc_requests e2e (kind 409, ghost 404, 403/401)"
+  ],
+  "audit_note": "Wave 140: fee profiles live. Verified by test (430/0)."
  },
  {
   "id": "F-D02-016",
   "domain": "D02",
   "title": "Client document request tracker",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0088: client_doc_requests table (forward-only)",
+   "ops.rs + memory + mysql: add/list/status/delete + branch chain",
+   "lib.rs: doc-request endpoints + audit client.doc_requested",
+   "site.js: doc-request card + hooks (klien panel)",
+   "tests: skip-ahead 409 + chain + audit asserted"
+  ],
+  "audit_note": "Wave 140: doc-request tracker live. Verified by test (430/0)."
  },
  {
   "id": "F-D02-017",
