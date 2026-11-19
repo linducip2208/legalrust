@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 70: compliance alert feed (main)
+- GET /api/v1/compliance/alerts (6 jenis turunan) + kartu Peringatan + posture/CSV 19 register.
+- F-D11-034 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 359/0; registry ~22.3 (102 IMPLEMENTED); mean ~22.8 (100 v).
+
 ## Done wave 69: policy library + control library (main)
 - policies + acks (0038) + controls (0039) + kartu kepatuhan + uji.
 - F-D11-035/027 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 358/0; registry ~22.2 (101 IMPLEMENTED); mean 22.8 (99 v).

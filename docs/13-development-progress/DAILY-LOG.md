@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 70: alert feed (main)
+- Feed 6 jenis + posture/CSV penuh; workspace **359 passed, 0 failed**; F-D11-034 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 69: policies + controls (main)
 - Pustaka + ack coverage + toggle aktif; workspace **358 passed, 0 failed**; F-D11-035/027 IMPLEMENTED.
 

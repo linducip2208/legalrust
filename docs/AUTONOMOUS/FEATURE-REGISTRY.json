@@ -4341,10 +4341,13 @@
   "id": "F-D11-034",
   "domain": "D11",
   "title": "Compliance alert feed",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/compliance/alerts (6 derived kinds, no synthetic scores)",
+   "apps/server/static/site.js: alertsRefresh card Peringatan kepatuhan + hooks",
+   "apps/server/tests/api.rs: compliance_alerts_feed e2e (4 kinds asserted, empty-org empty, 401)"
+  ],
+  "audit_note": "Wave 70: pure derivation; posture/CSV extended to 19 registers; verified by test (359/0)."
  },
  {
   "id": "F-D11-035",

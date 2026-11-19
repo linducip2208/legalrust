@@ -2294,8 +2294,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('posture-reload', 'click', postureRefresh);
   on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
+  /* ---- compliance: alert feed ---- */
+  async function alertsRefresh() {
+    var box = document.getElementById('alerts-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/alerts');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + badge(x.kind) + '</td><td>' + esc(x.title) + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Tidak ada peringatan. Semua tertangani.</td></tr>';
+  }
+  on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); postureRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2354,6 +2365,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   polRefresh();
   ctlRefresh();
   postureRefresh();
+  alertsRefresh();
   whDlRefresh();
   intRefresh();
 })();

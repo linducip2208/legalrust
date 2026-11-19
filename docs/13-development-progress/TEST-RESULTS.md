@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 70: alert feed (main)
+- Kinds + empty-org + CSV coverage; workspace **359 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 69: policies + controls (main)
 - Ack dedup + dup code + guards; workspace **358 passed, 0 failed**.
 

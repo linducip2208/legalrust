@@ -6761,6 +6761,161 @@ async fn compliance_posture_and_export() {
 }
 
 #[tokio::test]
+async fn compliance_alerts_feed() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "alerts@x.id").await;
+    // Seed: overdue DSAR, high open risk, unreviewed whistle, open critical finding.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/dsar",
+            r#"{"subject":"SS","kind":"access","detail":"DD","due_date":"2020-01-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/risks",
+            r#"{"title":"Kebocoran","likelihood":5,"impact":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/whistle",
+            r#"{"summary":"Laporan uji"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/findings",
+            r#"{"title":"Temuan kritis","severity":"critical"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/alerts", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let kinds: Vec<&str> = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|x| x["kind"].as_str().unwrap())
+        .collect();
+    for want in [
+        "dsar_overdue",
+        "risk_high",
+        "whistle_unreviewed",
+        "finding_open",
+    ] {
+        assert!(
+            kinds.contains(&want),
+            "alert feed missing {want}: {kinds:?}"
+        );
+    }
+    // Untouched org sees an empty feed; posture covers all 19 registers.
+    let tok2 = reg(&a, "alerts2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/alerts", &tok2))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 0);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/posture", &tok))
+        .await
+        .unwrap();
+    let pv = body_json(res).await;
+    let regs: Vec<&str> = pv
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["register"].as_str().unwrap())
+        .collect();
+    for want in ["findings", "whistle", "waivers", "policies", "controls"] {
+        assert!(regs.contains(&want), "posture missing {want}");
+    }
+    // Seed the remaining registers so posture + CSV cover all 19.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/waivers",
+            r#"{"title":"WW","justification":"JJ"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/policies",
+            r#"{"title":"PP","body":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/controls",
+            r#"{"code":"T-01","title":"TT"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/compliance.csv", &tok))
+        .await
+        .unwrap();
+    let body = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(body.to_vec()).unwrap();
+    for want in [
+        "findings,",
+        "whistle,",
+        "waivers,",
+        "policies,",
+        "controls,",
+    ] {
+        assert!(text.contains(want), "csv missing {want}");
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/compliance/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn policy_library_and_controls() {
     use tower::ServiceExt;
     let a = app();
@@ -8856,6 +9011,8 @@ async fn uib_app_has_approvals_ui() {
         "posture-reload",
         "posture-csv",
         "posture-list",
+        "alerts-reload",
+        "alerts-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",
