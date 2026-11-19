@@ -127,6 +127,7 @@ struct Inner {
     qrounds: HashMap<i64, QuorumRoundRow>,
     qvotes: HashMap<i64, QuorumVoteRow>,
     qoverrides: HashMap<i64, QuorumOverrideRow>,
+    receipts: HashMap<i64, ReceiptRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1430,6 +1431,73 @@ impl OpsStore for MemoryOps {
             m.qrounds.get_mut(&o.round_id).unwrap().status = "overridden".into();
         }
         Ok(status.into())
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn receipt_append(
+        &self,
+        org: &str,
+        req_id: i64,
+        step_no: i64,
+        decision: &str,
+        actor: &str,
+        hash: &str,
+        prev: &str,
+    ) -> Result<i64, StoreError> {
+        if hash.len() != 64 || prev.len() != 64 {
+            return Err(StoreError::Conflict("hash".into()));
+        }
+        if req_id <= 0 || actor.trim().is_empty() {
+            return Err(StoreError::Conflict("receipt".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.receipts.insert(
+            id,
+            ReceiptRow {
+                id,
+                org: org.into(),
+                req_id,
+                step_no,
+                decision: decision.into(),
+                actor: actor.into(),
+                prev_hash: prev.into(),
+                hash: hash.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn receipt_list(&self, org: &str, req_id: i64) -> Result<Vec<ReceiptRow>, StoreError> {
+        let mut v: Vec<ReceiptRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .receipts
+            .values()
+            .filter(|r| r.org == org && r.req_id == req_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn appr_redact_comment(
+        &self,
+        org: &str,
+        id: i64,
+        step_no: i64,
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.apprs.get(&id) {
+            Some(r) if r.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let sid = m
+            .appr_steps
+            .values()
+            .find(|s| s.req == id && s.step_no == step_no)
+            .map(|s| s.id)
+            .ok_or(StoreError::NotFound)?;
+        m.appr_steps.get_mut(&sid).unwrap().comment = Some("[redacted]".into());
+        Ok(())
     }
     async fn webhook_log(
         &self,

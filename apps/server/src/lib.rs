@@ -11355,6 +11355,17 @@ async fn appr_decide_bulk(
         },
     )
     .await;
+    for it in &b.items {
+        receipt_record(
+            &s,
+            &u.claims.org,
+            it.id,
+            it.step_no,
+            it.decision.trim(),
+            &u.claims.sub,
+        )
+        .await;
+    }
     Ok(Json(json!({"decided": done.len(),
         "rows": done.iter().map(|r| json!({"req": r.req, "step_no": r.step_no, "status": r.status})).collect::<Vec<_>>()})))
 }
@@ -14181,6 +14192,15 @@ async fn appr_decide(
         &format!("Approval #{} step {}: {}", id, b.step_no, done.status),
     )
     .await;
+    receipt_record(
+        &s,
+        &u.claims.org,
+        id,
+        b.step_no,
+        b.decision.trim(),
+        &u.claims.sub,
+    )
+    .await;
     Ok(Json(
         json!({"step_no": done.step_no, "status": done.status, "request_status": req.status}),
     ))
@@ -14695,6 +14715,124 @@ async fn qoverride_decide(
     Ok(Json(json!({"id": id, "status": status})))
 }
 // ---------- end approval slice: quorum + override ----------
+
+// ---------- approval slice: integrity chain + redaction ----------
+// Decision receipts (F-D09-036): every applied decision appends a hash link
+// `sha256(prev|req|step|decision|actor)`; `verify` recomputes the chain.
+// Gaps (e.g. a failed append) surface as broken_at instead of silent trust.
+async fn receipt_record(
+    s: &FullState,
+    org: &str,
+    req_id: i64,
+    step_no: i64,
+    decision: &str,
+    actor: &str,
+) {
+    let prev = s
+        .stores
+        .ops
+        .receipt_list(org, req_id)
+        .await
+        .map(|v| {
+            v.last()
+                .map(|r| r.hash.clone())
+                .unwrap_or_else(|| "0".repeat(64))
+        })
+        .unwrap_or_else(|_| "0".repeat(64));
+    let hash = legalrust_document::sha256_hex(
+        format!("{prev}|{req_id}|{step_no}|{decision}|{actor}").as_bytes(),
+    );
+    if s.stores
+        .ops
+        .receipt_append(org, req_id, step_no, decision, actor, &hash, &prev)
+        .await
+        .is_err()
+    {
+        audit(
+            &s.pool,
+            &s.stores,
+            AuditEvent {
+                tenant_id: org.to_string(),
+                actor_id: Some(actor.to_string()),
+                action: "approval.receipt_failed".into(),
+                entity: "approval".into(),
+                entity_id: req_id,
+                ip: None,
+            },
+        )
+        .await;
+    }
+}
+async fn appr_chain(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    s.stores
+        .ops
+        .appr_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    let rows = s
+        .stores
+        .ops
+        .receipt_list(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    let mut prev = "0".repeat(64);
+    let mut broken_at: Option<i64> = None;
+    for r in &rows {
+        let expect = legalrust_document::sha256_hex(
+            format!(
+                "{}|{}|{}|{}|{}",
+                prev, r.req_id, r.step_no, r.decision, r.actor
+            )
+            .as_bytes(),
+        );
+        if r.prev_hash != prev || r.hash != expect {
+            broken_at = Some(r.id);
+            break;
+        }
+        prev = r.hash.clone();
+    }
+    Ok(Json(
+        json!({"id": id, "valid": broken_at.is_none(), "broken_at": broken_at,
+        "receipts": rows.iter().map(|r| json!({"id": r.id, "step_no": r.step_no, "decision": r.decision, "actor": r.actor, "prev": r.prev_hash, "hash": r.hash})).collect::<Vec<_>>()}),
+    ))
+}
+// Comment redaction (F-D09-038): privacy scrub of a step comment.
+// Destructive by design: Delete permission + admin role + audit trail.
+async fn appr_redact(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path((id, step)): Path<(i64, i64)>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Delete)?;
+    require_admin(&u)?;
+    s.stores
+        .ops
+        .appr_redact_comment(&u.claims.org, id, step)
+        .await
+        .map_err(map_store)?;
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "approval.comment_redacted".into(),
+            entity: "approval".into(),
+            entity_id: id,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(json!({"id": id, "step_no": step, "redacted": true})))
+}
+// ---------- end approval slice: chain + redaction ----------
 
 async fn sse_events(
     State(s): State<FullState>,
@@ -17022,6 +17160,11 @@ pub fn build_router(state: FullState) -> Router {
         .route(
             "/api/v1/quorum-overrides/{id}/decide",
             post(qoverride_decide),
+        )
+        .route("/api/v1/approvals/{id}/chain", get(appr_chain))
+        .route(
+            "/api/v1/approvals/{id}/steps/{step}/redact",
+            post(appr_redact),
         )
         .route("/api/v1/approvals/{id}/attachments", get(appr_attachments))
         .route("/api/v1/approvals/archive", get(appr_archive))

@@ -1410,6 +1410,85 @@ impl OpsStore for MysqlOps {
         tx.commit().await.map_err(db_err)?;
         Ok(to.into())
     }
+    #[allow(clippy::too_many_arguments)]
+    async fn receipt_append(
+        &self,
+        org: &str,
+        req_id: i64,
+        step_no: i64,
+        decision: &str,
+        actor: &str,
+        hash: &str,
+        prev: &str,
+    ) -> Result<i64, StoreError> {
+        if hash.len() != 64 || prev.len() != 64 {
+            return Err(StoreError::Conflict("hash".into()));
+        }
+        if req_id <= 0 || actor.trim().is_empty() {
+            return Err(StoreError::Conflict("receipt".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO approval_receipts (org_id, req_id, step_no, decision, actor, prev_hash, hash) VALUES (?,?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(req_id as u64)
+        .bind(step_no)
+        .bind(decision)
+        .bind(actor)
+        .bind(prev)
+        .bind(hash)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn receipt_list(&self, org: &str, req_id: i64) -> Result<Vec<ReceiptRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, req_id, step_no, decision, actor, prev_hash, hash FROM approval_receipts WHERE org_id=? AND req_id=? ORDER BY id")
+            .bind(org).bind(req_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ReceiptRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                req_id: x.get::<u64, _>("req_id") as i64,
+                step_no: x.get::<i32, _>("step_no") as i64,
+                decision: x.get::<String, _>("decision"),
+                actor: x.get::<String, _>("actor"),
+                prev_hash: x.get::<String, _>("prev_hash"),
+                hash: x.get::<String, _>("hash"),
+            })
+            .collect())
+    }
+    async fn appr_redact_comment(
+        &self,
+        org: &str,
+        id: i64,
+        step_no: i64,
+    ) -> Result<(), StoreError> {
+        let req_ok: bool = sqlx::query("SELECT id FROM approval_requests WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .is_some();
+        if !req_ok {
+            return Err(StoreError::NotFound);
+        }
+        let n = sqlx::query(
+            "UPDATE approval_steps SET comment='[redacted]' WHERE request_id=? AND step_no=?",
+        )
+        .bind(id as u64)
+        .bind(step_no)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn webhook_log(
         &self,
         org: Option<&str>,

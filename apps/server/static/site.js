@@ -3503,8 +3503,22 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
     box.innerHTML = '<p><strong>#' + v.id + '</strong> ' + esc(v.title) + ' — ' + esc(v.entity) + ' #' + v.entity_id + ' ' + badge(v.status) + '</p>'
       + '<ol>' + (v.steps || []).map(function (s) {
-        return '<li>tahap ' + s.step_no + ' (' + esc(s.role) + '): ' + badge(s.status) + (s.comment ? ' — <em>' + esc(s.comment) + '</em>' : '') + '</li>';
-      }).join('') + '</ol><div id="appr-docs"><p class="text-muted">Memuat lampiran…</p></div>';
+        return '<li>tahap ' + s.step_no + ' (' + esc(s.role) + '): ' + badge(s.status) + (s.comment ? ' — <em>' + esc(s.comment) + '</em>' : '') + ' <button class="btn btn-sm btn-outline-danger" data-redact="' + s.step_no + '" type="button">Redaksi</button></li>';
+      }).join('') + '</ol><div id="appr-docs"><p class="text-muted">Memuat lampiran…</p></div><div id="appr-chain"><button class="btn btn-sm btn-outline-secondary" id="appr-chain-btn" type="button">Verifikasi rantai</button> <span id="appr-chain-out" class="text-muted"></span></div>';
+    qsa('[data-redact]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/approvals/' + encodeURIComponent(pval('appr-id')) + '/steps/' + b.getAttribute('data-redact') + '/redact', {});
+        if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + '). Perlu admin?'); return; }
+        pmsg('appr-dmsg', '');
+        apprShow();
+      });
+    });
+    on('appr-chain-btn', 'click', async function () {
+      var out = document.getElementById('appr-chain-out');
+      var c = await j('/api/v1/approvals/' + encodeURIComponent(pval('appr-id')) + '/chain');
+      if (!c) { if (out) out.textContent = 'Gagal memuat.'; return; }
+      if (out) out.innerHTML = (c.valid ? '<span class="badge bg-green-lt">valid (' + (c.receipts || []).length + ' tautan)</span>' : '<span class="badge bg-red-lt">RUSAK di #' + c.broken_at + '</span>');
+    });
     var at = await j('/api/v1/approvals/' + encodeURIComponent(id) + '/attachments');
     var docs = document.getElementById('appr-docs');
     if (!docs) return;

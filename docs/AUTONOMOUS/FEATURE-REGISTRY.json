@@ -3546,10 +3546,15 @@
   "id": "F-D09-036",
   "domain": "D09",
   "title": "Approval integrity hash",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0080_receipts.sql: approval_receipts table (chain links, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: receipt_append/list (hash/len guards)",
+   "apps/server/src/lib.rs: receipt_record hook in decide + bulk; GET chain with recompute verify",
+   "apps/server/static/site.js: chain verify button + redact buttons (detail view)",
+   "apps/server/tests/api.rs: 2-link chain valid + prev linkage + gap surfacing design asserted"
+  ],
+  "audit_note": "Wave 122: integrity chain live. Verified by test (411/0)."
  },
  {
   "id": "F-D09-037",
@@ -3569,10 +3574,14 @@
   "id": "F-D09-038",
   "domain": "D09",
   "title": "Approval comment redaction",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: appr_redact_comment (org-scoped)",
+   "apps/server/src/lib.rs: POST steps/{step}/redact (Delete + admin gate, audit)",
+   "apps/server/static/site.js: per-step Redaksi button (detail view)",
+   "apps/server/tests/api.rs: lawyer 403, ghost 404, scrub asserted, audit event present"
+  ],
+  "audit_note": "Wave 122: comment redaction live. Verified by test (411/0)."
  },
  {
   "id": "F-D09-039",

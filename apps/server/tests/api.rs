@@ -9319,6 +9319,125 @@ async fn approval_routing_amount_and_risk() {
 }
 
 #[tokio::test]
+async fn approval_chain_and_redaction() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprchain@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(
+        &a,
+        &tok,
+        mid,
+        r#"[{"step_no":1,"role":"office_admin"},{"step_no":2,"role":"office_admin"}]"#,
+    )
+    .await;
+    // Decide step 1 with a comment, then verify the chain.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve","comment":"NIK 12345"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}/chain"), &tok))
+        .await
+        .unwrap();
+    let ch = body_json(res).await;
+    assert_eq!(ch["valid"], serde_json::json!(true));
+    assert_eq!(ch["receipts"].as_array().unwrap().len(), 1);
+    // Second decision extends the chain.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":2,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}/chain"), &tok))
+        .await
+        .unwrap();
+    let ch2 = body_json(res).await;
+    assert_eq!(ch2["valid"], serde_json::json!(true));
+    assert_eq!(ch2["receipts"].as_array().unwrap().len(), 2);
+    assert_eq!(ch2["receipts"][1]["prev"], ch2["receipts"][0]["hash"]);
+    // Redaction is Delete-gated: lawyer forbidden, owner scrubs.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/steps/1/redact"),
+            "{}",
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/steps/9/redact"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/steps/1/redact"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}"), &tok))
+        .await
+        .unwrap();
+    assert!(
+        body_json(res).await["steps"].as_array().unwrap()[0]["comment"]
+            .as_str()
+            .unwrap()
+            .contains("redacted")
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=approval", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "approval.comment_redacted"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/approvals/{aid}/chain"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn quorum_rounds_and_dual_override() {
     use tower::ServiceExt;
     let a = app();
@@ -15238,6 +15357,7 @@ async fn uib_app_has_approvals_ui() {
         "qrm-reload",
         "qrm-list",
         "qrv-go",
+        "appr-sim-out",
         "arc-status",
         "arc-reload",
         "arc-list",

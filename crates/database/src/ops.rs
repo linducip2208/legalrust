@@ -99,6 +99,18 @@ pub struct QuorumVoteRow {
     pub voter: String,
     pub decision: String,
 }
+/// Approval decision receipt (hash-chained per request).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReceiptRow {
+    pub id: i64,
+    pub org: String,
+    pub req_id: i64,
+    pub step_no: i64,
+    pub decision: String,
+    pub actor: String,
+    pub prev_hash: String,
+    pub hash: String,
+}
 /// Dual-control quorum override.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuorumOverrideRow {
@@ -1527,6 +1539,22 @@ pub trait OpsStore: Send + Sync {
         approve: bool,
         decided_by: &str,
     ) -> Result<String, StoreError>;
+    /// Decision receipt chain (hash `GENESIS` for the first receipt).
+    #[allow(clippy::too_many_arguments)]
+    async fn receipt_append(
+        &self,
+        org: &str,
+        req_id: i64,
+        step_no: i64,
+        decision: &str,
+        actor: &str,
+        hash: &str,
+        prev: &str,
+    ) -> Result<i64, StoreError>;
+    async fn receipt_list(&self, org: &str, req_id: i64) -> Result<Vec<ReceiptRow>, StoreError>;
+    /// Privacy redaction of a step comment (admin only at the API layer).
+    async fn appr_redact_comment(&self, org: &str, id: i64, step_no: i64)
+        -> Result<(), StoreError>;
     /// Record an inbound webhook receipt (observability; never fails the
     /// webhook itself — callers ignore the result).
     async fn webhook_log(
