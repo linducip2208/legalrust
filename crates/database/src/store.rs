@@ -54,6 +54,7 @@ pub struct MatterRow {
     pub number: String,
     pub title: String,
     pub status: String,
+    pub practice_area: String,
 }
 #[derive(Debug, Clone)]
 pub struct TaskRow {
@@ -175,6 +176,13 @@ pub trait CoreStore: Send + Sync {
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError>;
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError>;
     /// Partial client update (only `Some` fields change; validates values).
+    /// Practice-area classification (allowlist).
+    async fn set_matter_practice(
+        &self,
+        org: &str,
+        id: i64,
+        area: &str,
+    ) -> Result<MatterRow, StoreError>;
     async fn update_client(
         &self,
         org: &str,

@@ -415,10 +415,11 @@ impl CoreStore for MysqlStores {
             number: number.into(),
             title: title.into(),
             status: "open".into(),
+            practice_area: "general".into(),
         })
     }
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MatterRow {
@@ -428,11 +429,12 @@ impl CoreStore for MysqlStores {
                 number: x.get::<String, _>("number"),
                 title: x.get::<String, _>("title"),
                 status: x.get::<String, _>("status"),
+                practice_area: x.get::<String, _>("practice_area"),
             })
             .collect())
     }
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError> {
-        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
         Ok(MatterRow {
             id: x.get::<u64, _>("id") as i64,
             org_id: x.get::<String, _>("org_id"),
@@ -440,7 +442,37 @@ impl CoreStore for MysqlStores {
             number: x.get::<String, _>("number"),
             title: x.get::<String, _>("title"),
             status: x.get::<String, _>("status"),
+            practice_area: x.get::<String, _>("practice_area"),
         })
+    }
+    async fn set_matter_practice(
+        &self,
+        org: &str,
+        id: i64,
+        area: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let area = area.trim().to_lowercase();
+        if ![
+            "general",
+            "litigation",
+            "corporate",
+            "family",
+            "property",
+            "notary",
+            "ppat",
+        ]
+        .contains(&area.as_str())
+        {
+            return Err(StoreError::Conflict("practice_area".into()));
+        }
+        sqlx::query("UPDATE matters SET practice_area=? WHERE id=? AND org_id=?")
+            .bind(&area)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.get_matter(org, id).await
     }
     async fn update_client(
         &self,

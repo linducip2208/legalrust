@@ -391,6 +391,15 @@ pub struct PortalRatingRow {
     pub score: i64,
     pub comment: String,
 }
+/// Related-matter link (ordered pair, relation label).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterLinkRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_a: i64,
+    pub matter_b: i64,
+    pub relation: String,
+}
 /// Portal usage event (login/view/download/upload/message/rating/request).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalEventRow {
@@ -2306,6 +2315,20 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: Option<i64>,
     ) -> Result<Vec<PortalEventRow>, StoreError>;
+    /// Related-matter links (ordered pair, dup-guarded).
+    async fn mlink_add(
+        &self,
+        org: &str,
+        matter_a: i64,
+        matter_b: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mlink_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<MatterLinkRow>, StoreError>;
+    async fn mlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

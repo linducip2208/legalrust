@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    mlinks: HashMap<i64, MatterLinkRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -300,6 +301,14 @@ fn cck_ok(verdict: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("verdict".into()));
     }
     Ok(v)
+}
+
+fn mlink_rel_ok(relation: &str) -> Result<String, StoreError> {
+    let rel = relation.trim().to_lowercase();
+    if !["related", "parent", "duplicate", "split_from"].contains(&rel.as_str()) {
+        return Err(StoreError::Conflict("relation".into()));
+    }
+    Ok(rel)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3749,6 +3758,74 @@ impl OpsStore for MemoryOps {
         v.sort_by_key(|r| -r.id);
         v.truncate(200);
         Ok(v)
+    }
+    async fn mlink_add(
+        &self,
+        org: &str,
+        matter_a: i64,
+        matter_b: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_a <= 0 || matter_b <= 0 || matter_a == matter_b {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let (lo, hi) = if matter_a < matter_b {
+            (matter_a, matter_b)
+        } else {
+            (matter_b, matter_a)
+        };
+        let relation = mlink_rel_ok(relation)?;
+        let mut m = self.inner.lock().unwrap();
+        if m.mlinks
+            .values()
+            .any(|r| r.org == org && r.matter_a == lo && r.matter_b == hi)
+        {
+            return Err(StoreError::Conflict("already linked".into()));
+        }
+        let id = self.next(&mut m);
+        m.mlinks.insert(
+            id,
+            MatterLinkRow {
+                id,
+                org: org.into(),
+                matter_a: lo,
+                matter_b: hi,
+                relation,
+            },
+        );
+        Ok(id)
+    }
+    async fn mlink_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<MatterLinkRow>, StoreError> {
+        let mut v: Vec<MatterLinkRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mlinks
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && matter_id
+                        .map(|x| r.matter_a == x || r.matter_b == x)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn mlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mlinks.get(&id) {
+            Some(r) if r.org == org => {
+                m.mlinks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

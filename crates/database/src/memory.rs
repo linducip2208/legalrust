@@ -283,6 +283,7 @@ impl CoreStore for MemoryStores {
             number: number.into(),
             title: title.into(),
             status: "open".into(),
+            practice_area: "general".into(),
         };
         m.matters.insert(id, r.clone());
         Ok(r)
@@ -388,6 +389,35 @@ impl CoreStore for MemoryStores {
         }
         m.clients.remove(&id);
         Ok(())
+    }
+    async fn set_matter_practice(
+        &self,
+        org: &str,
+        id: i64,
+        area: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let area = area.trim().to_lowercase();
+        if ![
+            "general",
+            "litigation",
+            "corporate",
+            "family",
+            "property",
+            "notary",
+            "ppat",
+        ]
+        .contains(&area.as_str())
+        {
+            return Err(StoreError::Conflict("practice_area".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        r.practice_area = area;
+        Ok(r.clone())
     }
     async fn create_task(
         &self,

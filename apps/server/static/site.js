@@ -3171,6 +3171,37 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('cem-msg', '');
     cemRefresh();
   });
+  /* ---- matter classification + links (F-D03-003/023) ---- */
+  async function mclRefresh() {
+    var box = document.getElementById('mcl-list');
+    if (!box) return;
+    var v = await j('/api/v1/matter-links' + (pval('mcl-mid') ? '?matter_id=' + encodeURIComponent(pval('mcl-mid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.matter_a + '</td><td>#' + x.matter_b + '</td><td>' + badge(x.relation) + '</td><td><button class="btn btn-sm btn-outline-danger" data-mcl-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada tautan.</td></tr>';
+    qsa('[data-mcl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/matter-links/' + b.getAttribute('data-mcl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+        mclRefresh();
+      });
+    });
+  }
+  on('mcl-save', 'click', async function () {
+    if (!pval('mcl-mid')) { pmsg('mcl-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-mid')) + '/practice', { practice_area: pval('mcl-area') || 'general' });
+    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mcl-msg', '');
+  });
+  on('mcl-link', 'click', async function () {
+    if (!pval('mcl-mid') || !pval('mcl-other')) { pmsg('mcl-msg', 'Isi kedua ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-mid')) + '/links', { other_id: +pval('mcl-other'), relation: 'related' });
+    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + '). Ganda / diri sendiri?'); return; }
+    pmsg('mcl-msg', '');
+    mclRefresh();
+  });
+  on('mcl-reload', 'click', mclRefresh);
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

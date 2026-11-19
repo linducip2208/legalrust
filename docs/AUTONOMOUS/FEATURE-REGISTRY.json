@@ -940,10 +940,15 @@
   "id": "F-D03-003",
   "domain": "D03",
   "title": "Matter classification & practice area",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0109: practice_area column on matters (forward-only)",
+   "store.rs + memory.rs + mysql.rs: MatterRow.practice_area + set_matter_practice (allowlist)",
+   "lib.rs: POST /matters/{id}/practice (RBAC, 404/409)",
+   "site.js: classification card + hooks (klien panel)",
+   "tests: matter_classification_and_links e2e (allowlist 409, 403)"
+  ],
+  "audit_note": "Wave 173: classification live. Verified by test (463/0)."
  },
  {
   "id": "F-D03-004",
@@ -1128,10 +1133,15 @@
   "id": "F-D03-023",
   "domain": "D03",
   "title": "Related-matter linking",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0109: matter_links table (ordered pair, dup guard, forward-only)",
+   "ops.rs + memory + mysql: mlink add/list/delete",
+   "lib.rs: link endpoints (existence-verified, RBAC)",
+   "site.js: links card + hooks (klien panel)",
+   "tests: self/ghost/dup guards asserted"
+  ],
+  "audit_note": "Wave 173: related-matter links live. Verified by test (463/0)."
  },
  {
   "id": "F-D03-024",

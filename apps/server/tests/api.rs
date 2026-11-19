@@ -5688,6 +5688,10 @@ async fn crm_app_contains_crm_ids() {
         "cfx-log",
         "cfx-list",
         "cfx-reg",
+        "mcl-mid",
+        "mcl-save",
+        "mcl-link",
+        "mcl-list",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -12049,6 +12053,120 @@ async fn portal_sla_and_accessibility() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn matter_classification_and_links() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mclass@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"M1"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let m1 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"M2"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let m2 = body_json(res).await["id"].as_i64().unwrap();
+    // Update-gated + allowlist.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/practice"),
+            r#"{"practice_area":"litigation"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/practice"),
+            r#"{"practice_area":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/practice"),
+            r#"{"practice_area":"property"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Links: self/ghost rejected, dup 409s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/links"),
+            &format!(r#"{{"other_id":{m1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/links"),
+            r#"{"other_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m1}/links"),
+            &format!(r#"{{"other_id":{m2},"relation":"split_from"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{m2}/links"),
+            &format!(r#"{{"other_id":{m1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matter-links?matter_id={m1}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["relation"] == "split_from"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matter-links")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

@@ -3468,6 +3468,73 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn mlink_add(
+        &self,
+        org: &str,
+        matter_a: i64,
+        matter_b: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_a <= 0 || matter_b <= 0 || matter_a == matter_b {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let (lo, hi) = if matter_a < matter_b {
+            (matter_a, matter_b)
+        } else {
+            (matter_b, matter_a)
+        };
+        let rel = relation.trim().to_lowercase();
+        if !["related", "parent", "duplicate", "split_from"].contains(&rel.as_str()) {
+            return Err(StoreError::Conflict("relation".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_links (org_id, matter_a, matter_b, relation) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(lo as u64)
+        .bind(hi as u64)
+        .bind(&rel)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mlink_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<MatterLinkRow>, StoreError> {
+        let rows = if let Some(x) = matter_id {
+            sqlx::query("SELECT id, org_id, matter_a, matter_b, relation FROM matter_links WHERE org_id=? AND (matter_a=? OR matter_b=?) ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(x as u64).bind(x as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, matter_a, matter_b, relation FROM matter_links WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterLinkRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_a: x.get::<u64, _>("matter_a") as i64,
+                matter_b: x.get::<u64, _>("matter_b") as i64,
+                relation: x.get::<String, _>("relation"),
+            })
+            .collect())
+    }
+    async fn mlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_links WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")
