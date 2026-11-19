@@ -3392,10 +3392,12 @@
   "id": "F-D09-027",
   "domain": "D09",
   "title": "Approval analytics (bottlenecks)",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/approvals-bottleneck.csv (stuck step/role per pending request)",
+   "apps/server/tests/api.rs: bottleneck stuck-step assertions"
+  ],
+  "audit_note": "Wave 52: bottleneck snapshot live; trend/history pending."
  },
  {
   "id": "F-D09-028",
@@ -4295,12 +4297,15 @@
   "id": "F-D11-039",
   "domain": "D11",
   "title": "Compliance audit trail",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
    "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "migrations/0001_foundation.sql: audit_events",
+   "apps/server/tests/api.rs: notification/delegation/ppat/vendor/report trails assert entity-scoped audit rows",
+   "apps/server/src/lib.rs: audit-entity filter incl. notification/user/ppat/report/trust/ropa/delegation/vendor"
+  ],
+  "audit_note": " Wave 52: entity-scoped compliance trails verified."
  },
  {
   "id": "F-D11-040",

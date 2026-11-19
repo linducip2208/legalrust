@@ -47,6 +47,11 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Aggregate per-tipe + CSV + tombol + trail; F-D20-010 NOT_STARTED->PARTIAL (64.1).
 - Workspace 342/0; registry 19.8 (77 IMPLEMENTED); 8-cat mean 20.8 (67 v).
 
+## Done wave 52: audit trail kepatuhan + analitik approval (main)
+- Entity-scoped compliance trails verified; bottleneck snapshot live.
+- F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
+- Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
+
 ## Done wave 51: ringkasan eksekutif (main)
 - Snapshot 9 metrik lintas modul + kartu ringkas; F-D20-039 PLANNED->PARTIAL (68.2).
 - Workspace 344/0; registry 19.9 (79 IMPLEMENTED); 8-cat mean 20.9 (69 v).
