@@ -509,19 +509,25 @@
   "id": "F-D02-011",
   "domain": "D02",
   "title": "Client communication timeline",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET timeline (dated meetings + undated state, RBAC, 404/401)",
+   "apps/server/static/site.js: linimasa card + hooks (klien panel)",
+   "apps/server/tests/api.rs: timeline e2e (3 sources, ghost 404, anon 401)"
+  ],
+  "audit_note": "Wave 139: timeline live. Verified by test (429/0)."
  },
  {
   "id": "F-D02-012",
   "domain": "D02",
   "title": "Meeting & visit log",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: meeting CRUD (migration 0011, org-verified, RBAC)",
+   "apps/server/static/site.js: crm-meet card + wiring (klien panel)",
+   "apps/server/tests/api.rs: crm_meeting 422/flow/cross-org/delete green"
+  ],
+  "audit_note": "Wave 139: verify-only; live since migration 0011 (429/0 green)."
  },
  {
   "id": "F-D02-013",

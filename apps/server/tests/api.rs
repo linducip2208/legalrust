@@ -5619,6 +5619,9 @@ async fn crm_app_contains_crm_ids() {
         "cko-list",
         "cki-lid",
         "cki-add",
+        "ctl-cid",
+        "ctl-reload",
+        "ctl-list",
         "up-file",
         "up-go",
         "up-prog",
@@ -10727,6 +10730,85 @@ async fn client_onboarding_offboarding_checklists() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/checklists"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_communication_timeline() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clitimeline@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    // Meeting + checklist + tag feed the timeline.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/meetings"),
+            r#"{"title":"Kickoff","happened_at":"2026-11-01 10:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/checklists"),
+            r#"{"kind":"onboarding"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{cli},"tag":"prioritas"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/timeline"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tv = body_json(res).await;
+    assert!(tv["dated"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["kind"] == "meeting" && r["title"] == "Kickoff"));
+    assert!(tv["state"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["kind"] == "checklist"));
+    assert!(tv["state"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["kind"] == "segment" && r["title"] == "prioritas"));
+    // Ghost 404s; anon 401s.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients/999999/timeline", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/clients/{cli}/timeline"))
                 .body(Body::empty())
                 .unwrap(),
         )

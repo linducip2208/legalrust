@@ -2909,6 +2909,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ckiRefresh();
   });
   on('cki-reload', 'click', ckiRefresh);
+  /* ---- communication timeline (F-D02-011) ---- */
+  async function ctlRefresh() {
+    var box = document.getElementById('ctl-list');
+    if (!box) return;
+    if (!pval('ctl-cid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID klien lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('ctl-cid')) + '/timeline');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat (klien tidak ada?).</td></tr>'; return; }
+    var rows = (v.dated || []).concat(v.state || []);
+    box.innerHTML = rows.map(function (x) {
+      return '<tr><td>' + esc(x.at || '—') + '</td><td>' + badge(x.kind) + '</td><td>' + esc(x.title) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada aktivitas.</td></tr>';
+  }
+  on('ctl-reload', 'click', ctlRefresh);
   /* ---- office: appointments + queue board ---- */
   var APPT_NEXT = { scheduled: 'checked_in', checked_in: 'done' };
   async function apptRefresh() {
@@ -3718,6 +3731,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   chlRefresh();
   csgRefresh();
   ckoRefresh();
+  ctlRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();
