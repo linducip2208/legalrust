@@ -313,6 +313,28 @@ pub struct DevUnitRow {
     pub price_minor: i64,
     pub status: String,
 }
+/// KPR bank coordination pack.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KprPackRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub bank: String,
+    pub amount_minor: i64,
+    pub status: String,
+    pub note: String,
+}
+/// Protocol register (in/out day-book of the protocol archive).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PregRow {
+    pub id: i64,
+    pub org: String,
+    pub entry_date: String,
+    pub book_ref: String,
+    pub deed_no: String,
+    pub party: String,
+    pub direction: String,
+}
 /// Land-history (riwayat tanah) record entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LandHistoryRow {
@@ -1478,6 +1500,30 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<DevUnitRow>, StoreError>;
     async fn dunit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn dunit_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// KPR bank coordination packs.
+    async fn kpr_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        bank: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn kpr_list(&self, org: &str, ppat_id: i64) -> Result<Vec<KprPackRow>, StoreError>;
+    async fn kpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn kpr_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Protocol register entries.
+    async fn preg_add(
+        &self,
+        org: &str,
+        entry_date: &str,
+        book_ref: &str,
+        deed_no: &str,
+        party: &str,
+        direction: &str,
+    ) -> Result<i64, StoreError>;
+    async fn preg_list(&self, org: &str) -> Result<Vec<PregRow>, StoreError>;
+    async fn preg_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

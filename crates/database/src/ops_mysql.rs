@@ -1846,6 +1846,174 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn kpr_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        bank: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let bank = bank.trim();
+        if bank.is_empty() || bank.len() > 120 {
+            return Err(StoreError::Conflict("bank".into()));
+        }
+        if amount_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO kpr_packs (org_id, ppat_id, bank, amount_minor, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(bank)
+        .bind(amount_minor)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn kpr_list(&self, org: &str, ppat_id: i64) -> Result<Vec<KprPackRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, bank, amount_minor, status, note FROM kpr_packs WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| KprPackRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                bank: x.get::<String, _>("bank"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn kpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "approved" | "rejected" | "disbursed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM kpr_packs WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("applied"), "approved")
+                | (Some("applied"), "rejected")
+                | (Some("approved"), "disbursed")
+                | (Some("approved"), "rejected")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE kpr_packs SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn kpr_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM kpr_packs WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn preg_add(
+        &self,
+        org: &str,
+        entry_date: &str,
+        book_ref: &str,
+        deed_no: &str,
+        party: &str,
+        direction: &str,
+    ) -> Result<i64, StoreError> {
+        if entry_date.len() > 10 {
+            return Err(StoreError::Conflict("entry_date".into()));
+        }
+        if book_ref.trim().is_empty() || book_ref.len() > 120 {
+            return Err(StoreError::Conflict("book_ref".into()));
+        }
+        if deed_no.len() > 120 || party.trim().is_empty() || party.len() > 160 {
+            return Err(StoreError::Conflict("deed_no/party".into()));
+        }
+        if !matches!(direction, "in" | "out") {
+            return Err(StoreError::Conflict("direction".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO protocol_register (org_id, entry_date, book_ref, deed_no, party, direction) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(entry_date.trim())
+        .bind(book_ref.trim())
+        .bind(deed_no.trim())
+        .bind(party.trim())
+        .bind(direction)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn preg_list(&self, org: &str) -> Result<Vec<PregRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, entry_date, book_ref, deed_no, party, direction FROM protocol_register WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PregRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                entry_date: x.get::<String, _>("entry_date"),
+                book_ref: x.get::<String, _>("book_ref"),
+                deed_no: x.get::<String, _>("deed_no"),
+                party: x.get::<String, _>("party"),
+                direction: x.get::<String, _>("direction"),
+            })
+            .collect())
+    }
+    async fn preg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM protocol_register WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

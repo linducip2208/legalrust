@@ -3670,6 +3670,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "dvu-add",
         "dvu-reload",
         "dvu-list",
+        "kpr-ppat",
+        "kpr-add",
+        "kpr-reload",
+        "kpr-list",
+        "prg-book",
+        "prg-add",
+        "prg-reload",
+        "prg-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8674,6 +8682,122 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn kpr_packs_and_protocol_register() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kprpreg@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-register",
+            r#"{"book_ref":"B-1","party":"PT X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"KP/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/kpr"),
+            r#"{"bank":"Bank Maju","amount_minor":800000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let kid = body_json(res).await["id"].as_i64().unwrap();
+    // applied->disbursed direct rejected; branch to rejected ok.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/kpr/{kid}/status"),
+            r#"{"status":"disbursed"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["approved", "disbursed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/kpr/{kid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "kpr to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-register",
+            r#"{"book_ref":"B-1","deed_no":"12/2026","party":"PT X","direction":"out"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-register",
+            r#"{"book_ref":"B-1","party":"PT Y","direction":"sideways"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/protocol-register", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["deed_no"] == "12/2026" && r["direction"] == "out"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=preg", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.preg_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/protocol-register")
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -113,6 +113,8 @@ struct Inner {
     leases: HashMap<i64, LeaseTermRow>,
     dbatches: HashMap<i64, DevBatchRow>,
     dunits: HashMap<i64, DevUnitRow>,
+    kprs: HashMap<i64, KprPackRow>,
+    pregs: HashMap<i64, PregRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1814,6 +1816,147 @@ impl OpsStore for MemoryOps {
         match m.dunits.get(&id) {
             Some(r) if r.org == org => {
                 m.dunits.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn kpr_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        bank: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let bank = bank.trim();
+        if bank.is_empty() || bank.len() > 120 {
+            return Err(StoreError::Conflict("bank".into()));
+        }
+        if amount_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.kprs.insert(
+            id,
+            KprPackRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                bank: bank.into(),
+                amount_minor,
+                status: "applied".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn kpr_list(&self, org: &str, ppat_id: i64) -> Result<Vec<KprPackRow>, StoreError> {
+        let mut v: Vec<KprPackRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .kprs
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn kpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .kprs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("applied", "approved")
+                | ("applied", "rejected")
+                | ("approved", "disbursed")
+                | ("approved", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn kpr_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.kprs.get(&id) {
+            Some(r) if r.org == org => {
+                m.kprs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn preg_add(
+        &self,
+        org: &str,
+        entry_date: &str,
+        book_ref: &str,
+        deed_no: &str,
+        party: &str,
+        direction: &str,
+    ) -> Result<i64, StoreError> {
+        if entry_date.len() > 10 {
+            return Err(StoreError::Conflict("entry_date".into()));
+        }
+        if book_ref.trim().is_empty() || book_ref.len() > 120 {
+            return Err(StoreError::Conflict("book_ref".into()));
+        }
+        if deed_no.len() > 120 || party.trim().is_empty() || party.len() > 160 {
+            return Err(StoreError::Conflict("deed_no/party".into()));
+        }
+        if !matches!(direction, "in" | "out") {
+            return Err(StoreError::Conflict("direction".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.pregs.insert(
+            id,
+            PregRow {
+                id,
+                org: org.into(),
+                entry_date: entry_date.trim().into(),
+                book_ref: book_ref.trim().into(),
+                deed_no: deed_no.trim().into(),
+                party: party.trim().into(),
+                direction: direction.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn preg_list(&self, org: &str) -> Result<Vec<PregRow>, StoreError> {
+        let mut v: Vec<PregRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pregs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn preg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.pregs.get(&id) {
+            Some(r) if r.org == org => {
+                m.pregs.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

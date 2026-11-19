@@ -5309,10 +5309,15 @@
   "id": "F-D13-025",
   "domain": "D13",
   "title": "KPR bank coordination pack",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0071_kpr_preg.sql: kpr_packs table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/status/delete + branch to rejected",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/kpr + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: kprRefresh card Koordinasi KPR + hooks",
+   "apps/server/tests/api.rs: kpr_packs_and_protocol_register e2e (skip-ahead 409, chain)"
+  ],
+  "audit_note": "Wave 106: full lifecycle live; verified by test (395/0)."
  },
  {
   "id": "F-D13-026",
@@ -5370,10 +5375,15 @@
   "id": "F-D13-030",
   "domain": "D13",
   "title": "PPAT protocol register",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0071_kpr_preg.sql: protocol_register table with deed index (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/delete + in|out guard",
+   "apps/server/src/lib.rs: POST/GET /api/v1/protocol-register + delete (RBAC, audit)",
+   "apps/server/static/site.js: prgRefresh card Register protokol + hooks",
+   "apps/server/tests/api.rs: direction 409 + list + audit + 401 asserted"
+  ],
+  "audit_note": "Wave 106: verified by test (395/0)."
  },
  {
   "id": "F-D13-031",
