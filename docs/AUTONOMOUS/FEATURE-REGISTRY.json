@@ -8105,23 +8105,25 @@
   "id": "F-D19-019",
   "domain": "D19",
   "title": "Feedback & rating form",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
-   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables"
-  ]
+   "lib.rs: POST/GET /api/v1/portal/feedback (client_id forced from JWT)",
+   "site.js: feedback form + list (portal card)",
+   "tests: portal_feedback_and_complaints e2e (own files, staff triage of same row)",
+   "Prior: public/staff feedback flows already live"
+  ],
+  "audit_note": "Wave 166: portal feedback live. Verified by test (456/0)."
  },
  {
   "id": "F-D19-020",
   "domain": "D19",
   "title": "Complaint submission",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
-   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables"
-  ]
+   "Same forced-identity endpoints with kind=complaint; staff escalate via shared queue",
+   "tests: complaint filed + escalated asserted"
+  ],
+  "audit_note": "Wave 166: portal complaints live. Verified by test (456/0)."
  },
  {
   "id": "F-D19-021",

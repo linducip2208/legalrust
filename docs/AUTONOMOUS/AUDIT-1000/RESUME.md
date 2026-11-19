@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 166: portal feedback + complaints (main)
+- forced-identity feedback endpoints + kartu + uji; no migration.
+- F-D19-019/020 PARTIAL->IMPLEMENTED (~72.9 verified). Workspace 456/0; registry ~31.6 (302 IMPLEMENTED); mean 35.0 (292 v).
+
 ## Done wave 165: downloads + quote intake (main)
 - portal downloads + quote-request lead intake + kartu + uji; no migration.
 - F-D19-025 PARTIAL->IMPLEMENTED, F-D19-017 PARTIAL->IMPLEMENTED (~72.9 verified). Workspace 455/0; registry ~31.5 (300 IMPLEMENTED); mean 35.0 (290 v).

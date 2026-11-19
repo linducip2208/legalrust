@@ -5707,6 +5707,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-rem",
         "ptl-dl",
         "ptl-quote",
+        "ptl-fb",
+        "ptl-fb-send",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11684,6 +11686,96 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_feedback_and_complaints() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal11@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let cli2 = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p11@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // File under own identity; complaint escalates via staff flow.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/feedback",
+            r#"{"kind":"complaint","body":"Lambat sekali"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/feedback", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(fid)));
+    // Other client's items invisible; staff triages through the shared queue.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli2}/messages"),
+            &format!(r#"{{"client_id":{cli2},"body":"baik"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/feedback?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(fid)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/feedback/{fid}/status"),
+            r#"{"status":"escalated"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/feedback", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
