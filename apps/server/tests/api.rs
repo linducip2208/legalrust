@@ -6761,6 +6761,156 @@ async fn compliance_posture_and_export() {
 }
 
 #[tokio::test]
+async fn training_evidence_and_audit_findings() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "tevaf@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Training seed, then evidence roundtrip scoped to it.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/trainings",
+            r#"{"title":"Fire drill","assignee":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/trainings/{tid}/evidence"),
+            r#"{"note":"XX"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/trainings/999999/evidence",
+            r#"{"note":"Ghost note here"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/trainings/{tid}/evidence"),
+            r#"{"note":"Sertifikat No. 12"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/compliance/trainings/{tid}/evidence"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/evidence/{eid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Findings: severity allowlist + remediation chain.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/findings",
+            r#"{"title":"XX","severity":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/findings",
+            r#"{"title":"Arsip tidak terkunci","area":"arsip","severity":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_remediation", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/findings/{fid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "finding to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/findings", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(fid) && r["status"] == "closed"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=tevidence", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.tevidence_added"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=afinding", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.afinding_created"));
+}
+
+#[tokio::test]
 async fn ethics_and_gift_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -8402,6 +8552,14 @@ async fn uib_app_has_approvals_ui() {
         "gift-add",
         "gift-reload",
         "gift-list",
+        "tev-trn",
+        "tev-add",
+        "tev-reload",
+        "tev-list",
+        "af-title",
+        "af-add",
+        "af-reload",
+        "af-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

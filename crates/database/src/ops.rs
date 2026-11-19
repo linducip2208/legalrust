@@ -237,6 +237,24 @@ pub struct GiftRow {
     pub given_at: String,
     pub status: String,
 }
+/// Training completion evidence note.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrainingEvidenceRow {
+    pub id: i64,
+    pub org: String,
+    pub training_id: i64,
+    pub note: String,
+}
+/// Audit finding (temuan audit internal/eksternal).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuditFindingRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub area: String,
+    pub severity: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -918,6 +936,30 @@ pub trait OpsStore: Send + Sync {
     async fn gift_list(&self, org: &str) -> Result<Vec<GiftRow>, StoreError>;
     async fn gift_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn gift_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Training completion evidence (notes attached to an assignment).
+    async fn tevidence_add(
+        &self,
+        org: &str,
+        training_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn tevidence_list(
+        &self,
+        org: &str,
+        training_id: i64,
+    ) -> Result<Vec<TrainingEvidenceRow>, StoreError>;
+    async fn tevidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Audit finding tracker.
+    async fn afinding_create(
+        &self,
+        org: &str,
+        title: &str,
+        area: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError>;
+    async fn afinding_list(&self, org: &str) -> Result<Vec<AuditFindingRow>, StoreError>;
+    async fn afinding_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn afinding_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

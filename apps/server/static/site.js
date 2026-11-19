@@ -2035,6 +2035,72 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     giftRefresh();
   });
   on('gift-reload', 'click', giftRefresh);
+  /* ---- compliance: training evidence ---- */
+  async function tevRefresh() {
+    var box = document.getElementById('tev-list');
+    if (!box) return;
+    var tid = pval('tev-trn');
+    if (!tid) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID pelatihan lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/compliance/trainings/' + encodeURIComponent(tid) + '/evidence');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.note) + '</td><td><button class="btn btn-sm btn-outline-danger" data-tev-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada bukti.</td></tr>';
+    qsa('[data-tev-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/evidence/' + b.getAttribute('data-tev-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('tev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('tev-msg', '');
+        tevRefresh();
+      });
+    });
+  }
+  on('tev-add', 'click', async function () {
+    if (!pval('tev-trn') || !pval('tev-note')) { pmsg('tev-msg', 'Isi ID pelatihan dan catatan.'); return; }
+    var r = await ppost('/api/v1/compliance/trainings/' + encodeURIComponent(pval('tev-trn')) + '/evidence', { note: pval('tev-note') });
+    if (!r.ok) { pmsg('tev-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('tev-msg', '');
+    tevRefresh();
+  });
+  on('tev-reload', 'click', tevRefresh);
+  /* ---- compliance: audit findings ---- */
+  var AF_NEXT = { open: 'in_remediation', in_remediation: 'closed' };
+  async function afRefresh() {
+    var box = document.getElementById('af-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/findings');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = AF_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-af-next="' + x.id + '" data-af-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">ditutup</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-af-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.area) + '</td><td>' + badge(x.severity) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada temuan.</td></tr>';
+    qsa('[data-af-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/findings/' + b.getAttribute('data-af-next') + '/status', { status: b.getAttribute('data-af-to') });
+        if (!r.ok) { pmsg('af-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('af-msg', '');
+        afRefresh();
+      });
+    });
+    qsa('[data-af-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/findings/' + b.getAttribute('data-af-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('af-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('af-msg', '');
+        afRefresh();
+      });
+    });
+  }
+  on('af-add', 'click', async function () {
+    if (!pval('af-title')) { pmsg('af-msg', 'Isi judul temuan.'); return; }
+    var r = await ppost('/api/v1/compliance/findings', { title: pval('af-title'), area: pval('af-area') || 'general', severity: pval('af-sev') || 'medium' });
+    if (!r.ok) { pmsg('af-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('af-msg', '');
+    afRefresh();
+  });
+  on('af-reload', 'click', afRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2049,7 +2115,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('posture-reload', 'click', postureRefresh);
   on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); postureRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); postureRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2102,6 +2168,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dsarRefresh();
   ethicsRefresh();
   giftRefresh();
+  afRefresh();
   postureRefresh();
   whDlRefresh();
   intRefresh();

@@ -2241,6 +2241,161 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn tevidence_add(
+        &self,
+        org: &str,
+        training_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let note = note.trim();
+        if note.is_empty() || note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM training_assignments WHERE id=?")
+            .bind(training_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r =
+            sqlx::query("INSERT INTO training_evidence (org_id, training_id, note) VALUES (?,?,?)")
+                .bind(org)
+                .bind(training_id as u64)
+                .bind(note)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn tevidence_list(
+        &self,
+        org: &str,
+        training_id: i64,
+    ) -> Result<Vec<TrainingEvidenceRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM training_assignments WHERE id=?")
+            .bind(training_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, training_id, note FROM training_evidence WHERE org_id=? AND training_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(training_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| TrainingEvidenceRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                training_id: x.get::<u64, _>("training_id") as i64,
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn tevidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM training_evidence WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn afinding_create(
+        &self,
+        org: &str,
+        title: &str,
+        area: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let ar: String = area.trim().chars().take(60).collect();
+        let r = sqlx::query(
+            "INSERT INTO audit_findings (org_id, title, area, severity) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(ar)
+        .bind(severity)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn afinding_list(&self, org: &str) -> Result<Vec<AuditFindingRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, area, severity, status FROM audit_findings WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AuditFindingRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                area: x.get::<String, _>("area"),
+                severity: x.get::<String, _>("severity"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn afinding_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_remediation" | "closed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM audit_findings WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "in_remediation") | (Some("in_remediation"), "closed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE audit_findings SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn afinding_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM audit_findings WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

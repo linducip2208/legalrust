@@ -4228,10 +4228,15 @@
   "id": "F-D11-024",
   "domain": "D11",
   "title": "Training completion evidence",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0034_training_evidence.sql: training_evidence table (FK training, CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped CRUD (org + training ownership checked)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/trainings/{id}/evidence + delete (RBAC, audit)",
+   "apps/server/static/site.js: tevRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: training_evidence_and_audit_findings e2e (ghost 404, auditor 403)"
+  ],
+  "audit_note": "Wave 67: full lifecycle live; verified by test (356/0)."
  },
  {
   "id": "F-D11-025",
@@ -4246,10 +4251,15 @@
   "id": "F-D11-026",
   "domain": "D11",
   "title": "Audit finding tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0035_audit_findings.sql: audit_findings table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + open->in_remediation->closed chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/findings + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: afRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: training_evidence_and_audit_findings e2e (bad severity 409)"
+  ],
+  "audit_note": "Wave 67: full lifecycle live; verified by test (356/0)."
  },
  {
   "id": "F-D11-027",

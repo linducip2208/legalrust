@@ -55,6 +55,8 @@ struct Inner {
     dsars: HashMap<i64, DsarRow>,
     ethics: HashMap<i64, EthicsRow>,
     gifts: HashMap<i64, GiftRow>,
+    tevidence: HashMap<i64, TrainingEvidenceRow>,
+    afindings: HashMap<i64, AuditFindingRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1986,6 +1988,131 @@ impl OpsStore for MemoryOps {
         match m.gifts.get(&id) {
             Some(r) if r.org == org => {
                 m.gifts.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn tevidence_add(
+        &self,
+        org: &str,
+        training_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let note = note.trim();
+        if note.is_empty() || note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.trainings.get(&training_id) {
+            Some(t) if t.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.tevidence.insert(
+            id,
+            TrainingEvidenceRow {
+                id,
+                org: org.into(),
+                training_id,
+                note: note.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn tevidence_list(
+        &self,
+        org: &str,
+        training_id: i64,
+    ) -> Result<Vec<TrainingEvidenceRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.trainings.get(&training_id) {
+            Some(t) if t.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<TrainingEvidenceRow> = m
+            .tevidence
+            .values()
+            .filter(|r| r.org == org && r.training_id == training_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn tevidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.tevidence.get(&id) {
+            Some(r) if r.org == org => {
+                m.tevidence.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn afinding_create(
+        &self,
+        org: &str,
+        title: &str,
+        area: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.afindings.insert(
+            id,
+            AuditFindingRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                area: area.trim().chars().take(60).collect(),
+                severity: severity.into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn afinding_list(&self, org: &str) -> Result<Vec<AuditFindingRow>, StoreError> {
+        let mut v: Vec<AuditFindingRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .afindings
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn afinding_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .afindings
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "in_remediation") | ("in_remediation", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn afinding_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.afindings.get(&id) {
+            Some(r) if r.org == org => {
+                m.afindings.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

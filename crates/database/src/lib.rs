@@ -32,12 +32,13 @@ pub enum DbError {
     Migrate(String),
 }
 pub use ops::{
-    appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow, AuditRow,
-    BreachRow, CapaRow, ClauseRow, ClientTagRow, ConsentRow, CrmStore, DeedRow, DelegationRow,
-    DpiaRow, DsarRow, EthicsRow, GiftRow, IncidentRow, InviteRow, InvoiceRow, JobRow,
-    MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
-    MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
-    MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow,
-    PdpObligationRow, PpatRow, RagHit, RegChangeRow, RiskRow, RopaRow, ShareRow, TemplateRow,
-    TrainingRow, TrustAccountRow, TrustEntryRow, VendorRow, WebhookDeliveryRow, WebhookEndpointRow,
+    appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow,
+    AuditFindingRow, AuditRow, BreachRow, CapaRow, ClauseRow, ClientTagRow, ConsentRow, CrmStore,
+    DeedRow, DelegationRow, DpiaRow, DsarRow, EthicsRow, GiftRow, IncidentRow, InviteRow,
+    InvoiceRow, JobRow, MarketingArticleRow, MarketingContactRow, MarketingDemoRow,
+    MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow,
+    MarketingStore, MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore,
+    PaymentRow, PdpObligationRow, PpatRow, RagHit, RegChangeRow, RiskRow, RopaRow, ShareRow,
+    TemplateRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow, VendorRow,
+    WebhookDeliveryRow, WebhookEndpointRow,
 };
