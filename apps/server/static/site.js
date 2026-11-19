@@ -1660,6 +1660,68 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     visRefresh();
   });
   on('vis-reload', 'click', visRefresh);
+  /* ---- office: witness pool ---- */
+  async function witRefresh() {
+    var box = document.getElementById('wit-list');
+    if (!box) return;
+    var v = await j('/api/v1/witnesses');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '<button class="btn btn-sm" data-wit-tg="' + x.id + '" data-wit-on="' + (!x.active) + '" type="button">' + (x.active ? 'Nonaktifkan' : 'Aktifkan') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-wit-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + ' <span class="text-muted">(' + esc(x.phone) + ')</span></td><td>' + esc(x.id_number) + '</td><td>' + (x.active ? '<span class="badge bg-green-lt">aktif</span>' : '<span class="badge bg-yellow-lt">nonaktif</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada saksi.</td></tr>';
+    qsa('[data-wit-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/witnesses/' + b.getAttribute('data-wit-tg') + '/active', { active: b.getAttribute('data-wit-on') === 'true' });
+        if (!r.ok) { pmsg('wit-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wit-msg', '');
+        witRefresh();
+      });
+    });
+    qsa('[data-wit-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/witnesses/' + b.getAttribute('data-wit-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('wit-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wit-msg', '');
+        witRefresh();
+      });
+    });
+  }
+  on('wit-add', 'click', async function () {
+    if (!pval('wit-name')) { pmsg('wit-msg', 'Isi nama saksi.'); return; }
+    var r = await ppost('/api/v1/witnesses', { name: pval('wit-name'), id_number: pval('wit-id') || '', phone: pval('wit-phone') || '' });
+    if (!r.ok) { pmsg('wit-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('wit-msg', '');
+    witRefresh();
+  });
+  on('wit-reload', 'click', witRefresh);
+  /* ---- office: re-verification log ---- */
+  async function rchRefresh() {
+    var box = document.getElementById('rch-list');
+    if (!box) return;
+    var v = await j('/api/v1/rechecks');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.subject) + '</td><td>' + badge(x.method) + '</td><td>' + badge(x.result) + '</td><td><button class="btn btn-sm btn-outline-danger" data-rch-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada verifikasi ulang.</td></tr>';
+    qsa('[data-rch-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/rechecks/' + b.getAttribute('data-rch-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('rch-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('rch-msg', '');
+        rchRefresh();
+      });
+    });
+  }
+  on('rch-add', 'click', async function () {
+    if (!pval('rch-subject')) { pmsg('rch-msg', 'Isi subjek.'); return; }
+    var r = await ppost('/api/v1/rechecks', { subject: pval('rch-subject'), method: pval('rch-method') || 'document', result: pval('rch-result') || 'pass', verified_on: pval('rch-on') || '', note: pval('rch-note') || '' });
+    if (!r.ok) { pmsg('rch-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('rch-msg', '');
+    rchRefresh();
+  });
+  on('rch-reload', 'click', rchRefresh);
   /* ---- office: announcements ---- */
   async function annRefresh() {
     var box = document.getElementById('ann-list');
@@ -1711,6 +1773,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apptRefresh();
   queueRefresh();
   visRefresh();
+  witRefresh();
+  rchRefresh();
   annRefresh();
   /* ---- audit viewer + jobs queue (additive) ---- */
   async function dlCsv(url, filename, msgId) {

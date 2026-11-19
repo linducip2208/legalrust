@@ -5424,6 +5424,14 @@ async fn crm_app_contains_crm_ids() {
         "vis-add",
         "vis-reload",
         "vis-list",
+        "wit-name",
+        "wit-add",
+        "wit-reload",
+        "wit-list",
+        "rch-subject",
+        "rch-add",
+        "rch-reload",
+        "rch-list",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
@@ -6960,6 +6968,125 @@ async fn compliance_alerts_feed() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/compliance/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn witnesses_and_rechecks() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "witrc@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/witnesses",
+            r#"{"name":"BB"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/witnesses",
+            r#"{"name":"Saksi A","id_number":"3201010101010001","phone":"0811"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let wid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/witnesses/{wid}/active"),
+            r#"{"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/witnesses", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(wid) && r["active"] == false));
+    // Rechecks: method/result allowlists enforced (manual log, no external call).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/rechecks",
+            r#"{"subject":"SS","method":"telepathy","result":"pass"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/rechecks", r#"{"subject":"NIK-001","method":"document","result":"pass","verified_on":"2026-02-01","note":"KTP valid"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/rechecks", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid) && r["result"] == "pass"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/witnesses/{wid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=witness", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.witness_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/witnesses")
                 .body(Body::empty())
                 .unwrap(),
         )

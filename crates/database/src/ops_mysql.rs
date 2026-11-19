@@ -4229,6 +4229,138 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn witness_create(
+        &self,
+        org: &str,
+        name: &str,
+        id_number: &str,
+        phone: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if id_number.len() > 40 || phone.len() > 40 {
+            return Err(StoreError::Conflict("id/phone".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO witnesses (org_id, name, id_number, phone) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(name)
+                .bind(id_number.trim())
+                .bind(phone.trim())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn witness_list(&self, org: &str) -> Result<Vec<WitnessRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, id_number, phone, active FROM witnesses WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| WitnessRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                id_number: x.get::<String, _>("id_number"),
+                phone: x.get::<String, _>("phone"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn witness_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE witnesses SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn witness_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM witnesses WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn recheck_add(
+        &self,
+        org: &str,
+        subject: &str,
+        method: &str,
+        result: &str,
+        verified_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let subject = subject.trim();
+        if subject.is_empty() || subject.len() > 160 {
+            return Err(StoreError::Conflict("subject".into()));
+        }
+        if !matches!(method, "document" | "physical" | "video") {
+            return Err(StoreError::Conflict("method".into()));
+        }
+        if !matches!(result, "pass" | "fail") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if verified_on.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO rechecks (org_id, subject, method, result, verified_on, note) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(subject)
+        .bind(method)
+        .bind(result)
+        .bind(verified_on.trim())
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn recheck_list(&self, org: &str) -> Result<Vec<RecheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, subject, method, result, verified_on, note FROM rechecks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RecheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                subject: x.get::<String, _>("subject"),
+                method: x.get::<String, _>("method"),
+                result: x.get::<String, _>("result"),
+                verified_on: x.get::<String, _>("verified_on"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn recheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM rechecks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

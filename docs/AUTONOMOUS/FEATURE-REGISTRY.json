@@ -4718,19 +4718,29 @@
   "id": "F-D12-023",
   "domain": "D12",
   "title": "Client identity re-verification",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0051_witnesses_rechecks.sql: rechecks table (manual log; external Dukcapil BLOCKED, no fake call)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped add/list/delete, method/result allowlists",
+   "apps/server/src/lib.rs: POST/GET /api/v1/rechecks + delete (RBAC, audit)",
+   "apps/server/static/site.js: rchRefresh card (BLOCKED notice) + hooks",
+   "apps/server/tests/api.rs: allowlist 409 asserted"
+  ],
+  "audit_note": "Wave 81: manual log only, honest BLOCKED label; verified by test (370/0)."
  },
  {
   "id": "F-D12-024",
   "domain": "D12",
   "title": "Saksi pool management",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0051_witnesses_rechecks.sql: witnesses table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + active toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/witnesses + active + delete (RBAC, audit)",
+   "apps/server/static/site.js: witRefresh card Pool saksi in klien tab + hooks",
+   "apps/server/tests/api.rs: witnesses_and_rechecks e2e (toggle, Delete-gate, 401)"
+  ],
+  "audit_note": "Wave 81: full lifecycle live; verified by test (370/0)."
  },
  {
   "id": "F-D12-025",

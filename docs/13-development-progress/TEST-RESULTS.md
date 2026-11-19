@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 81: witnesses + rechecks (main)
+- Toggles + allowlists + guards; workspace **370 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 80: down-payments + klapper (main)
 - Chains + order + guards; workspace **369 passed, 0 failed**.
 

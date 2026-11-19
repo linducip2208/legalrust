@@ -41,7 +41,8 @@ pub use ops::{
     MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
     MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore, PaymentRow,
     PbookRow, PdpObligationRow, PhandoverRow, PolicyAckRow, PolicyRow, PpatRow, PriceRow,
-    QuotationItemRow, QuotationRow, RagHit, RegChangeRow, RiskRow, RopaRow, ShareRow, TemplateRow,
-    TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow, UsageRow, VendorRow,
-    VisitorRow, WaiverRow, WebhookDeliveryRow, WebhookEndpointRow, WhistleRow,
+    QuotationItemRow, QuotationRow, RagHit, RecheckRow, RegChangeRow, RiskRow, RopaRow, ShareRow,
+    TemplateRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow, UsageRow,
+    VendorRow, VisitorRow, WaiverRow, WebhookDeliveryRow, WebhookEndpointRow, WhistleRow,
+    WitnessRow,
 };

@@ -469,6 +469,27 @@ pub struct DownPaymentRow {
     pub issued_on: String,
     pub status: String,
 }
+/// Witness pool entry (saksi akta).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WitnessRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub id_number: String,
+    pub phone: String,
+    pub active: bool,
+}
+/// Manual identity re-verification log (external Dukcapil check BLOCKED).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecheckRow {
+    pub id: i64,
+    pub org: String,
+    pub subject: String,
+    pub method: String,
+    pub result: String,
+    pub verified_on: String,
+    pub note: String,
+}
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuotationItemRow {
@@ -1431,6 +1452,29 @@ pub trait OpsStore: Send + Sync {
     async fn dp_list(&self, org: &str) -> Result<Vec<DownPaymentRow>, StoreError>;
     async fn dp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn dp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Witness pool.
+    async fn witness_create(
+        &self,
+        org: &str,
+        name: &str,
+        id_number: &str,
+        phone: &str,
+    ) -> Result<i64, StoreError>;
+    async fn witness_list(&self, org: &str) -> Result<Vec<WitnessRow>, StoreError>;
+    async fn witness_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn witness_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Manual identity re-verification log.
+    async fn recheck_add(
+        &self,
+        org: &str,
+        subject: &str,
+        method: &str,
+        result: &str,
+        verified_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn recheck_list(&self, org: &str) -> Result<Vec<RecheckRow>, StoreError>;
+    async fn recheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

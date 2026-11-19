@@ -79,6 +79,8 @@ struct Inner {
     visitors: HashMap<i64, VisitorRow>,
     announces: HashMap<i64, AnnouncementRow>,
     dpayments: HashMap<i64, DownPaymentRow>,
+    witnesses: HashMap<i64, WitnessRow>,
+    rechecks: HashMap<i64, RecheckRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3633,6 +3635,129 @@ impl OpsStore for MemoryOps {
         match m.dpayments.get(&id) {
             Some(r) if r.org == org => {
                 m.dpayments.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn witness_create(
+        &self,
+        org: &str,
+        name: &str,
+        id_number: &str,
+        phone: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if id_number.len() > 40 || phone.len() > 40 {
+            return Err(StoreError::Conflict("id/phone".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.witnesses.insert(
+            id,
+            WitnessRow {
+                id,
+                org: org.into(),
+                name: name.into(),
+                id_number: id_number.trim().into(),
+                phone: phone.trim().into(),
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn witness_list(&self, org: &str) -> Result<Vec<WitnessRow>, StoreError> {
+        let mut v: Vec<WitnessRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .witnesses
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn witness_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .witnesses
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
+        Ok(())
+    }
+    async fn witness_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.witnesses.get(&id) {
+            Some(r) if r.org == org => {
+                m.witnesses.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn recheck_add(
+        &self,
+        org: &str,
+        subject: &str,
+        method: &str,
+        result: &str,
+        verified_on: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let subject = subject.trim();
+        if subject.is_empty() || subject.len() > 160 {
+            return Err(StoreError::Conflict("subject".into()));
+        }
+        if !matches!(method, "document" | "physical" | "video") {
+            return Err(StoreError::Conflict("method".into()));
+        }
+        if !matches!(result, "pass" | "fail") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if verified_on.len() > 10 || note.len() > 500 {
+            return Err(StoreError::Conflict("note/date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.rechecks.insert(
+            id,
+            RecheckRow {
+                id,
+                org: org.into(),
+                subject: subject.into(),
+                method: method.into(),
+                result: result.into(),
+                verified_on: verified_on.trim().into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn recheck_list(&self, org: &str) -> Result<Vec<RecheckRow>, StoreError> {
+        let mut v: Vec<RecheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .rechecks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn recheck_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.rechecks.get(&id) {
+            Some(r) if r.org == org => {
+                m.rechecks.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

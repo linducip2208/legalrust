@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 81: witnesses + rechecks (main)
+- Pool saksi + log verifikasi manual; workspace **370 passed, 0 failed**; F-D12-024/023 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 80: down-payments + klapper (main)
 - Kwitansi UM + indeks alfabetis; workspace **369 passed, 0 failed**; F-D12-013/002 IMPLEMENTED.
 
