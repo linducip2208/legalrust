@@ -2143,6 +2143,112 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn bpn_add(
+        &self,
+        org: &str,
+        kind: &str,
+        ref_no: &str,
+        office: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "verification" | "queue" | "response") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if ref_no.trim().is_empty() || ref_no.len() > 120 {
+            return Err(StoreError::Conflict("ref_no".into()));
+        }
+        if office.len() > 120 || note.len() > 500 {
+            return Err(StoreError::Conflict("office/note".into()));
+        }
+        let init = if kind == "queue" { "waiting" } else { "draft" };
+        let r = sqlx::query(
+            "INSERT INTO bpn_tracks (org_id, kind, ref_no, office, status, note) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(kind)
+        .bind(ref_no.trim())
+        .bind(office.trim())
+        .bind(init)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn bpn_list(
+        &self,
+        org: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<BpnTrackRow>, StoreError> {
+        let rows = if let Some(k) = kind {
+            sqlx::query("SELECT id, org_id, kind, ref_no, office, status, note FROM bpn_tracks WHERE org_id=? AND kind=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(k).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, kind, ref_no, office, status, note FROM bpn_tracks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| BpnTrackRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                kind: x.get::<String, _>("kind"),
+                ref_no: x.get::<String, _>("ref_no"),
+                office: x.get::<String, _>("office"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn bpn_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<(String, String)> =
+            sqlx::query("SELECT kind, status FROM bpn_tracks WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| (x.get::<String, _>("kind"), x.get::<String, _>("status")));
+        let (kind, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = match kind.as_str() {
+            "verification" => matches!(
+                (status.as_str(), to),
+                ("draft", "submitted") | ("submitted", "answered")
+            ),
+            "queue" => matches!(
+                (status.as_str(), to),
+                ("waiting", "called") | ("called", "done")
+            ),
+            _ => matches!((status.as_str(), to), ("draft", "filed")),
+        };
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE bpn_tracks SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn bpn_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM bpn_tracks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

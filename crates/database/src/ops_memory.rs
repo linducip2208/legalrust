@@ -117,6 +117,7 @@ struct Inner {
     pregs: HashMap<i64, PregRow>,
     ajbds: HashMap<i64, AjbDraftRow>,
     clinks: HashMap<i64, CertLinkRow>,
+    bpns: HashMap<i64, BpnTrackRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2078,6 +2079,91 @@ impl OpsStore for MemoryOps {
         match m.clinks.get(&id) {
             Some(r) if r.org == org => {
                 m.clinks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn bpn_add(
+        &self,
+        org: &str,
+        kind: &str,
+        ref_no: &str,
+        office: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if !matches!(kind, "verification" | "queue" | "response") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
+        if ref_no.trim().is_empty() || ref_no.len() > 120 {
+            return Err(StoreError::Conflict("ref_no".into()));
+        }
+        if office.len() > 120 || note.len() > 500 {
+            return Err(StoreError::Conflict("office/note".into()));
+        }
+        let init = if kind == "queue" { "waiting" } else { "draft" };
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.bpns.insert(
+            id,
+            BpnTrackRow {
+                id,
+                org: org.into(),
+                kind: kind.into(),
+                ref_no: ref_no.trim().into(),
+                office: office.trim().into(),
+                status: init.into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn bpn_list(
+        &self,
+        org: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<BpnTrackRow>, StoreError> {
+        let mut v: Vec<BpnTrackRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .bpns
+            .values()
+            .filter(|r| r.org == org && kind.map(|k| r.kind == k).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn bpn_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .bpns
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = match r.kind.as_str() {
+            "verification" => matches!(
+                (r.status.as_str(), to),
+                ("draft", "submitted") | ("submitted", "answered")
+            ),
+            "queue" => matches!(
+                (r.status.as_str(), to),
+                ("waiting", "called") | ("called", "done")
+            ),
+            _ => matches!((r.status.as_str(), to), ("draft", "filed")),
+        };
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn bpn_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.bpns.get(&id) {
+            Some(r) if r.org == org => {
+                m.bpns.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

@@ -5033,11 +5033,15 @@
   "id": "F-D13-004",
   "domain": "D13",
   "title": "BPN verification request tracker",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "migrations/0074_bpn_tracks.sql: bpn_tracks table (kind=verification, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/status/delete + draft->submitted->answered",
+   "apps/server/src/lib.rs: POST/GET /api/v1/bpn-tracks + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: bpnv card Permohonan verifikasi BPN (manual-mode note) + hooks",
+   "apps/server/tests/api.rs: bpn_tracks_manual_mode e2e (3-kind chains, wrong-kind 409)"
+  ],
+  "audit_note": "Wave 109: Manual ledger live; automatic BPN sync stays BLOCKED on BPN credentials (external). Verified by test (398/0)."
  },
  {
   "id": "F-D13-005",
@@ -5344,11 +5348,15 @@
   "id": "F-D13-027",
   "domain": "D13",
   "title": "BPN queue-number tracker",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "migrations/0074_bpn_tracks.sql: bpn_tracks table (kind=queue)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: waiting->called->done chain",
+   "apps/server/src/lib.rs: same bpn-tracks endpoints with kind=queue (RBAC, audit)",
+   "apps/server/static/site.js: bpnq card Nomor antrean BPN + hooks",
+   "apps/server/tests/api.rs: queue chain + kind filter asserted"
+  ],
+  "audit_note": "Wave 109: Manual ledger live; automatic BPN sync stays BLOCKED on BPN credentials (external). Verified by test (398/0)."
  },
  {
   "id": "F-D13-028",
@@ -5520,11 +5528,15 @@
   "id": "F-D13-040",
   "domain": "D13",
   "title": "BPN response archive",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "migrations/0074_bpn_tracks.sql: bpn_tracks table (kind=response)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: draft->filed chain",
+   "apps/server/src/lib.rs: same bpn-tracks endpoints with kind=response (RBAC, audit)",
+   "apps/server/static/site.js: bpnr card Arsip respons BPN + hooks",
+   "apps/server/tests/api.rs: response chain + /app needles bpnv/bpnq/bpnr asserted"
+  ],
+  "audit_note": "Wave 109: Manual ledger live; automatic BPN sync stays BLOCKED on BPN credentials (external). Verified by test (398/0)."
  },
  {
   "id": "F-D14-001",

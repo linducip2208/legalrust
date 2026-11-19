@@ -2205,6 +2205,54 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     vltRefresh();
   });
   on('vlt-reload', 'click', vltRefresh);
+  /* ---- property: BPN tracker (one renderer x three kinds) ---- */
+  var BPN_NEXT = {
+    verification: { draft: 'submitted', submitted: 'answered' },
+    queue: { waiting: 'called', called: 'done' },
+    response: { draft: 'filed' },
+  };
+  async function bpnRefresh(kind, refId, boxId, msgId) {
+    var box = document.getElementById(boxId);
+    if (!box) return;
+    var v = await j('/api/v1/bpn-tracks?kind=' + kind);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var nx = BPN_NEXT[kind] || {};
+    box.innerHTML = v.map(function (x) {
+      var to = nx[x.status];
+      var act = (to ? '<button class="btn btn-sm" data-bpn-next="' + x.id + '" data-bpn-to="' + to + '" data-bpn-kind="' + kind + '" type="button">→ ' + to + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-bpn-del="' + x.id + '" data-bpn-kind="' + kind + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.ref_no) + ' <span class="text-muted">(' + esc(x.office || '—') + ')</span></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada catatan.</td></tr>';
+    qsa('[data-bpn-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/bpn-tracks/' + b.getAttribute('data-bpn-next') + '/status', { status: b.getAttribute('data-bpn-to') });
+        if (!r.ok) { pmsg(msgId, 'Gagal (' + r.status + ').'); return; }
+        pmsg(msgId, '');
+        bpnRefresh(b.getAttribute('data-bpn-kind'), refId, boxId, msgId);
+      });
+    });
+    qsa('[data-bpn-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/bpn-tracks/' + b.getAttribute('data-bpn-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg(msgId, 'Gagal (' + r.status + ').'); return; }
+        pmsg(msgId, '');
+        bpnRefresh(b.getAttribute('data-bpn-kind'), refId, boxId, msgId);
+      });
+    });
+  }
+  function bpnWire(kind, refId, offId, addId, reloadId, boxId, msgId) {
+    on(addId, 'click', async function () {
+      if (!pval(refId)) { pmsg(msgId, 'Isi nomor referensi.'); return; }
+      var r = await ppost('/api/v1/bpn-tracks', { kind: kind, ref_no: pval(refId), office: pval(offId) || '' });
+      if (!r.ok) { pmsg(msgId, 'Gagal (' + r.status + ').'); return; }
+      pmsg(msgId, '');
+      bpnRefresh(kind, refId, boxId, msgId);
+    });
+    on(reloadId, 'click', function () { bpnRefresh(kind, refId, boxId, msgId); });
+  }
+  bpnWire('verification', 'bpnv-ref', 'bpnv-office', 'bpnv-add', 'bpnv-reload', 'bpnv-list', 'bpnv-msg');
+  bpnWire('queue', 'bpnq-ref', 'bpnq-office', 'bpnq-add', 'bpnq-reload', 'bpnq-list', 'bpnq-msg');
+  bpnWire('response', 'bpnr-ref', 'bpnr-office', 'bpnr-add', 'bpnr-reload', 'bpnr-list', 'bpnr-msg');
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2378,7 +2426,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); vltRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); vltRefresh(); bpnRefresh('verification', 'bpnv-ref', 'bpnv-list', 'bpnv-msg'); bpnRefresh('queue', 'bpnq-ref', 'bpnq-list', 'bpnq-msg'); bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4556,6 +4604,9 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ajbRefresh();
   patRefresh();
   vltRefresh();
+  bpnRefresh('verification', 'bpnv-ref', 'bpnv-list', 'bpnv-msg');
+  bpnRefresh('queue', 'bpnq-ref', 'bpnq-list', 'bpnq-msg');
+  bpnRefresh('response', 'bpnr-ref', 'bpnr-list', 'bpnr-msg');
   klapperRefresh();
   perfRefresh();
   volRefresh();

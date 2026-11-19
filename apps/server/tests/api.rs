@@ -3689,6 +3689,18 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "vlt-add",
         "vlt-reload",
         "vlt-list",
+        "bpnv-ref",
+        "bpnv-add",
+        "bpnv-reload",
+        "bpnv-list",
+        "bpnq-ref",
+        "bpnq-add",
+        "bpnq-reload",
+        "bpnq-list",
+        "bpnr-ref",
+        "bpnr-add",
+        "bpnr-reload",
+        "bpnr-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8693,6 +8705,124 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn bpn_tracks_manual_mode() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "bpntrack@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bpn-tracks",
+            r#"{"kind":"verification","ref_no":"V-1"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bpn-tracks",
+            r#"{"kind":"alien","ref_no":"XX"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // One row per kind, each with its own chain.
+    let cases = [
+        ("verification", "V-1", "draft", "submitted"),
+        ("queue", "Q-7", "waiting", "called"),
+        ("response", "R-3", "draft", "filed"),
+    ];
+    for (kind, refno, init, next) in cases {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/bpn-tracks",
+                &format!(r#"{{"kind":"{kind}","ref_no":"{refno}","office":"Kantah BDG"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "add {kind}");
+        let id = body_json(res).await["id"].as_i64().unwrap();
+        let res = a
+            .clone()
+            .oneshot(get(&format!("/api/v1/bpn-tracks?kind={kind}"), &tok))
+            .await
+            .unwrap();
+        let lv = body_json(res).await;
+        assert!(
+            lv.as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["id"].as_i64() == Some(id) && r["status"] == init),
+            "init {kind}"
+        );
+        // Wrong-kind transition rejected (e.g. filed on verification).
+        let wrong = if kind == "response" {
+            "submitted"
+        } else {
+            "filed"
+        };
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/bpn-tracks/{id}/status"),
+                &format!(r#"{{"status":"{wrong}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(
+            res.status(),
+            StatusCode::CONFLICT,
+            "wrong transition {kind}"
+        );
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/bpn-tracks/{id}/status"),
+                &format!(r#"{{"status":"{next}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "step {kind}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/bpn-tracks", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 3);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=bpn", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.bpn_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/bpn-tracks")
                 .body(Body::empty())
                 .unwrap(),
         )

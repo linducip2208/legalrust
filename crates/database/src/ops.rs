@@ -344,6 +344,17 @@ pub struct CertLinkRow {
     pub doc_name: String,
     pub label: String,
 }
+/// BPN coordination track (manual mode: verification / queue / response).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BpnTrackRow {
+    pub id: i64,
+    pub org: String,
+    pub kind: String,
+    pub ref_no: String,
+    pub office: String,
+    pub status: String,
+    pub note: String,
+}
 /// Protocol register (in/out day-book of the protocol archive).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PregRow {
@@ -1566,6 +1577,19 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn clink_list(&self, org: &str, ppat_id: i64) -> Result<Vec<CertLinkRow>, StoreError>;
     async fn clink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// BPN coordination tracks (manual mode).
+    async fn bpn_add(
+        &self,
+        org: &str,
+        kind: &str,
+        ref_no: &str,
+        office: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn bpn_list(&self, org: &str, kind: Option<&str>)
+        -> Result<Vec<BpnTrackRow>, StoreError>;
+    async fn bpn_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn bpn_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

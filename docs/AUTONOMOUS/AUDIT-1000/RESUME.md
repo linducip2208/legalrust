@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 109: BPN tracker manual mode (main)
+- bpn_tracks (0074, verification|queue|response) + kartu + uji; auto-sync BLOCKED on creds.
+- F-D13-004/027/040 CONFIGURATION_REQUIRED->IMPLEMENTED (~72.4 verified, integration 55 = manual). Workspace 398/0; registry ~26.6 (181 IMPLEMENTED); mean 27.9 (177 v).
+
 ## Done wave 108: certificate vault links (main)
 - cert_links (0073, deed<->scan) + kartu + uji.
 - F-D13-039/002 PARTIAL->IMPLEMENTED (~73.2 verified). Workspace 397/0; registry ~26.5 (178 IMPLEMENTED); mean 27.8 (174 v).
