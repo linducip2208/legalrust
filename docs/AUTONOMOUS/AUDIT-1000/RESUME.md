@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 90: staff productivity + waiting analytics (main, D12: 1 left)
 - GET /api/v1/reports/staff-productivity + waiting-analytics + kartu ringkas + uji (derivasi, tanpa migrasi).
-- F-D12-028/029 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 379/0; registry ~24.5 (142 IMPLEMENTED); mean ~25.5 (140 v).
+- F-D12-028/029 NOT_STARTED->IMPLEMENTED (~72.0 verified). Workspace 379/0; registry ~24.5 (142 IMPLEMENTED); mean 25.6 (140 v).
 
 ## Done wave 89: self-check + year-end seals (main, D12 nearly closed)
 - selfcheck_runs + year_end_seals (0058, count snapshot) + kartu + uji.
