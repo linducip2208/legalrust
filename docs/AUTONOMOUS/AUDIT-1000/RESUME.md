@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 86: doc checklist + office incidents (main)
 - doc_checklist_items + office_incidents (0055) + kartu dok/ringkas + uji.
-- F-D12-030/036 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 375/0; registry ~24.0 (134 IMPLEMENTED); mean ~24.9 (132 v).
+- F-D12-030/036 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 375/0; registry ~24.0 (134 IMPLEMENTED); mean 25.1 (132 v).
 
 ## Done wave 85: storage boxes + MPD transfers (main)
 - storage_boxes + mpd_transfers (0054) + kartu akta + uji.
