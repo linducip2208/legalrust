@@ -1773,6 +1773,72 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power');
   });
   on('pow-reload', 'click', function () { consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); });
+  /* ---- property: land history ---- */
+  async function lhiRefresh() {
+    var box = document.getElementById('lhi-list');
+    if (!box) return;
+    var parcel = pval('lhi-parcel');
+    if (!parcel) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi referensi bidang lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/land-history?parcel_ref=' + encodeURIComponent(parcel));
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.event) + '</td><td>' + esc(x.event_date) + '</td><td>' + esc(x.detail) + '</td><td><button class="btn btn-sm btn-outline-danger" data-lhi-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada riwayat.</td></tr>';
+    qsa('[data-lhi-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/land-history/' + b.getAttribute('data-lhi-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('lhi-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('lhi-msg', '');
+        lhiRefresh();
+      });
+    });
+  }
+  on('lhi-add', 'click', async function () {
+    if (!pval('lhi-parcel') || !pval('lhi-detail')) { pmsg('lhi-msg', 'Isi bidang dan uraian.'); return; }
+    var r = await ppost('/api/v1/land-history', { parcel_ref: pval('lhi-parcel'), event: pval('lhi-event') || 'alas_hak', detail: pval('lhi-detail'), event_date: pval('lhi-date') || '' });
+    if (!r.ok) { pmsg('lhi-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('lhi-msg', '');
+    lhiRefresh();
+  });
+  on('lhi-reload', 'click', lhiRefresh);
+  /* ---- property: unit handovers (BAST) ---- */
+  var UHO_NEXT = { draft: 'signed', signed: 'delivered' };
+  async function uhoRefresh() {
+    var box = document.getElementById('uho-list');
+    if (!box) return;
+    var v = await j('/api/v1/unit-handovers');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = UHO_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-uho-next="' + x.id + '" data-uho-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">diserahkan</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-uho-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.unit_ref) + '</td><td>' + esc(x.bast_no) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada serah terima.</td></tr>';
+    qsa('[data-uho-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/unit-handovers/' + b.getAttribute('data-uho-next') + '/status', { status: b.getAttribute('data-uho-to') });
+        if (!r.ok) { pmsg('uho-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('uho-msg', '');
+        uhoRefresh();
+      });
+    });
+    qsa('[data-uho-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/unit-handovers/' + b.getAttribute('data-uho-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('uho-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('uho-msg', '');
+        uhoRefresh();
+      });
+    });
+  }
+  on('uho-add', 'click', async function () {
+    if (!pval('uho-unit') || !pval('uho-from') || !pval('uho-to') || !pval('uho-bast')) { pmsg('uho-msg', 'Lengkapi unit, pihak, dan no. BAST.'); return; }
+    var r = await ppost('/api/v1/unit-handovers', { unit_ref: pval('uho-unit'), handed_from: pval('uho-from'), handed_to: pval('uho-to'), bast_no: pval('uho-bast'), handed_on: pval('uho-on') || '' });
+    if (!r.ok) { pmsg('uho-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('uho-msg', '');
+    uhoRefresh();
+  });
+  on('uho-reload', 'click', uhoRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1946,7 +2012,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4111,6 +4177,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir');
   consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board');
   consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power');
+  lhiRefresh();
+  uhoRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

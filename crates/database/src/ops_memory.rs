@@ -105,6 +105,8 @@ struct Inner {
     ldisputes: HashMap<i64, LandDisputeRow>,
     boundaries: HashMap<i64, BoundaryRow>,
     dconsents: HashMap<i64, DeedConsentRow>,
+    lhistory: HashMap<i64, LandHistoryRow>,
+    uhandovers: HashMap<i64, UnitHandoverRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -5455,6 +5457,162 @@ impl OpsStore for MemoryOps {
         match m.dconsents.get(&id) {
             Some(r) if r.org == org => {
                 m.dconsents.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn lhist_add(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        event: &str,
+        detail: &str,
+        event_date: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        let detail = detail.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if !matches!(
+            event,
+            "alas_hak"
+                | "jual_beli"
+                | "hibah"
+                | "waris"
+                | "split"
+                | "merge"
+                | "sengketa"
+                | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("event".into()));
+        }
+        if detail.is_empty() || detail.len() > 2000 {
+            return Err(StoreError::Conflict("detail".into()));
+        }
+        if event_date.len() > 10 {
+            return Err(StoreError::Conflict("event_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.lhistory.insert(
+            id,
+            LandHistoryRow {
+                id,
+                org: org.into(),
+                parcel_ref: parcel_ref.into(),
+                event: event.into(),
+                detail: detail.into(),
+                event_date: event_date.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn lhist_list(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+    ) -> Result<Vec<LandHistoryRow>, StoreError> {
+        let mut v: Vec<LandHistoryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .lhistory
+            .values()
+            .filter(|r| r.org == org && r.parcel_ref == parcel_ref)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn lhist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.lhistory.get(&id) {
+            Some(r) if r.org == org => {
+                m.lhistory.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn uho_add(
+        &self,
+        org: &str,
+        unit_ref: &str,
+        handed_from: &str,
+        handed_to: &str,
+        bast_no: &str,
+        handed_on: &str,
+    ) -> Result<i64, StoreError> {
+        let unit_ref = unit_ref.trim();
+        if unit_ref.is_empty() || unit_ref.len() > 120 {
+            return Err(StoreError::Conflict("unit_ref".into()));
+        }
+        for (name, v, max) in [
+            ("handed_from", handed_from, 160),
+            ("handed_to", handed_to, 160),
+            ("bast_no", bast_no, 60),
+        ] {
+            if v.trim().is_empty() || v.len() > max {
+                return Err(StoreError::Conflict(name.into()));
+            }
+        }
+        if handed_on.len() > 10 {
+            return Err(StoreError::Conflict("handed_on".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.uhandovers.insert(
+            id,
+            UnitHandoverRow {
+                id,
+                org: org.into(),
+                unit_ref: unit_ref.into(),
+                handed_from: handed_from.trim().into(),
+                handed_to: handed_to.trim().into(),
+                bast_no: bast_no.trim().into(),
+                handed_on: handed_on.trim().into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn uho_list(&self, org: &str) -> Result<Vec<UnitHandoverRow>, StoreError> {
+        let mut v: Vec<UnitHandoverRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .uhandovers
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn uho_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .uhandovers
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "signed") | ("signed", "delivered")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn uho_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.uhandovers.get(&id) {
+            Some(r) if r.org == org => {
+                m.uhandovers.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

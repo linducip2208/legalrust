@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 101: history + BAST (main)
+- Riwayat tanah + serah terima unit; workspace **390 passed, 0 failed**; F-D13-013/024 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 100: board + power consent (main)
 - Resolusi direksi + kuasa menjual (reuse tabel); workspace **389 passed, 0 failed**; F-D13-017/034 IMPLEMENTED.
 

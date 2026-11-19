@@ -6366,6 +6366,184 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn lhist_add(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+        event: &str,
+        detail: &str,
+        event_date: &str,
+    ) -> Result<i64, StoreError> {
+        let parcel_ref = parcel_ref.trim();
+        let detail = detail.trim();
+        if parcel_ref.is_empty() || parcel_ref.len() > 120 {
+            return Err(StoreError::Conflict("parcel_ref".into()));
+        }
+        if !matches!(
+            event,
+            "alas_hak"
+                | "jual_beli"
+                | "hibah"
+                | "waris"
+                | "split"
+                | "merge"
+                | "sengketa"
+                | "lainnya"
+        ) {
+            return Err(StoreError::Conflict("event".into()));
+        }
+        if detail.is_empty() || detail.len() > 2000 {
+            return Err(StoreError::Conflict("detail".into()));
+        }
+        if event_date.len() > 10 {
+            return Err(StoreError::Conflict("event_date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO land_history (org_id, parcel_ref, event, detail, event_date) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(parcel_ref)
+        .bind(event)
+        .bind(detail)
+        .bind(event_date.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn lhist_list(
+        &self,
+        org: &str,
+        parcel_ref: &str,
+    ) -> Result<Vec<LandHistoryRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, parcel_ref, event, detail, event_date FROM land_history WHERE org_id=? AND parcel_ref=? ORDER BY id DESC LIMIT 200")
+            .bind(org).bind(parcel_ref).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| LandHistoryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                parcel_ref: x.get::<String, _>("parcel_ref"),
+                event: x.get::<String, _>("event"),
+                detail: x.get::<String, _>("detail"),
+                event_date: x.get::<String, _>("event_date"),
+            })
+            .collect())
+    }
+    async fn lhist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM land_history WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn uho_add(
+        &self,
+        org: &str,
+        unit_ref: &str,
+        handed_from: &str,
+        handed_to: &str,
+        bast_no: &str,
+        handed_on: &str,
+    ) -> Result<i64, StoreError> {
+        let unit_ref = unit_ref.trim();
+        if unit_ref.is_empty() || unit_ref.len() > 120 {
+            return Err(StoreError::Conflict("unit_ref".into()));
+        }
+        for (name, v, max) in [
+            ("handed_from", handed_from, 160),
+            ("handed_to", handed_to, 160),
+            ("bast_no", bast_no, 60),
+        ] {
+            if v.trim().is_empty() || v.len() > max {
+                return Err(StoreError::Conflict(name.into()));
+            }
+        }
+        if handed_on.len() > 10 {
+            return Err(StoreError::Conflict("handed_on".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO unit_handovers (org_id, unit_ref, handed_from, handed_to, bast_no, handed_on) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(unit_ref)
+        .bind(handed_from.trim())
+        .bind(handed_to.trim())
+        .bind(bast_no.trim())
+        .bind(handed_on.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn uho_list(&self, org: &str) -> Result<Vec<UnitHandoverRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, unit_ref, handed_from, handed_to, bast_no, handed_on, status FROM unit_handovers WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| UnitHandoverRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                unit_ref: x.get::<String, _>("unit_ref"),
+                handed_from: x.get::<String, _>("handed_from"),
+                handed_to: x.get::<String, _>("handed_to"),
+                bast_no: x.get::<String, _>("bast_no"),
+                handed_on: x.get::<String, _>("handed_on"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn uho_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "signed" | "delivered") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM unit_handovers WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("draft"), "signed") | (Some("signed"), "delivered")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE unit_handovers SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn uho_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM unit_handovers WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

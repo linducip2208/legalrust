@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 101: history + BAST (main)
+- Event guards + chains + audit; workspace **390 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 100: board + power consent (main)
 - Toggle + guards + audit; workspace **389 passed, 0 failed**.
 

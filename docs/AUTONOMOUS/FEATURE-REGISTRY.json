@@ -5140,10 +5140,15 @@
   "id": "F-D13-013",
   "domain": "D13",
   "title": "Land-history (riwayat tanah) record",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0067_land_history_bast.sql: land_history table (forward-only, parcel index)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list-by-parcel/delete, event allowlist",
+   "apps/server/src/lib.rs: POST/GET /api/v1/land-history + delete (RBAC, audit)",
+   "apps/server/static/site.js: lhiRefresh card Riwayat tanah + hooks",
+   "apps/server/tests/api.rs: land_history_and_unit_handover e2e (event 409, 2-entry list)"
+  ],
+  "audit_note": "Wave 101: full lifecycle live; verified by test (390/0)."
  },
  {
   "id": "F-D13-014",
@@ -5270,10 +5275,15 @@
   "id": "F-D13-024",
   "domain": "D13",
   "title": "Unit handover (BAST) tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0067_land_history_bast.sql: unit_handovers table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + draft->signed->delivered",
+   "apps/server/src/lib.rs: POST/GET /api/v1/unit-handovers + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: uhoRefresh card BAST + hooks",
+   "apps/server/tests/api.rs: skip-ahead 409 + chain + audit + 401 asserted"
+  ],
+  "audit_note": "Wave 101: verified by test (390/0)."
  },
  {
   "id": "F-D13-025",

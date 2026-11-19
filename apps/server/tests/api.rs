@@ -3634,6 +3634,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "pow-add",
         "pow-reload",
         "pow-list",
+        "lhi-parcel",
+        "lhi-add",
+        "lhi-reload",
+        "lhi-list",
+        "uho-unit",
+        "uho-add",
+        "uho-reload",
+        "uho-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8638,6 +8646,108 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn land_history_and_unit_handover() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "lhistuho@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-history",
+            r#"{"parcel_ref":"SHM 9","detail":"Alas hak girik"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-history",
+            r#"{"parcel_ref":"SHM 9","event":"alien","detail":"DD"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/land-history", r#"{"parcel_ref":"SHM 9","event":"alas_hak","detail":"Alas hak girik C 123","event_date":"2020-01-15"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-history",
+            r#"{"parcel_ref":"SHM 9","event":"waris","detail":"Turun waris ke 3 anak"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/land-history?parcel_ref=SHM%209", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 2);
+    // Unit handover draft->signed->delivered.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/unit-handovers", r#"{"unit_ref":"Tower A-101","handed_from":"PT Dev","handed_to":"Budi","bast_no":"BAST/1"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let uid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/unit-handovers/{uid}/status"),
+            r#"{"status":"delivered"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["signed", "delivered"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/unit-handovers/{uid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "uho to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=uho", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.uho_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/unit-handovers")
                 .body(Body::empty())
                 .unwrap(),
         )
