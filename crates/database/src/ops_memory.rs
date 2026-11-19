@@ -50,6 +50,7 @@ struct Inner {
     incidents: HashMap<i64, IncidentRow>,
     capas: HashMap<i64, CapaRow>,
     regchanges: HashMap<i64, RegChangeRow>,
+    trainings: HashMap<i64, TrainingRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1623,6 +1624,75 @@ impl OpsStore for MemoryOps {
         match m.regchanges.get(&id) {
             Some(r) if r.org == org => {
                 m.regchanges.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn training_create(
+        &self,
+        org: &str,
+        title: &str,
+        assignee: &str,
+        due: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if due.len() > 10 {
+            return Err(StoreError::Conflict("due_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.trainings.insert(
+            id,
+            TrainingRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                assignee: assignee.trim().chars().take(120).collect(),
+                due_date: due.trim().into(),
+                status: "assigned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn training_list(&self, org: &str) -> Result<Vec<TrainingRow>, StoreError> {
+        let mut v: Vec<TrainingRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .trainings
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn training_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .trainings
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("assigned", "in_progress") | ("in_progress", "completed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn training_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.trainings.get(&id) {
+            Some(r) if r.org == org => {
+                m.trainings.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

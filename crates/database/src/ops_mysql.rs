@@ -1783,6 +1783,93 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn training_create(
+        &self,
+        org: &str,
+        title: &str,
+        assignee: &str,
+        due: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if due.len() > 10 {
+            return Err(StoreError::Conflict("due_date".into()));
+        }
+        let who: String = assignee.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO training_assignments (org_id, title, assignee, due_date) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(who)
+        .bind(due.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn training_list(&self, org: &str) -> Result<Vec<TrainingRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, assignee, due_date, status FROM training_assignments WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| TrainingRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                assignee: x.get::<String, _>("assignee"),
+                due_date: x.get::<String, _>("due_date"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn training_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_progress" | "completed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM training_assignments WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("assigned"), "in_progress") | (Some("in_progress"), "completed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE training_assignments SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn training_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM training_assignments WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

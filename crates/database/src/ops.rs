@@ -183,6 +183,16 @@ pub struct RegChangeRow {
     pub effective_date: String,
     pub status: String,
 }
+/// Compliance training assignment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TrainingRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub assignee: String,
+    pub due_date: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -805,6 +815,17 @@ pub trait OpsStore: Send + Sync {
     async fn regchange_list(&self, org: &str) -> Result<Vec<RegChangeRow>, StoreError>;
     async fn regchange_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn regchange_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Compliance training assignments.
+    async fn training_create(
+        &self,
+        org: &str,
+        title: &str,
+        assignee: &str,
+        due: &str,
+    ) -> Result<i64, StoreError>;
+    async fn training_list(&self, org: &str) -> Result<Vec<TrainingRow>, StoreError>;
+    async fn training_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn training_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

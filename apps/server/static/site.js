@@ -1829,8 +1829,46 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     regRefresh();
   });
   on('reg-reload', 'click', regRefresh);
+  /* ---- compliance: training assignments ---- */
+  var TRN_NEXT = { assigned: 'in_progress', in_progress: 'completed' };
+  async function trnRefresh() {
+    var box = document.getElementById('trn-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/trainings');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = TRN_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-trn-next="' + x.id + '" data-trn-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-trn-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.assignee) + '</td><td>' + esc(x.due_date) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada penugasan pelatihan.</td></tr>';
+    qsa('[data-trn-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/trainings/' + b.getAttribute('data-trn-next') + '/status', { status: b.getAttribute('data-trn-to') });
+        if (!r.ok) { pmsg('trn-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('trn-msg', '');
+        trnRefresh();
+      });
+    });
+    qsa('[data-trn-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/trainings/' + b.getAttribute('data-trn-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('trn-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('trn-msg', '');
+        trnRefresh();
+      });
+    });
+  }
+  on('trn-add', 'click', async function () {
+    if (!pval('trn-title')) { pmsg('trn-msg', 'Isi judul pelatihan.'); return; }
+    var r = await ppost('/api/v1/compliance/trainings', { title: pval('trn-title'), assignee: pval('trn-who') || '', due_date: pval('trn-due') || '' });
+    if (!r.ok) { pmsg('trn-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('trn-msg', '');
+    trnRefresh();
+  });
+  on('trn-reload', 'click', trnRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -1877,6 +1915,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   incRefresh();
   capaRefresh();
   regRefresh();
+  trnRefresh();
   whDlRefresh();
   intRefresh();
 })();

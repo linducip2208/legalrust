@@ -6672,6 +6672,97 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn training_assignment_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "training@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/trainings",
+            r#"{"title":"X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/trainings",
+            r#"{"title":"UU PDP untuk staf","assignee":"Andi","due_date":"2026-12-31"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "completed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/trainings/{tid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "training to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/trainings/{tid}/status"),
+            r#"{"status":"assigned"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/trainings", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(tid) && r["status"] == "completed"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/trainings/{tid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=training", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.training_created"));
+}
+
+#[tokio::test]
 async fn regulatory_change_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7855,6 +7946,10 @@ async fn uib_app_has_approvals_ui() {
         "reg-add",
         "reg-reload",
         "reg-list",
+        "trn-title",
+        "trn-add",
+        "trn-reload",
+        "trn-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",
