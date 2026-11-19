@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 61: approval calendar (main)
+- Month grouping + validation + guards; workspace **350 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 60: regulatory tracker (main)
 - Lifecycle + bad-transition + audit; workspace **349 passed, 0 failed**.
 

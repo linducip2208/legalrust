@@ -6083,6 +6083,61 @@ async fn approvals_overdue_alerts() {
 }
 
 #[tokio::test]
+async fn approvals_calendar_view() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprc@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Default month groups the fresh request under its creation day.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/calendar", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(v["month"].as_str().unwrap().len() == 7);
+    let found = v["days"]
+        .as_object()
+        .unwrap()
+        .values()
+        .flat_map(|d| d.as_array().unwrap().clone())
+        .any(|r| r["id"].as_i64() == Some(aid));
+    assert!(found, "fresh approval present in current-month calendar");
+    // Explicit month + waiting_on surfaced; malformed month rejected.
+    let month = v["month"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/approvals/calendar?month={month}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["month"].as_str().unwrap(), month);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/calendar?month=2026-13", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/calendar")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn compliance_obligation_and_consent_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7704,6 +7759,9 @@ async fn uib_app_has_approvals_ui() {
         "appr-overdue-days",
         "appr-overdue-reload",
         "appr-overdue-list",
+        "appr-cal-month",
+        "appr-cal-reload",
+        "appr-cal-list",
         "appr-id",
         "appr-show",
         "appr-detail",

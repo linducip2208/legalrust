@@ -3321,10 +3321,13 @@
   "id": "F-D09-019",
   "domain": "D09",
   "title": "Approval calendar view",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/calendar?month=YYYY-MM (pending grouped by creation day, waiting_on + age)",
+   "apps/server/static/site.js: apprCalRefresh calendar card in Persetujuan tab + boot/tab hooks",
+   "apps/server/tests/api.rs: approvals_calendar_view (default/explicit month, bad month 422, 401) + needles"
+  ],
+  "audit_note": "Wave 61: no schema change (uses approval_requests.created); verified by test (350/0)."
  },
  {
   "id": "F-D09-020",

@@ -1437,6 +1437,25 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada yang terlambat. Semua tepat waktu.</td></tr>';
   }
   on('appr-overdue-reload', 'click', apprOverdueRefresh);
+  /* ---- approval calendar view (F-D09-019) ---- */
+  async function apprCalRefresh() {
+    var box = document.getElementById('appr-cal-list');
+    if (!box) return;
+    var m = (pval('appr-cal-month') || '').trim();
+    var v = await j('/api/v1/approvals/calendar' + (m ? '?month=' + encodeURIComponent(m) : ''));
+    if (!v) { box.innerHTML = '<p class="text-muted">Gagal memuat.</p>'; return; }
+    var days = (v && v.days) || {};
+    var keys = Object.keys(days).sort();
+    if (!keys.length) { box.innerHTML = '<p class="text-muted">Tidak ada persetujuan pending pada ' + esc(v.month || '') + '.</p>'; return; }
+    box.innerHTML = '<p class="text-muted">Bulan ' + esc(v.month || '') + ': ' + keys.length + ' hari ada antrean.</p>'
+      + keys.map(function (d) {
+        return '<h4>' + esc(d) + '</h4><div class="table-responsive"><table class="table card-table"><thead><tr><th>ID</th><th>Judul</th><th>Umur (hari)</th><th>Menunggu</th></tr></thead><tbody>'
+          + days[d].map(function (x) {
+            return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + x.age_days + '</td><td>' + esc(x.waiting_on) + '</td></tr>';
+          }).join('') + '</tbody></table></div>';
+      }).join('');
+  }
+  on('appr-cal-reload', 'click', apprCalRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -1492,10 +1511,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -1843,6 +1862,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apprRefresh();
   apprNotifRefresh();
   apprOverdueRefresh();
+  apprCalRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();
