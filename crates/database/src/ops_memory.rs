@@ -74,6 +74,8 @@ struct Inner {
     qitems: HashMap<i64, QuotationItemRow>,
     cash: HashMap<i64, CashEntryRow>,
     advances: HashMap<i64, AdvanceRow>,
+    inventory: HashMap<i64, InventoryRow>,
+    stock_use: HashMap<i64, UsageRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3251,6 +3253,146 @@ impl OpsStore for MemoryOps {
         match m.advances.get(&id) {
             Some(r) if r.org == org => {
                 m.advances.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn stock_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        qty: i64,
+        unit: &str,
+        min_stock: i64,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let name = name.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if qty < 0 || min_stock < 0 {
+            return Err(StoreError::Conflict("qty".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.inventory.values().any(|p| p.org == org && p.code == code) {
+            return Err(StoreError::Conflict("duplicate code".into()));
+        }
+        let id = self.next(&mut m);
+        m.inventory.insert(
+            id,
+            InventoryRow {
+                id,
+                org: org.into(),
+                code: code.into(),
+                name: name.into(),
+                qty,
+                unit: unit.trim().chars().take(20).collect(),
+                min_stock,
+            },
+        );
+        Ok(id)
+    }
+    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError> {
+        let mut v: Vec<InventoryRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .inventory
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn stock_adjust(&self, org: &str, id: i64, delta: i64) -> Result<i64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .inventory
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let next = r.qty.saturating_add(delta);
+        if next < 0 {
+            return Err(StoreError::Conflict("insufficient stock".into()));
+        }
+        r.qty = next;
+        Ok(next)
+    }
+    async fn stock_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.inventory.get(&id) {
+            Some(r) if r.org == org => {
+                m.inventory.remove(&id);
+                m.stock_use.retain(|_, u| u.item_id != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn stock_use_add(
+        &self,
+        org: &str,
+        item_id: i64,
+        qty: i64,
+        need: &str,
+        used_on: &str,
+    ) -> Result<i64, StoreError> {
+        if qty <= 0 {
+            return Err(StoreError::Conflict("qty".into()));
+        }
+        if need.len() > 255 || used_on.len() > 10 {
+            return Err(StoreError::Conflict("need/date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let item = m
+            .inventory
+            .get_mut(&item_id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if item.qty < qty {
+            return Err(StoreError::Conflict("insufficient stock".into()));
+        }
+        item.qty -= qty;
+        let id = self.next(&mut m);
+        m.stock_use.insert(
+            id,
+            UsageRow {
+                id,
+                org: org.into(),
+                item_id,
+                qty,
+                need: need.trim().into(),
+                used_on: used_on.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn stock_use_list(&self, org: &str, item_id: i64) -> Result<Vec<UsageRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.inventory.get(&item_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<UsageRow> = m
+            .stock_use
+            .values()
+            .filter(|r| r.org == org && r.item_id == item_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.stock_use.get(&id) {
+            Some(r) if r.org == org => {
+                m.stock_use.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

@@ -607,6 +607,81 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     advRefresh();
   });
   on('adv-reload', 'click', advRefresh);
+  /* ---- office: inventory ---- */
+  async function invRefresh() {
+    var box = document.getElementById('inv-list');
+    if (!box) return;
+    var v = await j('/api/v1/inventory');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var st = x.low ? '<span class="badge bg-red-lt">menipis</span>' : '<span class="badge bg-green-lt">aman</span>';
+      var act = '<button class="btn btn-sm" data-inv-plus="' + x.id + '" type="button">+10</button> <button class="btn btn-sm" data-inv-min="' + x.id + '" type="button">−10</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-inv-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.code) + ' <span class="text-muted">(' + esc(x.name) + ')</span></td><td><strong>' + x.qty + '</strong> ' + esc(x.unit) + '</td><td>' + st + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada barang.</td></tr>';
+    qsa('[data-inv-plus]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/inventory/' + b.getAttribute('data-inv-plus') + '/adjust', { delta: 10 });
+        if (!r.ok) { pmsg('inv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('inv-msg', '');
+        invRefresh();
+      });
+    });
+    qsa('[data-inv-min]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/inventory/' + b.getAttribute('data-inv-min') + '/adjust', { delta: -10 });
+        if (!r.ok) { pmsg('inv-msg', 'Gagal (' + r.status + '). Stok tidak cukup.'); return; }
+        pmsg('inv-msg', '');
+        invRefresh();
+      });
+    });
+    qsa('[data-inv-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/inventory/' + b.getAttribute('data-inv-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('inv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('inv-msg', '');
+        invRefresh();
+      });
+    });
+  }
+  on('inv-add', 'click', async function () {
+    if (!pval('inv-code') || !pval('inv-name')) { pmsg('inv-msg', 'Isi kode dan nama.'); return; }
+    var r = await ppost('/api/v1/inventory', { code: pval('inv-code'), name: pval('inv-name'), qty: +pval('inv-qty') || 0, unit: 'pcs', min_stock: +pval('inv-min') || 0 });
+    if (!r.ok) { pmsg('inv-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('inv-msg', '');
+    invRefresh();
+  });
+  on('inv-reload', 'click', invRefresh);
+  /* ---- office: meterai usage ---- */
+  async function useRefresh() {
+    var box = document.getElementById('use-list');
+    if (!box) return;
+    var iid = pval('use-item');
+    if (!iid) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID barang lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/inventory/' + encodeURIComponent(iid) + '/usage');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + x.qty + '</td><td>' + esc(x.need) + '</td><td>' + esc(x.used_on) + '</td><td><button class="btn btn-sm btn-outline-danger" data-use-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada pemakaian.</td></tr>';
+    qsa('[data-use-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/usage/' + b.getAttribute('data-use-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('use-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('use-msg', '');
+        useRefresh();
+        invRefresh();
+      });
+    });
+  }
+  on('use-add', 'click', async function () {
+    if (!pval('use-item') || !(+pval('use-qty') > 0)) { pmsg('use-msg', 'Isi ID barang dan jumlah.'); return; }
+    var r = await ppost('/api/v1/inventory/' + encodeURIComponent(pval('use-item')) + '/usage', { qty: +pval('use-qty'), need: pval('use-need') || '', used_on: pval('use-on') || '' });
+    if (!r.ok) { pmsg('use-msg', 'Gagal (' + r.status + '). Stok tidak cukup?'); return; }
+    pmsg('use-msg', '');
+    useRefresh();
+    invRefresh();
+  });
+  on('use-reload', 'click', useRefresh);
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];
     if (!f) { document.getElementById('ue').textContent = 'Pilih berkas dulu.'; return; }
@@ -2837,6 +2912,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   quotRefresh();
   cashRefresh();
   advRefresh();
+  invRefresh();
+  useRefresh();
   whDlRefresh();
   intRefresh();
 })();

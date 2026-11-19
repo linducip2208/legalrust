@@ -4646,19 +4646,29 @@
   "id": "F-D12-017",
   "domain": "D12",
   "title": "Office inventory (blanko/meterai)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0048_inventory.sql: inventory_items table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + atomic adjust (floor 0)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/inventory + adjust + delete (RBAC, audit, low-stock flag)",
+   "apps/server/static/site.js: invRefresh card Inventaris in keu tab + hooks",
+   "apps/server/tests/api.rs: inventory_and_meterai_usage e2e (dup 409, floor 409, low flag)"
+  ],
+  "audit_note": "Wave 78: full lifecycle live; verified by test (367/0)."
  },
  {
   "id": "F-D12-018",
   "domain": "D12",
   "title": "Meterai inventory & usage",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0048_inventory.sql: meterai_usage table (FK item CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: usage_add (stock decrement + log in one Tx) + scoped list/delete",
+   "apps/server/src/lib.rs: POST/GET /api/v1/inventory/{id}/usage + delete (RBAC, audit)",
+   "apps/server/static/site.js: useRefresh card Pemakaian + hooks",
+   "apps/server/tests/api.rs: oversell 409, atomic decrement 100->70, history asserted"
+  ],
+  "audit_note": "Wave 78: verified by test (367/0)."
  },
  {
   "id": "F-D12-019",

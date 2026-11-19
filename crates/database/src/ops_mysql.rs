@@ -3765,6 +3765,189 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn stock_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        qty: i64,
+        unit: &str,
+        min_stock: i64,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let name = name.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if qty < 0 || min_stock < 0 {
+            return Err(StoreError::Conflict("qty".into()));
+        }
+        let un: String = unit.trim().chars().take(20).collect();
+        let r = sqlx::query(
+            "INSERT INTO inventory_items (org_id, code, name, qty, unit, min_stock) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(code)
+        .bind(name)
+        .bind(qty)
+        .bind(un)
+        .bind(min_stock)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, code, name, qty, unit, min_stock FROM inventory_items WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| InventoryRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                name: x.get::<String, _>("name"),
+                qty: x.get::<i64, _>("qty"),
+                unit: x.get::<String, _>("unit"),
+                min_stock: x.get::<i64, _>("min_stock"),
+            })
+            .collect())
+    }
+    async fn stock_adjust(&self, org: &str, id: i64, delta: i64) -> Result<i64, StoreError> {
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<i64> =
+            sqlx::query("SELECT qty FROM inventory_items WHERE id=? AND org_id=? FOR UPDATE")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<i64, _>("qty"));
+        let cur = cur.ok_or(StoreError::NotFound)?;
+        let next = cur.saturating_add(delta);
+        if next < 0 {
+            return Err(StoreError::Conflict("insufficient stock".into()));
+        }
+        sqlx::query("UPDATE inventory_items SET qty=? WHERE id=? AND org_id=?")
+            .bind(next)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(next)
+    }
+    async fn stock_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM inventory_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn stock_use_add(
+        &self,
+        org: &str,
+        item_id: i64,
+        qty: i64,
+        need: &str,
+        used_on: &str,
+    ) -> Result<i64, StoreError> {
+        if qty <= 0 {
+            return Err(StoreError::Conflict("qty".into()));
+        }
+        if need.len() > 255 || used_on.len() > 10 {
+            return Err(StoreError::Conflict("need/date".into()));
+        }
+        // Atomic decrement + log in one transaction: no oversell, no orphan log.
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<i64> =
+            sqlx::query("SELECT qty FROM inventory_items WHERE id=? AND org_id=? FOR UPDATE")
+                .bind(item_id as u64)
+                .bind(org)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<i64, _>("qty"));
+        let cur = cur.ok_or(StoreError::NotFound)?;
+        if cur < qty {
+            return Err(StoreError::Conflict("insufficient stock".into()));
+        }
+        sqlx::query("UPDATE inventory_items SET qty=qty-? WHERE id=? AND org_id=?")
+            .bind(qty)
+            .bind(item_id as u64)
+            .bind(org)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        let r = sqlx::query(
+            "INSERT INTO meterai_usage (org_id, item_id, qty, need, used_on) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(item_id as u64)
+        .bind(qty)
+        .bind(need.trim())
+        .bind(used_on.trim())
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let id = r.last_insert_id() as i64;
+        tx.commit().await.map_err(db_err)?;
+        Ok(id)
+    }
+    async fn stock_use_list(&self, org: &str, item_id: i64) -> Result<Vec<UsageRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM inventory_items WHERE id=?")
+            .bind(item_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, item_id, qty, need, used_on FROM meterai_usage WHERE org_id=? AND item_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(item_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| UsageRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                item_id: x.get::<u64, _>("item_id") as i64,
+                qty: x.get::<i64, _>("qty"),
+                need: x.get::<String, _>("need"),
+                used_on: x.get::<String, _>("used_on"),
+            })
+            .collect())
+    }
+    async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM meterai_usage WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

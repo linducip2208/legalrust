@@ -415,6 +415,27 @@ pub struct AdvanceRow {
     pub purpose: String,
     pub status: String,
 }
+/// Office inventory item (blanko, meterai, ATK).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InventoryRow {
+    pub id: i64,
+    pub org: String,
+    pub code: String,
+    pub name: String,
+    pub qty: i64,
+    pub unit: String,
+    pub min_stock: i64,
+}
+/// Meterai/blanko usage log (decrements stock atomically).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsageRow {
+    pub id: i64,
+    pub org: String,
+    pub item_id: i64,
+    pub qty: i64,
+    pub need: String,
+    pub used_on: String,
+}
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuotationItemRow {
@@ -1311,6 +1332,30 @@ pub trait OpsStore: Send + Sync {
     async fn advance_list(&self, org: &str) -> Result<Vec<AdvanceRow>, StoreError>;
     async fn advance_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn advance_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office inventory (blanko/meterai/ATK).
+    async fn stock_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        qty: i64,
+        unit: &str,
+        min_stock: i64,
+    ) -> Result<i64, StoreError>;
+    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError>;
+    async fn stock_adjust(&self, org: &str, id: i64, delta: i64) -> Result<i64, StoreError>;
+    async fn stock_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Meterai/blanko usage (atomic stock decrement + log).
+    async fn stock_use_add(
+        &self,
+        org: &str,
+        item_id: i64,
+        qty: i64,
+        need: &str,
+        used_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn stock_use_list(&self, org: &str, item_id: i64) -> Result<Vec<UsageRow>, StoreError>;
+    async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

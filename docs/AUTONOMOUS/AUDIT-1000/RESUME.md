@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 78: inventory + meterai usage (main)
+- inventory_items + meterai_usage (0048, atomic decrement Tx) + kartu keu + uji.
+- F-D12-017/018 NOT_STARTED/PLANNED->IMPLEMENTED (~73.4 verified). Workspace 367/0; registry ~23.2 (118 IMPLEMENTED); mean ~23.9 (116 v).
+
 ## Done wave 77: cash book + advances (main)
 - cash_entries + advances (0047, saldo derivasi) + kartu keu + uji.
 - F-D12-015/016 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 366/0; registry ~23.1 (116 IMPLEMENTED); mean 23.9 (114 v).

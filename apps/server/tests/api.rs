@@ -5484,6 +5484,14 @@ async fn uib_app_has_audit_jobs_ui() {
         "adv-add",
         "adv-reload",
         "adv-list",
+        "inv-code",
+        "inv-add",
+        "inv-reload",
+        "inv-list",
+        "use-item",
+        "use-add",
+        "use-reload",
+        "use-list",
         "bell",
         "bell-n",
         "bell-list",
@@ -6944,6 +6952,130 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn inventory_and_meterai_usage() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "invuse@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/inventory",
+            r#"{"code":"X","name":"Y","qty":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/inventory", r#"{"code":"METERAI-10K","name":"Meterai 10000","qty":100,"unit":"pcs","min_stock":20}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/inventory",
+            r#"{"code":"METERAI-10K","name":"Dup","qty":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Oversell blocked at both layers.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/inventory/{iid}/usage"),
+            r#"{"qty":1000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/inventory/{iid}/usage"),
+            r#"{"qty":30,"need":"AJB W1","used_on":"2026-02-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Stock decremented atomically; low-stock flag still false (70 > 20).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/inventory", &tok))
+        .await
+        .unwrap();
+    let item = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"].as_i64() == Some(iid))
+        .unwrap()
+        .clone();
+    assert_eq!(item["qty"].as_i64().unwrap(), 70);
+    assert!(!item["low"].as_bool().unwrap());
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/inventory/{iid}/usage"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // Adjust below zero rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/inventory/{iid}/adjust"),
+            r#"{"delta":-1000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/inventory/{iid}/adjust"),
+            r#"{"delta":-60}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["qty"].as_i64().unwrap(), 10);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/inventory", &tok))
+        .await
+        .unwrap();
+    let item = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"].as_i64() == Some(iid))
+        .unwrap()
+        .clone();
+    assert!(item["low"].as_bool().unwrap());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=inventory", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.stock_created"));
 }
 
 #[tokio::test]
