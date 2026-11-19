@@ -434,11 +434,21 @@ pub struct AdvanceRow {
 pub struct InventoryRow {
     pub id: i64,
     pub org: String,
+    pub kind: String,
     pub code: String,
     pub name: String,
     pub qty: i64,
     pub unit: String,
     pub min_stock: i64,
+}
+/// Archive storage box (room/shelf location map).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArchiveBoxRow {
+    pub id: i64,
+    pub org: String,
+    pub box_code: String,
+    pub location: String,
+    pub description: String,
 }
 /// Meterai/blanko usage log (decrements stock atomically).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1433,6 +1443,7 @@ pub trait OpsStore: Send + Sync {
     async fn advance_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn advance_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Office inventory (blanko/meterai/ATK).
+    #[allow(clippy::too_many_arguments)]
     async fn stock_create(
         &self,
         org: &str,
@@ -1441,8 +1452,13 @@ pub trait OpsStore: Send + Sync {
         qty: i64,
         unit: &str,
         min_stock: i64,
+        kind: &str,
     ) -> Result<i64, StoreError>;
-    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError>;
+    async fn stock_list(
+        &self,
+        org: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<InventoryRow>, StoreError>;
     async fn stock_adjust(&self, org: &str, id: i64, delta: i64) -> Result<i64, StoreError>;
     async fn stock_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Meterai/blanko usage (atomic stock decrement + log).
@@ -1456,6 +1472,17 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn stock_use_list(&self, org: &str, item_id: i64) -> Result<Vec<UsageRow>, StoreError>;
     async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Archive storage boxes (location map).
+    async fn abox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        description: &str,
+    ) -> Result<i64, StoreError>;
+    async fn abox_list(&self, org: &str) -> Result<Vec<ArchiveBoxRow>, StoreError>;
+    async fn abox_move(&self, org: &str, id: i64, location: &str) -> Result<(), StoreError>;
+    async fn abox_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Office visitor log.
     async fn visitor_checkin(
         &self,

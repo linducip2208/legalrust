@@ -4692,19 +4692,29 @@
   "id": "F-D12-019",
   "domain": "D12",
   "title": "ATK & consumables tracker",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0053_atk_archive.sql: kind tag on inventory_items (additive ALTER, default general)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: kind allowlist + kind-filtered stock_list",
+   "apps/server/src/lib.rs: kind param on POST /api/v1/inventory + ?kind= filter on GET",
+   "apps/server/static/site.js: atkRefresh card ATK & habis pakai (kind=atk) + hooks",
+   "apps/server/tests/api.rs: atk_and_archive_boxes e2e (alien kind 409, filter isolates atk)"
+  ],
+  "audit_note": "Wave 83: kind-tagged shared table, no duplicate stock system; verified by test (372/0)."
  },
  {
   "id": "F-D12-020",
   "domain": "D12",
   "title": "Archive room location map",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0053_atk_archive.sql: archive_boxes table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + move (location update)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/archive-boxes + move + delete (RBAC, audit)",
+   "apps/server/static/site.js: aboxRefresh card Peta ruang arsip + hooks",
+   "apps/server/tests/api.rs: dup 409, move asserted, Delete-gate, 401"
+  ],
+  "audit_note": "Wave 83: verified by test (372/0)."
  },
  {
   "id": "F-D12-021",

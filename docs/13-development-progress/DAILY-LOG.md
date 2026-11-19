@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 83: ATK + archive (main)
+- Kind tag + peta arsip; workspace **372 passed, 0 failed**; F-D12-019/020 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 82: hours + roster + leaves (main)
 - Jam operasional + roster + cuti; workspace **371 passed, 0 failed**; F-D12-007/008 IMPLEMENTED.
 

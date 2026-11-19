@@ -5522,6 +5522,14 @@ async fn uib_app_has_audit_jobs_ui() {
         "use-add",
         "use-reload",
         "use-list",
+        "atk-code",
+        "atk-add",
+        "atk-reload",
+        "atk-list",
+        "abox-code",
+        "abox-add",
+        "abox-reload",
+        "abox-list",
         "dp-no",
         "dp-add",
         "dp-reload",
@@ -7518,6 +7526,117 @@ async fn visitors_and_announcements() {
         .unwrap()
         .iter()
         .any(|e| e["action"] == "office.visitor_checkin"));
+}
+
+#[tokio::test]
+async fn atk_and_archive_boxes() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "atkbox@x.id").await;
+    // ATK is kind-tagged inventory: general items stay out of the ATK view.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/inventory",
+            r#"{"code":"GEN-01","name":"Umum","qty":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/inventory",
+            r#"{"code":"ATK-KERTAS","name":"Kertas A4","qty":10,"kind":"atk"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/inventory",
+            r#"{"code":"ATK-X","name":"XX","qty":1,"kind":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/inventory?kind=atk", &tok))
+        .await
+        .unwrap();
+    let atk = body_json(res).await;
+    assert_eq!(atk.as_array().unwrap().len(), 1);
+    assert_eq!(atk[0]["code"].as_str().unwrap(), "ATK-KERTAS");
+    // Archive boxes: dup codes rejected, move updates location.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/archive-boxes",
+            r#"{"box_code":"ARS-001","location":"Ruang A / Rak 3","description":"Akta 2024"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/archive-boxes",
+            r#"{"box_code":"ARS-001"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/archive-boxes/{bid}/move"),
+            r#"{"location":"Ruang B / Rak 1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/archive-boxes", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(bid) && r["location"] == "Ruang B / Rak 1"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=abox", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.abox_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/archive-boxes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

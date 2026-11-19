@@ -33,11 +33,11 @@ pub enum DbError {
 }
 pub use ops::{
     appr_check, marketing_allowed_transition, AdvanceRow, AnnouncementRow, AppointmentRow,
-    ApprovalReqRow, ApprovalStepRow, ArOpenRow, AuditFindingRow, AuditPlanRow, AuditRow, BreachRow,
-    CapaRow, CashEntryRow, ChecklistRow, ClauseRow, ClientTagRow, ConsentRow, ControlRow,
-    ControlTestRow, CrmStore, DeedRow, DelegationRow, DownPaymentRow, DpiaRow, DsarRow, EthicsRow,
-    EvidenceRow, GiftRow, IncidentRow, InventoryRow, InviteRow, InvoiceRow, JobRow, LeaveRow,
-    MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
+    ApprovalReqRow, ApprovalStepRow, ArOpenRow, ArchiveBoxRow, AuditFindingRow, AuditPlanRow,
+    AuditRow, BreachRow, CapaRow, CashEntryRow, ChecklistRow, ClauseRow, ClientTagRow, ConsentRow,
+    ControlRow, ControlTestRow, CrmStore, DeedRow, DelegationRow, DownPaymentRow, DpiaRow, DsarRow,
+    EthicsRow, EvidenceRow, GiftRow, IncidentRow, InventoryRow, InviteRow, InvoiceRow, JobRow,
+    LeaveRow, MarketingArticleRow, MarketingContactRow, MarketingDemoRow, MarketingFaqRow,
     MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow, MarketingStore,
     MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OfficeHoursRow, OpsStore,
     PaymentRow, PbookRow, PdpObligationRow, PhandoverRow, PolicyAckRow, PolicyRow, PpatRow,

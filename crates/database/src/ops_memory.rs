@@ -76,6 +76,7 @@ struct Inner {
     advances: HashMap<i64, AdvanceRow>,
     inventory: HashMap<i64, InventoryRow>,
     stock_use: HashMap<i64, UsageRow>,
+    aboxes: HashMap<i64, ArchiveBoxRow>,
     visitors: HashMap<i64, VisitorRow>,
     announces: HashMap<i64, AnnouncementRow>,
     dpayments: HashMap<i64, DownPaymentRow>,
@@ -3266,6 +3267,7 @@ impl OpsStore for MemoryOps {
             _ => Err(StoreError::NotFound),
         }
     }
+    #[allow(clippy::too_many_arguments)]
     async fn stock_create(
         &self,
         org: &str,
@@ -3274,6 +3276,7 @@ impl OpsStore for MemoryOps {
         qty: i64,
         unit: &str,
         min_stock: i64,
+        kind: &str,
     ) -> Result<i64, StoreError> {
         let code = code.trim();
         let name = name.trim();
@@ -3286,6 +3289,9 @@ impl OpsStore for MemoryOps {
         if qty < 0 || min_stock < 0 {
             return Err(StoreError::Conflict("qty".into()));
         }
+        if !matches!(kind, "general" | "atk" | "blanko" | "meterai") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
         let mut m = self.inner.lock().unwrap();
         if m.inventory.values().any(|p| p.org == org && p.code == code) {
             return Err(StoreError::Conflict("duplicate code".into()));
@@ -3296,6 +3302,7 @@ impl OpsStore for MemoryOps {
             InventoryRow {
                 id,
                 org: org.into(),
+                kind: kind.into(),
                 code: code.into(),
                 name: name.into(),
                 qty,
@@ -3305,14 +3312,18 @@ impl OpsStore for MemoryOps {
         );
         Ok(id)
     }
-    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError> {
+    async fn stock_list(
+        &self,
+        org: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<InventoryRow>, StoreError> {
         let mut v: Vec<InventoryRow> = self
             .inner
             .lock()
             .unwrap()
             .inventory
             .values()
-            .filter(|r| r.org == org)
+            .filter(|r| r.org == org && kind.map(|k| r.kind == k).unwrap_or(true))
             .cloned()
             .collect();
         v.sort_by_key(|r| -r.id);
@@ -3401,6 +3412,76 @@ impl OpsStore for MemoryOps {
         match m.stock_use.get(&id) {
             Some(r) if r.org == org => {
                 m.stock_use.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn abox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        description: &str,
+    ) -> Result<i64, StoreError> {
+        let box_code = box_code.trim();
+        if box_code.is_empty() || box_code.len() > 40 {
+            return Err(StoreError::Conflict("box_code".into()));
+        }
+        if location.len() > 120 || description.len() > 255 {
+            return Err(StoreError::Conflict("location/description".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.aboxes
+            .values()
+            .any(|b| b.org == org && b.box_code == box_code)
+        {
+            return Err(StoreError::Conflict("duplicate box_code".into()));
+        }
+        let id = self.next(&mut m);
+        m.aboxes.insert(
+            id,
+            ArchiveBoxRow {
+                id,
+                org: org.into(),
+                box_code: box_code.into(),
+                location: location.trim().into(),
+                description: description.trim().chars().take(255).collect(),
+            },
+        );
+        Ok(id)
+    }
+    async fn abox_list(&self, org: &str) -> Result<Vec<ArchiveBoxRow>, StoreError> {
+        let mut v: Vec<ArchiveBoxRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .aboxes
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn abox_move(&self, org: &str, id: i64, location: &str) -> Result<(), StoreError> {
+        if location.len() > 120 {
+            return Err(StoreError::Conflict("location".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .aboxes
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.location = location.trim().into();
+        Ok(())
+    }
+    async fn abox_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.aboxes.get(&id) {
+            Some(r) if r.org == org => {
+                m.aboxes.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

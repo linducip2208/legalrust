@@ -652,6 +652,62 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     invRefresh();
   });
   on('inv-reload', 'click', invRefresh);
+  /* ---- office: ATK (kind-filtered inventory) ---- */
+  async function atkRefresh() {
+    var box = document.getElementById('atk-list');
+    if (!box) return;
+    var v = await j('/api/v1/inventory?kind=atk');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var st = x.low ? '<span class="badge bg-red-lt">menipis</span>' : '<span class="badge bg-green-lt">aman</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.code) + ' <span class="text-muted">(' + esc(x.name) + ')</span></td><td><strong>' + x.qty + '</strong> ' + esc(x.unit) + '</td><td>' + st + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada ATK.</td></tr>';
+  }
+  on('atk-add', 'click', async function () {
+    if (!pval('atk-code') || !pval('atk-name')) { pmsg('atk-msg', 'Isi kode dan nama.'); return; }
+    var r = await ppost('/api/v1/inventory', { code: pval('atk-code'), name: pval('atk-name'), qty: +pval('atk-qty') || 0, unit: 'pcs', min_stock: 0, kind: 'atk' });
+    if (!r.ok) { pmsg('atk-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('atk-msg', '');
+    atkRefresh();
+    invRefresh();
+  });
+  on('atk-reload', 'click', atkRefresh);
+  /* ---- office: archive boxes ---- */
+  async function aboxRefresh() {
+    var box = document.getElementById('abox-list');
+    if (!box) return;
+    var v = await j('/api/v1/archive-boxes');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.box_code) + ' <span class="text-muted">(' + esc(x.description) + ')</span></td><td>' + esc(x.location) + '</td><td><button class="btn btn-sm" data-abox-mv="' + x.id + '" type="button">Pindah</button> <button class="btn btn-sm btn-outline-danger" data-abox-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada box arsip.</td></tr>';
+    qsa('[data-abox-mv]', function (b) {
+      b.addEventListener('click', async function () {
+        var loc = (document.getElementById('abox-loc') || {}).value || '';
+        if (!loc) { pmsg('abox-msg', 'Isi lokasi tujuan dulu.'); return; }
+        var r = await ppost('/api/v1/archive-boxes/' + b.getAttribute('data-abox-mv') + '/move', { location: loc });
+        if (!r.ok) { pmsg('abox-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('abox-msg', '');
+        aboxRefresh();
+      });
+    });
+    qsa('[data-abox-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/archive-boxes/' + b.getAttribute('data-abox-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('abox-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('abox-msg', '');
+        aboxRefresh();
+      });
+    });
+  }
+  on('abox-add', 'click', async function () {
+    if (!pval('abox-code')) { pmsg('abox-msg', 'Isi kode box.'); return; }
+    var r = await ppost('/api/v1/archive-boxes', { box_code: pval('abox-code'), location: pval('abox-loc') || '', description: pval('abox-desc') || '' });
+    if (!r.ok) { pmsg('abox-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('abox-msg', '');
+    aboxRefresh();
+  });
+  on('abox-reload', 'click', aboxRefresh);
   /* ---- office: meterai usage ---- */
   async function useRefresh() {
     var box = document.getElementById('use-list');
@@ -3227,6 +3283,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cashRefresh();
   advRefresh();
   invRefresh();
+  atkRefresh();
+  aboxRefresh();
   useRefresh();
   dpRefresh();
   whDlRefresh();

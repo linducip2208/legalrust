@@ -3765,6 +3765,7 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
     async fn stock_create(
         &self,
         org: &str,
@@ -3773,6 +3774,7 @@ impl OpsStore for MysqlOps {
         qty: i64,
         unit: &str,
         min_stock: i64,
+        kind: &str,
     ) -> Result<i64, StoreError> {
         let code = code.trim();
         let name = name.trim();
@@ -3785,9 +3787,12 @@ impl OpsStore for MysqlOps {
         if qty < 0 || min_stock < 0 {
             return Err(StoreError::Conflict("qty".into()));
         }
+        if !matches!(kind, "general" | "atk" | "blanko" | "meterai") {
+            return Err(StoreError::Conflict("kind".into()));
+        }
         let un: String = unit.trim().chars().take(20).collect();
         let r = sqlx::query(
-            "INSERT INTO inventory_items (org_id, code, name, qty, unit, min_stock) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO inventory_items (org_id, code, name, qty, unit, min_stock, kind) VALUES (?,?,?,?,?,?,?)",
         )
         .bind(org)
         .bind(code)
@@ -3795,6 +3800,7 @@ impl OpsStore for MysqlOps {
         .bind(qty)
         .bind(un)
         .bind(min_stock)
+        .bind(kind)
         .execute(&self.pool)
         .await
         .map_err(|e| {
@@ -3807,14 +3813,32 @@ impl OpsStore for MysqlOps {
         })?;
         Ok(r.last_insert_id() as i64)
     }
-    async fn stock_list(&self, org: &str) -> Result<Vec<InventoryRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, code, name, qty, unit, min_stock FROM inventory_items WHERE org_id=? ORDER BY id DESC LIMIT 200")
-            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+    async fn stock_list(
+        &self,
+        org: &str,
+        kind: Option<&str>,
+    ) -> Result<Vec<InventoryRow>, StoreError> {
+        let (sql, has_kind) = match kind {
+            Some(_) => (
+                "SELECT id, org_id, kind, code, name, qty, unit, min_stock FROM inventory_items WHERE org_id=? AND kind=? ORDER BY id DESC LIMIT 200",
+                true,
+            ),
+            None => (
+                "SELECT id, org_id, kind, code, name, qty, unit, min_stock FROM inventory_items WHERE org_id=? ORDER BY id DESC LIMIT 200",
+                false,
+            ),
+        };
+        let mut q = sqlx::query(sql).bind(org);
+        if has_kind {
+            q = q.bind(kind.unwrap_or(""));
+        }
+        let rows = q.fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| InventoryRow {
                 id: x.get::<u64, _>("id") as i64,
                 org: x.get::<String, _>("org_id"),
+                kind: x.get::<String, _>("kind"),
                 code: x.get::<String, _>("code"),
                 name: x.get::<String, _>("name"),
                 qty: x.get::<i64, _>("qty"),
@@ -3937,6 +3961,84 @@ impl OpsStore for MysqlOps {
     }
     async fn stock_use_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM meterai_usage WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn abox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        description: &str,
+    ) -> Result<i64, StoreError> {
+        let box_code = box_code.trim();
+        if box_code.is_empty() || box_code.len() > 40 {
+            return Err(StoreError::Conflict("box_code".into()));
+        }
+        if location.len() > 120 || description.len() > 255 {
+            return Err(StoreError::Conflict("location/description".into()));
+        }
+        let desc: String = description.trim().chars().take(255).collect();
+        let r = sqlx::query(
+            "INSERT INTO archive_boxes (org_id, box_code, location, description) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(box_code)
+        .bind(location.trim())
+        .bind(desc)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate box_code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn abox_list(&self, org: &str) -> Result<Vec<ArchiveBoxRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, box_code, location, description FROM archive_boxes WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ArchiveBoxRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                box_code: x.get::<String, _>("box_code"),
+                location: x.get::<String, _>("location"),
+                description: x.get::<String, _>("description"),
+            })
+            .collect())
+    }
+    async fn abox_move(&self, org: &str, id: i64, location: &str) -> Result<(), StoreError> {
+        if location.len() > 120 {
+            return Err(StoreError::Conflict("location".into()));
+        }
+        let n = sqlx::query("UPDATE archive_boxes SET location=? WHERE id=? AND org_id=?")
+            .bind(location.trim())
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn abox_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM archive_boxes WHERE id=? AND org_id=?")
             .bind(id as u64)
             .bind(org)
             .execute(&self.pool)
