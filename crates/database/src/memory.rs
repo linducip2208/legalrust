@@ -453,6 +453,16 @@ impl CoreStore for MemoryStores {
             .cloned()
             .collect())
     }
+    async fn task_get(&self, org: &str, id: i64) -> Result<TaskRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .tasks
+            .get(&id)
+            .filter(|x| x.org_id == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
     async fn set_task_status(
         &self,
         org: &str,

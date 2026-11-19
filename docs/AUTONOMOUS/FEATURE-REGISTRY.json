@@ -976,19 +976,29 @@
   "id": "F-D03-006",
   "domain": "D03",
   "title": "Task dependencies",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0110: task_deps table (dup guard, forward-only)",
+   "ops.rs + memory + mysql: tdep add/list/delete + full reachability cycle check",
+   "lib.rs: task dep endpoints (task_get-verified 404s, RBAC)",
+   "site.js: deps card + hooks (klien panel)",
+   "tests: task_deps_and_milestones e2e (3-chain cycle rejected, ghost 404)"
+  ],
+  "audit_note": "Wave 174: task dependencies live. Verified by test (464/0)."
  },
  {
   "id": "F-D03-007",
   "domain": "D03",
   "title": "Milestone tracking",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0110: matter_milestones table (forward-only)",
+   "ops.rs + memory + mysql: mms add/list/toggle/delete",
+   "lib.rs: milestone endpoints (matter-verified, RBAC)",
+   "site.js: milestone card + hooks (klien panel)",
+   "tests: bad date 422 + toggle asserted"
+  ],
+  "audit_note": "Wave 174: milestones live. Verified by test (464/0)."
  },
  {
   "id": "F-D03-008",

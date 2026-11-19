@@ -5688,10 +5688,16 @@ async fn crm_app_contains_crm_ids() {
         "cfx-log",
         "cfx-list",
         "cfx-reg",
-        "mcl-mid",
-        "mcl-save",
-        "mcl-link",
-        "mcl-list",
+        "mcla-mid",
+        "mcla-save",
+        "mcla-link",
+        "mcla-list",
+        "tdp-task",
+        "tdp-add",
+        "tdp-list",
+        "mms-mid",
+        "mms-add",
+        "mms-list",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11776,6 +11782,154 @@ async fn conflict_register_log_and_list() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/conflicts/register")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn task_deps_and_milestones() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "taskdep@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MTD"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    async fn mk_task(a: &axum::Router, tok: &str, mid: i64, title: &str) -> i64 {
+        use tower::ServiceExt;
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/matters/{mid}/tasks"),
+                &format!(r#"{{"title":"{title}"}}"#),
+                Some(tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        body_json(res).await["id"].as_i64().unwrap()
+    }
+    let t1 = mk_task(&a, &tok, mid, "T1").await;
+    let t2 = mk_task(&a, &tok, mid, "T2").await;
+    let t3 = mk_task(&a, &tok, mid, "T3").await;
+    // Self + ghost rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{t1}/deps"),
+            &format!(r#"{{"depends_on":{t1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/tasks/999999/deps",
+            r#"{"depends_on":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Chain t1->t2->t3; closing the loop t3->t1 rejected as cycle (not just 2-cycles).
+    for (x, y) in [(t1, t2), (t2, t3)] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/tasks/{x}/deps"),
+                &format!(r#"{{"depends_on":{y}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "edge {x}->{y}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{t2}/deps"),
+            &format!(r#"{{"depends_on":{t1}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{t3}/deps"),
+            &format!(r#"{{"depends_on":{t1}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/task-deps?task_id={t1}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["depends_on"].as_i64() == Some(t2)));
+    // Milestones: bad date rejected, toggle roundtrip.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/milestones",
+            &format!(r#"{{"matter_id":{mid},"title":"Sidang","due_on":"besok"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/milestones",
+            &format!(r#"{{"matter_id":{mid},"title":"Sidang","due_on":"2027-05-01"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let msid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/milestones/{msid}/done"),
+            r#"{"done":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/milestones?matter_id={mid}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(msid) && r["done"] == true));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/task-deps")
                 .body(Body::empty())
                 .unwrap(),
         )

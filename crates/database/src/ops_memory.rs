@@ -151,6 +151,8 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    tdeps: HashMap<i64, TaskDepRow>,
+    mms: HashMap<i64, MatterMilestoneRow>,
     mlinks: HashMap<i64, MatterLinkRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
@@ -309,6 +311,36 @@ fn mlink_rel_ok(relation: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("relation".into()));
     }
     Ok(rel)
+}
+
+fn tdep_reaches(
+    deps: &std::collections::HashMap<i64, TaskDepRow>,
+    org: &str,
+    from: i64,
+    target: i64,
+) -> bool {
+    let mut seen = std::collections::HashSet::new();
+    let mut stack = vec![from];
+    while let Some(cur) = stack.pop() {
+        if cur == target {
+            return true;
+        }
+        if !seen.insert(cur) {
+            continue;
+        }
+        for r in deps.values().filter(|r| r.org == org && r.task_id == cur) {
+            stack.push(r.depends_on);
+        }
+    }
+    false
+}
+
+fn mms_date_ok(on: &str) -> Result<String, StoreError> {
+    let d = on.trim();
+    if d.len() != 10 || d.as_bytes()[4] != b'-' {
+        return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+    }
+    Ok(d.into())
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3822,6 +3854,128 @@ impl OpsStore for MemoryOps {
         match m.mlinks.get(&id) {
             Some(r) if r.org == org => {
                 m.mlinks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn tdep_add(&self, org: &str, task_id: i64, depends_on: i64) -> Result<i64, StoreError> {
+        if task_id <= 0 || depends_on <= 0 || task_id == depends_on {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.tdeps
+            .values()
+            .any(|r| r.org == org && r.task_id == task_id && r.depends_on == depends_on)
+        {
+            return Err(StoreError::Conflict("already depends".into()));
+        }
+        if tdep_reaches(&m.tdeps, org, depends_on, task_id) {
+            return Err(StoreError::Conflict("cycle".into()));
+        }
+        let id = self.next(&mut m);
+        m.tdeps.insert(
+            id,
+            TaskDepRow {
+                id,
+                org: org.into(),
+                task_id,
+                depends_on,
+            },
+        );
+        Ok(id)
+    }
+    async fn tdep_list(
+        &self,
+        org: &str,
+        task_id: Option<i64>,
+    ) -> Result<Vec<TaskDepRow>, StoreError> {
+        let mut v: Vec<TaskDepRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .tdeps
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && task_id
+                        .map(|t| r.task_id == t || r.depends_on == t)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn tdep_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.tdeps.get(&id) {
+            Some(r) if r.org == org => {
+                m.tdeps.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn mms_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        title: &str,
+        due_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if matter_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let due_on = mms_date_ok(due_on)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mms.insert(
+            id,
+            MatterMilestoneRow {
+                id,
+                org: org.into(),
+                matter_id,
+                title: title.into(),
+                due_on,
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn mms_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterMilestoneRow>, StoreError> {
+        let mut v: Vec<MatterMilestoneRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mms
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.due_on.cmp(&b.due_on));
+        Ok(v)
+    }
+    async fn mms_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mms.get_mut(&id) {
+            Some(r) if r.org == org => {
+                r.done = done;
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn mms_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mms.get(&id) {
+            Some(r) if r.org == org => {
+                m.mms.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

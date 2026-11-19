@@ -640,6 +640,27 @@ impl CoreStore for MysqlStores {
         let rows = sqlx::query("SELECT id, org_id, matter_id, title, status, DATE_FORMAT(due_at,'%Y-%m-%d %H:%i:%s') AS due_at, assignee, desk FROM tasks WHERE org_id=? AND matter_id=? ORDER BY id").bind(org).bind(matter as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         rows.iter().map(task_row).collect()
     }
+    async fn task_get(&self, org: &str, id: i64) -> Result<TaskRow, StoreError> {
+        let x = sqlx::query(
+            "SELECT id, org_id, matter_id, title, status FROM tasks WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .ok_or(StoreError::NotFound)?;
+        Ok(TaskRow {
+            id: x.get::<u64, _>("id") as i64,
+            org_id: x.get::<String, _>("org_id"),
+            matter_id: x.get::<u64, _>("matter_id") as i64,
+            title: x.get::<String, _>("title"),
+            status: x.get::<String, _>("status"),
+            due: None,
+            assignee: String::new(),
+            desk: String::new(),
+        })
+    }
     async fn set_task_status(
         &self,
         org: &str,

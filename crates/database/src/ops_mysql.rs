@@ -3535,6 +3535,161 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn tdep_add(&self, org: &str, task_id: i64, depends_on: i64) -> Result<i64, StoreError> {
+        if task_id <= 0 || depends_on <= 0 || task_id == depends_on {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let dup: bool =
+            sqlx::query("SELECT id FROM task_deps WHERE org_id=? AND task_id=? AND depends_on=?")
+                .bind(org)
+                .bind(task_id as u64)
+                .bind(depends_on as u64)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .is_some();
+        if dup {
+            return Err(StoreError::Conflict("already depends".into()));
+        }
+        // Cycle guard: BFS over the org's dep edges from the prerequisite.
+        let edges = sqlx::query("SELECT task_id, depends_on FROM task_deps WHERE org_id=?")
+            .bind(org)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?;
+        let mut stack = vec![depends_on];
+        let mut seen = std::collections::HashSet::new();
+        while let Some(cur) = stack.pop() {
+            if cur == task_id {
+                return Err(StoreError::Conflict("cycle".into()));
+            }
+            if !seen.insert(cur) {
+                continue;
+            }
+            for x in edges
+                .iter()
+                .filter(|x| x.get::<u64, _>("task_id") as i64 == cur)
+            {
+                stack.push(x.get::<u64, _>("depends_on") as i64);
+            }
+        }
+        let r = sqlx::query("INSERT INTO task_deps (org_id, task_id, depends_on) VALUES (?,?,?)")
+            .bind(org)
+            .bind(task_id as u64)
+            .bind(depends_on as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn tdep_list(
+        &self,
+        org: &str,
+        task_id: Option<i64>,
+    ) -> Result<Vec<TaskDepRow>, StoreError> {
+        let rows = if let Some(t) = task_id {
+            sqlx::query("SELECT id, org_id, task_id, depends_on FROM task_deps WHERE org_id=? AND (task_id=? OR depends_on=?) ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(t as u64).bind(t as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, task_id, depends_on FROM task_deps WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| TaskDepRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                task_id: x.get::<u64, _>("task_id") as i64,
+                depends_on: x.get::<u64, _>("depends_on") as i64,
+            })
+            .collect())
+    }
+    async fn tdep_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM task_deps WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn mms_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        title: &str,
+        due_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if matter_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let d = due_on.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_milestones (org_id, matter_id, title, due_on) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(title)
+        .bind(d)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mms_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterMilestoneRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, matter_id, title, due_on, done FROM matter_milestones WHERE org_id=? AND matter_id=? ORDER BY due_on LIMIT 200")
+            .bind(org).bind(matter_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterMilestoneRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                title: x.get::<String, _>("title"),
+                due_on: x.get::<String, _>("due_on"),
+                done: x.get::<u8, _>("done") != 0,
+            })
+            .collect())
+    }
+    async fn mms_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE matter_milestones SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn mms_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_milestones WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

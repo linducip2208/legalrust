@@ -203,6 +203,7 @@ pub trait CoreStore: Send + Sync {
     async fn create_task(&self, org: &str, matter: i64, title: &str)
         -> Result<TaskRow, StoreError>;
     async fn list_tasks(&self, org: &str, matter: i64) -> Result<Vec<TaskRow>, StoreError>;
+    async fn task_get(&self, org: &str, id: i64) -> Result<TaskRow, StoreError>;
     async fn set_task_status(
         &self,
         org: &str,

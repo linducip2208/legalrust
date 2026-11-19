@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 173: klasifikasi perkara (main)
+## 2026-11-19 AUDIT-1000 wave 174: dependensi + milestone (main)
+- Reachability cycles + toggles; workspace **464 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 173: klasifikasi perkara (main)
 - Allowlist + ordered links; workspace **463 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 172: register konflik (main)

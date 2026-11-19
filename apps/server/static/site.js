@@ -3172,36 +3172,87 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     cemRefresh();
   });
   /* ---- matter classification + links (F-D03-003/023) ---- */
-  async function mclRefresh() {
-    var box = document.getElementById('mcl-list');
+  async function mclaRefresh() {
+    var box = document.getElementById('mcla-list');
     if (!box) return;
-    var v = await j('/api/v1/matter-links' + (pval('mcl-mid') ? '?matter_id=' + encodeURIComponent(pval('mcl-mid')) : ''));
+    var v = await j('/api/v1/matter-links' + (pval('mcla-mid') ? '?matter_id=' + encodeURIComponent(pval('mcla-mid')) : ''));
     if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
     box.innerHTML = v.map(function (x) {
-      return '<tr><td>#' + x.matter_a + '</td><td>#' + x.matter_b + '</td><td>' + badge(x.relation) + '</td><td><button class="btn btn-sm btn-outline-danger" data-mcl-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+      return '<tr><td>#' + x.matter_a + '</td><td>#' + x.matter_b + '</td><td>' + badge(x.relation) + '</td><td><button class="btn btn-sm btn-outline-danger" data-mcla-del="' + x.id + '" type="button">Lepas</button></td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada tautan.</td></tr>';
-    qsa('[data-mcl-del]', function (b) {
+    qsa('[data-mcla-del]', function (b) {
       b.addEventListener('click', async function () {
-        var r = await fetch('/api/v1/matter-links/' + b.getAttribute('data-mcl-del'), { method: 'DELETE', headers: H });
-        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
-        mclRefresh();
+        var r = await fetch('/api/v1/matter-links/' + b.getAttribute('data-mcla-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mcla-msg', 'Gagal (' + r.status + ').'); return; }
+        mclaRefresh();
       });
     });
   }
-  on('mcl-save', 'click', async function () {
-    if (!pval('mcl-mid')) { pmsg('mcl-msg', 'Isi ID perkara.'); return; }
-    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-mid')) + '/practice', { practice_area: pval('mcl-area') || 'general' });
-    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
-    pmsg('mcl-msg', '');
+  on('mcla-save', 'click', async function () {
+    if (!pval('mcla-mid')) { pmsg('mcla-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcla-mid')) + '/practice', { practice_area: pval('mcla-area') || 'general' });
+    if (!r.ok) { pmsg('mcla-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mcla-msg', '');
   });
-  on('mcl-link', 'click', async function () {
-    if (!pval('mcl-mid') || !pval('mcl-other')) { pmsg('mcl-msg', 'Isi kedua ID perkara.'); return; }
-    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-mid')) + '/links', { other_id: +pval('mcl-other'), relation: 'related' });
-    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + '). Ganda / diri sendiri?'); return; }
-    pmsg('mcl-msg', '');
-    mclRefresh();
+  on('mcla-link', 'click', async function () {
+    if (!pval('mcla-mid') || !pval('mcla-other')) { pmsg('mcla-msg', 'Isi kedua ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcla-mid')) + '/links', { other_id: +pval('mcla-other'), relation: 'related' });
+    if (!r.ok) { pmsg('mcla-msg', 'Gagal (' + r.status + '). Ganda / diri sendiri?'); return; }
+    pmsg('mcla-msg', '');
+    mclaRefresh();
   });
-  on('mcl-reload', 'click', mclRefresh);
+  on('mcla-reload', 'click', mclaRefresh);
+  /* ---- task deps + milestones (F-D03-006/007) ---- */
+  async function tdpRefresh() {
+    var box = document.getElementById('tdp-list');
+    if (!box) return;
+    var v = await j('/api/v1/task-deps' + (pval('tdp-task') ? '?task_id=' + encodeURIComponent(pval('tdp-task')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.task_id + '</td><td>#' + x.depends_on + '</td><td><button class="btn btn-sm btn-outline-danger" data-tdp-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada dependensi.</td></tr>';
+    qsa('[data-tdp-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/task-deps/' + b.getAttribute('data-tdp-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('tdp-msg', 'Gagal (' + r.status + ').'); return; }
+        tdpRefresh();
+      });
+    });
+  }
+  on('tdp-add', 'click', async function () {
+    if (!pval('tdp-task') || !pval('tdp-dep')) { pmsg('tdp-msg', 'Isi kedua ID tugas.'); return; }
+    var r = await ppost('/api/v1/tasks/' + encodeURIComponent(pval('tdp-task')) + '/deps', { depends_on: +pval('tdp-dep') });
+    if (!r.ok) { pmsg('tdp-msg', 'Gagal (' + r.status + '). Siklus / ganda?'); return; }
+    pmsg('tdp-msg', '');
+    tdpRefresh();
+  });
+  on('tdp-reload', 'click', tdpRefresh);
+  async function mmsRefresh() {
+    var box = document.getElementById('mms-list');
+    if (!box) return;
+    if (!pval('mms-mid')) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID perkara lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/milestones?matter_id=' + encodeURIComponent(pval('mms-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.title) + '</td><td>' + esc(x.due_on) + '</td><td>' + (x.done ? 'ya' : 'tidak') + '</td><td><button class="btn btn-sm" data-mms-tgl="' + x.id + '" data-mms-to="' + (x.done ? '0' : '1') + '" type="button">Alih</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada milestone.</td></tr>';
+    qsa('[data-mms-tgl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/milestones/' + b.getAttribute('data-mms-tgl') + '/done', { done: b.getAttribute('data-mms-to') === '1' });
+        if (!r.ok) { pmsg('tdp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('tdp-msg', '');
+        mmsRefresh();
+      });
+    });
+  }
+  on('mms-add', 'click', async function () {
+    if (!pval('mms-mid') || !pval('mms-title') || !pval('mms-on')) { pmsg('tdp-msg', 'Isi perkara, judul, tanggal.'); return; }
+    var r = await ppost('/api/v1/milestones', { matter_id: +pval('mms-mid'), title: pval('mms-title'), due_on: pval('mms-on') });
+    if (!r.ok) { pmsg('tdp-msg', 'Gagal (' + r.status + '). Format tanggal?'); return; }
+    pmsg('tdp-msg', '');
+    mmsRefresh();
+  });
+  on('mms-reload', 'click', mmsRefresh);
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

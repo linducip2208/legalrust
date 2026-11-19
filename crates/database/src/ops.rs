@@ -400,6 +400,24 @@ pub struct MatterLinkRow {
     pub matter_b: i64,
     pub relation: String,
 }
+/// Task dependency edge (task blocked by depends_on).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TaskDepRow {
+    pub id: i64,
+    pub org: String,
+    pub task_id: i64,
+    pub depends_on: i64,
+}
+/// Matter milestone (dated, flaggable done).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterMilestoneRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub title: String,
+    pub due_on: String,
+    pub done: bool,
+}
 /// Portal usage event (login/view/download/upload/message/rating/request).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalEventRow {
@@ -2329,6 +2347,29 @@ pub trait OpsStore: Send + Sync {
         matter_id: Option<i64>,
     ) -> Result<Vec<MatterLinkRow>, StoreError>;
     async fn mlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Task dependencies (self/dup/cycle-guarded).
+    async fn tdep_add(&self, org: &str, task_id: i64, depends_on: i64) -> Result<i64, StoreError>;
+    async fn tdep_list(
+        &self,
+        org: &str,
+        task_id: Option<i64>,
+    ) -> Result<Vec<TaskDepRow>, StoreError>;
+    async fn tdep_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Matter milestones (dated checklist).
+    async fn mms_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        title: &str,
+        due_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mms_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterMilestoneRow>, StoreError>;
+    async fn mms_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    async fn mms_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;
