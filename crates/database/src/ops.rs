@@ -345,6 +345,26 @@ pub struct EvidenceRow {
     pub register_id: i64,
     pub note: String,
 }
+/// Protocol book (buku protokol notaris/PPAT).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PbookRow {
+    pub id: i64,
+    pub org: String,
+    pub book_no: String,
+    pub book_year: String,
+    pub status: String,
+}
+/// Protocol custody handover log entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PhandoverRow {
+    pub id: i64,
+    pub org: String,
+    pub book_id: i64,
+    pub from_holder: String,
+    pub to_holder: String,
+    pub handed_at: String,
+    pub note: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1150,6 +1170,27 @@ pub trait OpsStore: Send + Sync {
         register_id: Option<i64>,
     ) -> Result<Vec<EvidenceRow>, StoreError>;
     async fn evidence_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Protocol book register.
+    async fn pbook_create(&self, org: &str, book_no: &str, year: &str) -> Result<i64, StoreError>;
+    async fn pbook_list(&self, org: &str) -> Result<Vec<PbookRow>, StoreError>;
+    async fn pbook_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn pbook_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Protocol custody handover log.
+    async fn phandover_add(
+        &self,
+        org: &str,
+        book_id: i64,
+        from_holder: &str,
+        to_holder: &str,
+        handed_at: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn phandover_list(
+        &self,
+        org: &str,
+        book_id: i64,
+    ) -> Result<Vec<PhandoverRow>, StoreError>;
+    async fn phandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

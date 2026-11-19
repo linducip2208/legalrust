@@ -3562,6 +3562,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ppat-add",
         "ppat-reload",
         "ppat-list",
+        "pb-no",
+        "pb-add",
+        "pb-reload",
+        "pb-list",
+        "ph-book",
+        "ph-add",
+        "ph-reload",
+        "ph-list",
     ] {
         assert!(t.contains(&format!("id=\"{id}\"")), "missing form #{id}");
     }
@@ -6913,6 +6921,124 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn protocol_books_and_handovers() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pbook@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-books",
+            r#"{"book_no":"W1"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-books",
+            r#"{"book_no":"W1/2026","year":"2026"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    // Duplicate number rejected per org.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-books",
+            r#"{"book_no":"W1/2026"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Handover guards: ghost book 404, same holder 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/protocol-books/999999/handovers",
+            r#"{"from_holder":"AA","to_holder":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/protocol-books/{bid}/handovers"),
+            r#"{"from_holder":"AA","to_holder":"AA"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/protocol-books/{bid}/handovers"), r#"{"from_holder":"Notaris A","to_holder":"Notaris B","handed_at":"2026-02-01","note":"Cuti"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/protocol-books/{bid}/handovers"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // Book lifecycle to sealed; handovers cascade on delete.
+    for st in ["closed", "sealed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/protocol-books/{bid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "pbook to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/protocol-books/{bid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=pbook", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.pbook_created"));
 }
 
 #[tokio::test]

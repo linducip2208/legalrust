@@ -4482,19 +4482,29 @@
   "id": "F-D12-003",
   "domain": "D12",
   "title": "Protocol book register",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0044_protocol_books.sql: protocol_books table (unique no per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + open->closed->sealed chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/protocol-books + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: pbRefresh card Buku protokol in akta tab + hooks",
+   "apps/server/tests/api.rs: protocol_books_and_handovers e2e (dup 409, lifecycle)"
+  ],
+  "audit_note": "Wave 74: full lifecycle live; verified by test (363/0)."
  },
  {
   "id": "F-D12-004",
   "domain": "D12",
   "title": "Protocol custody & handover log",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0044_protocol_books.sql: protocol_handovers table (FK book CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped add/list/delete (ownership + same-holder guard)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/protocol-books/{id}/handovers + delete (RBAC, audit)",
+   "apps/server/static/site.js: phRefresh card Serah terima + hooks",
+   "apps/server/tests/api.rs: protocol_books_and_handovers e2e (ghost 404, same-holder 409)"
+  ],
+  "audit_note": "Wave 74: full lifecycle live; verified by test (363/0)."
  },
  {
   "id": "F-D12-005",

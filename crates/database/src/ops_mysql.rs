@@ -3122,6 +3122,176 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn pbook_create(&self, org: &str, book_no: &str, year: &str) -> Result<i64, StoreError> {
+        let book_no = book_no.trim();
+        if book_no.is_empty() || book_no.len() > 40 {
+            return Err(StoreError::Conflict("book_no".into()));
+        }
+        let y: String = year.trim().chars().take(4).collect();
+        let r =
+            sqlx::query("INSERT INTO protocol_books (org_id, book_no, book_year) VALUES (?,?,?)")
+                .bind(org)
+                .bind(book_no)
+                .bind(y)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| {
+                    let msg = e.to_string();
+                    if msg.contains("Duplicate") {
+                        StoreError::Conflict("duplicate book_no".into())
+                    } else {
+                        db_err(e)
+                    }
+                })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn pbook_list(&self, org: &str) -> Result<Vec<PbookRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, book_no, book_year, status FROM protocol_books WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PbookRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                book_no: x.get::<String, _>("book_no"),
+                book_year: x.get::<String, _>("book_year"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn pbook_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "closed" | "sealed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM protocol_books WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "closed") | (Some("closed"), "sealed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE protocol_books SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn pbook_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM protocol_books WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn phandover_add(
+        &self,
+        org: &str,
+        book_id: i64,
+        from_holder: &str,
+        to_holder: &str,
+        handed_at: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if from_holder.trim().is_empty() || to_holder.trim().is_empty() {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if from_holder.trim() == to_holder.trim() {
+            return Err(StoreError::Conflict("same holder".into()));
+        }
+        if handed_at.len() > 10 {
+            return Err(StoreError::Conflict("handed_at".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM protocol_books WHERE id=?")
+            .bind(book_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let fh: String = from_holder.trim().chars().take(120).collect();
+        let th: String = to_holder.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO protocol_handovers (org_id, book_id, from_holder, to_holder, handed_at, note) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(book_id as u64)
+        .bind(fh)
+        .bind(th)
+        .bind(handed_at.trim())
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn phandover_list(
+        &self,
+        org: &str,
+        book_id: i64,
+    ) -> Result<Vec<PhandoverRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM protocol_books WHERE id=?")
+            .bind(book_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, book_id, from_holder, to_holder, handed_at, note FROM protocol_handovers WHERE org_id=? AND book_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(book_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PhandoverRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                book_id: x.get::<u64, _>("book_id") as i64,
+                from_holder: x.get::<String, _>("from_holder"),
+                to_holder: x.get::<String, _>("to_holder"),
+                handed_at: x.get::<String, _>("handed_at"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn phandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM protocol_handovers WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

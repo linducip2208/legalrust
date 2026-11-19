@@ -66,6 +66,8 @@ struct Inner {
     aplans: HashMap<i64, AuditPlanRow>,
     clists: HashMap<i64, ChecklistRow>,
     evidence: HashMap<i64, EvidenceRow>,
+    pbooks: HashMap<i64, PbookRow>,
+    phandovers: HashMap<i64, PhandoverRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2712,6 +2714,142 @@ impl OpsStore for MemoryOps {
         match m.evidence.get(&id) {
             Some(r) if r.org == org => {
                 m.evidence.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn pbook_create(&self, org: &str, book_no: &str, year: &str) -> Result<i64, StoreError> {
+        let book_no = book_no.trim();
+        if book_no.is_empty() || book_no.len() > 40 {
+            return Err(StoreError::Conflict("book_no".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.pbooks
+            .values()
+            .any(|b| b.org == org && b.book_no == book_no)
+        {
+            return Err(StoreError::Conflict("duplicate book_no".into()));
+        }
+        let id = self.next(&mut m);
+        m.pbooks.insert(
+            id,
+            PbookRow {
+                id,
+                org: org.into(),
+                book_no: book_no.into(),
+                book_year: year.trim().chars().take(4).collect(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn pbook_list(&self, org: &str) -> Result<Vec<PbookRow>, StoreError> {
+        let mut v: Vec<PbookRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pbooks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn pbook_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .pbooks
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "closed") | ("closed", "sealed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn pbook_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.pbooks.get(&id) {
+            Some(r) if r.org == org => {
+                m.pbooks.remove(&id);
+                m.phandovers.retain(|_, h| h.book_id != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn phandover_add(
+        &self,
+        org: &str,
+        book_id: i64,
+        from_holder: &str,
+        to_holder: &str,
+        handed_at: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if from_holder.trim().is_empty() || to_holder.trim().is_empty() {
+            return Err(StoreError::Conflict("holder".into()));
+        }
+        if from_holder.trim() == to_holder.trim() {
+            return Err(StoreError::Conflict("same holder".into()));
+        }
+        if handed_at.len() > 10 {
+            return Err(StoreError::Conflict("handed_at".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.pbooks.get(&book_id) {
+            Some(b) if b.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.phandovers.insert(
+            id,
+            PhandoverRow {
+                id,
+                org: org.into(),
+                book_id,
+                from_holder: from_holder.trim().chars().take(120).collect(),
+                to_holder: to_holder.trim().chars().take(120).collect(),
+                handed_at: handed_at.trim().into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn phandover_list(
+        &self,
+        org: &str,
+        book_id: i64,
+    ) -> Result<Vec<PhandoverRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.pbooks.get(&book_id) {
+            Some(b) if b.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<PhandoverRow> = m
+            .phandovers
+            .values()
+            .filter(|r| r.org == org && r.book_id == book_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn phandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.phandovers.get(&id) {
+            Some(r) if r.org == org => {
+                m.phandovers.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

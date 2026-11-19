@@ -877,8 +877,74 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ppatRefresh();
   });
   on('ppat-reload', 'click', ppatRefresh);
+  /* ---- property: protocol books ---- */
+  var PB_NEXT = { open: 'closed', closed: 'sealed' };
+  async function pbRefresh() {
+    var box = document.getElementById('pb-list');
+    if (!box) return;
+    var v = await j('/api/v1/protocol-books');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = PB_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-pb-next="' + x.id + '" data-pb-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">disegel</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-pb-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.book_no) + '</td><td>' + esc(x.year) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada buku protokol.</td></tr>';
+    qsa('[data-pb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/protocol-books/' + b.getAttribute('data-pb-next') + '/status', { status: b.getAttribute('data-pb-to') });
+        if (!r.ok) { pmsg('pb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('pb-msg', '');
+        pbRefresh();
+      });
+    });
+    qsa('[data-pb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/protocol-books/' + b.getAttribute('data-pb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('pb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('pb-msg', '');
+        pbRefresh();
+      });
+    });
+  }
+  on('pb-add', 'click', async function () {
+    if (!pval('pb-no')) { pmsg('pb-msg', 'Isi nomor buku.'); return; }
+    var r = await ppost('/api/v1/protocol-books', { book_no: pval('pb-no'), year: pval('pb-year') || '' });
+    if (!r.ok) { pmsg('pb-msg', 'Gagal (' + r.status + '). Nomor mungkin duplikat.'); return; }
+    pmsg('pb-msg', '');
+    pbRefresh();
+  });
+  on('pb-reload', 'click', pbRefresh);
+  /* ---- property: custody handover log ---- */
+  async function phRefresh() {
+    var box = document.getElementById('ph-list');
+    if (!box) return;
+    var bid = pval('ph-book');
+    if (!bid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID buku lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/protocol-books/' + encodeURIComponent(bid) + '/handovers');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.from_holder) + ' → ' + esc(x.to_holder) + '</td><td>' + esc(x.handed_at) + '</td><td><button class="btn btn-sm btn-outline-danger" data-ph-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada serah terima.</td></tr>';
+    qsa('[data-ph-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/protocol-handovers/' + b.getAttribute('data-ph-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ph-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ph-msg', '');
+        phRefresh();
+      });
+    });
+  }
+  on('ph-add', 'click', async function () {
+    if (!pval('ph-book') || !pval('ph-from') || !pval('ph-to')) { pmsg('ph-msg', 'Isi ID buku, dari, dan kepada.'); return; }
+    var r = await ppost('/api/v1/protocol-books/' + encodeURIComponent(pval('ph-book')) + '/handovers', { from_holder: pval('ph-from'), to_holder: pval('ph-to'), handed_at: pval('ph-at') || '', note: pval('ph-note') || '' });
+    if (!r.ok) { pmsg('ph-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ph-msg', '');
+    phRefresh();
+  });
+  on('ph-reload', 'click', phRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -2501,6 +2567,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   delegRefresh();
   certRefresh();
   ppatRefresh();
+  pbRefresh();
+  phRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();
