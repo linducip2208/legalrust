@@ -1385,6 +1385,15 @@ pub trait OpsStore: Send + Sync {
         decision: &str,
         comment: Option<&str>,
     ) -> Result<ApprovalStepRow, StoreError>;
+    /// Controlled bulk decide: all items validated first, then applied
+    /// atomically (single Tx). Any failure rolls everything back.
+    /// Items are `(request_id, step_no, decision, comment)`.
+    async fn appr_decide_bulk(
+        &self,
+        org: &str,
+        user: &str,
+        items: &[(i64, i64, String, Option<String>)],
+    ) -> Result<Vec<ApprovalStepRow>, StoreError>;
     /// Revoke a non-terminal request (`pending`/`needs_rework` only).
     async fn appr_revoke(&self, org: &str, id: i64, user: &str) -> Result<(), StoreError>;
     /// Record an inbound webhook receipt (observability; never fails the

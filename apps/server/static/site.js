@@ -3584,6 +3584,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="3" class="text-muted">Tidak ada konflik. Satu entitas, satu antrean.</td></tr>';
   }
   on('cfx-reload', 'click', cfxRefresh);
+  /* ---- approval bulk decide (F-D09-007) ---- */
+  async function blkRefresh() {
+    var box = document.getElementById('blk-list');
+    if (!box) return;
+    var v = await j('/api/v1/approvals/decidable');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x, i) {
+      return '<tr><td><input type="checkbox" data-blk="' + i + '"></td><td>#' + x.id + ' ' + esc(x.title) + '</td><td>' + x.step_no + '</td><td>' + badge(x.role) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada langkah untuk Anda.</td></tr>';
+    box._rows = v.rows || [];
+  }
+  function blkSelected() {
+    var box = document.getElementById('blk-list');
+    var rows = (box && box._rows) || [];
+    return Array.prototype.map.call(document.querySelectorAll('[data-blk]:checked'), function (c) { return rows[+c.getAttribute('data-blk')]; }).filter(Boolean);
+  }
+  async function blkDecide(decision) {
+    var sel = blkSelected();
+    if (!sel.length) { pmsg('blk-msg', 'Pilih minimal satu langkah.'); return; }
+    var r = await ppost('/api/v1/approvals/decide-bulk', { items: sel.map(function (x) { return { id: x.id, step_no: x.step_no, decision: decision }; }) });
+    if (!r.ok) { pmsg('blk-msg', 'Gagal (' + r.status + '). Dibatalkan semua — periksa antrean.'); return; }
+    pmsg('blk-msg', '');
+    blkRefresh();
+    apprRefresh();
+  }
+  on('blk-reload', 'click', blkRefresh);
+  on('blk-ok', 'click', function () { blkDecide('approve'); });
+  on('blk-no', 'click', function () { blkDecide('reject'); });
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3639,10 +3667,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4762,6 +4790,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apprCalRefresh();
   slaRefresh();
   cfxRefresh();
+  blkRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();

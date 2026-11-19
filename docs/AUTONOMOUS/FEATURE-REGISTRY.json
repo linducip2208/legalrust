@@ -3193,10 +3193,14 @@
   "id": "F-D09-007",
   "domain": "D09",
   "title": "Bulk approval (controlled)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: appr_decide_bulk (all-or-nothing Tx, 1..50)",
+   "apps/server/src/lib.rs: GET /api/v1/approvals/decidable + POST /api/v1/approvals/decide-bulk (per-item role/delegation gate, audit)",
+   "apps/server/static/site.js: blk card bulk checkbox + hooks (appr panel)",
+   "apps/server/tests/api.rs: approval_bulk_decide_controlled e2e (ghost poisons batch, nothing applied, 403/401)"
+  ],
+  "audit_note": "Wave 115: controlled bulk live. Verified by test (404/0)."
  },
  {
   "id": "F-D09-008",
@@ -3531,13 +3535,15 @@
   "id": "F-D09-039",
   "domain": "D09",
   "title": "Approval read-receipt",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs: notify read flags (?unread_only, mark-read) + bell unread badge",
    "apps/server/static/site.js: refreshNotifs badge + read buttons",
-   "apps/server/tests/api.rs: mark-read roundtrips"
+   "apps/server/tests/api.rs: mark-read roundtrips",
+   "apps/server/src/lib.rs: appr-notif-list table carries Dibaca per-item column (read receipts visible)",
+   "verified live in wave 115: per-item read state renders, no new code needed"
   ],
-  "audit_note": "Wave 56: read/unread tracking live; explicit per-item receipts view pending."
+  "audit_note": "Wave 115: verify-only rescore; per-item receipts visible in notif table (404/0 green)."
  },
  {
   "id": "F-D09-040",

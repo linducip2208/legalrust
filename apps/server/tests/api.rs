@@ -8928,6 +8928,82 @@ async fn protocol_retention_and_aml_scores() {
 }
 
 #[tokio::test]
+async fn approval_bulk_decide_controlled() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprbulk@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let m1 = mk_matter(&a, &tok).await;
+    let m2 = mk_matter(&a, &tok).await;
+    let a1 = mk_approval(&a, &tok, m1, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let a2 = mk_approval(&a, &tok, m2, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Decidable inbox lists both.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/decidable", &tok))
+        .await
+        .unwrap();
+    let dv = body_json(res).await;
+    assert!(dv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(a1)));
+    // Lawyer lacks Approve permission.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/approvals/decide-bulk",
+            &format!(r#"{{"items":[{{"id":{a1},"step_no":1,"decision":"approve"}}]}}"#),
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Atomicity: one ghost item poisons the whole batch.
+    let res = a.clone().oneshot(post("/api/v1/approvals/decide-bulk", &format!(r#"{{"items":[{{"id":{a1},"step_no":1,"decision":"approve"}},{{"id":{a2},"step_no":9,"decision":"approve"}}]}}"#), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/decidable", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["rows"].as_array().unwrap().len(), 2);
+    // Clean bulk approve closes both.
+    let res = a.clone().oneshot(post("/api/v1/approvals/decide-bulk", &format!(r#"{{"items":[{{"id":{a1},"step_no":1,"decision":"approve"}},{{"id":{a2},"step_no":1,"decision":"approve"}}]}}"#), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["decided"].as_i64().unwrap(), 2);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/decidable", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["rows"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=approval", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "approval.bulk_decided"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/decidable")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_sla_and_conflicts() {
     use tower::ServiceExt;
     let a = app();
@@ -14391,6 +14467,9 @@ async fn uib_app_has_approvals_ui() {
         "sla-list",
         "cfx-reload",
         "cfx-list",
+        "blk-reload",
+        "blk-list",
+        "blk-ok",
         "appr-id",
         "appr-show",
         "appr-detail",

@@ -826,6 +826,100 @@ impl OpsStore for MysqlOps {
             .bind(id as u64).bind(step_no).fetch_one(&self.pool).await.map_err(db_err)?;
         Ok(appr_step_row(fx))
     }
+    async fn appr_decide_bulk(
+        &self,
+        org: &str,
+        user: &str,
+        items: &[(i64, i64, String, Option<String>)],
+    ) -> Result<Vec<ApprovalStepRow>, StoreError> {
+        if items.is_empty() || items.len() > 50 {
+            return Err(StoreError::Conflict("items 1..50".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let mut out = Vec::with_capacity(items.len());
+        for (id, step_no, decision, comment) in items {
+            if !["approve", "reject", "rework"].contains(&decision.as_str()) {
+                return Err(StoreError::Conflict("decision".into()));
+            }
+            let x = sqlx::query("SELECT status FROM approval_requests WHERE id=? AND org_id=?")
+                .bind(*id as u64)
+                .bind(org)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .ok_or(StoreError::NotFound)?;
+            let cur: String = x.get::<String, _>("status");
+            if !["pending", "needs_rework"].contains(&cur.as_str()) {
+                return Err(StoreError::Conflict("request closed".into()));
+            }
+            let steps = sqlx::query(
+                "SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? ORDER BY step_no",
+            )
+            .bind(*id as u64)
+            .fetch_all(&mut *tx)
+            .await
+            .map_err(db_err)?;
+            let target = steps
+                .iter()
+                .find(|r| r.get::<i32, _>("step_no") as i64 == *step_no)
+                .ok_or(StoreError::NotFound)?;
+            if target.get::<String, _>("status") != "pending" {
+                return Err(StoreError::Conflict("step already decided".into()));
+            }
+            for r in &steps {
+                if (r.get::<i32, _>("step_no") as i64) < *step_no
+                    && r.get::<String, _>("status") != "approved"
+                {
+                    return Err(StoreError::Conflict("earlier step pending".into()));
+                }
+            }
+            let max_no = steps
+                .iter()
+                .map(|r| r.get::<i32, _>("step_no") as i64)
+                .max()
+                .unwrap_or(0);
+            let step_status = match decision.as_str() {
+                "approve" => "approved",
+                "reject" => "rejected",
+                _ => "pending",
+            };
+            sqlx::query("UPDATE approval_steps SET status=?, approver_user=?, comment=? WHERE request_id=? AND step_no=?")
+                .bind(step_status)
+                .bind(user)
+                .bind(comment.clone())
+                .bind(*id as u64)
+                .bind(*step_no)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+            let new_status = match decision.as_str() {
+                "approve" if *step_no == max_no => "approved",
+                "approve" => cur.as_str(),
+                "reject" => "rejected",
+                _ => "needs_rework",
+            };
+            if new_status == "needs_rework" {
+                sqlx::query(
+                    "UPDATE approval_steps SET status='pending', comment=NULL WHERE request_id=?",
+                )
+                .bind(*id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+            }
+            sqlx::query("UPDATE approval_requests SET status=? WHERE id=?")
+                .bind(new_status)
+                .bind(*id as u64)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+            let fx = sqlx::query("SELECT id, request_id, step_no, approver_role, approver_user, status, comment FROM approval_steps WHERE request_id=? AND step_no=?")
+                .bind(*id as u64).bind(*step_no).fetch_one(&mut *tx).await.map_err(db_err)?;
+            out.push(appr_step_row(fx));
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(out)
+    }
     async fn appr_revoke(&self, org: &str, id: i64, _user: &str) -> Result<(), StoreError> {
         let n = sqlx::query(
             "UPDATE approval_requests SET status='revoked' WHERE id=? AND org_id=? AND status IN ('pending','needs_rework')",

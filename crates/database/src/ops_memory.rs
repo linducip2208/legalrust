@@ -965,6 +965,103 @@ impl OpsStore for MemoryOps {
         m.apprs.get_mut(&id).unwrap().status = new_status.into();
         Ok(m.appr_steps[&target].clone())
     }
+    async fn appr_decide_bulk(
+        &self,
+        org: &str,
+        user: &str,
+        items: &[(i64, i64, String, Option<String>)],
+    ) -> Result<Vec<ApprovalStepRow>, StoreError> {
+        if items.is_empty() || items.len() > 50 {
+            return Err(StoreError::Conflict("items 1..50".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        // Pass 1: validate everything against current state (no mutation).
+        for (id, step_no, decision, _) in items {
+            if !["approve", "reject", "rework"].contains(&decision.as_str()) {
+                return Err(StoreError::Conflict("decision".into()));
+            }
+            let req = m
+                .apprs
+                .get(id)
+                .filter(|r| r.org == org)
+                .ok_or(StoreError::NotFound)?;
+            if !["pending", "needs_rework"].contains(&req.status.as_str()) {
+                return Err(StoreError::Conflict("request closed".into()));
+            }
+            let mut sids: Vec<i64> = m
+                .appr_steps
+                .values()
+                .filter(|s| s.req == *id)
+                .map(|s| s.id)
+                .collect();
+            sids.sort_by_key(|sid| m.appr_steps[sid].step_no);
+            let target = *sids
+                .iter()
+                .find(|sid| m.appr_steps[sid].step_no == *step_no)
+                .ok_or(StoreError::NotFound)?;
+            if m.appr_steps[&target].status != "pending" {
+                return Err(StoreError::Conflict("step already decided".into()));
+            }
+            for sid in &sids {
+                let s = &m.appr_steps[sid];
+                if s.step_no < *step_no && s.status != "approved" {
+                    return Err(StoreError::Conflict("earlier step pending".into()));
+                }
+            }
+        }
+        // Pass 2: apply (validation above guarantees success barring
+        // same-batch double-decide, which aborts like any other conflict).
+        let mut out = Vec::with_capacity(items.len());
+        for (id, step_no, decision, comment) in items {
+            let mut sids: Vec<i64> = m
+                .appr_steps
+                .values()
+                .filter(|s| s.req == *id)
+                .map(|s| s.id)
+                .collect();
+            sids.sort_by_key(|sid| m.appr_steps[sid].step_no);
+            let target = *sids
+                .iter()
+                .find(|sid| m.appr_steps[sid].step_no == *step_no)
+                .ok_or(StoreError::NotFound)?;
+            if m.appr_steps[&target].status != "pending" {
+                return Err(StoreError::Conflict("step already decided".into()));
+            }
+            {
+                let s = m.appr_steps.get_mut(&target).unwrap();
+                s.status = match decision.as_str() {
+                    "approve" => "approved",
+                    "reject" => "rejected",
+                    _ => "pending",
+                }
+                .into();
+                s.user = Some(user.into());
+                s.comment = comment.clone();
+            }
+            let max_no = sids
+                .iter()
+                .map(|sid| m.appr_steps[sid].step_no)
+                .max()
+                .unwrap_or(0);
+            let req_status: String = m.apprs[id].status.clone();
+            let new_status = match decision.as_str() {
+                "approve" if *step_no == max_no => "approved",
+                "approve" => req_status.as_str(),
+                "reject" => "rejected",
+                _ => "needs_rework",
+            };
+            if new_status == "needs_rework" {
+                for sid in &sids {
+                    let s = m.appr_steps.get_mut(sid).unwrap();
+                    s.status = "pending".into();
+                    s.comment = None;
+                }
+            }
+            m.apprs.get_mut(id).unwrap().status = new_status.into();
+            out.push(m.appr_steps[&target].clone());
+        }
+        Ok(out)
+    }
     async fn appr_revoke(&self, org: &str, id: i64, _user: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
         let r = m
