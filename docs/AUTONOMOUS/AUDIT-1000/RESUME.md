@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 68: whistleblowing + waivers (main)
+- whistle_reports (0036) + exception_waivers (0037) + kartu kepatuhan + uji.
+- F-D11-019/036 NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 357/0; registry ~22.0 (99 IMPLEMENTED); mean ~22.5 (97 v).
+
 ## Done wave 67: training evidence + audit findings (main)
 - training_evidence (0034) + audit_findings (0035) + kartu kepatuhan + uji.
 - F-D11-024/026 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 356/0; registry ~21.8 (97 IMPLEMENTED); mean 22.5 (95 v).

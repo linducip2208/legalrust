@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 68: whistle + waivers (main)
+- Anonim + chains + guards; workspace **357 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 66b: evidence + findings (main)
 - Scoping + guards + audit; workspace **356 passed, 0 failed**.
 

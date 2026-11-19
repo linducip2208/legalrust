@@ -2101,6 +2101,103 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     afRefresh();
   });
   on('af-reload', 'click', afRefresh);
+  /* ---- compliance: whistleblowing ---- */
+  var WB_NEXT = { received: 'under_review', under_review: 'resolved' };
+  async function wbRefresh() {
+    var box = document.getElementById('wb-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/whistle');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = WB_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-wb-next="' + x.id + '" data-wb-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-wb-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.channel) + ' <span class="text-muted">(' + esc(x.category) + ')</span></td><td>' + esc(x.summary) + '</td><td>' + esc(x.contact) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada laporan.</td></tr>';
+    qsa('[data-wb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/whistle/' + b.getAttribute('data-wb-next') + '/status', { status: b.getAttribute('data-wb-to') });
+        if (!r.ok) { pmsg('wb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wb-msg', '');
+        wbRefresh();
+      });
+    });
+    qsa('[data-wb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/whistle/' + b.getAttribute('data-wb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('wb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wb-msg', '');
+        wbRefresh();
+      });
+    });
+  }
+  on('wb-add', 'click', async function () {
+    if (!pval('wb-sum')) { pmsg('wb-msg', 'Isi ringkasan laporan.'); return; }
+    var r = await ppost('/api/v1/compliance/whistle', { channel: pval('wb-channel') || 'web', category: pval('wb-cat') || 'general', summary: pval('wb-sum'), contact: pval('wb-contact') || '' });
+    if (!r.ok) { pmsg('wb-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('wb-msg', '');
+    wbRefresh();
+  });
+  on('wb-reload', 'click', wbRefresh);
+  /* ---- compliance: waivers ---- */
+  async function wvRefresh() {
+    var box = document.getElementById('wv-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/waivers');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act;
+      if (x.status === 'requested') {
+        act = '<button class="btn btn-sm btn-success" data-wv-ok="' + x.id + '" type="button">Setujui</button> <button class="btn btn-sm btn-danger" data-wv-no="' + x.id + '" type="button">Tolak</button> ';
+      } else if (x.status === 'approved') {
+        act = '<button class="btn btn-sm" data-wv-rev="' + x.id + '" type="button">Cabut</button> ';
+      } else {
+        act = '<span class="text-muted">final</span> ';
+      }
+      act += '<button class="btn btn-sm btn-outline-danger" data-wv-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.requested_by) + '</td><td>' + esc(x.expires_at) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada pengajuan.</td></tr>';
+    qsa('[data-wv-ok]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/waivers/' + b.getAttribute('data-wv-ok') + '/status', { status: 'approved' });
+        if (!r.ok) { pmsg('wv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wv-msg', '');
+        wvRefresh();
+      });
+    });
+    qsa('[data-wv-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/waivers/' + b.getAttribute('data-wv-no') + '/status', { status: 'rejected' });
+        if (!r.ok) { pmsg('wv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wv-msg', '');
+        wvRefresh();
+      });
+    });
+    qsa('[data-wv-rev]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/waivers/' + b.getAttribute('data-wv-rev') + '/status', { status: 'revoked' });
+        if (!r.ok) { pmsg('wv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wv-msg', '');
+        wvRefresh();
+      });
+    });
+    qsa('[data-wv-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/waivers/' + b.getAttribute('data-wv-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('wv-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('wv-msg', '');
+        wvRefresh();
+      });
+    });
+  }
+  on('wv-add', 'click', async function () {
+    if (!pval('wv-title') || !pval('wv-just')) { pmsg('wv-msg', 'Isi judul dan justifikasi.'); return; }
+    var r = await ppost('/api/v1/compliance/waivers', { title: pval('wv-title'), justification: pval('wv-just'), requested_by: pval('wv-by') || '', expires_at: pval('wv-exp') || '' });
+    if (!r.ok) { pmsg('wv-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('wv-msg', '');
+    wvRefresh();
+  });
+  on('wv-reload', 'click', wvRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2115,7 +2212,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('posture-reload', 'click', postureRefresh);
   on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); postureRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); postureRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2169,6 +2266,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ethicsRefresh();
   giftRefresh();
   afRefresh();
+  wbRefresh();
+  wvRefresh();
   postureRefresh();
   whDlRefresh();
   intRefresh();

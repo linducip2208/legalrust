@@ -4163,10 +4163,15 @@
   "id": "F-D11-019",
   "domain": "D11",
   "title": "Whistleblowing intake channel",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0036_whistle.sql: whistle_reports table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + received->under_review->resolved/dismissed chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/whistle + status + delete (RBAC, audit; anonymous masked)",
+   "apps/server/static/site.js: wbRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: whistle_and_waiver_lifecycle e2e (anonim, bad channel 409)"
+  ],
+  "audit_note": "Wave 68: full lifecycle live; verified by test (357/0)."
  },
  {
   "id": "F-D11-020",
@@ -4349,10 +4354,15 @@
   "id": "F-D11-036",
   "domain": "D11",
   "title": "Exception / waiver workflow",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0037_waivers.sql: exception_waivers table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + requested->approved/rejected, approved->revoked",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/waivers + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: wvRefresh card (setujui/tolak/cabut) + hooks",
+   "apps/server/tests/api.rs: whistle_and_waiver_lifecycle e2e (early revoke 409)"
+  ],
+  "audit_note": "Wave 68: full lifecycle live; verified by test (357/0)."
  },
  {
   "id": "F-D11-037",

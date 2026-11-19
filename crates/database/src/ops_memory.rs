@@ -57,6 +57,8 @@ struct Inner {
     gifts: HashMap<i64, GiftRow>,
     tevidence: HashMap<i64, TrainingEvidenceRow>,
     afindings: HashMap<i64, AuditFindingRow>,
+    whistle: HashMap<i64, WhistleRow>,
+    waivers: HashMap<i64, WaiverRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2113,6 +2115,153 @@ impl OpsStore for MemoryOps {
         match m.afindings.get(&id) {
             Some(r) if r.org == org => {
                 m.afindings.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn whistle_create(
+        &self,
+        org: &str,
+        channel: &str,
+        category: &str,
+        summary: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError> {
+        let summary = summary.trim();
+        if summary.is_empty() || summary.len() > 2000 {
+            return Err(StoreError::Conflict("summary".into()));
+        }
+        if !matches!(channel, "web" | "phone" | "box" | "email") {
+            return Err(StoreError::Conflict("channel".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.whistle.insert(
+            id,
+            WhistleRow {
+                id,
+                org: org.into(),
+                channel: channel.into(),
+                category: category.trim().chars().take(60).collect(),
+                summary: summary.into(),
+                contact: contact.trim().chars().take(160).collect(),
+                status: "received".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn whistle_list(&self, org: &str) -> Result<Vec<WhistleRow>, StoreError> {
+        let mut v: Vec<WhistleRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .whistle
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn whistle_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .whistle
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("received", "under_review")
+                | ("under_review", "resolved")
+                | ("under_review", "dismissed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn whistle_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.whistle.get(&id) {
+            Some(r) if r.org == org => {
+                m.whistle.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn waiver_create(
+        &self,
+        org: &str,
+        title: &str,
+        justification: &str,
+        requested_by: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if justification.trim().is_empty() || justification.len() > 2000 {
+            return Err(StoreError::Conflict("justification".into()));
+        }
+        if expires_at.len() > 10 {
+            return Err(StoreError::Conflict("expires_at".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.waivers.insert(
+            id,
+            WaiverRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                justification: justification.trim().into(),
+                requested_by: requested_by.trim().chars().take(120).collect(),
+                expires_at: expires_at.trim().into(),
+                status: "requested".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn waiver_list(&self, org: &str) -> Result<Vec<WaiverRow>, StoreError> {
+        let mut v: Vec<WaiverRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .waivers
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn waiver_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .waivers
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("requested", "approved") | ("requested", "rejected") | ("approved", "revoked")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn waiver_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.waivers.get(&id) {
+            Some(r) if r.org == org => {
+                m.waivers.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

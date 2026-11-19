@@ -6761,6 +6761,141 @@ async fn compliance_posture_and_export() {
 }
 
 #[tokio::test]
+async fn whistle_and_waiver_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "wbwv@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Anonymous report (empty contact) surfaces as "anonim", never leaks blanks.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/whistle",
+            r#"{"summary":"XX"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/whistle",
+            r#"{"channel":"pigeon","summary":"Pungli loket"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/whistle",
+            r#"{"channel":"box","category":"gratifikasi","summary":"Pungli loket"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let wid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/whistle", &tok))
+        .await
+        .unwrap();
+    let wl = body_json(res).await;
+    assert!(wl
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(wid) && r["contact"] == "anonim"));
+    for st in ["under_review", "resolved"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/whistle/{wid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "whistle to {st}");
+    }
+    // Waiver: approve path and reject path; revoke only from approved.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/compliance/waivers", r#"{"title":"XX","justification":"Darurat","requested_by":"BB","expires_at":"2026-12-31"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/waivers/{vid}/status"),
+            r#"{"status":"revoked"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["approved", "revoked"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/waivers/{vid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "waiver to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/waivers",
+            r#"{"title":"YY","justification":"Alasan kuat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let vid2 = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/waivers/{vid2}/status"),
+            r#"{"status":"rejected"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=whistle", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.whistle_created"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=waiver", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.waiver_created"));
+}
+
+#[tokio::test]
 async fn training_evidence_and_audit_findings() {
     use tower::ServiceExt;
     let a = app();
@@ -8560,6 +8695,14 @@ async fn uib_app_has_approvals_ui() {
         "af-add",
         "af-reload",
         "af-list",
+        "wb-sum",
+        "wb-add",
+        "wb-reload",
+        "wb-list",
+        "wv-title",
+        "wv-add",
+        "wv-reload",
+        "wv-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

@@ -255,6 +255,28 @@ pub struct AuditFindingRow {
     pub severity: String,
     pub status: String,
 }
+/// Whistleblowing report (intake channel; contact empty = anonymous).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WhistleRow {
+    pub id: i64,
+    pub org: String,
+    pub channel: String,
+    pub category: String,
+    pub summary: String,
+    pub contact: String,
+    pub status: String,
+}
+/// Exception / waiver request (policy deviation with expiry).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WaiverRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub justification: String,
+    pub requested_by: String,
+    pub expires_at: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -960,6 +982,30 @@ pub trait OpsStore: Send + Sync {
     async fn afinding_list(&self, org: &str) -> Result<Vec<AuditFindingRow>, StoreError>;
     async fn afinding_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn afinding_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Whistleblowing intake channel.
+    async fn whistle_create(
+        &self,
+        org: &str,
+        channel: &str,
+        category: &str,
+        summary: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError>;
+    async fn whistle_list(&self, org: &str) -> Result<Vec<WhistleRow>, StoreError>;
+    async fn whistle_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn whistle_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Exception / waiver workflow.
+    async fn waiver_create(
+        &self,
+        org: &str,
+        title: &str,
+        justification: &str,
+        requested_by: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError>;
+    async fn waiver_list(&self, org: &str) -> Result<Vec<WaiverRow>, StoreError>;
+    async fn waiver_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn waiver_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

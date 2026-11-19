@@ -2396,6 +2396,194 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn whistle_create(
+        &self,
+        org: &str,
+        channel: &str,
+        category: &str,
+        summary: &str,
+        contact: &str,
+    ) -> Result<i64, StoreError> {
+        let summary = summary.trim();
+        if summary.is_empty() || summary.len() > 2000 {
+            return Err(StoreError::Conflict("summary".into()));
+        }
+        if !matches!(channel, "web" | "phone" | "box" | "email") {
+            return Err(StoreError::Conflict("channel".into()));
+        }
+        let cat: String = category.trim().chars().take(60).collect();
+        let who: String = contact.trim().chars().take(160).collect();
+        let r = sqlx::query(
+            "INSERT INTO whistle_reports (org_id, channel, category, summary, contact) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(channel)
+        .bind(cat)
+        .bind(summary)
+        .bind(who)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn whistle_list(&self, org: &str) -> Result<Vec<WhistleRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, channel, category, summary, contact, status FROM whistle_reports WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| WhistleRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                channel: x.get::<String, _>("channel"),
+                category: x.get::<String, _>("category"),
+                summary: x.get::<String, _>("summary"),
+                contact: x.get::<String, _>("contact"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn whistle_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "under_review" | "resolved" | "dismissed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM whistle_reports WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("received"), "under_review")
+                | (Some("under_review"), "resolved")
+                | (Some("under_review"), "dismissed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE whistle_reports SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn whistle_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM whistle_reports WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn waiver_create(
+        &self,
+        org: &str,
+        title: &str,
+        justification: &str,
+        requested_by: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if justification.trim().is_empty() || justification.len() > 2000 {
+            return Err(StoreError::Conflict("justification".into()));
+        }
+        if expires_at.len() > 10 {
+            return Err(StoreError::Conflict("expires_at".into()));
+        }
+        let who: String = requested_by.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO exception_waivers (org_id, title, justification, requested_by, expires_at) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(justification.trim())
+        .bind(who)
+        .bind(expires_at.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn waiver_list(&self, org: &str) -> Result<Vec<WaiverRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, justification, requested_by, expires_at, status FROM exception_waivers WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| WaiverRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                justification: x.get::<String, _>("justification"),
+                requested_by: x.get::<String, _>("requested_by"),
+                expires_at: x.get::<String, _>("expires_at"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn waiver_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "approved" | "rejected" | "revoked") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM exception_waivers WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("requested"), "approved")
+                | (Some("requested"), "rejected")
+                | (Some("approved"), "revoked")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE exception_waivers SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn waiver_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM exception_waivers WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
