@@ -3241,10 +3241,13 @@
   "id": "F-D09-011",
   "domain": "D09",
   "title": "Approval attachment review",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/{id}/attachments (matter/deed/invoice -> matter docs, RBAC)",
+   "apps/server/static/site.js: apprShow renders attachment links (appr panel)",
+   "apps/server/tests/api.rs: approval_attachments_and_archive e2e (all 3 entity paths, 404/401)"
+  ],
+  "audit_note": "Wave 116: attachment review live. Verified by test (405/0)."
  },
  {
   "id": "F-D09-012",
@@ -3453,10 +3456,13 @@
   "id": "F-D09-031",
   "domain": "D09",
   "title": "Approval archive & retrieval",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/archive (status filter, newest-first, RBAC)",
+   "apps/server/static/site.js: arc card Arsip persetujuan + hooks (appr panel)",
+   "apps/server/tests/api.rs: decided request retrieved, empty rejected filter, bad status 422, 401"
+  ],
+  "audit_note": "Wave 116: archive retrieval live. Verified by test (405/0)."
  },
  {
   "id": "F-D09-032",

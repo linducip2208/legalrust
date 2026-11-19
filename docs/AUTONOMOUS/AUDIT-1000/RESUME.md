@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 116: attachments + archive (main)
+- approval attachments + archive retrieval (no tables) + kartu + uji.
+- F-D09-011/031 PLANNED/NOT_STARTED->IMPLEMENTED (~72.1 verified). Workspace 405/0; registry ~27.4 (196 IMPLEMENTED); mean 28.7 (190 v).
+
 ## Done wave 115: bulk decide + receipts (main)
 - appr_decide_bulk Tx + decidable inbox + kartu + uji; 039 verify-only.
 - F-D09-007 NOT_STARTED->IMPLEMENTED, 039 PARTIAL->IMPLEMENTED (~72.9 verified). Workspace 404/0; registry ~27.3 (194 IMPLEMENTED); mean 28.6 (188 v).

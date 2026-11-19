@@ -8928,6 +8928,133 @@ async fn protocol_retention_and_aml_scores() {
 }
 
 #[tokio::test]
+async fn approval_attachments_and_archive() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprattach@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"attach-bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"lampiran.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Matter approval.
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}/attachments"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let av = body_json(res).await;
+    assert_eq!(av["matter_id"].as_i64().unwrap(), mid);
+    assert!(av["docs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["id"].as_i64() == Some(did)));
+    // Invoice approval resolves through its matter.
+    let iid = mk_invoice(&a, &tok, mid, 750000).await;
+    let res = a.clone().oneshot(post("/api/v1/approvals", &format!(r#"{{"entity":"invoice","entity_id":{iid},"title":"Setujui invoice","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iaid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{iaid}/attachments"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["docs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["id"].as_i64() == Some(did)));
+    // Deed approval resolves through its matter.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/deed-templates",
+            r#"{"name":"AJB","body":"Pada hari ini."}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a.clone().oneshot(post("/api/v1/deeds/from-template", &format!(r#"{{"template_id":{tid},"matter_id":{mid},"number":"D-9","deed_type":"ajb","variables":{{}}}}"#), Some(&tok))).await.unwrap();
+    let deed = body_json(res).await["id"].as_i64().unwrap();
+    let res = a.clone().oneshot(post("/api/v1/approvals", &format!(r#"{{"entity":"deed","entity_id":{deed},"title":"Setujui akta","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#), Some(&tok))).await.unwrap();
+    let daid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{daid}/attachments"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["matter_id"].as_i64().unwrap(), mid);
+    // Ghost + anon.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/999999/attachments", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/approvals/{aid}/attachments"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Archive: decide the matter approval, then retrieve.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/archive", &tok))
+        .await
+        .unwrap();
+    let arv = body_json(res).await;
+    assert!(arv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(aid) && r["status"] == "approved"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/archive?status=rejected", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["rows"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/archive?status=alien", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/archive")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_bulk_decide_controlled() {
     use tower::ServiceExt;
     let a = app();
@@ -14470,6 +14597,9 @@ async fn uib_app_has_approvals_ui() {
         "blk-reload",
         "blk-list",
         "blk-ok",
+        "arc-status",
+        "arc-reload",
+        "arc-list",
         "appr-id",
         "appr-show",
         "appr-detail",

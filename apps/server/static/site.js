@@ -3499,7 +3499,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     box.innerHTML = '<p><strong>#' + v.id + '</strong> ' + esc(v.title) + ' — ' + esc(v.entity) + ' #' + v.entity_id + ' ' + badge(v.status) + '</p>'
       + '<ol>' + (v.steps || []).map(function (s) {
         return '<li>tahap ' + s.step_no + ' (' + esc(s.role) + '): ' + badge(s.status) + (s.comment ? ' — <em>' + esc(s.comment) + '</em>' : '') + '</li>';
-      }).join('') + '</ol>';
+      }).join('') + '</ol><div id="appr-docs"><p class="text-muted">Memuat lampiran…</p></div>';
+    var at = await j('/api/v1/approvals/' + encodeURIComponent(id) + '/attachments');
+    var docs = document.getElementById('appr-docs');
+    if (!docs) return;
+    if (!at) { docs.innerHTML = '<p class="text-muted">Lampiran tidak dapat dimuat.</p>'; return; }
+    docs.innerHTML = '<p><strong>Lampiran (' + (at.docs || []).length + ')</strong> — perkara #' + at.matter_id + ':</p>'
+      + ((at.docs || []).map(function (d) {
+        return '<p><a href="/api/v1/documents/' + d.id + '" target="_blank" rel="noopener">' + esc(d.name) + '</a></p>';
+      }).join('') || '<p class="text-muted">Belum ada dokumen pada perkara ini.</p>');
   }
   async function apprDecide(decision) {
     var id = pval('appr-id'), step = pval('appr-step');
@@ -3612,6 +3620,18 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('blk-reload', 'click', blkRefresh);
   on('blk-ok', 'click', function () { blkDecide('approve'); });
   on('blk-no', 'click', function () { blkDecide('reject'); });
+  /* ---- approval archive (F-D09-031) ---- */
+  async function arcRefresh() {
+    var box = document.getElementById('arc-list');
+    if (!box) return;
+    var f = pval('arc-status');
+    var v = await j('/api/v1/approvals/archive' + (f ? '?status=' + encodeURIComponent(f) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.entity) + ' #' + x.entity_id + '</td><td>' + badge(x.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Arsip kosong.</td></tr>';
+  }
+  on('arc-reload', 'click', arcRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3667,10 +3687,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4791,6 +4811,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   slaRefresh();
   cfxRefresh();
   blkRefresh();
+  arcRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();

@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 116: attach + arsip (main)
+- Lampiran approval + arsip; workspace **405 passed, 0 failed**; F-D09-011/031 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 115: bulk + receipts (main)
 - Bulk terkendali + resi baca; workspace **404 passed, 0 failed**; F-D09-007/039 IMPLEMENTED.
 
