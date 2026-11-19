@@ -4127,6 +4127,108 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dp_create(
+        &self,
+        org: &str,
+        receipt_no: &str,
+        client_name: &str,
+        matter_id: Option<i64>,
+        amount_minor: i64,
+        issued_on: &str,
+    ) -> Result<i64, StoreError> {
+        let receipt_no = receipt_no.trim();
+        let client_name = client_name.trim();
+        if receipt_no.is_empty() || receipt_no.len() > 40 {
+            return Err(StoreError::Conflict("receipt_no".into()));
+        }
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if issued_on.len() > 10 {
+            return Err(StoreError::Conflict("issued_on".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO down_payments (org_id, receipt_no, client_name, matter_id, amount_minor, issued_on) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(receipt_no)
+        .bind(client_name)
+        .bind(matter_id.map(|v| v as u64))
+        .bind(amount_minor)
+        .bind(issued_on.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate receipt_no".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dp_list(&self, org: &str) -> Result<Vec<DownPaymentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, receipt_no, client_name, matter_id, amount_minor, issued_on, status FROM down_payments WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DownPaymentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                receipt_no: x.get::<String, _>("receipt_no"),
+                client_name: x.get::<String, _>("client_name"),
+                matter_id: x.get::<Option<u64>, _>("matter_id").map(|v| v as i64),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                issued_on: x.get::<String, _>("issued_on"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn dp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "applied" | "refunded") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM down_payments WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("issued") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE down_payments SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM down_payments WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

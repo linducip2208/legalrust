@@ -457,6 +457,18 @@ pub struct AnnouncementRow {
     pub pinned: bool,
     pub active: bool,
 }
+/// Down-payment (uang muka) receipt.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DownPaymentRow {
+    pub id: i64,
+    pub org: String,
+    pub receipt_no: String,
+    pub client_name: String,
+    pub matter_id: Option<i64>,
+    pub amount_minor: i64,
+    pub issued_on: String,
+    pub status: String,
+}
 /// Quotation line item (price snapshot at issue time).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuotationItemRow {
@@ -1406,6 +1418,19 @@ pub trait OpsStore: Send + Sync {
         active: Option<bool>,
     ) -> Result<(), StoreError>;
     async fn announce_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Down-payment (uang muka) receipts.
+    async fn dp_create(
+        &self,
+        org: &str,
+        receipt_no: &str,
+        client_name: &str,
+        matter_id: Option<i64>,
+        amount_minor: i64,
+        issued_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn dp_list(&self, org: &str) -> Result<Vec<DownPaymentRow>, StoreError>;
+    async fn dp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn dp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

@@ -3562,6 +3562,8 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ppat-add",
         "ppat-reload",
         "ppat-list",
+        "klapper-reload",
+        "klapper-list",
         "pb-no",
         "pb-add",
         "pb-reload",
@@ -5500,6 +5502,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "use-add",
         "use-reload",
         "use-list",
+        "dp-no",
+        "dp-add",
+        "dp-reload",
+        "dp-list",
         "bell",
         "bell-n",
         "bell-list",
@@ -6960,6 +6966,122 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn downpayments_and_klapper() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dpklap@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/down-payments",
+            r#"{"receipt_no":"X","client_name":"Y","amount_minor":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let mid = mk_matter(&a, &tok).await;
+    // Ghost matter rejected.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/down-payments", r#"{"receipt_no":"UM/2026/001","client_name":"BB","matter_id":999999,"amount_minor":100}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/down-payments", &format!(r#"{{"receipt_no":"UM/2026/001","client_name":"Budi","matter_id":{mid},"amount_minor":500000}}"#), Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Duplicate receipt number rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/down-payments",
+            r#"{"receipt_no":"UM/2026/001","client_name":"CC","amount_minor":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["applied"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/down-payments/{did}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/down-payments/{did}/status"),
+            r#"{"status":"refunded"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Klapper lists the client + matter-linked deed parties alphabetically.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"PT Maju","kind":"corporate"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/klapper", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let kl = body_json(res).await;
+    assert!(kl.as_array().unwrap().iter().any(|e| e["kind"] == "klien"));
+    let names: Vec<&str> = kl
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["name"].as_str().unwrap())
+        .collect();
+    let mut sorted = names.clone();
+    sorted.sort_by_key(|x| x.to_lowercase());
+    assert_eq!(names, sorted);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/klapper")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=downpayment", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.dp_created"));
 }
 
 #[tokio::test]

@@ -4473,10 +4473,13 @@
   "id": "F-D12-002",
   "domain": "D12",
   "title": "Klapper (alphabetical index)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/klapper (clients + PPAT parties + deeds, case-insensitive sort)",
+   "apps/server/static/site.js: klapperRefresh card Klapper in akta tab + hooks",
+   "apps/server/tests/api.rs: alphabetical order asserted, klien kind present, 401"
+  ],
+  "audit_note": "Wave 80: pure derivation; verified by test (369/0)."
  },
  {
   "id": "F-D12-003",
@@ -4595,10 +4598,15 @@
   "id": "F-D12-013",
   "domain": "D12",
   "title": "Down-payment (uang muka) receipt",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0050_downpayments.sql: down_payments table (unique receipt per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + issued->applied/refunded, matter validated when linked",
+   "apps/server/src/lib.rs: POST/GET /api/v1/down-payments + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: dpRefresh card Uang muka in keu tab + hooks",
+   "apps/server/tests/api.rs: downpayments_and_klapper e2e (ghost matter 404, dup 409, chain)"
+  ],
+  "audit_note": "Wave 80: full lifecycle live; verified by test (369/0)."
  },
  {
   "id": "F-D12-014",

@@ -78,6 +78,7 @@ struct Inner {
     stock_use: HashMap<i64, UsageRow>,
     visitors: HashMap<i64, VisitorRow>,
     announces: HashMap<i64, AnnouncementRow>,
+    dpayments: HashMap<i64, DownPaymentRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -3546,6 +3547,92 @@ impl OpsStore for MemoryOps {
         match m.announces.get(&id) {
             Some(r) if r.org == org => {
                 m.announces.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dp_create(
+        &self,
+        org: &str,
+        receipt_no: &str,
+        client_name: &str,
+        matter_id: Option<i64>,
+        amount_minor: i64,
+        issued_on: &str,
+    ) -> Result<i64, StoreError> {
+        let receipt_no = receipt_no.trim();
+        let client_name = client_name.trim();
+        if receipt_no.is_empty() || receipt_no.len() > 40 {
+            return Err(StoreError::Conflict("receipt_no".into()));
+        }
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if amount_minor <= 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if issued_on.len() > 10 {
+            return Err(StoreError::Conflict("issued_on".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.dpayments
+            .values()
+            .any(|p| p.org == org && p.receipt_no == receipt_no)
+        {
+            return Err(StoreError::Conflict("duplicate receipt_no".into()));
+        }
+        let id = self.next(&mut m);
+        m.dpayments.insert(
+            id,
+            DownPaymentRow {
+                id,
+                org: org.into(),
+                receipt_no: receipt_no.into(),
+                client_name: client_name.into(),
+                matter_id,
+                amount_minor,
+                issued_on: issued_on.trim().into(),
+                status: "issued".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn dp_list(&self, org: &str) -> Result<Vec<DownPaymentRow>, StoreError> {
+        let mut v: Vec<DownPaymentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dpayments
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dp_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dpayments
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("issued", "applied") | ("issued", "refunded")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn dp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dpayments.get(&id) {
+            Some(r) if r.org == org => {
+                m.dpayments.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

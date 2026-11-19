@@ -682,6 +682,63 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     invRefresh();
   });
   on('use-reload', 'click', useRefresh);
+  /* ---- office: down-payments ---- */
+  async function dpRefresh() {
+    var box = document.getElementById('dp-list');
+    if (!box) return;
+    var v = await j('/api/v1/down-payments');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'issued' ? '<button class="btn btn-sm btn-success" data-dp-ok="' + x.id + '" type="button">Terapkan</button> <button class="btn btn-sm btn-warning" data-dp-no="' + x.id + '" type="button">Refund</button> ' : '<span class="text-muted">final</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-dp-del="' + x.id + '" type="button">Hapus</button>';
+      var ref = x.matter_id ? ' <span class="text-muted">(perkara #' + x.matter_id + ')</span>' : '';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.receipt_no) + ' <span class="text-muted">(' + esc(x.client_name) + ')' + ref + '</span></td><td>' + fmtRp(x.amount_minor) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada uang muka.</td></tr>';
+    qsa('[data-dp-ok]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/down-payments/' + b.getAttribute('data-dp-ok') + '/status', { status: 'applied' });
+        if (!r.ok) { pmsg('dp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dp-msg', '');
+        dpRefresh();
+      });
+    });
+    qsa('[data-dp-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/down-payments/' + b.getAttribute('data-dp-no') + '/status', { status: 'refunded' });
+        if (!r.ok) { pmsg('dp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dp-msg', '');
+        dpRefresh();
+      });
+    });
+    qsa('[data-dp-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/down-payments/' + b.getAttribute('data-dp-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dp-msg', '');
+        dpRefresh();
+      });
+    });
+  }
+  on('dp-add', 'click', async function () {
+    if (!pval('dp-no') || !pval('dp-client') || !(+pval('dp-amount') > 0)) { pmsg('dp-msg', 'Isi kwitansi, klien, dan nominal.'); return; }
+    var mid = pval('dp-matter');
+    var r = await ppost('/api/v1/down-payments', { receipt_no: pval('dp-no'), client_name: pval('dp-client'), matter_id: mid ? +mid : null, amount_minor: +pval('dp-amount'), issued_on: pval('dp-date') || '' });
+    if (!r.ok) { pmsg('dp-msg', 'Gagal (' + r.status + '). Nomor duplikat / perkara tidak ada?'); return; }
+    pmsg('dp-msg', '');
+    dpRefresh();
+  });
+  on('dp-reload', 'click', dpRefresh);
+  /* ---- office: klapper ---- */
+  async function klapperRefresh() {
+    var box = document.getElementById('klapper-list');
+    if (!box) return;
+    var v = await j('/api/v1/klapper');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td><strong>' + esc(x.name) + '</strong></td><td>' + badge(x.kind) + '</td><td class="text-muted">' + esc(x.reference) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Indeks kosong.</td></tr>';
+  }
+  on('klapper-reload', 'click', klapperRefresh);
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];
     if (!f) { document.getElementById('ue').textContent = 'Pilih berkas dulu.'; return; }
@@ -1188,7 +1245,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('ph-reload', 'click', phRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); klapperRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -2965,6 +3022,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ppatRefresh();
   pbRefresh();
   phRefresh();
+  klapperRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();
@@ -3001,6 +3059,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   advRefresh();
   invRefresh();
   useRefresh();
+  dpRefresh();
   whDlRefresh();
   intRefresh();
 })();

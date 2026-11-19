@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 80: down-payments + klapper (main)
+- down_payments (0050) + klapper derivasi + kartu + uji.
+- F-D12-013/002 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 369/0; registry ~23.4 (122 IMPLEMENTED); mean ~24.1 (120 v).
+
 ## Done wave 79: visitor log + announcements (main)
 - visitors + announcements (0049, nomor dipakai ulang setelah 0049 lama ditarik pre-push) + kartu + uji.
 - F-D12-037/032 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 368/0; registry ~23.3 (120 IMPLEMENTED); mean 24.1 (118 v).
