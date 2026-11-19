@@ -789,10 +789,15 @@
   "id": "F-D02-034",
   "domain": "D02",
   "title": "Multi-contact notification routing",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0095_client_notif_routes.sql: client_notif_routes table (channel check, forward-only)",
+   "ops.rs + memory + mysql: cnr add/list/delete + resolve merge (employees + routes + consent gating)",
+   "lib.rs: notif-route endpoints + notify-plan + RBAC (existence-verified, 404/401)",
+   "site.js: routing card + hooks (klien panel)",
+   "tests: client_routing_and_export e2e (ghost 404, dup 409, consent-deny plan, 403/401)"
+  ],
+  "audit_note": "Wave 147: notification routing live. Verified by test (437/0)."
  },
  {
   "id": "F-D02-035",
@@ -808,10 +813,13 @@
   "id": "F-D02-036",
   "domain": "D02",
   "title": "Client export (controlled)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/reports/clients.csv (Export gate, audited report.clients_csv_exported)",
+   "site.js: Ekspor CSV button + hooks (klien panel)",
+   "tests: auditor allowed, legal_staff 403, header + audit asserted, anon 401"
+  ],
+  "audit_note": "Wave 147: controlled CSV export live. Verified by test (437/0)."
  },
  {
   "id": "F-D02-037",

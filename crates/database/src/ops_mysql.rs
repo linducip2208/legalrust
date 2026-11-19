@@ -2920,6 +2920,71 @@ impl OpsStore for MysqlOps {
             .map_err(db_err)?;
         Ok(())
     }
+    async fn cnr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        channel: &str,
+        target: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let c = channel.trim().to_lowercase();
+        if !["email", "phone", "visit"].contains(&c.as_str()) {
+            return Err(StoreError::Conflict("channel".into()));
+        }
+        let t = target.trim();
+        if t.len() < 3 || t.len() > 255 {
+            return Err(StoreError::Conflict("target".into()));
+        }
+        if c == "email" && !t.contains('@') {
+            return Err(StoreError::Conflict("email".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_notif_routes (org_id, client_id, name, channel, target) VALUES (?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(name).bind(&c).bind(t)
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cnr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientNotifRouteRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, name, channel, target FROM client_notif_routes WHERE org_id=? AND client_id=? ORDER BY id LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, name, channel, target FROM client_notif_routes WHERE org_id=? ORDER BY id LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientNotifRouteRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                name: x.get::<String, _>("name"),
+                channel: x.get::<String, _>("channel"),
+                target: x.get::<String, _>("target"),
+            })
+            .collect())
+    }
+    async fn cnr_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_notif_routes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

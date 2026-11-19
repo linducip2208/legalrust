@@ -316,6 +316,16 @@ pub struct ClientFeedbackRow {
     pub body: String,
     pub status: String,
 }
+/// Multi-contact notification routing recipient.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientNotifRouteRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub name: String,
+    pub channel: String,
+    pub target: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2056,6 +2066,21 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientFeedbackRow>, StoreError>;
     async fn cfb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// Multi-contact notification routing.
+    async fn cnr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        channel: &str,
+        target: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cnr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientNotifRouteRow>, StoreError>;
+    async fn cnr_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

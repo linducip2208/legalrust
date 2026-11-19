@@ -5657,6 +5657,10 @@ async fn crm_app_contains_crm_ids() {
         "cfb-cid",
         "cfb-add",
         "cfb-list",
+        "cnr-cid",
+        "cnr-add",
+        "cnr-list",
+        "cli-csv",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11423,6 +11427,173 @@ async fn client_vip_and_credit() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/client-flags")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_routing_and_export() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliroute@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/notif-routes"),
+            r#"{"name":"Sekretaris","channel":"email","target":"s@x.id"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/999999/notif-routes",
+            r#"{"name":"Hantu","channel":"email","target":"s@x.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/notif-routes"),
+            r#"{"name":"Sekretaris","channel":"sms","target":"nope"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/notif-routes"),
+            r#"{"name":"Sekretaris","channel":"email","target":"sek@kantor.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/notif-routes"),
+            r#"{"name":"Sekretaris","channel":"email","target":"sek@kantor.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Resolve merges routes + employee contacts with consent gating.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/employees"),
+            r#"{"name":"Budi","contact":"budi@kantor.id"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/clients/{cli}/consents"),
+            r#"{"channel":"email","allowed":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/notify-plan"), &tok))
+        .await
+        .unwrap();
+    let pv = body_json(res).await;
+    assert!(pv["routes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["target"] == "budi@kantor.id" && r["allowed"] == true));
+    assert!(pv["routes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["target"] == "sek@kantor.id" && r["allowed"] == false));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/notif-routes/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Controlled export: auditor allowed, anon denied, audit logged.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/clients.csv", &auditor))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let staff = forged_role_token(&tok, vec!["legal_staff"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/clients.csv", &staff))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/clients.csv", &tok))
+        .await
+        .unwrap();
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(
+        text.starts_with("id,display_name,kind,status\n"),
+        "was {text}"
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.clients_csv_exported"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/notif-routes")
                 .body(Body::empty())
                 .unwrap(),
         )

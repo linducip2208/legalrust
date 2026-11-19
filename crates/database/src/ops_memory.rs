@@ -148,6 +148,7 @@ struct Inner {
     creds: HashMap<i64, ClientCreditRow>,
     crems: HashMap<i64, ClientReminderRow>,
     cfb: HashMap<i64, ClientFeedbackRow>,
+    cnrs: HashMap<i64, ClientNotifRouteRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -199,6 +200,21 @@ fn crem_date_ok(on: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
     }
     Ok(d.into())
+}
+
+fn cnr_ok(channel: &str, target: &str) -> Result<(String, String), StoreError> {
+    let c = channel.trim().to_lowercase();
+    if !["email", "phone", "visit"].contains(&c.as_str()) {
+        return Err(StoreError::Conflict("channel".into()));
+    }
+    let t = target.trim();
+    if t.len() < 3 || t.len() > 255 {
+        return Err(StoreError::Conflict("target".into()));
+    }
+    if c == "email" && !t.contains('@') {
+        return Err(StoreError::Conflict("email".into()));
+    }
+    Ok((c, t.into()))
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3146,6 +3162,66 @@ impl OpsStore for MemoryOps {
         }
         r.status = to.into();
         Ok(())
+    }
+    async fn cnr_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        name: &str,
+        channel: &str,
+        target: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if client_id <= 0 || name.len() < 2 || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let (channel, target) = cnr_ok(channel, target)?;
+        let mut m = self.inner.lock().unwrap();
+        if m.cnrs.values().any(|r| {
+            r.org == org && r.client_id == client_id && r.channel == channel && r.target == target
+        }) {
+            return Err(StoreError::Conflict("already routed".into()));
+        }
+        let id = self.next(&mut m);
+        m.cnrs.insert(
+            id,
+            ClientNotifRouteRow {
+                id,
+                org: org.into(),
+                client_id,
+                name: name.into(),
+                channel,
+                target,
+            },
+        );
+        Ok(id)
+    }
+    async fn cnr_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientNotifRouteRow>, StoreError> {
+        let mut v: Vec<ClientNotifRouteRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cnrs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn cnr_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cnrs.get(&id) {
+            Some(r) if r.org == org => {
+                m.cnrs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

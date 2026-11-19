@@ -3264,6 +3264,39 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     cfbRefresh();
   });
   on('cfb-reload', 'click', cfbRefresh);
+  /* ---- notification routing + export (F-D02-034/036) ---- */
+  async function cnrRefresh() {
+    var box = document.getElementById('cnr-list');
+    if (!box) return;
+    var v = await j('/api/v1/notif-routes' + (pval('cnr-cid') ? '?client_id=' + encodeURIComponent(pval('cnr-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + badge(x.channel) + '</td><td>' + esc(x.target) + '</td><td><button class="btn btn-sm btn-outline-danger" data-cnr-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada rute.</td></tr>';
+    qsa('[data-cnr-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/notif-routes/' + b.getAttribute('data-cnr-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cnr-msg', 'Gagal (' + r.status + ').'); return; }
+        cnrRefresh();
+      });
+    });
+  }
+  on('cnr-add', 'click', async function () {
+    if (!pval('cnr-cid') || !pval('cnr-name') || !pval('cnr-target')) { pmsg('cnr-msg', 'Isi klien, nama, tujuan.'); return; }
+    var r = await ppost('/api/v1/clients/' + encodeURIComponent(pval('cnr-cid')) + '/notif-routes', { name: pval('cnr-name'), channel: pval('cnr-channel') || 'email', target: pval('cnr-target') });
+    if (!r.ok) { pmsg('cnr-msg', 'Gagal (' + r.status + '). Format tujuan?'); return; }
+    pmsg('cnr-msg', '');
+    cnrRefresh();
+  });
+  on('cnr-reload', 'click', cnrRefresh);
+  on('cnr-plan', 'click', async function () {
+    var out = document.getElementById('cnr-out');
+    if (!pval('cnr-cid')) { if (out) out.textContent = 'Isi ID klien.'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('cnr-cid')) + '/notify-plan');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = (v.routes || []).map(function (x) { return '<span class="badge">' + esc(x.to) + ' via ' + esc(x.channel) + (x.allowed ? '' : ' (ditolak)') + '</span>'; }).join(' ') || 'Tidak ada rute.';
+  });
+  on('cli-csv', 'click', function () { dlCsv('/api/v1/reports/clients.csv', 'klien.csv', 'cnr-msg'); });
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4094,9 +4127,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cwbRefresh();
   ccrRefresh();
   cemRefresh();
-  vipRefresh();
   crmRefresh();
   cfbRefresh();
+  cnrRefresh();
+  vipRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();
