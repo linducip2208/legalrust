@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 150: kampanye (main)
+## 2026-11-19 AUDIT-1000 wave 151: event + seminar (main)
+- Chains + guards + SSE-collision fix; workspace **441 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 150: kampanye (main)
 - Chains + guards; workspace **440 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 149: undangan + survei (main)

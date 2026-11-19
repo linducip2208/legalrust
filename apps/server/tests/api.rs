@@ -5672,6 +5672,9 @@ async fn crm_app_contains_crm_ids() {
         "mcp-name",
         "mcp-add",
         "mcp-list",
+        "cev-title",
+        "cev-add",
+        "cev-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11643,6 +11646,132 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn event_and_seminar_management() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clievent@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + bad date rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-events",
+            r#"{"title":"Seminar","held_on":"2027-03-01"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-events",
+            r#"{"title":"X","held_on":"besok"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-events",
+            r#"{"title":"Seminar Waris","venue":"Aula","held_on":"2027-03-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    // planned->held; re-hold rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-events/{eid}/status"),
+            r#"{"status":"held"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-events/{eid}/status"),
+            r#"{"status":"held"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Attendance: ghost 404s, dup 409s, invited->attended.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-events/{eid}/attendees"),
+            r#"{"client_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-events/{eid}/attendees"),
+            &format!(r#"{{"client_id":{cli}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/client-events/{eid}/attendees"),
+            &format!(r#"{{"client_id":{cli}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/attendances/{aid}/status"),
+            r#"{"status":"attended"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/attendances?event_id={eid}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(aid) && r["status"] == "attended"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-events")
                 .body(Body::empty())
                 .unwrap(),
         )

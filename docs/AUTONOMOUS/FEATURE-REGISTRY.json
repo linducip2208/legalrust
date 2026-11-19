@@ -669,10 +669,15 @@
   "id": "F-D02-023",
   "domain": "D02",
   "title": "Event & seminar management",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0099: client_events + event_attendances tables (forward-only)",
+   "ops.rs + memory + mysql: cevt add/list/status/delete + eatt add/list/status/delete",
+   "lib.rs: /api/v1/client-events* + /api/v1/attendances* (SSE /api/v1/events untouched)",
+   "site.js: event card + hooks (klien panel)",
+   "tests: event_and_seminar_management e2e (chains, dup/ghost guards, 403/401)"
+  ],
+  "audit_note": "Wave 151: events live. Verified by test (441/0). SSE route collision fixed by client-events prefix."
  },
  {
   "id": "F-D02-024",

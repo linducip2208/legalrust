@@ -3408,6 +3408,41 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     mcpRefresh();
   });
   on('mcp-reload', 'click', mcpRefresh);
+  /* ---- events / seminars (F-D02-023) ---- */
+  async function cevRefresh() {
+    var box = document.getElementById('cev-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-events');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'planned' ? '<button class="btn btn-sm" data-cev-next="' + x.id + '" data-cev-to="held" type="button">Selesai</button> <button class="btn btn-sm btn-outline-danger" data-cev-next="' + x.id + '" data-cev-to="cancelled" type="button">Batal</button> ' : '<span class="text-muted">' + x.status + '</span> ';
+      if (pval('cev-cid')) act += '<button class="btn btn-sm btn-outline-secondary" data-cev-join="' + x.id + '" type="button">+ hadir</button> ';
+      return '<tr><td>' + esc(x.title) + '</td><td>' + esc(x.held_on) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada event.</td></tr>';
+    qsa('[data-cev-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/client-events/' + b.getAttribute('data-cev-next') + '/status', { status: b.getAttribute('data-cev-to') });
+        if (!r.ok) { pmsg('cev-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cev-msg', '');
+        cevRefresh();
+      });
+    });
+    qsa('[data-cev-join]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/client-events/' + b.getAttribute('data-cev-join') + '/attendees', { client_id: +pval('cev-cid') });
+        if (!r.ok) { pmsg('cev-msg', 'Gagal (' + r.status + '). Ganda / klien?'); return; }
+        pmsg('cev-msg', '');
+      });
+    });
+  }
+  on('cev-add', 'click', async function () {
+    if (!pval('cev-title') || !pval('cev-on')) { pmsg('cev-msg', 'Isi judul dan tanggal.'); return; }
+    var r = await ppost('/api/v1/client-events', { title: pval('cev-title'), venue: pval('cev-venue') || '', held_on: pval('cev-on') });
+    if (!r.ok) { pmsg('cev-msg', 'Gagal (' + r.status + '). Format tanggal?'); return; }
+    pmsg('cev-msg', '');
+    cevRefresh();
+  });
+  on('cev-reload', 'click', cevRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4245,6 +4280,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cpiRefresh();
   csvRefresh();
   mcpRefresh();
+  cevRefresh();
   vipRefresh();
   apptRefresh();
   queueRefresh();

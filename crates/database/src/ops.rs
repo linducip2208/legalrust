@@ -373,6 +373,25 @@ pub struct CampaignPartRow {
     pub client_id: i64,
     pub response: String,
 }
+/// Client event / seminar (planned->held, or cancelled).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientEventRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub venue: String,
+    pub held_on: String,
+    pub status: String,
+}
+/// Event attendance (invited->attended/no_show).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventAttendRow {
+    pub id: i64,
+    pub org: String,
+    pub event_id: i64,
+    pub client_id: i64,
+    pub status: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2190,6 +2209,26 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<CampaignPartRow>, StoreError>;
     async fn cpart_set_response(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpart_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Events / seminars (planned->held/cancelled) + attendances (invited->attended/no_show).
+    async fn cevt_add(
+        &self,
+        org: &str,
+        title: &str,
+        venue: &str,
+        held_on: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cevt_list(&self, org: &str) -> Result<Vec<ClientEventRow>, StoreError>;
+    async fn cevt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cevt_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn eatt_add(&self, org: &str, event_id: i64, client_id: i64) -> Result<i64, StoreError>;
+    async fn eatt_list(
+        &self,
+        org: &str,
+        event_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<EventAttendRow>, StoreError>;
+    async fn eatt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn eatt_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

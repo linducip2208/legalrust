@@ -154,6 +154,8 @@ struct Inner {
     csvs: HashMap<i64, ClientSurveyRow>,
     mcamps: HashMap<i64, MarketingCampaignRow>,
     cparts: HashMap<i64, CampaignPartRow>,
+    cevs: HashMap<i64, ClientEventRow>,
+    eatts: HashMap<i64, EventAttendRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -228,6 +230,14 @@ fn mcamp_ok(channel: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("channel".into()));
     }
     Ok(c)
+}
+
+fn cevt_date_ok(on: &str) -> Result<String, StoreError> {
+    let d = on.trim();
+    if d.len() != 10 || d.as_bytes()[4] != b'-' {
+        return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+    }
+    Ok(d.into())
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3585,6 +3595,162 @@ impl OpsStore for MemoryOps {
         match m.cparts.get(&id) {
             Some(r) if r.org == org => {
                 m.cparts.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cevt_add(
+        &self,
+        org: &str,
+        title: &str,
+        venue: &str,
+        held_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if venue.len() > 200 {
+            return Err(StoreError::Conflict("venue".into()));
+        }
+        let held_on = cevt_date_ok(held_on)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cevs.insert(
+            id,
+            ClientEventRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                venue: venue.trim().into(),
+                held_on,
+                status: "planned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cevt_list(&self, org: &str) -> Result<Vec<ClientEventRow>, StoreError> {
+        let mut v: Vec<ClientEventRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cevs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.held_on.cmp(&b.held_on));
+        Ok(v)
+    }
+    async fn cevt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cevs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "held") | ("planned", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cevt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cevs.get(&id) {
+            Some(r) if r.org == org => {
+                m.cevs.remove(&id);
+                let kids: Vec<i64> = m
+                    .eatts
+                    .iter()
+                    .filter(|(_, v)| v.event_id == id)
+                    .map(|(k, _)| *k)
+                    .collect();
+                for k in kids {
+                    m.eatts.remove(&k);
+                }
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn eatt_add(&self, org: &str, event_id: i64, client_id: i64) -> Result<i64, StoreError> {
+        if event_id <= 0 || client_id <= 0 {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.cevs.get(&event_id) {
+            Some(r) if r.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if m.eatts
+            .values()
+            .any(|r| r.org == org && r.event_id == event_id && r.client_id == client_id)
+        {
+            return Err(StoreError::Conflict("already attending".into()));
+        }
+        let id = self.next(&mut m);
+        m.eatts.insert(
+            id,
+            EventAttendRow {
+                id,
+                org: org.into(),
+                event_id,
+                client_id,
+                status: "invited".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn eatt_list(
+        &self,
+        org: &str,
+        event_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<EventAttendRow>, StoreError> {
+        let mut v: Vec<EventAttendRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .eatts
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && event_id.map(|c| r.event_id == c).unwrap_or(true)
+                    && client_id.map(|c| r.client_id == c).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn eatt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .eatts
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("invited", "attended") | ("invited", "no_show")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn eatt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.eatts.get(&id) {
+            Some(r) if r.org == org => {
+                m.eatts.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

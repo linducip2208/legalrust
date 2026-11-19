@@ -3392,6 +3392,186 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cevt_add(
+        &self,
+        org: &str,
+        title: &str,
+        venue: &str,
+        held_on: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if venue.len() > 200 {
+            return Err(StoreError::Conflict("venue".into()));
+        }
+        let d = held_on.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_events (org_id, title, venue, held_on) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(venue.trim())
+        .bind(d)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cevt_list(&self, org: &str) -> Result<Vec<ClientEventRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, venue, held_on, status FROM client_events WHERE org_id=? ORDER BY held_on LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientEventRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                venue: x.get::<String, _>("venue"),
+                held_on: x.get::<String, _>("held_on"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn cevt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_events WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("planned", "held") | ("planned", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_events SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cevt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_events WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn eatt_add(&self, org: &str, event_id: i64, client_id: i64) -> Result<i64, StoreError> {
+        if event_id <= 0 || client_id <= 0 {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let own: Option<u64> = sqlx::query("SELECT id FROM client_events WHERE id=? AND org_id=?")
+            .bind(event_id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<u64, _>("id"));
+        if own.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO event_attendances (org_id, event_id, client_id) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(event_id as u64)
+        .bind(client_id as u64)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn eatt_list(
+        &self,
+        org: &str,
+        event_id: Option<i64>,
+        client_id: Option<i64>,
+    ) -> Result<Vec<EventAttendRow>, StoreError> {
+        // Static statements per filter combination: the clippy dynamic-SQL lint forbids format!.
+        let rows = match (event_id, client_id) {
+            (Some(ev), Some(cli)) => sqlx::query("SELECT id, org_id, event_id, client_id, status FROM event_attendances WHERE org_id=? AND event_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(ev as u64).bind(cli as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(ev), None) => sqlx::query("SELECT id, org_id, event_id, client_id, status FROM event_attendances WHERE org_id=? AND event_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(ev as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, Some(cli)) => sqlx::query("SELECT id, org_id, event_id, client_id, status FROM event_attendances WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(cli as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, None) => sqlx::query("SELECT id, org_id, event_id, client_id, status FROM event_attendances WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| EventAttendRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                event_id: x.get::<u64, _>("event_id") as i64,
+                client_id: x.get::<u64, _>("client_id") as i64,
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn eatt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM event_attendances WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("invited", "attended") | ("invited", "no_show")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE event_attendances SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn eatt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM event_attendances WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,
