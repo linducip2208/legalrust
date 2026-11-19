@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 88: SOP library + backup verification (main)
 - sop_docs + backup_checks (0057) + kartu dok/jobs + uji.
-- F-D12-031/035 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 377/0; registry ~24.2 (138 IMPLEMENTED); mean ~25.2 (136 v).
+- F-D12-031/035 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 377/0; registry ~24.2 (138 IMPLEMENTED); mean 25.3 (136 v).
 
 ## Done wave 87: bank facilities + feedback (main)
 - bank_facilities + feedbacks (0056) + kartu keu/mkt + uji.
