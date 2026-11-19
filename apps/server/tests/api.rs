@@ -6035,6 +6035,54 @@ async fn approvals_validation_and_rbac() {
 }
 
 #[tokio::test]
+async fn approvals_overdue_alerts() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprd@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Fresh request counts at days=0 with its blocking role surfaced.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/overdue?days=0", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let row = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"].as_i64() == Some(aid))
+        .expect("fresh approval listed at days=0");
+    assert_eq!(row["waiting_on"].as_str().unwrap(), "office_admin");
+    assert!(row["age_days"].as_i64().unwrap() >= 0);
+    // Default threshold (3d) hides it; unauthenticated callers get nothing.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/overdue", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["id"].as_i64() != Some(aid)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/overdue")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn compliance_obligation_and_consent_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7561,6 +7609,9 @@ async fn uib_app_has_approvals_ui() {
         "appr-filter",
         "appr-reload",
         "appr-list",
+        "appr-overdue-days",
+        "appr-overdue-reload",
+        "appr-overdue-list",
         "appr-id",
         "appr-show",
         "appr-detail",

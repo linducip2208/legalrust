@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 59: overdue approvals (main)
+- Threshold + guard + needles; workspace **348 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 58: insiden + CAPA (main)
 - Lifecycle + RBAC + audit trail; workspace **347 passed, 0 failed**.
 

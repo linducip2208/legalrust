@@ -3309,10 +3309,13 @@
   "id": "F-D09-018",
   "domain": "D09",
   "title": "Overdue approval alerts",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/overdue?days=N (age from created, waiting_on blocking role, oldest first)",
+   "apps/server/static/site.js: apprOverdueRefresh card in Persetujuan tab + boot/tab hooks",
+   "apps/server/tests/api.rs: approvals_overdue_alerts (days=0 listed, default hidden, 401) + needles"
+  ],
+  "audit_note": "Wave 59: no schema change (uses approval_requests.created); verified by test (348/0)."
  },
  {
   "id": "F-D09-019",

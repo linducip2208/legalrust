@@ -1424,6 +1424,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     apprRefresh();
   });
   on('appr-reload', 'click', apprRefresh);
+  /* ---- overdue approval alerts (F-D09-018) ---- */
+  async function apprOverdueRefresh() {
+    var box = document.getElementById('appr-overdue-list');
+    if (!box) return;
+    var d = parseInt(pval('appr-overdue-days'), 10);
+    if (!(d >= 0)) d = 3;
+    var v = await j('/api/v1/approvals/overdue?days=' + d);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + x.age_days + '</td><td>' + esc(x.waiting_on) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada yang terlambat. Semua tepat waktu.</td></tr>';
+  }
+  on('appr-overdue-reload', 'click', apprOverdueRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -1479,10 +1492,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -1791,6 +1804,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   loadJobs();
   apprRefresh();
   apprNotifRefresh();
+  apprOverdueRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();
