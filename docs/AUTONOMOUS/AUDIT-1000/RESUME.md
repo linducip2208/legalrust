@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 55: ekspor audit approval (main)
 - approvals.csv + tombol + trail; F-D09-035 NOT_STARTED->PARTIAL (68.4).
-- Workspace 345/0; registry 19.9 (80 IMPLEMENTED); 8-cat mean 21.2 (70 v).
+- Workspace 345/0; registry 19.9 (80 IMPLEMENTED); 8-cat mean 21.3 (75 v).
 
 ## Done wave 54: daftar pelanggaran SLA (main)
 - sla-breaches.csv (hanya overdue terbuka) + tombol + trail; F-D03-039 PLANNED->PARTIAL (66.2).
