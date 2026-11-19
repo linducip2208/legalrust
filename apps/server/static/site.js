@@ -835,6 +835,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       var nx = PPAT_NEXT[x.status];
       var act = nx ? '<button class="btn btn-sm" data-ppat-next="' + x.id + '" data-ppat-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">selesai</span>';
       act += ' <button class="btn btn-sm btn-outline-secondary" data-ppat-check="' + x.id + '" type="button">Cek</button> <span class="text-muted small" id="ppat-chk-' + x.id + '"></span>';
+      act += ' <button class="btn btn-sm btn-outline-primary" data-ppat-deed="' + x.id + '" type="button">Buat akta</button>';
       return '<tr><td>' + x.id + '</td><td>' + esc(x.number) + '</td><td>' + esc(x.deed_kind) + '</td><td>' + esc(x.seller) + ' → ' + esc(x.buyer) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
     }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada akta PPAT.</td></tr>';
     qsa('[data-ppat-check]', function (b) {
@@ -844,6 +845,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         var box2 = document.getElementById('ppat-chk-' + id);
         if (!v) { if (box2) box2.textContent = 'gagal'; return; }
         if (box2) box2.textContent = v.complete ? 'lengkap, siap ' + (PPAT_NEXT[v.status] || 'arsip') : 'kurang: ' + v.missing.join(', ');
+      });
+    });
+    qsa('[data-ppat-deed]', function (b) {
+      b.addEventListener('click', async function () {
+        var id = b.getAttribute('data-ppat-deed');
+        var v = await j('/api/v1/ppat');
+        if (!v) return;
+        var r = (v || []).filter(function (x) { return String(x.id) === String(id); })[0];
+        if (!r) return;
+        window.apptab('akta');
+        var nn = document.getElementById('deed-number'); if (nn) nn.value = r.number;
+        var dt = document.getElementById('deed-type'); if (dt) dt.value = r.deed_kind;
+        pmsg('deed-msg', 'Nomor & jenis terisi dari register PPAT #' + r.id + '. Pilih template lalu buat akta.');
       });
     });
     qsa('[data-ppat-next]', function (b) {

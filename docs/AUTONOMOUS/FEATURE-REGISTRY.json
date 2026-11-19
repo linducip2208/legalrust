@@ -3519,10 +3519,13 @@
   "id": "F-D09-039",
   "domain": "D09",
   "title": "Approval read-receipt",
-  "status": "PLANNED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: notify read flags (?unread_only, mark-read) + bell unread badge",
+   "apps/server/static/site.js: refreshNotifs badge + read buttons",
+   "apps/server/tests/api.rs: mark-read roundtrips"
+  ],
+  "audit_note": "Wave 56: read/unread tracking live; explicit per-item receipts view pending."
  },
  {
   "id": "F-D09-040",
@@ -4754,9 +4757,10 @@
   "status": "PARTIAL",
   "evidence": [
    "migrations/0018_ppat.sql + CRUD: AJB entries recordable with parties+object (deed_kind=ajb)",
-   "apps/server/src/lib.rs: checklist validates AJB completeness before signing"
+   "apps/server/src/lib.rs: checklist validates AJB completeness before signing",
+   "apps/server/static/site.js: data-ppat-deed prefill (register -> akta tab nomor/jenis)"
   ],
-  "audit_note": "Wave 29: AJB recordable + gated; template-based drafting + price/tax worksheets pending."
+  "audit_note": "Wave 29: AJB recordable + gated; template-based drafting + price/tax worksheets pending. Wave 56: register-to-draft prefill live."
  },
  {
   "id": "F-D13-006",
@@ -7659,10 +7663,13 @@
   "id": "F-D20-028",
   "domain": "D20",
   "title": "Report delivery log",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: webhook_log/log_wh on every inbound receipt + delivery attempts",
+   "apps/server/src/lib.rs: GET /api/v1/webhooks/deliveries (+?provider/?status) + /app audit panel",
+   "apps/server/tests/api.rs: Tripay E2E asserts delivery rows; report trails under entity=report"
+  ],
+  "audit_note": "Wave 56: delivery logging verified live; dedicated report-delivery view pending."
  },
  {
   "id": "F-D20-029",

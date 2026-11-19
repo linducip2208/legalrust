@@ -3142,6 +3142,7 @@ async fn mkt_app_has_marketing_tab_and_admin_refs() {
         "/api/v1/admin/faqs",
         "/api/v1/admin/articles",
         "/api/v1/tasks/due",
+        "data-ppat-deed",
     ] {
         assert!(js.contains(ep), "site.js missing {ep}");
     }
