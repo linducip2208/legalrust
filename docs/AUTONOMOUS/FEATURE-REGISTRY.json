@@ -858,10 +858,13 @@
   "id": "F-D02-037",
   "domain": "D02",
   "title": "CRM dashboard per partner",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/crm/dashboard (clients/matters/pipeline/AR/reminders/events/surveys/VIP/risk/workload, RBAC, client_id narrowing)",
+   "site.js: dasbor card + hooks (klien panel)",
+   "tests: crm_dashboard_and_client_expiry e2e (seeded book aggregated, 401)"
+  ],
+  "audit_note": "Wave 153: CRM dashboard live, pure derivation, no migration. Verified by test (443/0)."
  },
  {
   "id": "F-D02-038",
@@ -888,10 +891,12 @@
   "id": "F-D02-040",
   "domain": "D02",
   "title": "Client document expiry monitoring",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: doc_expiry_alerts + client_id filter via doc->matter->client join (F-D09-022 feed intact)",
+   "tests: scoped keep + ghost exclude + unfiltered intact asserted"
+  ],
+  "audit_note": "Wave 153: per-client expiry live. Verified by test (443/0)."
  },
  {
   "id": "F-D03-001",

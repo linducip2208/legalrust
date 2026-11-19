@@ -3469,6 +3469,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       return '<tr><td>' + esc(x.action) + '</td><td>' + esc(x.actor || '—') + '</td><td>' + esc(x.created) + '</td></tr>';
     }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada jejak.</td></tr>';
   });
+  /* ---- CRM dashboard (F-D02-037) ---- */
+  on('cdash-go', 'click', async function () {
+    var out = document.getElementById('cdash-out');
+    var v = await j('/api/v1/crm/dashboard');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = 'Klien ' + v.clients + ' · perkara ' + v.matters + ' · pipeline ' + fmtRp(v.pipeline_minor)
+      + ' · AR terbuka ' + fmtRp(v.open_ar_minor) + ' · pengingat30h ' + v.reminders_30d + ' · event ' + v.events_planned
+      + ' · survei ' + v.survey_avg + ' · VIP ' + v.vips;
+  });
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');

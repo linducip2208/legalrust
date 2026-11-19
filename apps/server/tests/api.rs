@@ -5678,6 +5678,7 @@ async fn crm_app_contains_crm_ids() {
         "crs-cid",
         "crs-save",
         "cact-go",
+        "cdash-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11649,6 +11650,105 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn crm_dashboard_and_client_expiry() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cridash@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Seed: matter + doc with past-due lifecycle under this client.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"MD","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let body = b"isi dokumen kedaluwarsa";
+    let sha = legalrust_document::sha256_hex(body);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"e.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, body.len()), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lifecycle"),
+            r#"{"retain_until":"2001-05-05"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Client-scoped filter keeps it; ghost client excludes it.
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/documents/expiry-alerts?client_id={cli}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let ev = body_json(res).await;
+    assert!(ev
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did) && r["client_id"].as_i64() == Some(cli)));
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/documents/expiry-alerts?client_id=999999",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Unfiltered feed still works (F-D09-022 intact).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/expiry-alerts", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did)));
+    // Dashboard aggregates the seeded book.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/crm/dashboard", &auditor))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let dv = body_json(res).await;
+    assert!(dv["clients"].as_i64().unwrap() >= 1);
+    assert!(dv["matters"].as_i64().unwrap() >= 1);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/crm/dashboard?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/crm/dashboard")
                 .body(Body::empty())
                 .unwrap(),
         )
