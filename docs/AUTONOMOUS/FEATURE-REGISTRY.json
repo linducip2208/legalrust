@@ -752,10 +752,15 @@
   "id": "F-D02-029",
   "domain": "D02",
   "title": "Client risk profile",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0100: client_risk_profiles table (level check, upsert key, forward-only)",
+   "ops.rs + memory + mysql: crisk upsert/get/list-by-level",
+   "lib.rs: risk endpoints (existence-verified, RBAC)",
+   "site.js: risk card + watchlist + hooks (klien panel)",
+   "tests: client_risk_and_activity e2e (upsert replace, ghost/bad-level guards, 403/401)"
+  ],
+  "audit_note": "Wave 152: risk profiles live. Verified by test (442/0)."
  },
  {
   "id": "F-D02-030",
@@ -862,10 +867,13 @@
   "id": "F-D02-038",
   "domain": "D02",
   "title": "CRM audit trail",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/clients/{id}/activity (shared audit log scoped entity=client+entity_id, RBAC)",
+   "site.js: jejak audit card + hooks (klien panel)",
+   "tests: merge generates trail, scoped lookup asserted, ghost 404, 401"
+  ],
+  "audit_note": "Wave 152: per-client activity live; shared audit infra untouched. Verified by test (442/0)."
  },
  {
   "id": "F-D02-039",

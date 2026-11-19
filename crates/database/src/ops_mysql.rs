@@ -3572,6 +3572,74 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn crisk_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        level: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let l = level.trim().to_lowercase();
+        if !["low", "medium", "high", "critical"].contains(&l.as_str()) {
+            return Err(StoreError::Conflict("level".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        sqlx::query("INSERT INTO client_risk_profiles (org_id, client_id, level, note) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE level=VALUES(level), note=VALUES(note)")
+            .bind(org).bind(client_id as u64).bind(&l).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        let x: Option<u64> =
+            sqlx::query("SELECT id FROM client_risk_profiles WHERE org_id=? AND client_id=?")
+                .bind(org)
+                .bind(client_id as u64)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        x.map(|v| v as i64).ok_or(StoreError::NotFound)
+    }
+    async fn crisk_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientRiskRow>, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, client_id, level, note FROM client_risk_profiles WHERE org_id=? AND client_id=?")
+            .bind(org).bind(client_id as u64).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(x.map(|x| ClientRiskRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            client_id: x.get::<u64, _>("client_id") as i64,
+            level: x.get::<String, _>("level"),
+            note: x.get::<String, _>("note"),
+        }))
+    }
+    async fn crisk_list(
+        &self,
+        org: &str,
+        level: Option<String>,
+    ) -> Result<Vec<ClientRiskRow>, StoreError> {
+        // Static statements per filter: the clippy dynamic-SQL lint forbids format!.
+        let rows = match level.as_deref() {
+            Some(l) => sqlx::query("SELECT id, org_id, client_id, level, note FROM client_risk_profiles WHERE org_id=? AND level=? ORDER BY id DESC LIMIT 500")
+                .bind(org).bind(l).fetch_all(&self.pool).await.map_err(db_err)?,
+            None => sqlx::query("SELECT id, org_id, client_id, level, note FROM client_risk_profiles WHERE org_id=? ORDER BY level DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientRiskRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                level: x.get::<String, _>("level"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
     async fn up_start(
         &self,
         org: &str,

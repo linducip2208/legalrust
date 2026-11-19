@@ -392,6 +392,15 @@ pub struct EventAttendRow {
     pub client_id: i64,
     pub status: String,
 }
+/// Client risk profile (upserted level + note).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientRiskRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub level: String,
+    pub note: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2229,6 +2238,24 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<EventAttendRow>, StoreError>;
     async fn eatt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn eatt_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Risk profiles (upsert per client, level allowlist).
+    async fn crisk_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        level: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn crisk_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientRiskRow>, StoreError>;
+    async fn crisk_list(
+        &self,
+        org: &str,
+        level: Option<String>,
+    ) -> Result<Vec<ClientRiskRow>, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

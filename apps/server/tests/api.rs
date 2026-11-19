@@ -5675,6 +5675,9 @@ async fn crm_app_contains_crm_ids() {
         "cev-title",
         "cev-add",
         "cev-list",
+        "crs-cid",
+        "crs-save",
+        "cact-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11646,6 +11649,118 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_risk_and_activity() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clirisk@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Update-gated + ghost 404s + bad level rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-risk",
+            &format!(r#"{{"client_id":{cli},"level":"high"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-risk",
+            r#"{"client_id":999999,"level":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-risk",
+            &format!(r#"{{"client_id":{cli},"level":"alien"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-risk",
+            &format!(r#"{{"client_id":{cli},"level":"high","note":"Sengketa besar"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Upsert idempotent: second write replaces.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-risk",
+            &format!(r#"{{"client_id":{cli},"level":"critical"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/client-risk?level=critical", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["client_id"].as_i64() == Some(cli)));
+    // Activity trail: merge the client to generate a trail entry, then scope it.
+    let k2 = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients/merge",
+            &format!(r#"{{"keep_id":{cli},"drop_id":{k2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/activity"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "client.merged"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients/999999/activity", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-risk")
                 .body(Body::empty())
                 .unwrap(),
         )

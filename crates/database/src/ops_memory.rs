@@ -156,6 +156,7 @@ struct Inner {
     cparts: HashMap<i64, CampaignPartRow>,
     cevs: HashMap<i64, ClientEventRow>,
     eatts: HashMap<i64, EventAttendRow>,
+    crisks: HashMap<i64, ClientRiskRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -238,6 +239,14 @@ fn cevt_date_ok(on: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
     }
     Ok(d.into())
+}
+
+fn crisk_ok(level: &str) -> Result<String, StoreError> {
+    let l = level.trim().to_lowercase();
+    if !["low", "medium", "high", "critical"].contains(&l.as_str()) {
+        return Err(StoreError::Conflict("level".into()));
+    }
+    Ok(l)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3755,6 +3764,76 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn crisk_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        level: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let level = crisk_ok(level)?;
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, _)) = m
+            .crisks
+            .iter()
+            .find(|(_, r)| r.org == org && r.client_id == client_id)
+        {
+            let id = *id;
+            let r = m.crisks.get_mut(&id).unwrap();
+            r.level = level;
+            r.note = note.trim().into();
+            return Ok(id);
+        }
+        let id = self.next(&mut m);
+        m.crisks.insert(
+            id,
+            ClientRiskRow {
+                id,
+                org: org.into(),
+                client_id,
+                level,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn crisk_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientRiskRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .crisks
+            .values()
+            .find(|r| r.org == org && r.client_id == client_id)
+            .cloned())
+    }
+    async fn crisk_list(
+        &self,
+        org: &str,
+        level: Option<String>,
+    ) -> Result<Vec<ClientRiskRow>, StoreError> {
+        let mut v: Vec<ClientRiskRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .crisks
+            .values()
+            .filter(|r| r.org == org && level.as_ref().map(|l| &r.level == l).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| b.level.cmp(&a.level));
+        Ok(v)
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

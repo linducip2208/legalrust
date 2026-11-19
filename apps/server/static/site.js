@@ -3443,6 +3443,32 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     cevRefresh();
   });
   on('cev-reload', 'click', cevRefresh);
+  /* ---- risk profiles + per-client activity (F-D02-029/038) ---- */
+  on('crs-save', 'click', async function () {
+    if (!pval('crs-cid')) { pmsg('crs-msg', 'Isi ID klien.'); return; }
+    var r = await ppost('/api/v1/client-risk', { client_id: +pval('crs-cid'), level: pval('crs-level') || 'low', note: pval('crs-note') || '' });
+    if (!r.ok) { pmsg('crs-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('crs-msg', '');
+  });
+  on('crs-reload', 'click', async function () {
+    var v = await j('/api/v1/client-risk?level=high');
+    var box = document.getElementById('cact-list');
+    if (!box) return;
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>risiko: ' + esc(x.level) + ' (#' + x.client_id + ')</td><td>—</td><td>' + esc(x.note || '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Watchlist kosong.</td></tr>';
+  });
+  on('cact-go', 'click', async function () {
+    var box = document.getElementById('cact-list');
+    if (!box) return;
+    if (!pval('crs-cid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID klien.</td></tr>'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('crs-cid')) + '/activity');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.action) + '</td><td>' + esc(x.actor || '—') + '</td><td>' + esc(x.created) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada jejak.</td></tr>';
+  });
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
