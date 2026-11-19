@@ -1510,6 +1510,42 @@ impl OpsStore for MysqlOps {
         }
         Ok(n)
     }
+    async fn quota_set(
+        &self,
+        org: &str,
+        quota_bytes: i64,
+        note: &str,
+    ) -> Result<OrgQuotaRow, StoreError> {
+        if quota_bytes < 0 {
+            return Err(StoreError::Conflict("quota".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        sqlx::query("INSERT INTO org_quotas (org_id, quota_bytes, note) VALUES (?,?,?) ON DUPLICATE KEY UPDATE quota_bytes=VALUES(quota_bytes), note=VALUES(note)")
+            .bind(org).bind(quota_bytes).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        self.quota_get(org).await
+    }
+    async fn quota_get(&self, org: &str) -> Result<OrgQuotaRow, StoreError> {
+        let x = sqlx::query("SELECT org_id, quota_bytes, note FROM org_quotas WHERE org_id=?")
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(match x {
+            Some(x) => OrgQuotaRow {
+                org: x.get::<String, _>("org_id"),
+                quota_bytes: x.get::<i64, _>("quota_bytes"),
+                note: x.get::<String, _>("note"),
+            },
+            None => OrgQuotaRow {
+                org: org.into(),
+                quota_bytes: 0,
+                note: String::new(),
+            },
+        })
+    }
     async fn up_start(
         &self,
         org: &str,

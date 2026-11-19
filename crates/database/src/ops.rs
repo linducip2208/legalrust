@@ -152,6 +152,13 @@ pub struct MetaFieldRow {
     pub required: bool,
     pub note: String,
 }
+/// Per-org storage quota (0 = unlimited).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrgQuotaRow {
+    pub org: String,
+    pub quota_bytes: i64,
+    pub note: String,
+}
 /// Document metadata value (tags = repeated rows on tag-kind fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocMetaRow {
@@ -1603,6 +1610,14 @@ pub trait OpsStore: Send + Sync {
         value: Option<&str>,
     ) -> Result<u64, StoreError>;
     async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError>;
+    /// Per-org storage quota (upsert/get). 0 = unlimited.
+    async fn quota_set(
+        &self,
+        org: &str,
+        quota_bytes: i64,
+        note: &str,
+    ) -> Result<OrgQuotaRow, StoreError>;
+    async fn quota_get(&self, org: &str) -> Result<OrgQuotaRow, StoreError>;
     /// Chunked upload sessions (ephemeral; process-local buffers).
     async fn up_start(
         &self,

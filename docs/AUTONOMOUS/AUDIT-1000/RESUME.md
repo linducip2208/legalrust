@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 137: quota + sync (main)
+- org_quotas (0084) + sync feed + enforcement + kartu + uji.
+- F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
+
 ## Done wave 136: redaction + segregation (main)
 - text masking + protocol register (no tables) + kartu + uji.
 - F-D04-020/040 NOT_STARTED/PLANNED->IMPLEMENTED (~72.1 verified). Workspace 424/0; registry ~28.4 (241 IMPLEMENTED); mean 31.3 (231 v).

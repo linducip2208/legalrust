@@ -3428,6 +3428,27 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }
   }
   on('dfo-reload', 'click', dfoRefresh);
+  /* ---- quota + offline sync (F-D04-029/034) ---- */
+  async function quoRefresh() {
+    var out = document.getElementById('quo-out');
+    var v = await j('/api/v1/org/quota');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.textContent = 'Terpakai ' + v.used_bytes + ' / ' + (v.quota_bytes > 0 ? v.quota_bytes : '∞') + ' byte';
+    var inp = document.getElementById('quo-bytes');
+    if (inp && !inp.value) inp.value = v.quota_bytes || 0;
+  }
+  on('quo-save', 'click', async function () {
+    var r = await fetch('/api/v1/org/quota', { method: 'PUT', headers: Object.assign({}, H, { 'Content-Type': 'application/json' }), body: JSON.stringify({ quota_bytes: +pval('quo-bytes') || 0 }) });
+    if (!r.ok) { pmsg('dfo-msg', 'Gagal (' + r.status + '). Perlu admin?'); return; }
+    pmsg('dfo-msg', '');
+    quoRefresh();
+  });
+  on('syn-go', 'click', async function () {
+    var out = document.getElementById('syn-out');
+    var v = await j('/api/v1/documents/sync?since_id=0');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.textContent = 'Siap offline: ' + (v.rows || []).length + ' dokumen.';
+  });
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5405,6 +5426,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   prlRefresh();
   dxpRefresh();
   dfoRefresh();
+  quoRefresh();
   sopRefresh();
   oinRefresh();
   dpRefresh();

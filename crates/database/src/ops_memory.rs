@@ -132,6 +132,7 @@ struct Inner {
     dlcs: HashMap<i64, DocLifecycleRow>,
     mfields: HashMap<i64, MetaFieldRow>,
     dmeta: HashMap<i64, DocMetaRow>,
+    quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
     dlocks: HashMap<i64, DocLockRow>,
@@ -1600,6 +1601,41 @@ impl OpsStore for MemoryOps {
             m.dmeta.remove(id);
         }
         Ok(ids.len() as u64)
+    }
+    async fn quota_set(
+        &self,
+        org: &str,
+        quota_bytes: i64,
+        note: &str,
+    ) -> Result<OrgQuotaRow, StoreError> {
+        if quota_bytes < 0 {
+            return Err(StoreError::Conflict("quota".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let row = OrgQuotaRow {
+            org: org.into(),
+            quota_bytes,
+            note: note.trim().into(),
+        };
+        m.quotas.insert(org.into(), row.clone());
+        Ok(row)
+    }
+    async fn quota_get(&self, org: &str) -> Result<OrgQuotaRow, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .quotas
+            .get(org)
+            .cloned()
+            .unwrap_or(OrgQuotaRow {
+                org: org.into(),
+                quota_bytes: 0,
+                note: String::new(),
+            }))
     }
     async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError> {
         let tag = tag.trim();

@@ -1513,10 +1513,16 @@
   "id": "F-D04-029",
   "domain": "D04",
   "title": "Storage quota per tenant/office",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "per-tenant byte quota enforced at intake; shared slice:",
+   "  - migrations/0084_org_quota.sql: org_quotas table (forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: quota upsert/get (0 = unlimited)",
+   "  - apps/server/src/lib.rs: GET/PUT /org/quota (admin gate, audit) + enforcement in create_doc + upload sessions + sync feed",
+   "  - apps/server/static/site.js: quota + sync card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: storage_quota_and_offline_sync e2e (403 gate, 409 trip, usage math, cursor paging, 401)"
+  ],
+  "audit_note": "Wave 137: quota + sync live. Verified by test (425/0)."
  },
  {
   "id": "F-D04-030",
@@ -1572,10 +1578,16 @@
   "id": "F-D04-034",
   "domain": "D04",
   "title": "Offline document cache",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "id-cursor delta feed for offline clients; shared slice:",
+   "  - migrations/0084_org_quota.sql: org_quotas table (forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: quota upsert/get (0 = unlimited)",
+   "  - apps/server/src/lib.rs: GET/PUT /org/quota (admin gate, audit) + enforcement in create_doc + upload sessions + sync feed",
+   "  - apps/server/static/site.js: quota + sync card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: storage_quota_and_offline_sync e2e (403 gate, 409 trip, usage math, cursor paging, 401)"
+  ],
+  "audit_note": "Wave 137: quota + sync live. Verified by test (425/0)."
  },
  {
   "id": "F-D04-035",

@@ -5626,6 +5626,9 @@ async fn crm_app_contains_crm_ids() {
         "rdt-terms",
         "prl-book",
         "prl-reload",
+        "quo-bytes",
+        "quo-save",
+        "syn-go",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9997,6 +10000,148 @@ async fn document_folders_and_dashboard() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/documents/stats")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn storage_quota_and_offline_sync() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "quota@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    // Default unlimited.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/org/quota", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["quota_bytes"].as_i64().unwrap(), 0);
+    // Lawyer cannot set quota.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/org/quota")
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {lawyer}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"quota_bytes":100}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let content = b"0123456789";
+    let sha = legalrust_document::sha256_hex(content);
+    // Tight quota: 10-byte doc fits, second one trips.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/org/quota")
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"quota_bytes":10}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"q1.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"q2.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Usage accounting reflects the one doc.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/org/quota", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["used_bytes"].as_i64().unwrap(), 10);
+    // Widen: intake works again; sync feed pages by cursor.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/org/quota")
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"quota_bytes":1000000}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/sync?since_id=0", &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert!(!sv["rows"].as_array().unwrap().is_empty());
+    let first = sv["rows"].as_array().unwrap()[0]["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/documents/sync?since_id={first}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["id"].as_i64().unwrap() > first));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents/sync")
                 .body(Body::empty())
                 .unwrap(),
         )
