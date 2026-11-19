@@ -2293,6 +2293,9 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: Option<i64>,
     ) -> Result<Vec<PortalEventRow>, StoreError>;
+    /// Org feature flags (e.g. maintenance). Unknown flags read as off.
+    async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
+    async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

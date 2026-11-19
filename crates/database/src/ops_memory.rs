@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
     prats: HashMap<i64, PortalRatingRow>,
     ccprs: HashMap<i64, ClientCopyReqRow>,
@@ -3670,6 +3671,24 @@ impl OpsStore for MemoryOps {
         v.sort_by_key(|r| -r.id);
         v.truncate(500);
         Ok(v)
+    }
+    async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError> {
+        if flag.trim().is_empty() || flag.len() > 40 {
+            return Err(StoreError::Conflict("flag".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        m.oflags.insert((org.into(), flag.trim().into()), enabled);
+        Ok(())
+    }
+    async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .oflags
+            .get(&(org.to_string(), flag.to_string()))
+            .copied()
+            .unwrap_or(false))
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

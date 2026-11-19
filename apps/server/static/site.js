@@ -1091,7 +1091,18 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('inv-reload', 'click', loadInvites);
   qsa('.snav[data-tab="pengaturan"]', function (a) {
-    a.addEventListener('click', function () { loadRoleUsers(); loadSessions(); loadRoleMatrix(); loadInvites(); });
+    a.addEventListener('click', function () { loadRoleUsers(); loadSessions(); loadRoleMatrix(); loadInvites(); loadMaint(); });
+  });
+  async function loadMaint() {
+    var el = document.getElementById('mnt-on');
+    var v = await j('/api/v1/admin/maintenance');
+    if (el && v) el.checked = !!v.maintenance;
+  }
+  on('mnt-save', 'click', async function () {
+    var el = document.getElementById('mnt-on');
+    var r = await ppost('/api/v1/admin/maintenance', { enabled: !!(el && el.checked) });
+    if (!r.ok) { pmsg('mnt-msg', 'Gagal (' + r.status + '). Perlu admin.'); return; }
+    pmsg('mnt-msg', '');
   });
   on('cli-csv', 'click', async function () {
     var r = await fetch('/api/v1/clients.csv', { headers: H });
@@ -3400,6 +3411,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     csvRefresh();
   });
   on('csv-reload', 'click', csvRefresh);
+  /* ---- multi-language portal ID/EN (F-D19-028, portal-surface pilot) ---- */
+  var PTL_STR = {
+    id: { 'ptl-login': 'Masuk portal', 'ptl-me': 'Profil saya', 'ptl-dash': 'Dasbor', 'ptl-matters': 'Perkara', 'ptl-inbox': 'Inbox', 'ptl-upload': 'Unggah', 'ptl-invoices': 'Tagihan', 'ptl-book': 'Booking', 'ptl-appts': 'Janji saya', 'ptl-send': 'Kirim', 'ptl-thread': 'Thread', 'ptl-activity': 'Jejak saya', 'ptl-copy': 'Minta salinan', 'ptl-track': 'Lacak', 'ptl-fb': 'Umpan balik saya', 'ptl-fb-send': 'Kirim', 'ptl-profile': 'Profil', 'ptl-emp-add': 'Tambah user', 'ptl-rate': 'Beri nilai', 'ptl-notice': 'Retensi data', 'ptl-sla': 'SLA saya', 'ptl-stats': 'Aktivitas saya' },
+    en: { 'ptl-login': 'Sign in', 'ptl-me': 'My profile', 'ptl-dash': 'Dashboard', 'ptl-matters': 'Matters', 'ptl-inbox': 'Inbox', 'ptl-upload': 'Upload', 'ptl-invoices': 'Invoices', 'ptl-book': 'Book', 'ptl-appts': 'My bookings', 'ptl-send': 'Send', 'ptl-thread': 'Thread', 'ptl-activity': 'My trail', 'ptl-copy': 'Request copy', 'ptl-track': 'Track', 'ptl-fb': 'My feedback', 'ptl-fb-send': 'Send', 'ptl-profile': 'Profile', 'ptl-emp-add': 'Add user', 'ptl-rate': 'Rate us', 'ptl-notice': 'Retention', 'ptl-sla': 'My SLA', 'ptl-stats': 'My activity' }
+  };
+  function ptlLang(l) {
+    try { localStorage.setItem('ptl-lang', l); } catch (e) {}
+    var d = PTL_STR[l] || PTL_STR.id;
+    for (var k in d) { var el = document.getElementById(k); if (el) el.textContent = d[k]; }
+  }
+  on('ptl-id', 'click', function () { ptlLang('id'); });
+  on('ptl-en', 'click', function () { ptlLang('en'); });
+  try { ptlLang(localStorage.getItem('ptl-lang') || 'id'); } catch (e) {}
   /* ---- portal login (F-D19-001/030) ---- */
   var PTL_TOK = '';
   on('ptl-login', 'click', async function () {

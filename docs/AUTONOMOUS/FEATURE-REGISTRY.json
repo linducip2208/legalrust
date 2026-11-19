@@ -8216,10 +8216,13 @@
   "id": "F-D19-028",
   "domain": "D19",
   "title": "Multi-language portal (ID/EN)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "site.js: PTL_STR ID/EN dictionary + toggle + localStorage persist (portal card pilot)",
+   "tests: ptl-id/ptl-en needles asserted in /app HTML",
+   "Note: portal-surface pilot, not full-app i18n"
+  ],
+  "audit_note": "Wave 171: portal ID/EN toggle live. Verified by test (461/0)."
  },
  {
   "id": "F-D19-029",
@@ -8296,10 +8299,16 @@
   "id": "F-D19-035",
   "domain": "D19",
   "title": "Portal maintenance page",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0107: org_flags table (forward-only)",
+   "ops.rs + memory + mysql: flag_set/get",
+   "crates/application: AppError::Maintenance -> 503",
+   "lib.rs: login + portal_login gates (non-admin 503, session revoked), admin toggle + status, audit",
+   "site.js: settings toggle (pengaturan tab)",
+   "tests: maintenance_mode_gates_logins e2e (lawyer 503, owner in, portal 503, restore, lawyer 403 on toggle)"
+  ],
+  "audit_note": "Wave 171: maintenance mode live. Verified by test (461/0)."
  },
  {
   "id": "F-D19-036",

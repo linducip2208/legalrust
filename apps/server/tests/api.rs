@@ -5714,6 +5714,10 @@ async fn crm_app_contains_crm_ids() {
         "ptl-rate",
         "ptl-notice",
         "ptl-sla",
+        "mnt-on",
+        "mnt-save",
+        "ptl-id",
+        "ptl-en",
         "ptl-stats",
         "aria-live",
         "aria-label",
@@ -11694,6 +11698,120 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn maintenance_mode_gates_logins() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mntmode@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p16@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Flag on: non-admin staff login 503s, portal login 503s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/maintenance",
+            r#"{"enabled":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"mntlaw@x.id","role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"mntlaw@x.id","name":"ML","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"mntlaw@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::SERVICE_UNAVAILABLE);
+    // Owner (admin) still gets in; flag off restores everyone.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"mntmode@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/maintenance",
+            r#"{"enabled":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"mntlaw@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Non-admin cannot flip the flag.
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/admin/maintenance",
+            r#"{"enabled":true}"#,
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

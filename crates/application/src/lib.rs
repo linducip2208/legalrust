@@ -21,6 +21,8 @@ pub enum AppError {
     RateLimited,
     #[error("locked: {0}")]
     Locked(String),
+    #[error("maintenance: {0}")]
+    Maintenance(String),
     #[error("external dependency blocked: {0}")]
     BlockedExternal(String),
     #[error("internal error")]
@@ -42,6 +44,7 @@ impl AppError {
             AppError::Conflict(_) => "CONFLICT",
             AppError::RateLimited => "RATE_LIMITED",
             AppError::Locked(_) => "LOCKED",
+            AppError::Maintenance(_) => "MAINTENANCE",
             AppError::BlockedExternal(_) => "EXTERNAL_BLOCKED",
             AppError::Internal(_) => "INTERNAL",
         }
@@ -55,6 +58,7 @@ impl AppError {
             AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             AppError::Locked(_) => StatusCode::LOCKED,
+            AppError::Maintenance(_) => StatusCode::SERVICE_UNAVAILABLE,
             AppError::BlockedExternal(_) => StatusCode::NOT_IMPLEMENTED,
             AppError::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }

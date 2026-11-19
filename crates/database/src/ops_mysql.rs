@@ -3404,6 +3404,25 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError> {
+        if flag.trim().is_empty() || flag.len() > 40 {
+            return Err(StoreError::Conflict("flag".into()));
+        }
+        sqlx::query("INSERT INTO org_flags (org_id, flag, enabled) VALUES (?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled)")
+            .bind(org).bind(flag.trim()).bind(if enabled { 1u8 } else { 0u8 })
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(())
+    }
+    async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError> {
+        let x: Option<u8> = sqlx::query("SELECT enabled FROM org_flags WHERE org_id=? AND flag=?")
+            .bind(org)
+            .bind(flag)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<u8, _>("enabled"));
+        Ok(x.unwrap_or(0) != 0)
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")
