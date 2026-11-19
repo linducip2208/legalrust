@@ -6307,6 +6307,106 @@ async fn webhook_failed_send_queues_retry() {
 }
 
 #[tokio::test]
+async fn vendor_register_and_dpa_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "vendor@x.id").await;
+    let tok_b = reg(&a, "vendorB@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // RBAC: auditor cannot create.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/vendors",
+            r#"{"name":"Cloud ID"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/vendors",
+            r#"{"name":"Cloud ID","service":"object storage"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    // Tenant isolation on read.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/vendors", &tok_b))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // DPA workflow draft -> review -> signed; bad value rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/vendors/{vid}/dpa"),
+            r#"{"dpa":"bogus"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["review", "signed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/vendors/{vid}/dpa"),
+                &format!(r#"{{"dpa":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "dpa to {st}");
+    }
+    // Auditor cannot delete; owner deletes; twice -> 404.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/vendors/{vid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    for want in [StatusCode::OK, StatusCode::NOT_FOUND] {
+        let res = a
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/api/v1/compliance/vendors/{vid}"))
+                    .method("DELETE")
+                    .header(
+                        "authorization",
+                        format!("Bearer {tok}")
+                            .parse::<axum::http::HeaderValue>()
+                            .unwrap(),
+                    )
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want);
+    }
+}
+
+#[tokio::test]
 async fn dpia_breach_lifecycle_and_guards() {
     use tower::ServiceExt;
     let a = app();
@@ -7155,6 +7255,11 @@ async fn uib_app_has_approvals_ui() {
         "breach-add",
         "breach-reload",
         "breach-list",
+        "vendor-name",
+        "vendor-service",
+        "vendor-add",
+        "vendor-reload",
+        "vendor-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

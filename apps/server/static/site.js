@@ -1606,11 +1606,46 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     breachRefresh();
   });
   on('breach-reload', 'click', breachRefresh);
-  qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); });
+  /* ---- compliance: vendor register + DPA ---- */
+  var DPA_NEXT = { draft: 'review', review: 'signed' };
+  async function vendorRefresh() {
+    var box = document.getElementById('vendor-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/vendors');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = DPA_NEXT[x.dpa];
+      var act = nx ? '<button class="btn btn-sm" data-vendor-next="' + x.id + '" data-vendor-to="' + nx + '" type="button">→ ' + nx + '</button>' : '<span class="text-muted">signed</span>';
+      act += ' <button class="btn btn-sm btn-outline-danger" data-vendor-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.service) + '</td><td>' + badge(x.dpa) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada vendor.</td></tr>';
+    qsa('[data-vendor-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/vendors/' + b.getAttribute('data-vendor-next') + '/dpa', { dpa: b.getAttribute('data-vendor-to') });
+        if (!r.ok) { pmsg('vendor-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('vendor-msg', '');
+        vendorRefresh();
+      });
+    });
+    qsa('[data-vendor-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/vendors/' + b.getAttribute('data-vendor-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('vendor-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('vendor-msg', '');
+        vendorRefresh();
+      });
+    });
+  }
+  on('vendor-add', 'click', async function () {
+    if (!pval('vendor-name')) { pmsg('vendor-msg', 'Isi nama vendor.'); return; }
+    var r = await ppost('/api/v1/compliance/vendors', { name: pval('vendor-name'), service: pval('vendor-service') || '' });
+    if (!r.ok) { pmsg('vendor-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('vendor-msg', '');
+    vendorRefresh();
   });
+  on('vendor-reload', 'click', vendorRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   async function whDlRefresh() {
@@ -1640,5 +1675,6 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ropaRefresh();
   dpiaRefresh();
   breachRefresh();
+  vendorRefresh();
   whDlRefresh();
 })();

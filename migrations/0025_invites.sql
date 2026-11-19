@@ -8,7 +8,7 @@ CREATE TABLE org_invites (
   expires_at TIMESTAMP NOT NULL,
   accepted_at TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_inv_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_org_invites_org FOREIGN KEY (org_id) REFERENCES organizations (id),
   UNIQUE KEY uq_inv_token (token_hash),
   KEY ix_inv_org (org_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

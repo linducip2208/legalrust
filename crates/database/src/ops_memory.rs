@@ -2704,6 +2704,22 @@ mod compliance_tests {
     }
 
     #[tokio::test]
+    async fn vendor_crud_and_dpa_isolation() {
+        let ops = MemoryOps::default();
+        assert!(ops.vendor_create("o1", "  ", "").await.is_err());
+        let id = ops.vendor_create("o1", "Cloud", "storage").await.unwrap();
+        assert!(ops.vendor_list("o2").await.unwrap().is_empty());
+        assert!(ops.vendor_set_dpa("o1", id, "bogus").await.is_err());
+        assert!(ops.vendor_set_dpa("o2", id, "review").await.is_err());
+        ops.vendor_set_dpa("o1", id, "review").await.unwrap();
+        ops.vendor_set_dpa("o1", id, "signed").await.unwrap();
+        assert!(ops.vendor_delete("o2", id).await.is_err());
+        ops.vendor_delete("o1", id).await.unwrap();
+        assert!(ops.vendor_delete("o1", id).await.is_err());
+        assert!(ops.vendor_list("o1").await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
     async fn delegation_upsert_and_resolve() {
         let ops = MemoryOps::default();
         assert!(ops.delegation_set("o1", "u1", "u1", true).await.is_err());

@@ -148,6 +148,9 @@
 - Wave 6: tab Kepatuhan + panel p-kepatuhan di /app (obligations + consents), JS wired, needle tests; F-D11-001/002 -> IMPLEMENTED.
 - Registry 51 -> **54 IMPLEMENTED**; skor 16.9 -> **17.4/100**; 8-cat mean 18.8 (22 verified); workspace 296 passed, 0 failed.
 
+## 2026-11-19 AUDIT-1000 wave 47: register vendor + DPA (main)
+- CRUD + DPA workflow + kartu kepatuhan; workspace **339 passed, 0 failed**; F-D11-009/010 IMPLEMENTED.
+
 ## 2026-11-18 AUDIT-1000 wave 44b+45: hapus /skor + undangan anggota (main)
 - /skor dihapus dari UI; invite flow + delegasi e2e; workspace **337 passed, 0 failed**.
 

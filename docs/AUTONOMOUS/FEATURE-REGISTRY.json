@@ -4005,19 +4005,27 @@
   "id": "F-D11-009",
   "domain": "D11",
   "title": "Vendor / processor register",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:101 integrations stub names dukcapil/bpn/psre only (no logic, no calls)"
-  ]
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/vendors + /{id}/dpa + DELETE (RBAC + validator + audit)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: vendor CRUD + dpa transitions",
+   "apps/server/static/site.js: Vendor & DPA card + hooks",
+   "apps/server/tests/api.rs: vendor_register_and_dpa_lifecycle + memory unit + needles"
+  ],
+  "audit_note": "Wave 47: vendor register live (was mislabeled CONFIGURATION_REQUIRED; no external creds involved)."
  },
  {
   "id": "F-D11-010",
   "domain": "D11",
   "title": "DPA (perjanjian pemrosesan) tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/vendors + /{id}/dpa + DELETE (RBAC + validator + audit)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: vendor CRUD + dpa transitions",
+   "apps/server/static/site.js: Vendor & DPA card + hooks",
+   "apps/server/tests/api.rs: vendor_register_and_dpa_lifecycle + memory unit + needles"
+  ],
+  "audit_note": "Wave 47: DPA draft->review->signed tracking live."
  },
  {
   "id": "F-D11-011",
