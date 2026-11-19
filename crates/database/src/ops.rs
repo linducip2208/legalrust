@@ -365,6 +365,16 @@ pub struct PhandoverRow {
     pub handed_at: String,
     pub note: String,
 }
+/// Penghadap appointment (scheduler + queue board source).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppointmentRow {
+    pub id: i64,
+    pub org: String,
+    pub client_name: String,
+    pub purpose: String,
+    pub scheduled_at: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1191,6 +1201,17 @@ pub trait OpsStore: Send + Sync {
         book_id: i64,
     ) -> Result<Vec<PhandoverRow>, StoreError>;
     async fn phandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Penghadap appointment scheduler.
+    async fn appt_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        purpose: &str,
+        scheduled_at: &str,
+    ) -> Result<i64, StoreError>;
+    async fn appt_list(&self, org: &str) -> Result<Vec<AppointmentRow>, StoreError>;
+    async fn appt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn appt_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

@@ -1257,8 +1257,73 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     crmClientTags();
   });
   on('crm-recent-btn', 'click', crmRecent);
+  /* ---- office: appointments + queue board ---- */
+  var APPT_NEXT = { scheduled: 'checked_in', checked_in: 'done' };
+  async function apptRefresh() {
+    var box = document.getElementById('appt-list');
+    if (!box) return;
+    var v = await j('/api/v1/appointments');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = APPT_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-appt-next="' + x.id + '" data-appt-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '')
+        + (x.status === 'scheduled' ? '<button class="btn btn-sm btn-warning" data-appt-cancel="' + x.id + '" type="button">Batal</button> ' : '<span class="text-muted">final</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-appt-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.client_name) + ' <span class="text-muted">(' + esc(x.purpose) + ')</span></td><td>' + esc(x.scheduled_at) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada janji temu.</td></tr>';
+    qsa('[data-appt-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/appointments/' + b.getAttribute('data-appt-next') + '/status', { status: b.getAttribute('data-appt-to') });
+        if (!r.ok) { pmsg('appt-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('appt-msg', '');
+        apptRefresh();
+        queueRefresh();
+      });
+    });
+    qsa('[data-appt-cancel]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/appointments/' + b.getAttribute('data-appt-cancel') + '/status', { status: 'cancelled' });
+        if (!r.ok) { pmsg('appt-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('appt-msg', '');
+        apptRefresh();
+        queueRefresh();
+      });
+    });
+    qsa('[data-appt-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/appointments/' + b.getAttribute('data-appt-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('appt-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('appt-msg', '');
+        apptRefresh();
+        queueRefresh();
+      });
+    });
+  }
+  async function queueRefresh() {
+    var box = document.getElementById('queue-list');
+    if (!box) return;
+    var d = (pval('queue-date') || '').trim();
+    var v = await j('/api/v1/appointments/queue' + (d ? '?date=' + encodeURIComponent(d) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var q = (v && v.queue) || [];
+    box.innerHTML = q.map(function (x) {
+      return '<tr><td><strong>' + esc(x.scheduled_at.slice(11)) + '</strong></td><td>' + esc(x.client_name) + '</td><td>' + esc(x.purpose) + '</td><td>' + badge(x.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Antrean kosong pada ' + esc((v && v.date) || '') + '.</td></tr>';
+  }
+  on('appt-add', 'click', async function () {
+    if (!pval('appt-name') || !pval('appt-at')) { pmsg('appt-msg', 'Isi nama dan jadwal (YYYY-MM-DD HH:MM).'); return; }
+    var r = await ppost('/api/v1/appointments', { client_name: pval('appt-name'), purpose: pval('appt-purpose') || '', scheduled_at: pval('appt-at') });
+    if (!r.ok) { pmsg('appt-msg', 'Gagal (' + r.status + '). Format: YYYY-MM-DD HH:MM.'); return; }
+    pmsg('appt-msg', '');
+    apptRefresh();
+    queueRefresh();
+  });
+  on('appt-reload', 'click', function () { apptRefresh(); queueRefresh(); });
+  on('queue-reload', 'click', queueRefresh);
   crmTags();
   crmRecent();
+  apptRefresh();
+  queueRefresh();
   /* ---- audit viewer + jobs queue (additive) ---- */
   async function dlCsv(url, filename, msgId) {
     var r = await fetch(url, { headers: H });

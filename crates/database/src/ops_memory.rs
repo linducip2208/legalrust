@@ -68,6 +68,7 @@ struct Inner {
     evidence: HashMap<i64, EvidenceRow>,
     pbooks: HashMap<i64, PbookRow>,
     phandovers: HashMap<i64, PhandoverRow>,
+    appts: HashMap<i64, AppointmentRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2850,6 +2851,79 @@ impl OpsStore for MemoryOps {
         match m.phandovers.get(&id) {
             Some(r) if r.org == org => {
                 m.phandovers.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn appt_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        purpose: &str,
+        scheduled_at: &str,
+    ) -> Result<i64, StoreError> {
+        let client_name = client_name.trim();
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if purpose.len() > 255 {
+            return Err(StoreError::Conflict("purpose".into()));
+        }
+        // Scheduler integrity: strict slot format, no silent coercion.
+        if chrono::NaiveDateTime::parse_from_str(scheduled_at.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("scheduled_at YYYY-MM-DD HH:MM".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.appts.insert(
+            id,
+            AppointmentRow {
+                id,
+                org: org.into(),
+                client_name: client_name.into(),
+                purpose: purpose.trim().chars().take(255).collect(),
+                scheduled_at: scheduled_at.trim().into(),
+                status: "scheduled".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn appt_list(&self, org: &str) -> Result<Vec<AppointmentRow>, StoreError> {
+        let mut v: Vec<AppointmentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .appts
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.scheduled_at.cmp(&b.scheduled_at).then(b.id.cmp(&a.id)));
+        Ok(v)
+    }
+    async fn appt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .appts
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("scheduled", "checked_in") | ("checked_in", "done") | ("scheduled", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn appt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.appts.get(&id) {
+            Some(r) if r.org == org => {
+                m.appts.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

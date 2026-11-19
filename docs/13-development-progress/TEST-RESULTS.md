@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 75: appointments (main)
+- Slot order + lifecycle + guards; workspace **364 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 74: protocol books (main)
 - Lifecycle + guards + cascade; workspace **363 passed, 0 failed**.
 

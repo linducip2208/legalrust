@@ -4555,19 +4555,27 @@
   "id": "F-D12-010",
   "domain": "D12",
   "title": "Penghadap appointment scheduler",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0045_appointments.sql: appointments table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + scheduled->checked_in->done/cancelled chain, strict slot format",
+   "apps/server/src/lib.rs: POST/GET /api/v1/appointments + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: apptRefresh card Janji temu in klien tab + hooks",
+   "apps/server/tests/api.rs: appointments_and_queue_board e2e (bad slot 409, lifecycle)"
+  ],
+  "audit_note": "Wave 75: full lifecycle live; verified by test (364/0)."
  },
  {
   "id": "F-D12-011",
   "domain": "D12",
   "title": "Queue & waiting-room board",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/appointments/queue?date= (slot-ordered, scheduled+checked_in only)",
+   "apps/server/static/site.js: queueRefresh Papan antrean card + hooks",
+   "apps/server/tests/api.rs: order asserted, bad date 422, done leaves board, 401"
+  ],
+  "audit_note": "Wave 75: pure derivation; verified by test (364/0)."
  },
  {
   "id": "F-D12-012",

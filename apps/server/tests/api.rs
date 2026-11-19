@@ -5411,6 +5411,13 @@ async fn crm_app_contains_crm_ids() {
         "crm-tag-btn",
         "crm-ct-list",
         "crm-recent",
+        "appt-name",
+        "appt-add",
+        "appt-reload",
+        "appt-list",
+        "queue-date",
+        "queue-reload",
+        "queue-list",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
@@ -6921,6 +6928,115 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn appointments_and_queue_board() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "appt@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/appointments",
+            r#"{"client_name":"BB","scheduled_at":"2026-03-01 09:00"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Bad slot format rejected (no silent coercion).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/appointments",
+            r#"{"client_name":"Budi","scheduled_at":"2026-13-99 99:99"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/appointments",
+            r#"{"client_name":"Budi Santoso","purpose":"AJB","scheduled_at":"2026-03-01 09:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/appointments",
+            r#"{"client_name":"Ani","purpose":"Hibah","scheduled_at":"2026-03-01 10:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Queue board groups the day in slot order.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/appointments/queue?date=2026-03-01", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let qv = body_json(res).await;
+    assert_eq!(qv["date"].as_str().unwrap(), "2026-03-01");
+    let q = qv["queue"].as_array().unwrap();
+    assert_eq!(q.len(), 2);
+    assert!(q[0]["scheduled_at"].as_str().unwrap() < q[1]["scheduled_at"].as_str().unwrap());
+    // Bad date rejected; done appointments leave the board.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/appointments/queue?date=01-03-2026", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    for st in ["checked_in", "done"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/appointments/{aid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "appt to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/appointments/queue?date=2026-03-01", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["queue"].as_array().unwrap().len(), 1);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/appointments/queue")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=appt", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.appt_created"));
 }
 
 #[tokio::test]

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 75: appointments + queue board (main)
+- appointments (0045, slot ketat) + papan antrean derivasi + kartu klien + uji.
+- F-D12-010/011 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 364/0; registry ~22.9 (112 IMPLEMENTED); mean ~23.4 (110 v).
+
 ## Done wave 74: protocol books + handover log (main, D12 opened)
 - protocol_books + protocol_handovers (0044) + kartu akta + uji.
 - F-D12-003/004 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 363/0; registry ~22.8 (110 IMPLEMENTED); mean 23.4 (108 v).

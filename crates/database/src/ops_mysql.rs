@@ -3292,6 +3292,98 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn appt_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        purpose: &str,
+        scheduled_at: &str,
+    ) -> Result<i64, StoreError> {
+        let client_name = client_name.trim();
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if purpose.len() > 255 {
+            return Err(StoreError::Conflict("purpose".into()));
+        }
+        if chrono::NaiveDateTime::parse_from_str(scheduled_at.trim(), "%Y-%m-%d %H:%M").is_err() {
+            return Err(StoreError::Conflict("scheduled_at YYYY-MM-DD HH:MM".into()));
+        }
+        let pur: String = purpose.trim().chars().take(255).collect();
+        let r = sqlx::query(
+            "INSERT INTO appointments (org_id, client_name, purpose, scheduled_at) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_name)
+        .bind(pur)
+        .bind(scheduled_at.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn appt_list(&self, org: &str) -> Result<Vec<AppointmentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_name, purpose, scheduled_at, status FROM appointments WHERE org_id=? ORDER BY scheduled_at ASC, id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AppointmentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_name: x.get::<String, _>("client_name"),
+                purpose: x.get::<String, _>("purpose"),
+                scheduled_at: x.get::<String, _>("scheduled_at"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn appt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "checked_in" | "done" | "cancelled") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM appointments WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("scheduled"), "checked_in")
+                | (Some("checked_in"), "done")
+                | (Some("scheduled"), "cancelled")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE appointments SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn appt_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM appointments WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
