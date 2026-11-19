@@ -133,6 +133,15 @@ pub struct DpiaRow {
     pub risk_level: String,
     pub status: String,
 }
+/// Vendor/processor with DPA status.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VendorRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub service: String,
+    pub dpa_status: String,
+}
 /// UU PDP breach log entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BreachRow {
@@ -151,6 +160,15 @@ pub struct DelegationRow {
     pub delegator: String,
     pub delegate: String,
     pub active: bool,
+}
+/// Pending organization invite.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InviteRow {
+    pub id: i64,
+    pub org: String,
+    pub email: String,
+    pub role: String,
+    pub accepted: bool,
 }
 #[derive(Debug, Clone)]
 pub struct TrustAccountRow {
@@ -687,6 +705,19 @@ pub trait OpsStore: Send + Sync {
     /// Delegator ids that actively delegate to `user` (same org).
     async fn delegation_delegators(&self, org: &str, user: &str)
         -> Result<Vec<String>, StoreError>;
+    /// Organization invite: returns (id, raw_token shown once).
+    async fn invite_create(
+        &self,
+        org: &str,
+        email: &str,
+        role: &str,
+        hash: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError>;
+    async fn invite_list(&self, org: &str) -> Result<Vec<InviteRow>, StoreError>;
+    async fn invite_peek(&self, hash: &str) -> Result<Option<InviteRow>, StoreError>;
+    async fn invite_redeem(&self, hash: &str) -> Result<InviteRow, StoreError>;
+    async fn invite_revoke(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// UU PDP DPIA assessment register.
     async fn dpia_create(
         &self,
@@ -697,6 +728,10 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn dpia_list(&self, org: &str) -> Result<Vec<DpiaRow>, StoreError>;
     async fn dpia_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn vendor_create(&self, org: &str, name: &str, service: &str) -> Result<i64, StoreError>;
+    async fn vendor_list(&self, org: &str) -> Result<Vec<VendorRow>, StoreError>;
+    async fn vendor_set_dpa(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn vendor_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// UU PDP breach log (72h notification tracking).
     async fn breach_create(
         &self,

@@ -92,6 +92,30 @@ impl UserStore for MysqlStores {
         tx.commit().await.map_err(db_err)?;
         Ok((org, uid))
     }
+    async fn create_org_member(
+        &self,
+        org: &str,
+        email: &str,
+        name: &str,
+        pw_hash: &str,
+    ) -> Result<String, StoreError> {
+        let uid = uuid::Uuid::new_v4().to_string();
+        let r = sqlx::query(
+            "INSERT INTO users (id, org_id, email, password_hash, full_name) VALUES (?,?,?,?,?)",
+        )
+        .bind(&uid)
+        .bind(org)
+        .bind(email)
+        .bind(pw_hash)
+        .bind(name)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        if r.rows_affected() == 0 {
+            return Err(StoreError::Conflict("email taken".into()));
+        }
+        Ok(uid)
+    }
     async fn find_by_email(&self, email: &str) -> Result<Option<UserRow>, StoreError> {
         let r = sqlx::query("SELECT id, org_id, email, password_hash, full_name, status FROM users WHERE email=? LIMIT 1")
             .bind(email).fetch_optional(&self.pool).await.map_err(db_err)?;

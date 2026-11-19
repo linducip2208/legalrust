@@ -117,6 +117,14 @@ pub trait UserStore: Send + Sync {
         name: &str,
         pw_hash: &str,
     ) -> Result<(String, String), StoreError>;
+    /// Create a member inside an EXISTING org (invite flow).
+    async fn create_org_member(
+        &self,
+        org: &str,
+        email: &str,
+        name: &str,
+        pw_hash: &str,
+    ) -> Result<String, StoreError>;
     async fn find_by_email(&self, email: &str) -> Result<Option<UserRow>, StoreError>;
     async fn create_session(
         &self,

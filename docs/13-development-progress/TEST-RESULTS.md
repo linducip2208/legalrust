@@ -23,7 +23,10 @@
 - Migrasi 0001‒0014 diterapkan bersih di MySQL 8.4.9 lokal (DB scratch `legalrust_migcheck`, lalu dihapus); tabel `approval_requests/approval_steps/webhook_deliveries` terkonfirmasi.
 - `api_db::live_mysql_register_and_matter` diperbaiki (password + JWT secret kini memenuhi aturan min-length) → PASS manual 1.34s.
 
-## 2026-11-18 — AUDIT-1000 wave 44: tenggat + postur (main)
+## 2026-11-18 — AUDIT-1000 wave 44b+45: hapus /skor + undangan (main)
+- Invite e2e + decide + guards + unit; workspace **337 passed, 0 failed**.
+
+## 2026-11-18 AUDIT-1000 wave 44: tenggat + postur (main)
 - Counts + trails + needles; workspace **337 passed, 0 failed**.
 
 ## 2026-11-18 AUDIT-1000 wave 43: bottleneck + profitabilitas (main)

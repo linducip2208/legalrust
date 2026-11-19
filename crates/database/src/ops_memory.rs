@@ -10,6 +10,7 @@ struct Inner {
     fields: HashMap<i64, Vec<OcrFieldRow>>,
     tpls: HashMap<i64, TemplateRow>,
     clauses: HashMap<i64, ClauseRow>,
+    invites: HashMap<i64, (InviteRow, String, String)>,
     deeds: HashMap<i64, DeedRow>,
     convs: HashMap<i64, String>,
     msgs: HashMap<i64, Vec<(String, String)>>,
@@ -45,6 +46,7 @@ struct Inner {
     ppat: HashMap<i64, PpatRow>,
     dpia: HashMap<i64, DpiaRow>,
     breach: HashMap<i64, BreachRow>,
+    vendors: HashMap<i64, VendorRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1362,6 +1364,61 @@ impl OpsStore for MemoryOps {
         r.status = to.into();
         Ok(())
     }
+    async fn vendor_create(&self, org: &str, name: &str, service: &str) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.vendors.insert(
+            id,
+            VendorRow {
+                id,
+                org: org.into(),
+                name: name.into(),
+                service: service.trim().into(),
+                dpa_status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn vendor_list(&self, org: &str) -> Result<Vec<VendorRow>, StoreError> {
+        let mut v: Vec<VendorRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .vendors
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn vendor_set_dpa(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "draft" | "review" | "signed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .vendors
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.dpa_status = to.into();
+        Ok(())
+    }
+    async fn vendor_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.vendors.get(&id) {
+            Some(r) if r.org == org => {
+                m.vendors.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
     async fn delegation_set(
         &self,
         org: &str,
@@ -1422,6 +1479,90 @@ impl OpsStore for MemoryOps {
             .filter(|r| r.org == org && r.delegate == user && r.active)
             .map(|r| r.delegator.clone())
             .collect())
+    }
+    async fn invite_create(
+        &self,
+        org: &str,
+        email: &str,
+        role: &str,
+        hash: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError> {
+        let email = email.trim().to_lowercase();
+        if !email.contains('@') || role.trim().is_empty() || role.len() > 60 {
+            return Err(StoreError::Conflict("email/role".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.invites.insert(
+            id,
+            (
+                InviteRow {
+                    id,
+                    org: org.into(),
+                    email: email.clone(),
+                    role: role.trim().into(),
+                    accepted: false,
+                },
+                hash.into(),
+                expires_at.into(),
+            ),
+        );
+        Ok(id)
+    }
+    async fn invite_list(&self, org: &str) -> Result<Vec<InviteRow>, StoreError> {
+        let mut v: Vec<InviteRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .invites
+            .values()
+            .filter(|(r, _, _)| r.org == org)
+            .map(|(r, _, _)| r.clone())
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn invite_peek(&self, hash: &str) -> Result<Option<InviteRow>, StoreError> {
+        let now = chrono::Utc::now()
+            .naive_utc()
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .invites
+            .values()
+            .find(|(r, h, exp)| h == hash && exp.as_str() > now.as_str() && !r.accepted)
+            .map(|(r, _, _)| r.clone()))
+    }
+    async fn invite_redeem(&self, hash: &str) -> Result<InviteRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let now = chrono::Utc::now()
+            .naive_utc()
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+        let e = m
+            .invites
+            .values_mut()
+            .find(|(_, h, exp)| h == hash && exp.as_str() > now.as_str())
+            .ok_or(StoreError::NotFound)?;
+        if e.0.accepted {
+            return Err(StoreError::Conflict("already accepted".into()));
+        }
+        e.0.accepted = true;
+        Ok(e.0.clone())
+    }
+    async fn invite_revoke(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.invites.get(&id) {
+            Some((r, _, _)) if r.org == org => {
+                m.invites.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn notif_pref_set(
         &self,

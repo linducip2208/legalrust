@@ -1467,6 +1467,64 @@ impl OpsStore for MysqlOps {
         .map_err(db_err)?;
         Ok(())
     }
+    async fn vendor_create(&self, org: &str, name: &str, service: &str) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let r = sqlx::query("INSERT INTO vendor_register (org_id, name, service) VALUES (?,?,?)")
+            .bind(org)
+            .bind(name)
+            .bind(service.trim())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn vendor_list(&self, org: &str) -> Result<Vec<VendorRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, service, dpa_status FROM vendor_register WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| VendorRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                service: x.get::<String, _>("service"),
+                dpa_status: x.get::<String, _>("dpa_status"),
+            })
+            .collect())
+    }
+    async fn vendor_set_dpa(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "draft" | "review" | "signed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let n = sqlx::query("UPDATE vendor_register SET dpa_status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn vendor_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM vendor_register WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
@@ -1482,6 +1540,103 @@ impl OpsStore for MysqlOps {
                 (x.get::<String, _>("kind"), en != 0)
             })
             .collect())
+    }
+    async fn invite_create(
+        &self,
+        org: &str,
+        email: &str,
+        role: &str,
+        hash: &str,
+        expires_at: &str,
+    ) -> Result<i64, StoreError> {
+        let email = email.trim().to_lowercase();
+        if !email.contains('@') || role.trim().is_empty() || role.len() > 60 {
+            return Err(StoreError::Conflict("email/role".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO org_invites (org_id, email, role, token_hash, expires_at) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(email)
+        .bind(role.trim())
+        .bind(hash)
+        .bind(expires_at)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn invite_list(&self, org: &str) -> Result<Vec<InviteRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, email, role, accepted_at IS NOT NULL AS done FROM org_invites WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| InviteRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                email: x.get::<String, _>("email"),
+                role: x.get::<String, _>("role"),
+                accepted: x.get::<bool, _>("done"),
+            })
+            .collect())
+    }
+    async fn invite_peek(&self, hash: &str) -> Result<Option<InviteRow>, StoreError> {
+        let r = sqlx::query(
+            "SELECT id, org_id, email, role, accepted_at IS NOT NULL AS done FROM org_invites WHERE token_hash=? AND expires_at > NOW() AND accepted_at IS NULL",
+        )
+        .bind(hash)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.map(|x| InviteRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            email: x.get::<String, _>("email"),
+            role: x.get::<String, _>("role"),
+            accepted: x.get::<bool, _>("done"),
+        }))
+    }
+    async fn invite_redeem(&self, hash: &str) -> Result<InviteRow, StoreError> {
+        let r = sqlx::query(
+            "SELECT id, org_id, email, role, accepted_at IS NOT NULL AS done FROM org_invites WHERE token_hash=? AND expires_at > NOW()",
+        )
+        .bind(hash)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .ok_or(StoreError::NotFound)?;
+        let id: u64 = r.get("id");
+        let n = sqlx::query(
+            "UPDATE org_invites SET accepted_at=NOW() WHERE id=? AND accepted_at IS NULL",
+        )
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::Conflict("already accepted".into()));
+        }
+        Ok(InviteRow {
+            id: id as i64,
+            org: r.get::<String, _>("org_id"),
+            email: r.get::<String, _>("email"),
+            role: r.get::<String, _>("role"),
+            accepted: true,
+        })
+    }
+    async fn invite_revoke(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM org_invites WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
     }
     async fn pay_add(
         &self,

@@ -43,6 +43,13 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 45: undangan anggota + delegasi e2e (main)
+- Migration 0025; invite 72 jam; register-with-token; decide e2e via delegasi (member lawyer).
+- F-D09-003/004 PARTIAL->IMPLEMENTED (78.5). Workspace 337/0; registry 19.9; mean 20.7 (66 v).
+
+## Done wave 44b: hapus halaman /skor publik (main)
+- /skor + link sidebar + JS dihapus dari tampilan pengguna (khusus legal); API katalog + data audit tetap sebagai backbone bukti.
+
 ## Done wave 44: kepatuhan tenggat + postur kepatuhan (main)
 - deadline-compliance.csv + compliance-posture.csv + tombol + trail.
 - F-D20-013 PLANNED->PARTIAL (68.8); F-D20-017 PLANNED->PARTIAL (68.5).

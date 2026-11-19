@@ -3140,29 +3140,27 @@
   "id": "F-D09-003",
   "domain": "D09",
   "title": "Delegation of authority",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0023_delegations.sql: approval_delegations (org-scoped, forward-only)",
-   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: delegation_set/list/delegators",
-   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (Approve-gated set, org-checked) + decide honors delegation + approval.delegated audit",
-   "apps/server/static/site.js: delegasi card + toggle + hooks",
-   "apps/server/tests/api.rs: delegation_guards_and_audit + needles; memory upsert/resolve unit test"
+   "migrations/0023_delegations.sql + 0025_invites.sql",
+   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (+decide honors), POST /api/v1/orgs/invites(+list/revoke), register invite_token path",
+   "apps/server/static/site.js: delegasi card + undangan card + hooks",
+   "apps/server/tests/api.rs: invite_accept e2e (join + decide via delegation) + guards + needles"
   ],
-  "audit_note": "Wave 40: delegation engine live; end-to-end same-org decide blocked on user provisioning (no invite flow yet)."
+  "audit_note": "Wave 45: invite flow unblocked e2e delegation test."
  },
  {
   "id": "F-D09-004",
   "domain": "D09",
   "title": "Out-of-office delegation",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0023_delegations.sql: approval_delegations (org-scoped, forward-only)",
-   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: delegation_set/list/delegators",
-   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (Approve-gated set, org-checked) + decide honors delegation + approval.delegated audit",
-   "apps/server/static/site.js: delegasi card + toggle + hooks",
-   "apps/server/tests/api.rs: delegation_guards_and_audit + needles; memory upsert/resolve unit test"
+   "migrations/0023_delegations.sql + 0025_invites.sql",
+   "apps/server/src/lib.rs: POST/GET /api/v1/delegations (+decide honors), POST /api/v1/orgs/invites(+list/revoke), register invite_token path",
+   "apps/server/static/site.js: delegasi card + undangan card + hooks",
+   "apps/server/tests/api.rs: invite_accept e2e (join + decide via delegation) + guards + needles"
   ],
-  "audit_note": "Wave 40: active-flag toggle = out-of-office on/off; same provisioning caveat."
+  "audit_note": "Wave 45: invite flow unblocked e2e delegation test."
  },
  {
   "id": "F-D09-005",
@@ -5838,9 +5836,10 @@
    "crates/database/src/store.rs + memory.rs + mysql.rs: UserStore::list_users org-scoped",
    "apps/server/src/lib.rs: GET /api/v1/users (Assign-gated) + user_assign_role org check (cross-org 404)",
    "apps/server/static/site.js: role-uid select populated + reload; pengaturan manual text fixed",
-   "apps/server/tests/api.rs: users_list_scoped_and_cross_org_assign_blocked"
+   "apps/server/tests/api.rs: users_list_scoped_and_cross_org_assign_blocked",
+   "apps/server/src/lib.rs: org invites (create/list/revoke) + register-with-token + pengaturan UI"
   ],
-  "audit_note": "Wave 23: org user directory live; cross-tenant grant blocked + audited."
+  "audit_note": "Wave 23: org user directory live; cross-tenant grant blocked + audited. Wave 45: invite-based provisioning (72h token)."
  },
  {
   "id": "F-D16-002",

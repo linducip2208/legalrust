@@ -52,6 +52,32 @@ impl UserStore for MemoryStores {
         m.roles.insert(uid.clone(), vec!["org_owner".into()]);
         Ok((org, uid))
     }
+    async fn create_org_member(
+        &self,
+        org: &str,
+        email: &str,
+        name: &str,
+        pw_hash: &str,
+    ) -> Result<String, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if m.users.values().any(|u| u.email == email) {
+            return Err(StoreError::Conflict("email taken".into()));
+        }
+        let uid = uuid::Uuid::new_v4().to_string();
+        m.users.insert(
+            uid.clone(),
+            UserRow {
+                id: uid.clone(),
+                org_id: org.into(),
+                email: email.into(),
+                name: name.into(),
+                pw_hash: pw_hash.into(),
+                status: "active".into(),
+            },
+        );
+        m.roles.insert(uid.clone(), Vec::new());
+        Ok(uid)
+    }
     async fn find_by_email(&self, email: &str) -> Result<Option<UserRow>, StoreError> {
         Ok(self
             .inner

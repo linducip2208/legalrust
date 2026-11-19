@@ -3000,26 +3000,6 @@ async fn feature_scores_full_catalog_transparent() {
 }
 
 #[tokio::test]
-async fn skor_page_renders_scoreboard() {
-    let (st, _, t) = page_get(&app(), "/skor").await;
-    assert_eq!(st, StatusCode::OK);
-    for n in [
-        "Transparansi skor 1000 fitur",
-        "skor-chips",
-        "skor-q",
-        "skor-domain",
-        "skor-status",
-        "skor-reload",
-        "skor-list",
-        "skor-prev",
-        "skor-next",
-        "Skor 1000 Fitur",
-    ] {
-        assert!(t.contains(n), "/skor missing {n}");
-    }
-}
-
-#[tokio::test]
 async fn search_pagination_totals_and_types() {
     use tower::ServiceExt;
     let a = app();
@@ -4611,7 +4591,6 @@ async fn public_pages_all_render_200() {
         "/sitemap.xml",
         "/robots.txt",
         "/app",
-        "/skor",
     ] {
         let res = a
             .clone()
@@ -4698,6 +4677,131 @@ async fn delegation_guards_and_audit() {
         .await
         .unwrap();
     assert!(body_json(res).await.as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn invite_accept_joins_org_and_enables_delegation() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "inviter@x.id").await;
+    // Owner invites a lawyer; non-Assign callers cannot.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"member@x.id","role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let inv_token = body_json(res).await["token"].as_str().unwrap().to_string();
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"other@x.id","role":"lawyer"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Invite list shows pending; wrong email is rejected at redeem.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/invites", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/register",
+            &format!(r#"{{"org_name":"Acme","email":"wrong@x.id","name":"Wa","password":"password1-2-3","invite_token":"{inv_token}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Correct email joins the same org with the invited role.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/register",
+            &format!(r#"{{"org_name":"Acme","email":"member@x.id","name":"Anggota","password":"password1-2-3","invite_token":"{inv_token}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let member_tok = j["token"].as_str().unwrap().to_string();
+    let member_uid = j["user_id"].as_str().unwrap().to_string();
+    let org_a = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await["org_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(j["org_id"].as_str().unwrap(), org_a);
+    // Member visible in the org directory now.
+    let res = a.clone().oneshot(get("/api/v1/users", &tok)).await.unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|u| u["id"].as_str() == Some(member_uid.as_str())));
+    // Reuse of the consumed token is rejected (already accepted).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/register",
+            &format!(r#"{{"org_name":"Acme","email":"member@x.id","name":"Dup","password":"password1-2-3","invite_token":"{inv_token}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_ne!(res.status(), StatusCode::OK);
+    // End-to-end delegation: member (lawyer, no Approve) cannot decide a
+    // finance step; after owner delegates, the same decision succeeds.
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"finance_officer"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&member_tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/delegations",
+            &format!(r#"{{"delegate_uid":"{member_uid}"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&member_tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
 }
 
 #[tokio::test]
@@ -4854,6 +4958,14 @@ async fn ui5_app_pengaturan_ids_and_faq_lupa_link() {
         "role-sel",
         "role-btn",
         "role-msg",
+        "role-matrix",
+        "inv-email",
+        "inv-role",
+        "inv-add",
+        "inv-reload",
+        "inv-list",
+        "inv-plain",
+        "inv-msg",
         "cli-csv",
         "bell-n",
         "bell-list",
