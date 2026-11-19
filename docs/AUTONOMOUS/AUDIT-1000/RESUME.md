@@ -57,9 +57,9 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
 ## Done wave 56: register->akta prefill + verifikasi delivery/read (main)
-- PPAT "Buat akta" prefill nomor/jenis; F-D13-005 59.4->62.9 PARTIAL.
+- PPAT "Buat akta" prefill nomor/jenis; F-D13-005 59.4->62.2 PARTIAL.
 - F-D20-028 NOT_STARTED->PARTIAL (59.4); F-D09-039 PLANNED->PARTIAL (60.6).
-- Workspace 345/0; registry 19.9 (80 IMPLEMENTED); 8-cat mean 21.4 (72 v).
+- Workspace 345/0; registry 19.9 (80 IMPLEMENTED); 8-cat mean 21.4 (77 v).
 
 ## Done wave 55: ekspor audit approval (main)
 - approvals.csv + tombol + trail; F-D09-035 NOT_STARTED->PARTIAL (68.4).
