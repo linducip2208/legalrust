@@ -5612,6 +5612,10 @@ async fn crm_app_contains_crm_ids() {
         "dlk-fav",
         "dwm-text",
         "dst-go",
+        "dff-a",
+        "dff-go",
+        "dxp-reload",
+        "dxp-list",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9643,6 +9647,141 @@ async fn approval_policy_versions_and_fast_track() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_diff_and_expiry_alerts() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docdiff@x.id").await;
+    async fn mk_text(app: &axum::Router, tok: &str, name: &str, body: &[u8]) -> i64 {
+        use tower::ServiceExt;
+        let sha = legalrust_document::sha256_hex(body);
+        let res = app
+            .clone()
+            .oneshot(post(
+                "/api/v1/documents",
+                &format!(
+                    r#"{{"name":"{name}","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                    body.len()
+                ),
+                Some(tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        body_json(res).await["id"].as_i64().unwrap()
+    }
+    async fn put_bytes(app: &axum::Router, tok: &str, did: i64, body: &[u8]) {
+        use tower::ServiceExt;
+        let res = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/api/v1/documents/{did}/content"))
+                    .method("PUT")
+                    .header(
+                        "authorization",
+                        format!("Bearer {tok}")
+                            .parse::<axum::http::HeaderValue>()
+                            .unwrap(),
+                    )
+                    .body(Body::from(body.to_vec()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let d1 = mk_text(&a, &tok, "v1.txt", b"alpha\nbeta\ngamma").await;
+    put_bytes(&a, &tok, d1, b"alpha\nbeta\ngamma").await;
+    let d2 = mk_text(&a, &tok, "v2.txt", b"alpha\nBETA2\ngamma\ndelta").await;
+    put_bytes(&a, &tok, d2, b"alpha\nBETA2\ngamma\ndelta").await;
+    // Self-diff is empty.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{d1}/diff/{d1}"), &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert!(sv["added"].as_array().unwrap().is_empty());
+    assert!(sv["removed"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{d1}/diff/{d2}"), &tok))
+        .await
+        .unwrap();
+    let dv = body_json(res).await;
+    assert!(dv["added"].as_array().unwrap().iter().any(|x| x == "BETA2"));
+    assert!(dv["added"].as_array().unwrap().iter().any(|x| x == "delta"));
+    assert!(dv["removed"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "beta"));
+    assert_eq!(dv["same_lines"].as_i64().unwrap(), 2);
+    // Binary side 422s; ghost 404s.
+    let bin = b"%PDF-1.4";
+    let bsha = legalrust_document::sha256_hex(bin);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"b.pdf","mime":"application/pdf","size":{},"sha":"{bsha}"}}"#,
+                bin.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    put_bytes(&a, &tok, bid, bin).await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{d1}/diff/{bid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/999999/diff/1", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Expiry alerts surface past-due retentions.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{d2}/lifecycle"),
+            r#"{"retain_until":"2001-05-05"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/expiry-alerts", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(d2)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{d1}/diff/{d2}"))
                 .body(Body::empty())
                 .unwrap(),
         )

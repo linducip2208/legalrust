@@ -3305,6 +3305,25 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Khusus dokumen teks?'); return; }
     pmsg('dlk-msg', '');
   });
+  /* ---- doc diff + expiry (F-D04-021/022) ---- */
+  on('dff-go', 'click', async function () {
+    var out = document.getElementById('dff-out');
+    if (!pval('dff-a') || !pval('dff-b')) { pmsg('dff-msg', 'Isi kedua ID dokumen.'); return; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(pval('dff-a')) + '/diff/' + encodeURIComponent(pval('dff-b')));
+    if (!v) { if (out) out.textContent = 'Gagal memuat (khusus dokumen teks?).'; return; }
+    pmsg('dff-msg', '');
+    if (out) out.innerHTML = 'Baris sama: ' + v.same_lines + '<br>+ ' + (v.added || []).map(esc).join('<br>+ ') + '<br>− ' + (v.removed || []).map(esc).join('<br>− ');
+  });
+  async function dxpRefresh() {
+    var box = document.getElementById('dxp-list');
+    if (!box) return;
+    var v = await j('/api/v1/documents/expiry-alerts');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>dok #' + x.doc_id + '</td><td>' + esc(x.retain_until) + '</td><td>' + (x.on_hold ? '<span class="badge bg-red-lt">HOLD</span>' : '—') + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Tidak ada yang kedaluwarsa.</td></tr>';
+  }
+  on('dxp-reload', 'click', dxpRefresh);
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5279,6 +5298,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dlcDueRefresh();
   mtfRefresh();
   dlkFavs();
+  dxpRefresh();
   sopRefresh();
   oinRefresh();
   dpRefresh();

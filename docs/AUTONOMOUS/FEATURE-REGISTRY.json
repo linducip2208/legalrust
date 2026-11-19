@@ -1393,19 +1393,27 @@
   "id": "F-D04-021",
   "domain": "D04",
   "title": "Comparison (doc-to-doc diff)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "line-LCS diff over latest text versions; shared slice:",
+   "  - apps/server/src/lib.rs: GET diff (line-LCS, text-only) + GET expiry-alerts (no tables, RBAC)",
+   "  - apps/server/static/site.js: diff + expiry card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_diff_and_expiry_alerts e2e (added/removed/same, binary 422, ghost 404, 401)"
+  ],
+  "audit_note": "Wave 131: diff + expiry live. Verified by test (419/0)."
  },
  {
   "id": "F-D04-022",
   "domain": "D04",
   "title": "Document approval routing",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "retention-due alert feed (same source as lifecycle card); shared slice:",
+   "  - apps/server/src/lib.rs: GET diff (line-LCS, text-only) + GET expiry-alerts (no tables, RBAC)",
+   "  - apps/server/static/site.js: diff + expiry card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_diff_and_expiry_alerts e2e (added/removed/same, binary 422, ghost 404, 401)"
+  ],
+  "audit_note": "Wave 131: diff + expiry live. Verified by test (419/0)."
  },
  {
   "id": "F-D04-023",
