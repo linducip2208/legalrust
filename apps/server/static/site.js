@@ -3602,6 +3602,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
     pmsg('ptl-msg', '');
   });
+  on('ptl-rate', 'click', async function () {
+    var r = await fetch('/api/v1/portal/ratings', { method: 'POST', headers: Object.assign({ 'content-type': 'application/json' }, ptlH()), body: JSON.stringify({ ref_kind: 'general', score: +(pval('ptl-score') || 5), comment: pval('ptl-comment') || '' }) });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Masuk dulu.'); return; }
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = 'Terima kasih atas penilaian.';
+  });
+  on('ptl-notice', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var r = await fetch('/api/v1/portal/retention-notice', { headers: ptlH() });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.innerHTML = esc(v.notice) + ' ' + (v.schedules || []).map(function (x) { return '<span class="badge">' + esc(x.entity) + ': ' + x.retain_years + ' thn</span>'; }).join(' ');
+  });
   on('ptl-upload', 'click', async function () {
     var out = document.getElementById('ptl-out');
     var fi = document.getElementById('ptl-file');

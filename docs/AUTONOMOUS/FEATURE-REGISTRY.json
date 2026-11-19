@@ -8321,19 +8321,27 @@
   "id": "F-D19-039",
   "domain": "D19",
   "title": "Portal feedback loop",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0105: portal_ratings table (kind/score checks, forward-only)",
+   "ops.rs + memory + mysql: prat add/list",
+   "lib.rs: portal rate/list + staff summary (RBAC)",
+   "site.js: rating UI (portal card)",
+   "tests: portal_ratings_and_retention_notice e2e (bad score 409, summary math)"
+  ],
+  "audit_note": "Wave 168: rating loop live. Verified by test (458/0)."
  },
  {
   "id": "F-D19-040",
   "domain": "D19",
   "title": "Portal data-retention notice",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/portal/retention-notice (live active rules, identity scope)",
+   "site.js: notice UI (portal card)",
+   "tests: rule reflected, staff 403"
+  ],
+  "audit_note": "Wave 168: retention notice live (not static text). Verified by test (458/0)."
  },
  {
   "id": "F-D20-001",

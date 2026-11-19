@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    prats: HashMap<i64, PortalRatingRow>,
     ccprs: HashMap<i64, ClientCopyReqRow>,
     cmsgs: HashMap<i64, ClientMessageRow>,
     csvs: HashMap<i64, ClientSurveyRow>,
@@ -265,6 +266,17 @@ fn ann_aud_ok(audience: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("audience".into()));
     }
     Ok(a)
+}
+
+fn prat_ok(kind: &str, score: i64) -> Result<String, StoreError> {
+    let k = kind.trim().to_lowercase();
+    if !["matter", "appointment", "copy", "general"].contains(&k.as_str()) {
+        return Err(StoreError::Conflict("ref_kind".into()));
+    }
+    if !(1..=5).contains(&score) {
+        return Err(StoreError::Conflict("score 1-5".into()));
+    }
+    Ok(k)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3556,6 +3568,52 @@ impl OpsStore for MemoryOps {
         }
         r.status = to.into();
         Ok(())
+    }
+    async fn prat_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        ref_kind: &str,
+        ref_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || comment.len() > 500 {
+            return Err(StoreError::Conflict("rating".into()));
+        }
+        let ref_kind = prat_ok(ref_kind, score)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.prats.insert(
+            id,
+            PortalRatingRow {
+                id,
+                org: org.into(),
+                client_id,
+                ref_kind,
+                ref_id,
+                score,
+                comment: comment.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn prat_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalRatingRow>, StoreError> {
+        let mut v: Vec<PortalRatingRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .prats
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

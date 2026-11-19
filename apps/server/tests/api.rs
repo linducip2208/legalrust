@@ -5711,6 +5711,8 @@ async fn crm_app_contains_crm_ids() {
         "ptl-fb-send",
         "ptl-profile",
         "ptl-emp-add",
+        "ptl-rate",
+        "ptl-notice",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11688,6 +11690,102 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_ratings_and_retention_notice() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal13@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"p13@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Rate the service; bad score rejected; staff sees the aggregate.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/ratings",
+            r#"{"score":0}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/ratings",
+            r#"{"ref_kind":"general","score":5,"comment":"Puas"}"#,
+            Some(&ptok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/ratings", &ptok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["score"].as_i64() == Some(5)));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ratings/summary", &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert_eq!(sv["count"].as_i64().unwrap(), 1);
+    assert_eq!(sv["avg"].as_f64().unwrap(), 5.0);
+    // Retention notice reflects a live rule.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"prospect","retain_years":2,"action":"purge"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/retention-notice", &ptok))
+        .await
+        .unwrap();
+    let nv = body_json(res).await;
+    assert!(nv["schedules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["entity"] == "prospect" && r["retain_years"].as_i64() == Some(2)));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/retention-notice", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

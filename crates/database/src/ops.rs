@@ -367,6 +367,17 @@ pub struct ClientCopyReqRow {
     pub note: String,
     pub status: String,
 }
+/// Portal service rating (1-5 + comment, per client).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PortalRatingRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub ref_kind: String,
+    pub ref_id: i64,
+    pub score: i64,
+    pub comment: String,
+}
 /// Satisfaction survey response (score 1-10).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSurveyRow {
@@ -2245,6 +2256,21 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientCopyReqRow>, StoreError>;
     async fn ccpr_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    /// Portal ratings (1-5 + comment, per client; staff reads aggregate).
+    async fn prat_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        ref_kind: &str,
+        ref_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError>;
+    async fn prat_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalRatingRow>, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

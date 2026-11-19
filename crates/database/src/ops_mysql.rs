@@ -3302,6 +3302,55 @@ impl OpsStore for MysqlOps {
             .map_err(db_err)?;
         Ok(())
     }
+    async fn prat_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        ref_kind: &str,
+        ref_id: i64,
+        score: i64,
+        comment: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || comment.len() > 500 {
+            return Err(StoreError::Conflict("rating".into()));
+        }
+        let k = ref_kind.trim().to_lowercase();
+        if !["matter", "appointment", "copy", "general"].contains(&k.as_str()) {
+            return Err(StoreError::Conflict("ref_kind".into()));
+        }
+        if !(1..=5).contains(&score) {
+            return Err(StoreError::Conflict("score 1-5".into()));
+        }
+        let r = sqlx::query("INSERT INTO portal_ratings (org_id, client_id, ref_kind, ref_id, score, comment) VALUES (?,?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(&k).bind(ref_id).bind(score as i8).bind(comment.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn prat_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<PortalRatingRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, ref_kind, ref_id, score, comment FROM portal_ratings WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, ref_kind, ref_id, score, comment FROM portal_ratings WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| PortalRatingRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                ref_kind: x.get::<String, _>("ref_kind"),
+                ref_id: x.get::<u64, _>("ref_id") as i64,
+                score: x.get::<i8, _>("score") as i64,
+                comment: x.get::<String, _>("comment"),
+            })
+            .collect())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")
