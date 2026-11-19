@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 78: inventory + meterai usage (main)
 - inventory_items + meterai_usage (0048, atomic decrement Tx) + kartu keu + uji.
-- F-D12-017/018 NOT_STARTED/PLANNED->IMPLEMENTED (~73.4 verified). Workspace 367/0; registry ~23.2 (118 IMPLEMENTED); mean 24.0 (116 v).
+- F-D12-017/018 NOT_STARTED/PLANNED->IMPLEMENTED (~73.4 verified). Workspace 367/0; registry ~23.2 (118 IMPLEMENTED); mean 24.0 (116 v). Recovery: 0048 initially failed live on duplicate FK fk_inv_org (success=0, no tables); fixed local-only + cleared failed row; 48 success=1 live.
 
 ## Done wave 77: cash book + advances (main)
 - cash_entries + advances (0047, saldo derivasi) + kartu keu + uji.
