@@ -122,6 +122,7 @@ struct Inner {
     preqs: HashMap<i64, PurgeRequestRow>,
     aprefs: HashMap<String, ApprPrefRow>,
     freezes: HashMap<String, FreezeRow>,
+    idem: std::collections::HashSet<(String, String)>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1075,6 +1076,16 @@ impl OpsStore for MemoryOps {
             return Err(StoreError::Conflict("request closed".into()));
         }
         r.status = "revoked".into();
+        Ok(())
+    }
+    async fn idem_claim(&self, org: &str, key: &str, endpoint: &str) -> Result<(), StoreError> {
+        if key.len() > 64 || endpoint.len() > 80 {
+            return Err(StoreError::Conflict("key".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if !m.idem.insert((org.into(), key.into())) {
+            return Err(StoreError::Conflict("replayed".into()));
+        }
         Ok(())
     }
     async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError> {

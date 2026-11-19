@@ -1411,6 +1411,9 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<ApprovalStepRow>, StoreError>;
     /// Revoke a non-terminal request (`pending`/`needs_rework` only).
     async fn appr_revoke(&self, org: &str, id: i64, user: &str) -> Result<(), StoreError>;
+    /// Idempotency-key claim for approval mutations. First claim wins;
+    /// replays get `Conflict("replayed")` before any mutation runs.
+    async fn idem_claim(&self, org: &str, key: &str, endpoint: &str) -> Result<(), StoreError>;
     /// Approval digest + escalation preferences (per user id).
     async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError>;
     async fn apref_set(

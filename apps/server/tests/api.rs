@@ -9209,6 +9209,112 @@ async fn approval_attachments_and_archive() {
 }
 
 #[tokio::test]
+async fn approval_replay_protection_and_simulation() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprreplay@x.id").await;
+    let bearer = format!("Bearer {tok}")
+        .parse::<axum::http::HeaderValue>()
+        .unwrap();
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Simulation previews without mutating.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/simulate"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sv = body_json(res).await;
+    assert_eq!(sv["ok"], serde_json::json!(true));
+    assert_eq!(sv["outcome"], serde_json::json!("approved"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/simulate"),
+            r#"{"step_no":9,"decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["ok"], serde_json::json!(false));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/decidable", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["rows"].as_array().unwrap().len(), 1);
+    // Decide with idempotency key; replay is rejected with the replay marker.
+    let keyed = |key: &str, uri: String, body: &str| {
+        Request::builder()
+            .uri(uri)
+            .method("POST")
+            .header("authorization", bearer.clone())
+            .header("idempotency-key", key)
+            .header("content-type", "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap()
+    };
+    let res = a
+        .clone()
+        .oneshot(keyed(
+            "K-1",
+            format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(keyed(
+            "K-1",
+            format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve"}"#,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    assert!(body_json(res).await["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("replayed"));
+    // Bulk replay guard on a fresh request.
+    let mid2 = mk_matter(&a, &tok).await;
+    let bid = mk_approval(&a, &tok, mid2, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let bulk = format!(r#"{{"items":[{{"id":{bid},"step_no":1,"decision":"approve"}}]}}"#);
+    let res = a
+        .clone()
+        .oneshot(keyed("K-2", "/api/v1/approvals/decide-bulk".into(), &bulk))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(keyed("K-2", "/api/v1/approvals/decide-bulk".into(), &bulk))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/approvals/{aid}/simulate"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"step_no":1,"decision":"approve"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_bulk_decide_controlled() {
     use tower::ServiceExt;
     let a = app();
@@ -14751,6 +14857,9 @@ async fn uib_app_has_approvals_ui() {
         "blk-reload",
         "blk-list",
         "blk-ok",
+        "blk-key",
+        "appr-key",
+        "appr-sim",
         "arc-status",
         "arc-reload",
         "arc-list",

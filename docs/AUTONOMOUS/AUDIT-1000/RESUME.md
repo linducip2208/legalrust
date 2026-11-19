@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 118: replay guard + simulation (main)
+- idempotency_keys (0077) + simulate endpoint + kartu + uji.
+- F-D09-037/034 PLANNED->IMPLEMENTED (~73.0 verified). Workspace 407/0; registry ~27.6 (200 IMPLEMENTED); mean 29.0 (194 v).
+
 ## Done wave 117: digest prefs + freeze (main)
 - approval_prefs + approval_freeze (0076) + enforcement + kartu + uji.
 - F-D09-028/023 PLANNED->IMPLEMENTED (~72.5 verified). Workspace 406/0; registry ~27.5 (198 IMPLEMENTED); mean 28.8 (192 v).

@@ -945,6 +945,26 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn idem_claim(&self, org: &str, key: &str, endpoint: &str) -> Result<(), StoreError> {
+        if key.len() > 64 || endpoint.len() > 80 {
+            return Err(StoreError::Conflict("key".into()));
+        }
+        sqlx::query("INSERT INTO idempotency_keys (org_id, idem_key, endpoint) VALUES (?,?,?)")
+            .bind(org)
+            .bind(key)
+            .bind(endpoint)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                if let Some(dbe) = e.as_database_error() {
+                    if dbe.code().as_deref() == Some("23000") {
+                        return StoreError::Conflict("replayed".into());
+                    }
+                }
+                db_err(e)
+            })?;
+        Ok(())
+    }
     async fn apref_get(&self, user: &str) -> Result<ApprPrefRow, StoreError> {
         let row = sqlx::query(
             "SELECT user_id, digest_mode, escalate_to FROM approval_prefs WHERE user_id=?",

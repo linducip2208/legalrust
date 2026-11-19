@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 118: replay + simulasi (main)
+- Proteksi replay + simulasi keputusan; workspace **407 passed, 0 failed**; F-D09-037/034 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 117: digest + freeze (main)
 - Preferensi digest + bekukan audit; workspace **406 passed, 0 failed**; F-D09-028/023 IMPLEMENTED.
 

@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 118: replay + simulasi (main)
+- Key claims + dry-run + guards; workspace **407 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 117: digest + freeze (main)
 - Prefs + guard hooks + audit; workspace **406 passed, 0 failed**.
 

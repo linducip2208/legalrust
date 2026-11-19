@@ -3503,10 +3503,13 @@
   "id": "F-D09-034",
   "domain": "D09",
   "title": "Approval simulation",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: POST /api/v1/approvals/{id}/simulate (gates + outcome preview, zero mutation)",
+   "apps/server/static/site.js: appr-sim button + appr-sim-out (appr panel)",
+   "apps/server/tests/api.rs: ok/outcome on fresh req, blocked on ghost step, unchanged decidable set, 401"
+  ],
+  "audit_note": "Wave 118: dry-run simulation live. Verified by test (407/0)."
  },
  {
   "id": "F-D09-035",
@@ -3533,10 +3536,15 @@
   "id": "F-D09-037",
   "domain": "D09",
   "title": "Approval replay protection",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0077_idempotency.sql: idempotency_keys table (PK org+key, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: idem_claim (dup 23000 -> replay 409)",
+   "apps/server/src/lib.rs: idem_guard in decide + bulk + revoke (claimed after authZ, before mutation)",
+   "apps/server/static/site.js: ppostKey + key inputs (detail + bulk cards) + replay notice",
+   "apps/server/tests/api.rs: replay 409 with replayed marker, bulk replay 409, state intact"
+  ],
+  "audit_note": "Wave 118: replay protection live. Verified by test (407/0)."
  },
  {
   "id": "F-D09-038",

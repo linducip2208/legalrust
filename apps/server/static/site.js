@@ -158,6 +158,11 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   var TASK_NEXT = { open: ['in_progress', 'blocked'], in_progress: ['done', 'blocked'], blocked: ['open'] };
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
   function ppost(u, body) { return fetch(u, { method: 'POST', headers: Object.assign({}, H, { 'Content-Type': 'application/json' }), body: JSON.stringify(body) }); }
+  function ppostKey(u, body, key) {
+    var h = Object.assign({}, H, { 'Content-Type': 'application/json' });
+    if (key) h['Idempotency-Key'] = key;
+    return fetch(u, { method: 'POST', headers: h, body: JSON.stringify(body) });
+  }
   function pmsg(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
   function pval(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
   function fmtRp(n) { return 'Rp ' + Number(n || 0).toLocaleString('id-ID'); }
@@ -3512,9 +3517,14 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   async function apprDecide(decision) {
     var id = pval('appr-id'), step = pval('appr-step');
     if (!id || !step) { pmsg('appr-dmsg', 'Isi ID permintaan dan no. tahap.'); return; }
-    var r = await ppost('/api/v1/approvals/' + encodeURIComponent(id) + '/decisions',
-      { step_no: +step, decision: decision, comment: pval('appr-comment') || null });
-    if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + '). Cek urutan tahap & peran.'); return; }
+    var r = await ppostKey('/api/v1/approvals/' + encodeURIComponent(id) + '/decisions',
+      { step_no: +step, decision: decision, comment: pval('appr-comment') || null }, pval('appr-key'));
+    if (!r.ok) {
+      var e = null;
+      try { e = await r.clone().json(); } catch (x) { /* plain */ }
+      pmsg('appr-dmsg', 'Gagal (' + r.status + ').' + (e && e.error && e.error.message === 'replayed' ? ' Permintaan ganda ditolak.' : ' Cek urutan tahap & peran.'));
+      return;
+    }
     pmsg('appr-dmsg', '');
     apprShow();
     apprRefresh();
@@ -3533,6 +3543,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     apprRefresh();
   });
   on('appr-reload', 'click', apprRefresh);
+  /* ---- approval simulation (F-D09-034) ---- */
+  on('appr-sim', 'click', async function () {
+    var box = document.getElementById('appr-sim-out');
+    var id = pval('appr-id'), step = pval('appr-step');
+    if (!id || !step) { pmsg('appr-dmsg', 'Isi ID permintaan dan no. tahap.'); return; }
+    var r = await ppost('/api/v1/approvals/' + encodeURIComponent(id) + '/simulate', { step_no: +step, decision: 'approve' });
+    if (!r.ok) { if (box) box.textContent = 'Simulasi gagal (' + r.status + ').'; return; }
+    var v = await r.json();
+    if (box) box.innerHTML = (v.ok ? '<span class="badge bg-green-lt">akan lolos</span>' : '<span class="badge bg-red-lt">tertahan</span>')
+      + ' <span class="text-muted">hasil: ' + esc(v.outcome) + ' — ' + (v.checks || []).map(function (c) { return esc(c.label) + ': ' + (c.pass ? 'ya' : 'tidak'); }).join('; ') + '</span>';
+  });
   /* ---- overdue approval alerts (F-D09-018) ---- */
   async function apprOverdueRefresh() {
     var box = document.getElementById('appr-overdue-list');
@@ -3611,7 +3632,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   async function blkDecide(decision) {
     var sel = blkSelected();
     if (!sel.length) { pmsg('blk-msg', 'Pilih minimal satu langkah.'); return; }
-    var r = await ppost('/api/v1/approvals/decide-bulk', { items: sel.map(function (x) { return { id: x.id, step_no: x.step_no, decision: decision }; }) });
+    var r = await ppostKey('/api/v1/approvals/decide-bulk', { items: sel.map(function (x) { return { id: x.id, step_no: x.step_no, decision: decision }; }) }, pval('blk-key'));
     if (!r.ok) { pmsg('blk-msg', 'Gagal (' + r.status + '). Dibatalkan semua — periksa antrean.'); return; }
     pmsg('blk-msg', '');
     blkRefresh();
