@@ -5459,19 +5459,19 @@
  {
   "feature_id": "F-D09-002",
   "domain": "D09",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 75,
+   "database": 70,
+   "frontend": 60,
+   "business_logic": 75,
+   "security": 75,
+   "testing": 85,
+   "integration": 60,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 69.4,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D09-003",
@@ -5765,19 +5765,19 @@
  {
   "feature_id": "F-D09-020",
   "domain": "D09",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 75,
+   "database": 70,
+   "frontend": 65,
+   "business_logic": 70,
+   "security": 75,
+   "testing": 80,
+   "integration": 55,
+   "documentation": 50
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 67.5,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D09-021",

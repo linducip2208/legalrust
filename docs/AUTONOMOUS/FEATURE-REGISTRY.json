@@ -3131,10 +3131,13 @@
   "id": "F-D09-002",
   "domain": "D09",
   "title": "Multi-level approval matrix",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: appr_create steps array + sequential guard (earlier step pending -> 409)",
+   "crates/database/src/ops_memory.rs: sequential guard; out-of-order rejected",
+   "apps/server/tests/api.rs: approvals_sequential_flow + rework/revoke"
+  ],
+  "audit_note": "Wave 53: multi-step engine verified; matrix-by-threshold pending."
  },
  {
   "id": "F-D09-003",
@@ -3321,10 +3324,13 @@
   "id": "F-D09-020",
   "domain": "D09",
   "title": "Substitute approver rules",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0023_delegations.sql + delegation_set/list/delegators",
+   "apps/server/src/lib.rs: decide honors active delegation + approval.delegated audit + UI card",
+   "apps/server/tests/api.rs: delegation e2e (member decides via delegation)"
+  ],
+  "audit_note": "Wave 53: substitute mechanism live via delegation."
  },
  {
   "id": "F-D09-021",
