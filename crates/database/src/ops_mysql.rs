@@ -5947,6 +5947,180 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn lsplit_create(
+        &self,
+        org: &str,
+        source_parcel: &str,
+        new_parcels: &str,
+        split_date: &str,
+    ) -> Result<i64, StoreError> {
+        let sp = source_parcel.trim();
+        let np = new_parcels.trim();
+        if sp.is_empty() || sp.len() > 120 || np.is_empty() || np.len() > 1000 {
+            return Err(StoreError::Conflict("parcels".into()));
+        }
+        if split_date.len() > 10 {
+            return Err(StoreError::Conflict("split_date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO land_splits (org_id, source_parcel, new_parcels, split_date) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(sp)
+        .bind(np)
+        .bind(split_date.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn lsplit_list(&self, org: &str) -> Result<Vec<LandSplitRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, source_parcel, new_parcels, split_date, status FROM land_splits WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| LandSplitRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                source_parcel: x.get::<String, _>("source_parcel"),
+                new_parcels: x.get::<String, _>("new_parcels"),
+                split_date: x.get::<String, _>("split_date"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn lsplit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "surveyed" | "registered") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM land_splits WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("planned"), "surveyed") | (Some("surveyed"), "registered")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE land_splits SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn lsplit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM land_splits WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn lmerge_create(
+        &self,
+        org: &str,
+        source_parcels: &str,
+        result_parcel: &str,
+        merge_date: &str,
+    ) -> Result<i64, StoreError> {
+        let sp = source_parcels.trim();
+        let rp = result_parcel.trim();
+        if sp.is_empty() || sp.len() > 1000 || rp.is_empty() || rp.len() > 120 {
+            return Err(StoreError::Conflict("parcels".into()));
+        }
+        if merge_date.len() > 10 {
+            return Err(StoreError::Conflict("merge_date".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO land_merges (org_id, source_parcels, result_parcel, merge_date) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(sp)
+        .bind(rp)
+        .bind(merge_date.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn lmerge_list(&self, org: &str) -> Result<Vec<LandMergeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, source_parcels, result_parcel, merge_date, status FROM land_merges WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| LandMergeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                source_parcels: x.get::<String, _>("source_parcels"),
+                result_parcel: x.get::<String, _>("result_parcel"),
+                merge_date: x.get::<String, _>("merge_date"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn lmerge_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "surveyed" | "registered") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM land_merges WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("planned"), "surveyed") | (Some("surveyed"), "registered")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE land_merges SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn lmerge_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM land_merges WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

@@ -100,6 +100,8 @@ struct Inner {
     charges: HashMap<i64, DeedChargeRow>,
     zones: HashMap<i64, ZoneRow>,
     pbb: HashMap<i64, PbbRow>,
+    lsplits: HashMap<i64, LandSplitRow>,
+    lmerges: HashMap<i64, LandMergeRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -5098,6 +5100,146 @@ impl OpsStore for MemoryOps {
         match m.pbb.get(&id) {
             Some(r) if r.org == org => {
                 m.pbb.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn lsplit_create(
+        &self,
+        org: &str,
+        source_parcel: &str,
+        new_parcels: &str,
+        split_date: &str,
+    ) -> Result<i64, StoreError> {
+        let sp = source_parcel.trim();
+        let np = new_parcels.trim();
+        if sp.is_empty() || sp.len() > 120 || np.is_empty() || np.len() > 1000 {
+            return Err(StoreError::Conflict("parcels".into()));
+        }
+        if split_date.len() > 10 {
+            return Err(StoreError::Conflict("split_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.lsplits.insert(
+            id,
+            LandSplitRow {
+                id,
+                org: org.into(),
+                source_parcel: sp.into(),
+                new_parcels: np.into(),
+                split_date: split_date.trim().into(),
+                status: "planned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn lsplit_list(&self, org: &str) -> Result<Vec<LandSplitRow>, StoreError> {
+        let mut v: Vec<LandSplitRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .lsplits
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn lsplit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .lsplits
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "surveyed") | ("surveyed", "registered")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn lsplit_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.lsplits.get(&id) {
+            Some(r) if r.org == org => {
+                m.lsplits.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn lmerge_create(
+        &self,
+        org: &str,
+        source_parcels: &str,
+        result_parcel: &str,
+        merge_date: &str,
+    ) -> Result<i64, StoreError> {
+        let sp = source_parcels.trim();
+        let rp = result_parcel.trim();
+        if sp.is_empty() || sp.len() > 1000 || rp.is_empty() || rp.len() > 120 {
+            return Err(StoreError::Conflict("parcels".into()));
+        }
+        if merge_date.len() > 10 {
+            return Err(StoreError::Conflict("merge_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.lmerges.insert(
+            id,
+            LandMergeRow {
+                id,
+                org: org.into(),
+                source_parcels: sp.into(),
+                result_parcel: rp.into(),
+                merge_date: merge_date.trim().into(),
+                status: "planned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn lmerge_list(&self, org: &str) -> Result<Vec<LandMergeRow>, StoreError> {
+        let mut v: Vec<LandMergeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .lmerges
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn lmerge_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .lmerges
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "surveyed") | ("surveyed", "registered")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn lmerge_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.lmerges.get(&id) {
+            Some(r) if r.org == org => {
+                m.lmerges.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

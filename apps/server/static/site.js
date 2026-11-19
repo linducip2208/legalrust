@@ -1568,6 +1568,80 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pbbRefresh();
   });
   on('pbb-reload', 'click', pbbRefresh);
+  /* ---- property: land split + merge ---- */
+  var LAND_NEXT = { planned: 'surveyed', surveyed: 'registered' };
+  function landRow(prefix, x, cols) {
+    var nx = LAND_NEXT[x.status];
+    var act = (nx ? '<button class="btn btn-sm" data-' + prefix + '-next="' + x.id + '" data-' + prefix + '-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">terdaftar</span> ')
+      + '<button class="btn btn-sm btn-outline-danger" data-' + prefix + '-del="' + x.id + '" type="button">Hapus</button>';
+    return '<tr><td>' + x.id + '</td>' + cols + '<td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+  }
+  async function spRefresh() {
+    var box = document.getElementById('sp-list');
+    if (!box) return;
+    var v = await j('/api/v1/land-splits');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return landRow('sp', x, '<td>' + esc(x.source_parcel) + '</td><td>' + esc(x.new_parcels) + '</td>');
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada pemisahan.</td></tr>';
+    qsa('[data-sp-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/land-splits/' + b.getAttribute('data-sp-next') + '/status', { status: b.getAttribute('data-sp-to') });
+        if (!r.ok) { pmsg('sp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sp-msg', '');
+        spRefresh();
+      });
+    });
+    qsa('[data-sp-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/land-splits/' + b.getAttribute('data-sp-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('sp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sp-msg', '');
+        spRefresh();
+      });
+    });
+  }
+  on('sp-add', 'click', async function () {
+    if (!pval('sp-src') || !pval('sp-new')) { pmsg('sp-msg', 'Isi sumber dan hasil.'); return; }
+    var r = await ppost('/api/v1/land-splits', { source_parcel: pval('sp-src'), new_parcels: pval('sp-new'), split_date: pval('sp-date') || '' });
+    if (!r.ok) { pmsg('sp-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('sp-msg', '');
+    spRefresh();
+  });
+  on('sp-reload', 'click', spRefresh);
+  async function mgRefresh() {
+    var box = document.getElementById('mg-list');
+    if (!box) return;
+    var v = await j('/api/v1/land-merges');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return landRow('mg', x, '<td>' + esc(x.source_parcels) + '</td><td>' + esc(x.result_parcel) + '</td>');
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada penggabungan.</td></tr>';
+    qsa('[data-mg-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/land-merges/' + b.getAttribute('data-mg-next') + '/status', { status: b.getAttribute('data-mg-to') });
+        if (!r.ok) { pmsg('mg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mg-msg', '');
+        mgRefresh();
+      });
+    });
+    qsa('[data-mg-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/land-merges/' + b.getAttribute('data-mg-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mg-msg', '');
+        mgRefresh();
+      });
+    });
+  }
+  on('mg-add', 'click', async function () {
+    if (!pval('mg-src') || !pval('mg-res')) { pmsg('mg-msg', 'Isi sumber dan hasil.'); return; }
+    var r = await ppost('/api/v1/land-merges', { source_parcels: pval('mg-src'), result_parcel: pval('mg-res'), merge_date: pval('mg-date') || '' });
+    if (!r.ok) { pmsg('mg-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mg-msg', '');
+    mgRefresh();
+  });
+  on('mg-reload', 'click', mgRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1741,7 +1815,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3898,6 +3972,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   chgRefresh();
   chgdRefresh();
   rdyRefresh();
+  spRefresh();
+  mgRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

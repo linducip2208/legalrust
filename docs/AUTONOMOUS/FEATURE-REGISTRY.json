@@ -5112,19 +5112,29 @@
   "id": "F-D13-011",
   "domain": "D13",
   "title": "Land-split (pemecahan) tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0064_land_split_merge.sql: land_splits table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + planned->surveyed->registered",
+   "apps/server/src/lib.rs: POST/GET /api/v1/land-splits + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: spRefresh card Pemisahan + hooks",
+   "apps/server/tests/api.rs: land_split_and_merge e2e (chain, Delete-gate, 401)"
+  ],
+  "audit_note": "Wave 97: full lifecycle live; verified by test (386/0)."
  },
  {
   "id": "F-D13-012",
   "domain": "D13",
   "title": "Land-merge (penggabungan) tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0064_land_split_merge.sql: land_merges table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + same chain, skip-ahead 409",
+   "apps/server/src/lib.rs: POST/GET /api/v1/land-merges + status + delete (RBAC)",
+   "apps/server/static/site.js: mgRefresh card Penggabungan + hooks",
+   "apps/server/tests/api.rs: skip-ahead rejected asserted"
+  ],
+  "audit_note": "Wave 97: verified by test (386/0)."
  },
  {
   "id": "F-D13-013",

@@ -188,6 +188,26 @@ pub struct PbbRow {
     pub checked_on: String,
     pub note: String,
 }
+/// Land split (pemecahan) tracker.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LandSplitRow {
+    pub id: i64,
+    pub org: String,
+    pub source_parcel: String,
+    pub new_parcels: String,
+    pub split_date: String,
+    pub status: String,
+}
+/// Land merge (penggabungan) tracker.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LandMergeRow {
+    pub id: i64,
+    pub org: String,
+    pub source_parcels: String,
+    pub result_parcel: String,
+    pub merge_date: String,
+    pub status: String,
+}
 /// Operational incident (non-PDP incidents, complaints, near-misses).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IncidentRow {
@@ -1906,6 +1926,28 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn pbb_list(&self, org: &str) -> Result<Vec<PbbRow>, StoreError>;
     async fn pbb_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Land split (pemecahan) tracker.
+    async fn lsplit_create(
+        &self,
+        org: &str,
+        source_parcel: &str,
+        new_parcels: &str,
+        split_date: &str,
+    ) -> Result<i64, StoreError>;
+    async fn lsplit_list(&self, org: &str) -> Result<Vec<LandSplitRow>, StoreError>;
+    async fn lsplit_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn lsplit_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Land merge (penggabungan) tracker.
+    async fn lmerge_create(
+        &self,
+        org: &str,
+        source_parcels: &str,
+        result_parcel: &str,
+        merge_date: &str,
+    ) -> Result<i64, StoreError>;
+    async fn lmerge_list(&self, org: &str) -> Result<Vec<LandMergeRow>, StoreError>;
+    async fn lmerge_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn lmerge_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

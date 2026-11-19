@@ -3602,6 +3602,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "pbb-add",
         "pbb-reload",
         "pbb-list",
+        "sp-src",
+        "sp-add",
+        "sp-reload",
+        "sp-list",
+        "mg-src",
+        "mg-add",
+        "mg-reload",
+        "mg-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8606,6 +8614,113 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn land_split_and_merge() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "splitmerge@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/land-splits",
+            r#"{"source_parcel":"X","new_parcels":"Y"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/land-splits", r#"{"source_parcel":"SHM 1","new_parcels":"SHM 1-A, SHM 1-B","split_date":"2026-04-01"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["surveyed", "registered"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/land-splits/{sid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "split to {st}");
+    }
+    // Skip-ahead rejected on fresh item.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/land-merges", r#"{"source_parcels":"SHM 2, SHM 3","result_parcel":"SHM 2-3","merge_date":"2026-05-01"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/land-merges/{mid}/status"),
+            r#"{"status":"registered"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/land-merges", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(mid) && r["status"] == "planned"));
+    // Delete is Delete-gated.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/land-splits/{sid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {auditor}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=lsplit", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.lsplit_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/land-splits")
                 .body(Body::empty())
                 .unwrap(),
         )
