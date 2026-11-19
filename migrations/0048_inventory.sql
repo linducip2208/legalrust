@@ -8,7 +8,7 @@ CREATE TABLE inventory_items (
   unit VARCHAR(20) NOT NULL DEFAULT 'pcs',
   min_stock BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_inv_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_invitem_org FOREIGN KEY (org_id) REFERENCES organizations (id),
   UNIQUE KEY uq_inv_org_code (org_id, code),
   KEY ix_inv_org (org_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
