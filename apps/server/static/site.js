@@ -3746,6 +3746,35 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('rr-msg', '');
     if (out) out.textContent = 'Nominal ' + v.amount_minor + ', risiko ' + v.risk_score + ' → ' + (v.roles || []).join(', ') || 'tanpa peran';
   });
+  /* ---- policy snapshots (F-D09-021) ---- */
+  async function polRefresh() {
+    var box = document.getElementById('pol-list');
+    if (!box) return;
+    var v = await j('/api/v1/approval-policies');
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>v' + x.version + '</td><td>' + esc(x.created_by || '—') + '</td></tr>';
+    }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada snapshot.</td></tr>';
+  }
+  on('pol-snap', 'click', async function () {
+    var r = await ppost('/api/v1/approval-policies', {});
+    if (!r.ok) { pmsg('pol-msg', 'Gagal (' + r.status + '). Perlu admin?'); return; }
+    var v = await r.json();
+    pmsg('pol-msg', '');
+    polRefresh();
+    if (v && v.version) { pmsg('pol-msg', ''); }
+  });
+  on('pol-reload', 'click', polRefresh);
+  /* ---- fast-track (F-D09-022) ---- */
+  on('appr-fast', 'click', async function () {
+    var id = pval('appr-id');
+    if (!id) { pmsg('appr-dmsg', 'Isi ID permintaan.'); return; }
+    var r = await ppostKey('/api/v1/approvals/' + encodeURIComponent(id) + '/fast-track', { comment: pval('appr-comment') || null }, pval('appr-key'));
+    if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + '). Perlu admin / masih beku?'); return; }
+    pmsg('appr-dmsg', '');
+    apprShow();
+    apprRefresh();
+  });
   /* ---- quorum rounds (F-D09-014/040) ---- */
   async function qrmRefresh() {
     var box = document.getElementById('qrm-list');
@@ -3869,10 +3898,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); trdRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); polRefresh(); qrmRefresh(); trdRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); trdRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); polRefresh(); qrmRefresh(); trdRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4997,6 +5026,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dgstRefresh();
   frzRefresh();
   rrRefresh();
+  polRefresh();
   qrmRefresh();
   trdRefresh();
   delegRefresh();

@@ -128,6 +128,7 @@ struct Inner {
     qvotes: HashMap<i64, QuorumVoteRow>,
     qoverrides: HashMap<i64, QuorumOverrideRow>,
     receipts: HashMap<i64, ReceiptRow>,
+    pols: HashMap<i64, PolicySnapRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -992,44 +993,60 @@ impl OpsStore for MemoryOps {
             return Err(StoreError::Conflict("items 1..50".into()));
         }
         let mut m = self.inner.lock().unwrap();
-        // Pass 1: validate everything against current state (no mutation).
-        for (id, step_no, decision, _) in items {
-            if !["approve", "reject", "rework"].contains(&decision.as_str()) {
-                return Err(StoreError::Conflict("decision".into()));
+        // Snapshot affected rows so any mid-batch failure restores everything
+        // (single lock held throughout: validate+apply per item, atomic).
+        let mut bak_reqs: std::collections::HashMap<i64, ApprovalReqRow> =
+            std::collections::HashMap::new();
+        let mut bak_steps: std::collections::HashMap<i64, ApprovalStepRow> =
+            std::collections::HashMap::new();
+        for (id, _, _, _) in items {
+            if let std::collections::hash_map::Entry::Vacant(e) = bak_reqs.entry(*id) {
+                let r = m
+                    .apprs
+                    .get(id)
+                    .filter(|r| r.org == org)
+                    .cloned()
+                    .ok_or(StoreError::NotFound)?;
+                e.insert(r);
             }
-            let req = m
-                .apprs
-                .get(id)
-                .filter(|r| r.org == org)
-                .ok_or(StoreError::NotFound)?;
-            if !["pending", "needs_rework"].contains(&req.status.as_str()) {
-                return Err(StoreError::Conflict("request closed".into()));
-            }
-            let mut sids: Vec<i64> = m
-                .appr_steps
-                .values()
-                .filter(|s| s.req == *id)
-                .map(|s| s.id)
-                .collect();
-            sids.sort_by_key(|sid| m.appr_steps[sid].step_no);
-            let target = *sids
-                .iter()
-                .find(|sid| m.appr_steps[sid].step_no == *step_no)
-                .ok_or(StoreError::NotFound)?;
-            if m.appr_steps[&target].status != "pending" {
-                return Err(StoreError::Conflict("step already decided".into()));
-            }
-            for sid in &sids {
-                let s = &m.appr_steps[sid];
-                if s.step_no < *step_no && s.status != "approved" {
-                    return Err(StoreError::Conflict("earlier step pending".into()));
-                }
+            for s in m.appr_steps.values().filter(|s| s.req == *id) {
+                bak_steps.entry(s.id).or_insert_with(|| s.clone());
             }
         }
-        // Pass 2: apply (validation above guarantees success barring
-        // same-batch double-decide, which aborts like any other conflict).
+        let restore =
+            |m: &mut Inner,
+             bak_reqs: &std::collections::HashMap<i64, ApprovalReqRow>,
+             bak_steps: &std::collections::HashMap<i64, ApprovalStepRow>| {
+                for (id, r) in bak_reqs {
+                    m.apprs.insert(*id, r.clone());
+                }
+                for (sid, s) in bak_steps {
+                    m.appr_steps.insert(*sid, s.clone());
+                }
+            };
         let mut out = Vec::with_capacity(items.len());
         for (id, step_no, decision, comment) in items {
+            if !["approve", "reject", "rework"].contains(&decision.as_str()) {
+                restore(&mut m, &bak_reqs, &bak_steps);
+                return Err(StoreError::Conflict("decision".into()));
+            }
+            // (validate + apply inline below so intra-batch ordering works)
+            let req_open = matches!(
+                m.apprs
+                    .get(id)
+                    .filter(|r| r.org == org)
+                    .map(|r| r.status.as_str()),
+                Some("pending") | Some("needs_rework")
+            );
+            if !req_open {
+                let missing = m.apprs.get(id).filter(|r| r.org == org).is_none();
+                restore(&mut m, &bak_reqs, &bak_steps);
+                return Err(if missing {
+                    StoreError::NotFound
+                } else {
+                    StoreError::Conflict("request closed".into())
+                });
+            }
             let mut sids: Vec<i64> = m
                 .appr_steps
                 .values()
@@ -1037,12 +1054,26 @@ impl OpsStore for MemoryOps {
                 .map(|s| s.id)
                 .collect();
             sids.sort_by_key(|sid| m.appr_steps[sid].step_no);
-            let target = *sids
+            let target = match sids
                 .iter()
                 .find(|sid| m.appr_steps[sid].step_no == *step_no)
-                .ok_or(StoreError::NotFound)?;
+            {
+                Some(t) => *t,
+                None => {
+                    restore(&mut m, &bak_reqs, &bak_steps);
+                    return Err(StoreError::NotFound);
+                }
+            };
             if m.appr_steps[&target].status != "pending" {
+                restore(&mut m, &bak_reqs, &bak_steps);
                 return Err(StoreError::Conflict("step already decided".into()));
+            }
+            if sids.iter().any(|sid| {
+                let s = &m.appr_steps[sid];
+                s.step_no < *step_no && s.status != "approved"
+            }) {
+                restore(&mut m, &bak_reqs, &bak_steps);
+                return Err(StoreError::Conflict("earlier step pending".into()));
             }
             {
                 let s = m.appr_steps.get_mut(&target).unwrap();
@@ -1226,6 +1257,63 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn pol_snapshot(
+        &self,
+        org: &str,
+        payload: &str,
+        created_by: &str,
+    ) -> Result<(i64, i64), StoreError> {
+        if payload.len() > 200_000 || payload.trim().is_empty() {
+            return Err(StoreError::Conflict("payload".into()));
+        }
+        if created_by.trim().is_empty() {
+            return Err(StoreError::Conflict("created_by".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let version = m
+            .pols
+            .values()
+            .filter(|r| r.org == org)
+            .map(|r| r.version)
+            .max()
+            .unwrap_or(0)
+            + 1;
+        let id = self.next(&mut m);
+        m.pols.insert(
+            id,
+            PolicySnapRow {
+                id,
+                org: org.into(),
+                version,
+                payload: payload.into(),
+                created_by: created_by.into(),
+            },
+        );
+        Ok((id, version))
+    }
+    async fn pol_list(&self, org: &str) -> Result<Vec<PolicySnapRow>, StoreError> {
+        let mut v: Vec<PolicySnapRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pols
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.version);
+        Ok(v)
+    }
+    async fn pol_get(&self, org: &str, version: i64) -> Result<PolicySnapRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .pols
+            .values()
+            .find(|r| r.org == org && r.version == version)
+            .cloned()
+            .ok_or(StoreError::NotFound)
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

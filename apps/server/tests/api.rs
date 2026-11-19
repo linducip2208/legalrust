@@ -9506,6 +9506,135 @@ async fn approval_chain_and_redaction() {
 }
 
 #[tokio::test]
+async fn approval_policy_versions_and_fast_track() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprpol@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let mid = mk_matter(&a, &tok).await;
+    let iid = mk_invoice(&a, &tok, mid, 500_000_000).await;
+    // Rule + snapshot v1, then delete the rule: live loses it, v1 keeps it.
+    let res = a.clone().oneshot(post("/api/v1/approval-routes", r#"{"kind":"amount","entity":"invoice","min_value":100000000,"role":"finance_officer"}"#, Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/approval-policies", "{}", Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["version"], serde_json::json!(1));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/approval-routes/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/approvals/route-resolve?entity=invoice&entity_id={iid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["roles"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!(
+                "/api/v1/approvals/route-resolve?entity=invoice&entity_id={iid}&policy_version=1"
+            ),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let rv = body_json(res).await;
+    assert_eq!(rv["policy_version"], serde_json::json!(1));
+    assert!(rv["roles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r == "finance_officer"));
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/approvals/route-resolve?entity=invoice&entity_id=1&policy_version=99",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Fast-track: admin-only, approves every remaining step at once.
+    let mid2 = mk_matter(&a, &tok).await;
+    let fid = mk_approval(&a, &tok, mid2, r#"[{"step_no":1,"role":"office_admin"},{"step_no":2,"role":"office_admin"},{"step_no":3,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{fid}/fast-track"),
+            "{}",
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{fid}/fast-track"),
+            r#"{"comment":"darurat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["fast_tracked"].as_i64().unwrap(), 3);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{fid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["status"],
+        serde_json::json!("approved")
+    );
+    // Second run: nothing pending.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{fid}/fast-track"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn quorum_rounds_and_dual_override() {
     use tower::ServiceExt;
     let a = app();
@@ -15542,6 +15671,10 @@ async fn uib_app_has_approvals_ui() {
         "rr-reload",
         "rr-list",
         "rrs-go",
+        "pol-snap",
+        "pol-reload",
+        "pol-list",
+        "appr-fast",
         "qrm-title",
         "qrm-add",
         "qrm-reload",

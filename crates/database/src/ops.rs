@@ -121,6 +121,15 @@ pub struct QuorumOverrideRow {
     pub approved_by: String,
     pub status: String,
 }
+/// Approval policy snapshot (versioned routing rules).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicySnapRow {
+    pub id: i64,
+    pub org: String,
+    pub version: i64,
+    pub payload: String,
+    pub created_by: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1501,6 +1510,15 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn aroute_list(&self, org: &str) -> Result<Vec<RouteRuleRow>, StoreError>;
     async fn aroute_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Approval policy snapshots (immutable, versioned per org).
+    async fn pol_snapshot(
+        &self,
+        org: &str,
+        payload: &str,
+        created_by: &str,
+    ) -> Result<(i64, i64), StoreError>;
+    async fn pol_list(&self, org: &str) -> Result<Vec<PolicySnapRow>, StoreError>;
+    async fn pol_get(&self, org: &str, version: i64) -> Result<PolicySnapRow, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

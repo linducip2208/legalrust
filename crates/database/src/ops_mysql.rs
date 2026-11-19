@@ -1126,6 +1126,67 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn pol_snapshot(
+        &self,
+        org: &str,
+        payload: &str,
+        created_by: &str,
+    ) -> Result<(i64, i64), StoreError> {
+        if payload.len() > 200_000 || payload.trim().is_empty() {
+            return Err(StoreError::Conflict("payload".into()));
+        }
+        if created_by.trim().is_empty() {
+            return Err(StoreError::Conflict("created_by".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let maxv: Option<i64> =
+            sqlx::query("SELECT MAX(version) AS m FROM approval_policies WHERE org_id=?")
+                .bind(org)
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .get::<Option<i64>, _>("m");
+        let version = maxv.unwrap_or(0) + 1;
+        let r = sqlx::query(
+            "INSERT INTO approval_policies (org_id, version, payload, created_by) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(version)
+        .bind(payload)
+        .bind(created_by)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let id = r.last_insert_id() as i64;
+        tx.commit().await.map_err(db_err)?;
+        Ok((id, version))
+    }
+    async fn pol_list(&self, org: &str) -> Result<Vec<PolicySnapRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, version, payload, created_by FROM approval_policies WHERE org_id=? ORDER BY version DESC LIMIT 100")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PolicySnapRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                version: x.get::<i32, _>("version") as i64,
+                payload: x.get::<String, _>("payload"),
+                created_by: x.get::<String, _>("created_by"),
+            })
+            .collect())
+    }
+    async fn pol_get(&self, org: &str, version: i64) -> Result<PolicySnapRow, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, version, payload, created_by FROM approval_policies WHERE org_id=? AND version=?")
+            .bind(org).bind(version).fetch_optional(&self.pool).await.map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        Ok(PolicySnapRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            version: x.get::<i32, _>("version") as i64,
+            payload: x.get::<String, _>("payload"),
+            created_by: x.get::<String, _>("created_by"),
+        })
+    }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(
         &self,

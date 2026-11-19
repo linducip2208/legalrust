@@ -3376,19 +3376,28 @@
   "id": "F-D09-021",
   "domain": "D09",
   "title": "Approval policy versioning",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0081_approval_policies.sql: approval_policies table (unique version per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: snapshot(Tx)/list/get",
+   "apps/server/src/lib.rs: POST/GET /api/v1/approval-policies (admin gate, audit) + resolver ?policy_version replay",
+   "apps/server/static/site.js: pol snapshot card + hooks (appr panel)",
+   "apps/server/tests/api.rs: rule deleted but v1 still resolves it; ghost version 404"
+  ],
+  "audit_note": "Wave 126: policy versioning live. Verified by test (414/0)."
  },
  {
   "id": "F-D09-022",
   "domain": "D09",
   "title": "Emergency / fast-track approval",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: POST /api/v1/approvals/{id}/fast-track (admin-only, freeze + idempotency aware, audited)",
+   "Bulk engine fixed to sequential-in-Tx so intra-batch ordering works (fast-track 3-step proof)",
+   "apps/server/static/site.js: appr-fast button (detail card)",
+   "apps/server/tests/api.rs: lawyer 403, 3-step one-shot, re-run 409, receipt chain intact"
+  ],
+  "audit_note": "Wave 126: emergency lane live. Verified by test (414/0)."
  },
  {
   "id": "F-D09-023",
