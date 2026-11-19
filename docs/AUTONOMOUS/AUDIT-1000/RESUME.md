@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 87: bank facilities + feedback (main)
 - bank_facilities + feedbacks (0056) + kartu keu/mkt + uji.
-- F-D12-025/038 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 376/0; registry ~24.2 (136 IMPLEMENTED); mean ~25.1 (134 v).
+- F-D12-025/038 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 376/0; registry ~24.2 (136 IMPLEMENTED); mean 25.2 (134 v).
 
 ## Done wave 86: doc checklist + office incidents (main)
 - doc_checklist_items + office_incidents (0055) + kartu dok/ringkas + uji.
