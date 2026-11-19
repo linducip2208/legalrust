@@ -69,6 +69,9 @@ struct Inner {
     pbooks: HashMap<i64, PbookRow>,
     phandovers: HashMap<i64, PhandoverRow>,
     appts: HashMap<i64, AppointmentRow>,
+    prices: HashMap<i64, PriceRow>,
+    quotes: HashMap<i64, QuotationRow>,
+    qitems: HashMap<i64, QuotationItemRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2924,6 +2927,201 @@ impl OpsStore for MemoryOps {
         match m.appts.get(&id) {
             Some(r) if r.org == org => {
                 m.appts.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn price_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        amount_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let name = name.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if amount_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.prices.values().any(|p| p.org == org && p.code == code) {
+            return Err(StoreError::Conflict("duplicate code".into()));
+        }
+        let id = self.next(&mut m);
+        m.prices.insert(
+            id,
+            PriceRow {
+                id,
+                org: org.into(),
+                code: code.into(),
+                name: name.into(),
+                amount_minor,
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn price_list(&self, org: &str) -> Result<Vec<PriceRow>, StoreError> {
+        let mut v: Vec<PriceRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .prices
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn price_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .prices
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
+        Ok(())
+    }
+    async fn price_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.prices.get(&id) {
+            Some(r) if r.org == org => {
+                m.prices.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn quote_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        deed_kind: &str,
+        items: &[(String, i64)],
+    ) -> Result<i64, StoreError> {
+        let client_name = client_name.trim();
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if items.is_empty() || items.len() > 50 {
+            return Err(StoreError::Conflict("items".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        // Snapshot amounts from ACTIVE price codes only — inactive/unknown rejected.
+        let mut lines: Vec<QuotationItemRow> = Vec::with_capacity(items.len());
+        let mut total: i64 = 0;
+        for (code, qty) in items {
+            if *qty <= 0 || *qty > 1000 {
+                return Err(StoreError::Conflict("qty".into()));
+            }
+            let p = m
+                .prices
+                .values()
+                .find(|p| p.org == org && p.code == *code && p.active)
+                .ok_or_else(|| StoreError::Conflict(format!("unknown/inactive price {code}")))?;
+            let line_total = p.amount_minor.saturating_mul(*qty);
+            total = total.saturating_add(line_total);
+            lines.push(QuotationItemRow {
+                id: 0,
+                org: org.into(),
+                quotation_id: 0,
+                price_code: code.clone(),
+                qty: *qty,
+                amount_minor: line_total,
+            });
+        }
+        let id = self.next(&mut m);
+        m.quotes.insert(
+            id,
+            QuotationRow {
+                id,
+                org: org.into(),
+                client_name: client_name.into(),
+                deed_kind: deed_kind.trim().chars().take(60).collect(),
+                total_minor: total,
+                status: "draft".into(),
+            },
+        );
+        for line in lines {
+            let lid = self.next(&mut m);
+            m.qitems.insert(
+                lid,
+                QuotationItemRow {
+                    id: lid,
+                    org: org.into(),
+                    quotation_id: id,
+                    price_code: line.price_code,
+                    qty: line.qty,
+                    amount_minor: line.amount_minor,
+                },
+            );
+        }
+        Ok(id)
+    }
+    async fn quote_list(&self, org: &str) -> Result<Vec<QuotationRow>, StoreError> {
+        let mut v: Vec<QuotationRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .quotes
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn quote_items(
+        &self,
+        org: &str,
+        quotation_id: i64,
+    ) -> Result<Vec<QuotationItemRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.quotes.get(&quotation_id) {
+            Some(q) if q.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<QuotationItemRow> = m
+            .qitems
+            .values()
+            .filter(|r| r.org == org && r.quotation_id == quotation_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn quote_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .quotes
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "issued") | ("issued", "accepted") | ("issued", "rejected")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn quote_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.quotes.get(&id) {
+            Some(r) if r.org == org => {
+                m.quotes.remove(&id);
+                m.qitems.retain(|_, i| i.quotation_id != id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

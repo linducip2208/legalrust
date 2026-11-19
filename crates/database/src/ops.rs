@@ -375,6 +375,36 @@ pub struct AppointmentRow {
     pub scheduled_at: String,
     pub status: String,
 }
+/// Service price-list item (tarif layanan).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PriceRow {
+    pub id: i64,
+    pub org: String,
+    pub code: String,
+    pub name: String,
+    pub amount_minor: i64,
+    pub active: bool,
+}
+/// Deed fee quotation header (total = sum of snapshotted items).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuotationRow {
+    pub id: i64,
+    pub org: String,
+    pub client_name: String,
+    pub deed_kind: String,
+    pub total_minor: i64,
+    pub status: String,
+}
+/// Quotation line item (price snapshot at issue time).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuotationItemRow {
+    pub id: i64,
+    pub org: String,
+    pub quotation_id: i64,
+    pub price_code: String,
+    pub qty: i64,
+    pub amount_minor: i64,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1212,6 +1242,33 @@ pub trait OpsStore: Send + Sync {
     async fn appt_list(&self, org: &str) -> Result<Vec<AppointmentRow>, StoreError>;
     async fn appt_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn appt_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Service price list.
+    async fn price_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        amount_minor: i64,
+    ) -> Result<i64, StoreError>;
+    async fn price_list(&self, org: &str) -> Result<Vec<PriceRow>, StoreError>;
+    async fn price_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn price_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Deed fee quotations (amounts snapshotted from active price codes).
+    async fn quote_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        deed_kind: &str,
+        items: &[(String, i64)],
+    ) -> Result<i64, StoreError>;
+    async fn quote_list(&self, org: &str) -> Result<Vec<QuotationRow>, StoreError>;
+    async fn quote_items(
+        &self,
+        org: &str,
+        quotation_id: i64,
+    ) -> Result<Vec<QuotationItemRow>, StoreError>;
+    async fn quote_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn quote_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

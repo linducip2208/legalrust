@@ -3384,6 +3384,244 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn price_create(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        amount_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let name = name.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if name.is_empty() || name.len() > 200 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if amount_minor < 0 {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO price_items (org_id, code, name, amount_minor) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(code)
+        .bind(name)
+        .bind(amount_minor)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn price_list(&self, org: &str) -> Result<Vec<PriceRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, code, name, amount_minor, active FROM price_items WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PriceRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                name: x.get::<String, _>("name"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn price_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE price_items SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn price_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM price_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn quote_create(
+        &self,
+        org: &str,
+        client_name: &str,
+        deed_kind: &str,
+        items: &[(String, i64)],
+    ) -> Result<i64, StoreError> {
+        let client_name = client_name.trim();
+        if client_name.is_empty() || client_name.len() > 160 {
+            return Err(StoreError::Conflict("client_name".into()));
+        }
+        if items.is_empty() || items.len() > 50 {
+            return Err(StoreError::Conflict("items".into()));
+        }
+        // Snapshot amounts from ACTIVE price codes; whole quote is one transaction.
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let mut total: i64 = 0;
+        let mut lines: Vec<(String, i64, i64)> = Vec::with_capacity(items.len());
+        for (code, qty) in items {
+            if *qty <= 0 || *qty > 1000 {
+                return Err(StoreError::Conflict("qty".into()));
+            }
+            let row: Option<(i64, i8)> = sqlx::query_as(
+                "SELECT amount_minor, active FROM price_items WHERE org_id=? AND code=?",
+            )
+            .bind(org)
+            .bind(code)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(db_err)?;
+            match row {
+                Some((amt, 1)) => {
+                    let line = amt.saturating_mul(*qty);
+                    total = total.saturating_add(line);
+                    lines.push((code.clone(), *qty, line));
+                }
+                _ => {
+                    return Err(StoreError::Conflict(format!(
+                        "unknown/inactive price {code}"
+                    )))
+                }
+            }
+        }
+        let kind: String = deed_kind.trim().chars().take(60).collect();
+        let r = sqlx::query(
+            "INSERT INTO quotations (org_id, client_name, deed_kind, total_minor) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_name)
+        .bind(kind)
+        .bind(total)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let qid = r.last_insert_id() as i64;
+        for (code, qty, line) in lines {
+            sqlx::query(
+                "INSERT INTO quotation_items (org_id, quotation_id, price_code, qty, amount_minor) VALUES (?,?,?,?,?)",
+            )
+            .bind(org)
+            .bind(qid as u64)
+            .bind(code)
+            .bind(qty)
+            .bind(line)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(qid)
+    }
+    async fn quote_list(&self, org: &str) -> Result<Vec<QuotationRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_name, deed_kind, total_minor, status FROM quotations WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| QuotationRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_name: x.get::<String, _>("client_name"),
+                deed_kind: x.get::<String, _>("deed_kind"),
+                total_minor: x.get::<i64, _>("total_minor"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn quote_items(
+        &self,
+        org: &str,
+        quotation_id: i64,
+    ) -> Result<Vec<QuotationItemRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM quotations WHERE id=?")
+            .bind(quotation_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, quotation_id, price_code, qty, amount_minor FROM quotation_items WHERE org_id=? AND quotation_id=? ORDER BY id ASC LIMIT 100")
+            .bind(org).bind(quotation_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| QuotationItemRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                quotation_id: x.get::<u64, _>("quotation_id") as i64,
+                price_code: x.get::<String, _>("price_code"),
+                qty: x.get::<i32, _>("qty") as i64,
+                amount_minor: x.get::<i64, _>("amount_minor"),
+            })
+            .collect())
+    }
+    async fn quote_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "issued" | "accepted" | "rejected") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM quotations WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("draft"), "issued") | (Some("issued"), "accepted") | (Some("issued"), "rejected")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE quotations SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn quote_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM quotations WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

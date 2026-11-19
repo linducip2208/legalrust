@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 76: prices + quotations (main)
+- Tarif + snapshot quotation; workspace **365 passed, 0 failed**; F-D12-012/014 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 75: appointments (main)
 - Scheduler + papan antrean; workspace **364 passed, 0 failed**; F-D12-010/011 IMPLEMENTED.
 

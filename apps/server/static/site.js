@@ -438,6 +438,103 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('trust-entry-msg', '');
     trustView();
   });
+  /* ---- office: price list ---- */
+  async function priceRefresh() {
+    var box = document.getElementById('price-list');
+    if (!box) return;
+    var v = await j('/api/v1/prices');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '<button class="btn btn-sm" data-price-tg="' + x.id + '" data-price-on="' + (!x.active) + '" type="button">' + (x.active ? 'Nonaktifkan' : 'Aktifkan') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-price-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.code) + '</td><td>' + esc(x.name) + '</td><td>' + fmtRp(x.amount_minor) + '</td><td>' + (x.active ? '<span class="badge bg-green-lt">aktif</span>' : '<span class="badge bg-yellow-lt">nonaktif</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada tarif.</td></tr>';
+    qsa('[data-price-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/prices/' + b.getAttribute('data-price-tg') + '/active', { active: b.getAttribute('data-price-on') === 'true' });
+        if (!r.ok) { pmsg('price-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('price-msg', '');
+        priceRefresh();
+      });
+    });
+    qsa('[data-price-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/prices/' + b.getAttribute('data-price-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('price-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('price-msg', '');
+        priceRefresh();
+      });
+    });
+  }
+  on('price-add', 'click', async function () {
+    if (!pval('price-code') || !pval('price-name') || !(+pval('price-amount') >= 0)) { pmsg('price-msg', 'Isi kode, nama, dan nominal.'); return; }
+    var r = await ppost('/api/v1/prices', { code: pval('price-code'), name: pval('price-name'), amount_minor: +pval('price-amount') });
+    if (!r.ok) { pmsg('price-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('price-msg', '');
+    priceRefresh();
+  });
+  on('price-reload', 'click', priceRefresh);
+  /* ---- office: quotations ---- */
+  async function quotRefresh() {
+    var box = document.getElementById('quot-list');
+    if (!box) return;
+    var v = await j('/api/v1/quotations');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var items = (x.items || []).map(function (i) { return esc(i.price_code) + '×' + i.qty; }).join(', ');
+      var act = (x.status === 'draft' ? '<button class="btn btn-sm" data-quot-issue="' + x.id + '" type="button">Terbitkan</button> ' : '')
+        + (x.status === 'issued' ? '<button class="btn btn-sm btn-success" data-quot-acc="' + x.id + '" type="button">Terima</button> <button class="btn btn-sm btn-danger" data-quot-rej="' + x.id + '" type="button">Tolak</button> ' : '')
+        + '<button class="btn btn-sm btn-outline-danger" data-quot-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.client_name) + ' <span class="text-muted">(' + esc(x.deed_kind) + ': ' + items + ')</span></td><td><strong>' + fmtRp(x.total_minor) + '</strong></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada penawaran.</td></tr>';
+    qsa('[data-quot-issue]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/quotations/' + b.getAttribute('data-quot-issue') + '/status', { status: 'issued' });
+        if (!r.ok) { pmsg('quot-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('quot-msg', '');
+        quotRefresh();
+      });
+    });
+    qsa('[data-quot-acc]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/quotations/' + b.getAttribute('data-quot-acc') + '/status', { status: 'accepted' });
+        if (!r.ok) { pmsg('quot-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('quot-msg', '');
+        quotRefresh();
+      });
+    });
+    qsa('[data-quot-rej]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/quotations/' + b.getAttribute('data-quot-rej') + '/status', { status: 'rejected' });
+        if (!r.ok) { pmsg('quot-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('quot-msg', '');
+        quotRefresh();
+      });
+    });
+    qsa('[data-quot-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/quotations/' + b.getAttribute('data-quot-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('quot-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('quot-msg', '');
+        quotRefresh();
+      });
+    });
+  }
+  function parseQuotItems(s) {
+    return s.split(',').map(function (p) {
+      var kv = p.split(':');
+      return { code: (kv[0] || '').trim(), qty: parseInt(kv[1], 10) || 0 };
+    }).filter(function (i) { return i.code && i.qty > 0; });
+  }
+  on('quot-add', 'click', async function () {
+    var items = parseQuotItems(pval('quot-items') || '');
+    if (!pval('quot-client') || !items.length) { pmsg('quot-msg', 'Isi klien dan item (kode:qty, dipisah koma).'); return; }
+    var r = await ppost('/api/v1/quotations', { client_name: pval('quot-client'), deed_kind: pval('quot-kind') || '', items: items });
+    if (!r.ok) { pmsg('quot-msg', 'Gagal (' + r.status + '). Kode harus aktif di daftar harga.'); return; }
+    pmsg('quot-msg', '');
+    quotRefresh();
+  });
+  on('quot-reload', 'click', quotRefresh);
   on('doup', 'click', async function () {
     var f = document.getElementById('df').files[0];
     if (!f) { document.getElementById('ue').textContent = 'Pilih berkas dulu.'; return; }
@@ -2664,6 +2761,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   evRefresh();
   postureRefresh();
   alertsRefresh();
+  priceRefresh();
+  quotRefresh();
   whDlRefresh();
   intRefresh();
 })();

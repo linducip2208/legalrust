@@ -4581,10 +4581,15 @@
   "id": "F-D12-012",
   "domain": "D12",
   "title": "Service price list (layanan)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0046_prices.sql: price_items table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + active toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/prices + active + delete (RBAC, audit)",
+   "apps/server/static/site.js: priceRefresh card Daftar harga in keu tab + hooks",
+   "apps/server/tests/api.rs: price_list_and_quotations e2e (dup 409, inactive blocks quotes)"
+  ],
+  "audit_note": "Wave 76: full lifecycle live; verified by test (365/0)."
  },
  {
   "id": "F-D12-013",
@@ -4599,10 +4604,15 @@
   "id": "F-D12-014",
   "domain": "D12",
   "title": "Deed fee quotation",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0046_prices.sql: quotations + quotation_items (snapshot, CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: quote create (Tx in MySQL, active-code snapshot) + draft->issued->accepted/rejected",
+   "apps/server/src/lib.rs: POST/GET /api/v1/quotations (items inline) + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: quotRefresh card quotation + hooks",
+   "apps/server/tests/api.rs: total 2520000 snapshot asserted, ghost code 409, chain guards"
+  ],
+  "audit_note": "Wave 76: verified by test (365/0)."
  },
  {
   "id": "F-D12-015",

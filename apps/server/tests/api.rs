@@ -5468,6 +5468,14 @@ async fn uib_app_has_audit_jobs_ui() {
         "rep-msg",
         "keu-csv",
         "keu-msg",
+        "price-code",
+        "price-add",
+        "price-reload",
+        "price-list",
+        "quot-client",
+        "quot-add",
+        "quot-reload",
+        "quot-list",
         "bell",
         "bell-n",
         "bell-list",
@@ -6928,6 +6936,163 @@ async fn compliance_alerts_feed() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn price_list_and_quotations() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "priceq@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/prices",
+            r#"{"code":"X","name":"Y","amount_minor":1}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    for (code, name, amt) in [
+        ("AJB-STD", "Akta Jual Beli standar", 2500000),
+        ("METERAI", "Bea meterai", 10000),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/prices",
+                &format!(r#"{{"code":"{code}","name":"{name}","amount_minor":{amt}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "price {code}");
+    }
+    // Duplicate code rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/prices",
+            r#"{"code":"AJB-STD","name":"Dup","amount_minor":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Quote with unknown code rejected (no silent zero lines).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/quotations",
+            r#"{"client_name":"BB","items":[{"code":"GHOST","qty":1}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Quote snapshots active prices: 1x AJB-STD + 2x METERAI = 2520000.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/quotations",
+            r#"{"client_name":"Budi","deed_kind":"ajb","items":[{"code":"AJB-STD","qty":1},{"code":"METERAI","qty":2}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let qid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/quotations", &tok))
+        .await
+        .unwrap();
+    let qv = body_json(res).await;
+    let q = qv
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["id"].as_i64() == Some(qid))
+        .unwrap();
+    assert_eq!(q["total_minor"].as_i64().unwrap(), 2520000);
+    assert_eq!(q["items"].as_array().unwrap().len(), 2);
+    // Inactive price codes cannot start new quotes, but existing snapshots stay.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/prices",
+            r#"{"code":"TMP","name":"Sementara","amount_minor":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tmp_id = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/prices/{tmp_id}/active"),
+            r#"{"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/quotations",
+            r#"{"client_name":"CC","items":[{"code":"TMP","qty":1}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Lifecycle: draft -> issued -> accepted; direct draft -> accepted rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quotations/{qid}/status"),
+            r#"{"status":"accepted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["issued", "accepted"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/quotations/{qid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "quote to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=price", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.price_created"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=quote", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.quote_created"));
 }
 
 #[tokio::test]
