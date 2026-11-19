@@ -5191,10 +5191,15 @@
   "id": "F-D13-017",
   "domain": "D13",
   "title": "Corporate seller board-resolution verification",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0066_deed_consents.sql: deed_consents table reused (kind=board, no new migration)",
+   "crates/database/src/ops*.rs: dconsent_* allowlist already covers board",
+   "apps/server/src/lib.rs: same consent endpoints with kind=board (RBAC, audit)",
+   "apps/server/static/site.js: bodRefresh card Resolusi direksi + hooks",
+   "apps/server/tests/api.rs: deed_consents_board_and_power e2e (toggle both ways, 404/401)"
+  ],
+  "audit_note": "Wave 100: full lifecycle live; verified by test (389/0)."
  },
  {
   "id": "F-D13-018",
@@ -5376,10 +5381,14 @@
   "id": "F-D13-034",
   "domain": "D13",
   "title": "Power-to-sell (kuasa menjual) check",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0066_deed_consents.sql: deed_consents table reused (kind=power)",
+   "apps/server/src/lib.rs: same consent endpoints with kind=power (RBAC, audit)",
+   "apps/server/static/site.js: powRefresh card Kuasa menjual + hooks",
+   "apps/server/tests/api.rs: power consent create + Delete-gate asserted, /app needles bod-*/pow-*"
+  ],
+  "audit_note": "Wave 100: verified by test (389/0)."
  },
  {
   "id": "F-D13-035",

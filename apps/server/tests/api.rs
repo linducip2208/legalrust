@@ -3626,6 +3626,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "hir-add",
         "hir-reload",
         "hir-list",
+        "bod-ppat",
+        "bod-add",
+        "bod-reload",
+        "bod-list",
+        "pow-ppat",
+        "pow-add",
+        "pow-reload",
+        "pow-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8636,6 +8644,96 @@ async fn pbb_and_ppat_fee() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn deed_consents_board_and_power() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dconsent2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"DC/2","deed_kind":"ajb","seller":"PT Jual","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"board","party":"PT Jual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/consents"),
+            r#"{"kind":"power","party":"Kuasa A"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let wid = body_json(res).await["id"].as_i64().unwrap();
+    // Verify then un-verify (toggle both directions).
+    for v in [true, false] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/consents/{bid}/verify"),
+                &format!(r#"{{"verified":{v}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(body_json(res).await["verified"], serde_json::json!(v));
+    }
+    // Ghost consent verify 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/consents/999999/verify",
+            r#"{"verified":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Delete is Delete-gated and audited reads work.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/consents/{wid}"))
+                .method("DELETE")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/consents"), &tok))
+        .await
+        .unwrap();
+    let cv = body_json(res).await;
+    assert_eq!(cv.as_array().unwrap().len(), 2);
+    assert!(cv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(bid) && r["kind"] == "board" && r["verified"] == false));
 }
 
 #[tokio::test]

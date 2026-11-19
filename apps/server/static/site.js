@@ -1757,6 +1757,22 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir');
   });
   on('hir-reload', 'click', function () { consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); });
+  on('bod-add', 'click', async function () {
+    if (!pval('bod-ppat') || !pval('bod-party')) { pmsg('bod-msg', 'Isi ID akta dan nama pihak.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('bod-ppat')) + '/consents', { kind: 'board', party: pval('bod-party') });
+    if (!r.ok) { pmsg('bod-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('bod-msg', '');
+    consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board');
+  });
+  on('bod-reload', 'click', function () { consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); });
+  on('pow-add', 'click', async function () {
+    if (!pval('pow-ppat') || !pval('pow-party')) { pmsg('pow-msg', 'Isi ID akta dan nama pihak.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('pow-ppat')) + '/consents', { kind: 'power', party: pval('pow-party') });
+    if (!r.ok) { pmsg('pow-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('pow-msg', '');
+    consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power');
+  });
+  on('pow-reload', 'click', function () { consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); });
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -1930,7 +1946,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4093,6 +4109,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   bndRefresh();
   consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital');
   consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir');
+  consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board');
+  consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power');
   klapperRefresh();
   perfRefresh();
   volRefresh();
