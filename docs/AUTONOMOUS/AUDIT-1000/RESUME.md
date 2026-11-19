@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 132: folders + dashboard (main)
+- folders + stats derivations (no tables) + kartu + uji.
+- F-D04-002/038 PARTIAL->IMPLEMENTED (~72.1 verified). Workspace 420/0; registry ~28.4 (232 IMPLEMENTED); mean 30.9 (222 v).
+
 ## Done wave 131: diff + expiry (main)
 - line-LCS diff + expiry feed (no tables) + kartu + uji.
 - F-D04-021/022 NOT_STARTED/PLANNED->IMPLEMENTED (~72.1 verified). Workspace 419/0; registry ~28.3 (230 IMPLEMENTED); mean 30.8 (220 v).

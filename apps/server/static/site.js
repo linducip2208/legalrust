@@ -3324,6 +3324,22 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="3" class="text-muted">Tidak ada yang kedaluwarsa.</td></tr>';
   }
   on('dxp-reload', 'click', dxpRefresh);
+  /* ---- folders + dashboard (F-D04-002/038) ---- */
+  async function dfoRefresh() {
+    var box = document.getElementById('dfo-list');
+    if (!box) return;
+    var f = await j('/api/v1/documents/folders');
+    var s = await j('/api/v1/documents/stats');
+    if (!f || !s) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var tot = document.getElementById('dfo-total');
+    if (tot) tot.textContent = s.total + ' dokumen · ' + s.bytes + ' byte · ' + (s.by_mime || []).map(function (x) { return x.mime + ': ' + x.n; }).join(', ');
+    box.innerHTML = (f.folders || []).map(function (x) {
+      return '<tr><td>#' + x.matter_id + ' ' + esc(x.title) + ' <span class="text-muted">(' + esc(x.status) + ')</span></td><td>' + x.docs + '</td></tr>';
+    }).join('') + (f.unfiled ? '<tr><td>Tanpa perkara</td><td>' + f.unfiled + '</td></tr>' : '') || '<tr><td colspan="2" class="text-muted">Belum ada dokumen.</td></tr>';
+    var rc = document.getElementById('dfo-recent');
+    if (rc) rc.textContent = (s.recent || []).map(function (x) { return '#' + x.id + ' ' + x.name; }).join(' · ') || 'Belum ada.';
+  }
+  on('dfo-reload', 'click', dfoRefresh);
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5299,6 +5315,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   mtfRefresh();
   dlkFavs();
   dxpRefresh();
+  dfoRefresh();
   sopRefresh();
   oinRefresh();
   dpRefresh();

@@ -5616,6 +5616,8 @@ async fn crm_app_contains_crm_ids() {
         "dff-go",
         "dxp-reload",
         "dxp-list",
+        "dfo-reload",
+        "dfo-list",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9647,6 +9649,71 @@ async fn approval_policy_versions_and_fast_track() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_folders_and_dashboard() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docfold@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"folder-bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    for (name, matter) in [("f1.txt", Some(mid)), ("loose.txt", None)] {
+        let mstr = match matter {
+            Some(m) => format!(r#""matter_id":{m},"#),
+            None => String::new(),
+        };
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/documents",
+                &format!(
+                    r#"{{{mstr}"name":"{name}","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                    content.len()
+                ),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/folders", &tok))
+        .await
+        .unwrap();
+    let fv = body_json(res).await;
+    assert!(fv["folders"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["matter_id"].as_i64() == Some(mid) && r["docs"].as_i64() == Some(1)));
+    assert_eq!(fv["unfiled"].as_i64().unwrap(), 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/stats", &tok))
+        .await
+        .unwrap();
+    let sv = body_json(res).await;
+    assert_eq!(sv["total"].as_i64().unwrap(), 2);
+    assert!(sv["by_mime"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["mime"] == "text/plain" && r["n"].as_i64() == Some(2)));
+    assert_eq!(sv["recent"].as_array().unwrap().len(), 2);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/documents/stats")
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -1152,12 +1152,17 @@
   "id": "F-D04-002",
   "domain": "D04",
   "title": "Folder hierarchy per matter",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
    "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
-   "migrations/0002_core.sql: documents, document_versions"
-  ]
+   "migrations/0002_core.sql: documents, document_versions",
+   "matter-scoped tree + unfiled bucket; shared slice:",
+   "  - apps/server/src/lib.rs: GET /api/v1/documents/folders + GET /api/v1/documents/stats (no tables, RBAC)",
+   "  - apps/server/static/site.js: dfo folder & dashboard card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_folders_and_dashboard e2e (counts, unfiled, mime split, 401)"
+  ],
+  "audit_note": "Wave 132: folders + dashboard live. Verified by test (420/0)."
  },
  {
   "id": "F-D04-003",
@@ -1586,10 +1591,15 @@
   "id": "F-D04-038",
   "domain": "D04",
   "title": "Document dashboard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)",
+   "totals/bytes/mime/recent dashboard; shared slice:",
+   "  - apps/server/src/lib.rs: GET /api/v1/documents/folders + GET /api/v1/documents/stats (no tables, RBAC)",
+   "  - apps/server/static/site.js: dfo folder & dashboard card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_folders_and_dashboard e2e (counts, unfiled, mime split, 401)"
+  ],
+  "audit_note": "Wave 132: folders + dashboard live. Verified by test (420/0)."
  },
  {
   "id": "F-D04-039",
