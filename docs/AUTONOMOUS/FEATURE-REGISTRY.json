@@ -5004,16 +5004,18 @@
   "id": "F-D13-002",
   "domain": "D13",
   "title": "Land certificate (SHM/HGB) intake",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
    "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
    "migrations/0005_ocr.sql: ocr_jobs, ocr_fields",
    "apps/server/src/lib.rs: p-akta Sertifikat tanah intake card (job create + job list)",
    "apps/server/static/site.js: certRefresh (land_certificate filter) + wiring + boot",
-   "apps/server/tests/api.rs: land_certificate_intake_flow (404 + queue + list) + needles"
+   "apps/server/tests/api.rs: land_certificate_intake_flow (404 + queue + list) + needles",
+   "cert_links vault completes the intake chain: OCR intake scan -> document -> deed pin (0073)",
+   "checklist per-kind + authenticity guardrails (foreign-guard, consents, disputes, boundary) cover verification locally"
   ],
-  "audit_note": " Wave 26: intake UI live; stays PARTIAL (no checklist/BPN)."
+  "audit_note": "Wave 108: intake->deed->scan chain complete locally; BPN confirmation stays external (F-D13-004). PARTIAL->IMPLEMENTED, verified by test (397/0)."
  },
  {
   "id": "F-D13-003",
@@ -5501,12 +5503,18 @@
   "id": "F-D13-039",
   "domain": "D13",
   "title": "Certificate scan vault",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
    "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
-   "migrations/0002_core.sql: documents, document_versions"
-  ]
+   "migrations/0002_core.sql: documents, document_versions",
+   "migrations/0073_cert_vault.sql: cert_links table (deed<->doc FKs, unique pair, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/delete + dup guard + name snapshot",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/vault + delete (RBAC, cross-store doc ownership check, audit)",
+   "apps/server/static/site.js: vltRefresh card Brankas sertifikat + hooks",
+   "apps/server/tests/api.rs: cert_vault_links e2e (dup 409, ghost doc/deed 404, 403/401)"
+  ],
+  "audit_note": "Wave 108: deed-pinned scan vault live; PARTIAL->IMPLEMENTED, verified by test (397/0)."
  },
  {
   "id": "F-D13-040",

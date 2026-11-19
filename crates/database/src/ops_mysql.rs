@@ -2082,6 +2082,67 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn clink_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_id: i64,
+        doc_name: &str,
+        label: &str,
+    ) -> Result<i64, StoreError> {
+        if label.len() > 120 {
+            return Err(StoreError::Conflict("label".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO cert_links (org_id, ppat_id, doc_id, doc_name, label) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(doc_id as u64)
+        .bind(doc_name)
+        .bind(label.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn clink_list(&self, org: &str, ppat_id: i64) -> Result<Vec<CertLinkRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, doc_id, doc_name, label FROM cert_links WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| CertLinkRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                doc_id: x.get::<u64, _>("doc_id") as i64,
+                doc_name: x.get::<String, _>("doc_name"),
+                label: x.get::<String, _>("label"),
+            })
+            .collect())
+    }
+    async fn clink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM cert_links WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,

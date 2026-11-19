@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 108: certificate vault links (main)
+- cert_links (0073, deed<->scan) + kartu + uji.
+- F-D13-039/002 PARTIAL->IMPLEMENTED (~73.2 verified). Workspace 397/0; registry ~26.5 (178 IMPLEMENTED); mean 27.8 (174 v).
+
 ## Done wave 107: AJB drafts + PPAT audit trail (main)
 - ajb_drafts (0072) + ppat-audit consolidation (no table) + kartu + uji.
 - F-D13-005/038 PARTIAL->IMPLEMENTED (~73.2 verified). Workspace 396/0; registry ~26.4 (176 IMPLEMENTED); mean 27.8 (173 v).

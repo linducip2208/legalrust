@@ -334,6 +334,16 @@ pub struct AjbDraftRow {
     pub body: String,
     pub price_minor: i64,
 }
+/// Certificate vault link (deed <-> document scan).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CertLinkRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub doc_id: i64,
+    pub doc_name: String,
+    pub label: String,
+}
 /// Protocol register (in/out day-book of the protocol archive).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PregRow {
@@ -1545,6 +1555,17 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn ajbd_list(&self, org: &str, ppat_id: i64) -> Result<Vec<AjbDraftRow>, StoreError>;
     async fn ajbd_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Certificate vault links (deed <-> document scan).
+    async fn clink_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_id: i64,
+        doc_name: &str,
+        label: &str,
+    ) -> Result<i64, StoreError>;
+    async fn clink_list(&self, org: &str, ppat_id: i64) -> Result<Vec<CertLinkRow>, StoreError>;
+    async fn clink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

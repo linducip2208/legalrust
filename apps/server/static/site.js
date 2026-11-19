@@ -2177,6 +2177,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada jejak.</td></tr>';
   }
   on('pat-reload', 'click', patRefresh);
+  /* ---- property: certificate vault ---- */
+  async function vltRefresh() {
+    var box = document.getElementById('vlt-list');
+    if (!box) return;
+    var pid = pval('vlt-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/vault');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td><a href="/api/v1/documents/' + x.doc_id + '" target="_blank" rel="noopener">' + esc(x.doc_name) + '</a></td><td>' + esc(x.label || '—') + '</td><td><button class="btn btn-sm btn-outline-danger" data-vlt-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada pindaian tertaut.</td></tr>';
+    qsa('[data-vlt-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/vault/' + b.getAttribute('data-vlt-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('vlt-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('vlt-msg', '');
+        vltRefresh();
+      });
+    });
+  }
+  on('vlt-add', 'click', async function () {
+    if (!pval('vlt-ppat') || !pval('vlt-doc')) { pmsg('vlt-msg', 'Isi ID akta dan ID dokumen.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('vlt-ppat')) + '/vault', { doc_id: +pval('vlt-doc'), label: pval('vlt-label') || '' });
+    if (!r.ok) { pmsg('vlt-msg', 'Gagal (' + r.status + '). Akta/dokumen tidak ada, atau sudah tertaut?'); return; }
+    pmsg('vlt-msg', '');
+    vltRefresh();
+  });
+  on('vlt-reload', 'click', vltRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2350,7 +2378,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); vltRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4527,6 +4555,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   prgRefresh();
   ajbRefresh();
   patRefresh();
+  vltRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

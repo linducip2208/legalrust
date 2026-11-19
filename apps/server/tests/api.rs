@@ -3685,6 +3685,10 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "pat-limit",
         "pat-reload",
         "pat-list",
+        "vlt-ppat",
+        "vlt-add",
+        "vlt-reload",
+        "vlt-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8689,6 +8693,126 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn cert_vault_links() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "certvault@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Deed + document scan.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"CV/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let content = b"fake-cert-scan";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"shm-1.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/vault"),
+            &format!(r#"{{"doc_id":{did},"label":"SHM asli"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/vault"),
+            &format!(r#"{{"doc_id":{did},"label":"SHM asli"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Duplicate link + ghost doc + ghost deed rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/vault"),
+            &format!(r#"{{"doc_id":{did}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/vault"),
+            r#"{"doc_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/vault",
+            &format!(r#"{{"doc_id":{did}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/vault"), &tok))
+        .await
+        .unwrap();
+    let vv = body_json(res).await;
+    assert!(vv
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did) && r["doc_name"] == "shm-1.pdf"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=clink", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.clink_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/ppat/{pid}/vault"))
                 .body(Body::empty())
                 .unwrap(),
         )

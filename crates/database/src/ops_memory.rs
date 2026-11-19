@@ -116,6 +116,7 @@ struct Inner {
     kprs: HashMap<i64, KprPackRow>,
     pregs: HashMap<i64, PregRow>,
     ajbds: HashMap<i64, AjbDraftRow>,
+    clinks: HashMap<i64, CertLinkRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2018,6 +2019,65 @@ impl OpsStore for MemoryOps {
         match m.ajbds.get(&id) {
             Some(r) if r.org == org => {
                 m.ajbds.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn clink_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        doc_id: i64,
+        doc_name: &str,
+        label: &str,
+    ) -> Result<i64, StoreError> {
+        if label.len() > 120 {
+            return Err(StoreError::Conflict("label".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        if m.clinks
+            .values()
+            .any(|r| r.org == org && r.ppat_id == ppat_id && r.doc_id == doc_id)
+        {
+            return Err(StoreError::Conflict("already linked".into()));
+        }
+        let id = self.next(&mut m);
+        m.clinks.insert(
+            id,
+            CertLinkRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                doc_id,
+                doc_name: doc_name.into(),
+                label: label.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn clink_list(&self, org: &str, ppat_id: i64) -> Result<Vec<CertLinkRow>, StoreError> {
+        let mut v: Vec<CertLinkRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .clinks
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn clink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.clinks.get(&id) {
+            Some(r) if r.org == org => {
+                m.clinks.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
