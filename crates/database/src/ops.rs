@@ -514,6 +514,27 @@ pub struct RecheckRow {
     pub verified_on: String,
     pub note: String,
 }
+/// Deed storage box (capacity-tracked).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageBoxRow {
+    pub id: i64,
+    pub org: String,
+    pub box_code: String,
+    pub location: String,
+    pub capacity: i64,
+    pub status: String,
+}
+/// MPD protocol transfer (retired-notary custody handover).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MpdTransferRow {
+    pub id: i64,
+    pub org: String,
+    pub book_id: Option<i64>,
+    pub recipient: String,
+    pub transfer_date: String,
+    pub receipt_no: String,
+    pub status: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1581,6 +1602,29 @@ pub trait OpsStore: Send + Sync {
     async fn leave_list(&self, org: &str) -> Result<Vec<LeaveRow>, StoreError>;
     async fn leave_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn leave_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Deed storage boxes.
+    async fn sbox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        capacity: i64,
+    ) -> Result<i64, StoreError>;
+    async fn sbox_list(&self, org: &str) -> Result<Vec<StorageBoxRow>, StoreError>;
+    async fn sbox_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn sbox_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// MPD protocol transfers.
+    async fn mtransfer_create(
+        &self,
+        org: &str,
+        book_id: Option<i64>,
+        recipient: &str,
+        transfer_date: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mtransfer_list(&self, org: &str) -> Result<Vec<MpdTransferRow>, StoreError>;
+    async fn mtransfer_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn mtransfer_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

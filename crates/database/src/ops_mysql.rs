@@ -4692,6 +4692,197 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn sbox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        capacity: i64,
+    ) -> Result<i64, StoreError> {
+        let box_code = box_code.trim();
+        if box_code.is_empty() || box_code.len() > 40 {
+            return Err(StoreError::Conflict("box_code".into()));
+        }
+        if location.len() > 120 {
+            return Err(StoreError::Conflict("location".into()));
+        }
+        if capacity < 0 {
+            return Err(StoreError::Conflict("capacity".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO storage_boxes (org_id, box_code, location, capacity) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(box_code)
+        .bind(location.trim())
+        .bind(capacity)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate box_code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn sbox_list(&self, org: &str) -> Result<Vec<StorageBoxRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, box_code, location, capacity, status FROM storage_boxes WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| StorageBoxRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                box_code: x.get::<String, _>("box_code"),
+                location: x.get::<String, _>("location"),
+                capacity: x.get::<i64, _>("capacity"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn sbox_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "full" | "sealed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM storage_boxes WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("available"), "full") | (Some("full"), "sealed") | (Some("available"), "sealed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE storage_boxes SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn sbox_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM storage_boxes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn mtransfer_create(
+        &self,
+        org: &str,
+        book_id: Option<i64>,
+        recipient: &str,
+        transfer_date: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError> {
+        let recipient = recipient.trim();
+        if recipient.is_empty() || recipient.len() > 160 {
+            return Err(StoreError::Conflict("recipient".into()));
+        }
+        if transfer_date.len() > 10 || receipt_no.len() > 60 {
+            return Err(StoreError::Conflict("date/receipt".into()));
+        }
+        if let Some(bid) = book_id {
+            let own: Option<String> = sqlx::query("SELECT org_id FROM protocol_books WHERE id=?")
+                .bind(bid as u64)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("org_id"));
+            if own.as_deref() != Some(org) {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let r = sqlx::query(
+            "INSERT INTO mpd_transfers (org_id, book_id, recipient, transfer_date, receipt_no) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(book_id.map(|v| v as u64))
+        .bind(recipient)
+        .bind(transfer_date.trim())
+        .bind(receipt_no.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mtransfer_list(&self, org: &str) -> Result<Vec<MpdTransferRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, book_id, recipient, transfer_date, receipt_no, status FROM mpd_transfers WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MpdTransferRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                book_id: x.get::<Option<u64>, _>("book_id").map(|v| v as i64),
+                recipient: x.get::<String, _>("recipient"),
+                transfer_date: x.get::<String, _>("transfer_date"),
+                receipt_no: x.get::<String, _>("receipt_no"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn mtransfer_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if to != "transferred" {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM mpd_transfers WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("prepared") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE mpd_transfers SET status='transferred' WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn mtransfer_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM mpd_transfers WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

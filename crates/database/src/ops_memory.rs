@@ -85,6 +85,8 @@ struct Inner {
     hours: HashMap<i64, OfficeHoursRow>,
     roster: HashMap<i64, RosterRow>,
     leaves: HashMap<i64, LeaveRow>,
+    sboxes: HashMap<i64, StorageBoxRow>,
+    mtransfers: HashMap<i64, MpdTransferRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4035,6 +4037,156 @@ impl OpsStore for MemoryOps {
         match m.leaves.get(&id) {
             Some(r) if r.org == org => {
                 m.leaves.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn sbox_create(
+        &self,
+        org: &str,
+        box_code: &str,
+        location: &str,
+        capacity: i64,
+    ) -> Result<i64, StoreError> {
+        let box_code = box_code.trim();
+        if box_code.is_empty() || box_code.len() > 40 {
+            return Err(StoreError::Conflict("box_code".into()));
+        }
+        if location.len() > 120 {
+            return Err(StoreError::Conflict("location".into()));
+        }
+        if capacity < 0 {
+            return Err(StoreError::Conflict("capacity".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.sboxes
+            .values()
+            .any(|b| b.org == org && b.box_code == box_code)
+        {
+            return Err(StoreError::Conflict("duplicate box_code".into()));
+        }
+        let id = self.next(&mut m);
+        m.sboxes.insert(
+            id,
+            StorageBoxRow {
+                id,
+                org: org.into(),
+                box_code: box_code.into(),
+                location: location.trim().into(),
+                capacity,
+                status: "available".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn sbox_list(&self, org: &str) -> Result<Vec<StorageBoxRow>, StoreError> {
+        let mut v: Vec<StorageBoxRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .sboxes
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn sbox_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .sboxes
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if !matches!(
+            (r.status.as_str(), to),
+            ("available", "full") | ("full", "sealed") | ("available", "sealed")
+        ) {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn sbox_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.sboxes.get(&id) {
+            Some(r) if r.org == org => {
+                m.sboxes.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn mtransfer_create(
+        &self,
+        org: &str,
+        book_id: Option<i64>,
+        recipient: &str,
+        transfer_date: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError> {
+        let recipient = recipient.trim();
+        if recipient.is_empty() || recipient.len() > 160 {
+            return Err(StoreError::Conflict("recipient".into()));
+        }
+        if transfer_date.len() > 10 || receipt_no.len() > 60 {
+            return Err(StoreError::Conflict("date/receipt".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some(bid) = book_id {
+            match m.pbooks.get(&bid) {
+                Some(b) if b.org == org => {}
+                _ => return Err(StoreError::NotFound),
+            }
+        }
+        let id = self.next(&mut m);
+        m.mtransfers.insert(
+            id,
+            MpdTransferRow {
+                id,
+                org: org.into(),
+                book_id,
+                recipient: recipient.into(),
+                transfer_date: transfer_date.trim().into(),
+                receipt_no: receipt_no.trim().chars().take(60).collect(),
+                status: "prepared".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn mtransfer_list(&self, org: &str) -> Result<Vec<MpdTransferRow>, StoreError> {
+        let mut v: Vec<MpdTransferRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mtransfers
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn mtransfer_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .mtransfers
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if !matches!((r.status.as_str(), to), ("prepared", "transferred")) {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn mtransfer_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mtransfers.get(&id) {
+            Some(r) if r.org == org => {
+                m.mtransfers.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

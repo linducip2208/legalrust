@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 85: storage + MPD (main)
+- Chains + guards + audit; workspace **374 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 84: performance + volume (main)
 - Seed counts + groups + 401; workspace **373 passed, 0 failed**.
 

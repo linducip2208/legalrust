@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 85: storage + MPD (main)
+- Box + transfer protokol; workspace **374 passed, 0 failed**; F-D12-021/022 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 84: performance + volume (main)
 - Dasbor derivasi + volume; workspace **373 passed, 0 failed**; F-D12-026/027 IMPLEMENTED.
 

@@ -1329,8 +1329,83 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     phRefresh();
   });
   on('ph-reload', 'click', phRefresh);
+  /* ---- property: storage boxes ---- */
+  var SBOX_NEXT = { available: 'full', full: 'sealed' };
+  async function sboxRefresh() {
+    var box = document.getElementById('sbox-list');
+    if (!box) return;
+    var v = await j('/api/v1/storage-boxes');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = SBOX_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-sbox-next="' + x.id + '" data-sbox-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">disegel</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-sbox-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.box_code) + ' <span class="text-muted">(kap. ' + x.capacity + ')</span></td><td>' + esc(x.location) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada box.</td></tr>';
+    qsa('[data-sbox-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/storage-boxes/' + b.getAttribute('data-sbox-next') + '/status', { status: b.getAttribute('data-sbox-to') });
+        if (!r.ok) { pmsg('sbox-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sbox-msg', '');
+        sboxRefresh();
+      });
+    });
+    qsa('[data-sbox-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/storage-boxes/' + b.getAttribute('data-sbox-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('sbox-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('sbox-msg', '');
+        sboxRefresh();
+      });
+    });
+  }
+  on('sbox-add', 'click', async function () {
+    if (!pval('sbox-code')) { pmsg('sbox-msg', 'Isi kode box.'); return; }
+    var r = await ppost('/api/v1/storage-boxes', { box_code: pval('sbox-code'), location: pval('sbox-loc') || '', capacity: +pval('sbox-cap') || 0 });
+    if (!r.ok) { pmsg('sbox-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('sbox-msg', '');
+    sboxRefresh();
+  });
+  on('sbox-reload', 'click', sboxRefresh);
+  /* ---- property: MPD transfers ---- */
+  async function mpdRefresh() {
+    var box = document.getElementById('mpd-list');
+    if (!box) return;
+    var v = await j('/api/v1/mpd-transfers');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'prepared' ? '<button class="btn btn-sm btn-success" data-mpd-go="' + x.id + '" type="button">Serahkan</button> ' : '<span class="text-muted">diserahkan</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-mpd-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + (x.book_id ? 'buku #' + x.book_id : '<span class="text-muted">—</span>') + '</td><td>' + esc(x.recipient) + ' <span class="text-muted">(' + esc(x.transfer_date) + ' / ' + esc(x.receipt_no) + ')</span></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada transfer.</td></tr>';
+    qsa('[data-mpd-go]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/mpd-transfers/' + b.getAttribute('data-mpd-go') + '/status', { status: 'transferred' });
+        if (!r.ok) { pmsg('mpd-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mpd-msg', '');
+        mpdRefresh();
+      });
+    });
+    qsa('[data-mpd-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/mpd-transfers/' + b.getAttribute('data-mpd-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mpd-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mpd-msg', '');
+        mpdRefresh();
+      });
+    });
+  }
+  on('mpd-add', 'click', async function () {
+    if (!pval('mpd-to')) { pmsg('mpd-msg', 'Isi MPD penerima.'); return; }
+    var bid = pval('mpd-book');
+    var r = await ppost('/api/v1/mpd-transfers', { book_id: bid ? +bid : null, recipient: pval('mpd-to'), transfer_date: pval('mpd-date') || '', receipt_no: pval('mpd-rcpt') || '' });
+    if (!r.ok) { pmsg('mpd-msg', 'Gagal (' + r.status + '). Buku tidak ada?'); return; }
+    pmsg('mpd-msg', '');
+    mpdRefresh();
+  });
+  on('mpd-reload', 'click', mpdRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3276,9 +3351,11 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   ppatRefresh();
   pbRefresh();
   phRefresh();
+  mpdRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();
+  sboxRefresh();
   clauseRefresh();
   whRefresh();
   kepRefresh();

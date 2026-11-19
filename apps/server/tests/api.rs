@@ -3564,6 +3564,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ppat-list",
         "klapper-reload",
         "klapper-list",
+        "mpd-book",
+        "mpd-add",
+        "mpd-reload",
+        "mpd-list",
+        "sbox-code",
+        "sbox-add",
+        "sbox-reload",
+        "sbox-list",
         "perf-reload",
         "perf-sum",
         "vol-group",
@@ -7703,6 +7711,119 @@ async fn atk_and_archive_boxes() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/archive-boxes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn storage_boxes_and_mpd_transfers() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sboxmpd@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/storage-boxes",
+            r#"{"box_code":"X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/storage-boxes",
+            r#"{"box_code":"BOX-A01","location":"Ruang A","capacity":200}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/storage-boxes",
+            r#"{"box_code":"BOX-A01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // MPD transfer: ghost book rejected; unlinked transfer allowed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/mpd-transfers",
+            r#"{"book_id":999999,"recipient":"MPD Bogor"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/mpd-transfers",
+            r#"{"recipient":"MPD Bogor","transfer_date":"2026-05-01","receipt_no":"BA/01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/mpd-transfers/{tid}/status"),
+            r#"{"status":"transferred"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/mpd-transfers/{tid}/status"),
+            r#"{"status":"prepared"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/mpd-transfers", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(tid) && r["status"] == "transferred"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=sbox", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.sbox_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/storage-boxes")
                 .body(Body::empty())
                 .unwrap(),
         )

@@ -4720,19 +4720,29 @@
   "id": "F-D12-021",
   "domain": "D12",
   "title": "Deed storage box tracking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0054_storage_mpd.sql: storage_boxes table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + available->full->sealed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/storage-boxes + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: sboxRefresh card Box penyimpanan in akta tab + hooks",
+   "apps/server/tests/api.rs: storage_boxes_and_mpd_transfers e2e (dup 409, chain)"
+  ],
+  "audit_note": "Wave 85: full lifecycle live; verified by test (374/0)."
  },
  {
   "id": "F-D12-022",
   "domain": "D12",
   "title": "Protocol transfer to MPD (retired)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0054_storage_mpd.sql: mpd_transfers table (FK book SET NULL, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + prepared->transferred, ghost book 404",
+   "apps/server/src/lib.rs: POST/GET /api/v1/mpd-transfers + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: mpdRefresh card Transfer MPD + hooks",
+   "apps/server/tests/api.rs: unlinked transfer allowed, revert 409"
+  ],
+  "audit_note": "Wave 85: verified by test (374/0)."
  },
  {
   "id": "F-D12-023",
