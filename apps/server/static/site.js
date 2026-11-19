@@ -2035,8 +2035,21 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     giftRefresh();
   });
   on('gift-reload', 'click', giftRefresh);
+  /* ---- compliance: posture dashboard + exporter ---- */
+  async function postureRefresh() {
+    var box = document.getElementById('posture-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/posture');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var detail = Object.keys(x.by_status || {}).map(function (k) { return esc(k) + ': ' + x.by_status[k]; }).join(' • ') || '<span class="text-muted">—</span>';
+      return '<tr><td>' + esc(x.register) + '</td><td><strong>' + x.total + '</strong></td><td>' + detail + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada data.</td></tr>';
+  }
+  on('posture-reload', 'click', postureRefresh);
+  on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); postureRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2089,6 +2102,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dsarRefresh();
   ethicsRefresh();
   giftRefresh();
+  postureRefresh();
   whDlRefresh();
   intRefresh();
 })();

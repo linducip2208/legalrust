@@ -4273,10 +4273,13 @@
   "id": "F-D11-029",
   "domain": "D11",
   "title": "Compliance dashboard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/compliance/posture (14 registers, totals + by_status, no synthetic scores)",
+   "apps/server/static/site.js: postureRefresh dashboard card at top of kepatuhan tab + hooks",
+   "apps/server/tests/api.rs: compliance_posture_and_export e2e (seed reflected, 401)"
+  ],
+  "audit_note": "Wave 66: pure aggregation, no schema change; verified by test (355/0)."
  },
  {
   "id": "F-D11-030",
@@ -4385,10 +4388,13 @@
   "id": "F-D11-040",
   "domain": "D11",
   "title": "Compliance report exporter",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/reports/compliance.csv (all registers, Export-gated, audited)",
+   "apps/server/static/site.js: posture-csv export button (dlCsv)",
+   "apps/server/tests/api.rs: export 403 for client, 200 + text/csv for owner"
+  ],
+  "audit_note": "Wave 66: verified by test (355/0)."
  },
  {
   "id": "F-D12-001",

@@ -6672,6 +6672,95 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn compliance_posture_and_export() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "posture@x.id").await;
+    let client = forged_role_token(&tok, vec!["client"]);
+    // Seed two registers, then posture reflects them.
+    let mid = mk_matter(&a, &tok).await;
+    let _aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/incidents",
+            r#"{"title":"Posture seed","severity":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/posture", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let regs: Vec<&str> = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["register"].as_str().unwrap())
+        .collect();
+    for want in [
+        "obligations",
+        "consents",
+        "ropa",
+        "incidents",
+        "risks",
+        "dsar",
+        "ethics",
+        "gifts",
+    ] {
+        assert!(regs.contains(&want), "posture missing {want}");
+    }
+    let inc = v
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["register"] == "incidents")
+        .unwrap();
+    assert_eq!(inc["total"].as_i64().unwrap(), 1);
+    assert_eq!(inc["by_status"]["open"].as_i64().unwrap(), 1);
+    // Export is Export-gated (client role lacks it) and audited.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/compliance.csv", &client))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/compliance.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let body = axum::body::to_bytes(res.into_body(), 1024 * 1024)
+        .await
+        .unwrap();
+    let text = String::from_utf8(body.to_vec()).unwrap();
+    assert!(text.starts_with("register,id,title,status,extra\n"));
+    assert!(text.contains("incidents,"));
+    // Unauthenticated callers get nothing.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/compliance/posture")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn ethics_and_gift_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -8313,6 +8402,9 @@ async fn uib_app_has_approvals_ui() {
         "gift-add",
         "gift-reload",
         "gift-list",
+        "posture-reload",
+        "posture-csv",
+        "posture-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",
