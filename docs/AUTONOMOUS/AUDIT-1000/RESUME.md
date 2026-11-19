@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 82: office hours + roster + leaves (main)
 - office_hours + roster_members + leaves (0052) + kartu klien + uji.
-- F-D12-007/008 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 371/0; registry ~23.6 (126 IMPLEMENTED); mean ~24.4 (124 v).
+- F-D12-007/008 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 371/0; registry ~23.6 (126 IMPLEMENTED); mean 24.5 (124 v).
 
 ## Done wave 81: witness pool + re-verification (main)
 - witnesses + rechecks (0051) + kartu klien + uji (re-verifikasi manual, eksternal BLOCKED).
