@@ -3219,10 +3219,13 @@
   "id": "F-D09-009",
   "domain": "D09",
   "title": "Conditional approval",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: ApprDecideReq.condition (approve-only, [syarat] prefix, RBAC)",
+   "apps/server/static/site.js: appr-cond input in detail card + hooks",
+   "apps/server/tests/api.rs: reject+condition 422, stored marker asserted in detail"
+  ],
+  "audit_note": "Wave 119: conditional approval live. Verified by test (408/0)."
  },
  {
   "id": "F-D09-010",
@@ -3413,10 +3416,13 @@
   "id": "F-D09-026",
   "domain": "D09",
   "title": "Post-approval amendment workflow",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: POST /api/v1/approvals/{id}/amend (approved-only, clones roster, audit approval.amended)",
+   "apps/server/static/site.js: appr-amend button + hooks (detail card)",
+   "apps/server/tests/api.rs: pending amend 409, spawned pending request + audit asserted, 401"
+  ],
+  "audit_note": "Wave 119: amendment workflow live (re-approval, never edits closed records). Verified by test (408/0)."
  },
  {
   "id": "F-D09-027",

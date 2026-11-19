@@ -3518,7 +3518,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var id = pval('appr-id'), step = pval('appr-step');
     if (!id || !step) { pmsg('appr-dmsg', 'Isi ID permintaan dan no. tahap.'); return; }
     var r = await ppostKey('/api/v1/approvals/' + encodeURIComponent(id) + '/decisions',
-      { step_no: +step, decision: decision, comment: pval('appr-comment') || null }, pval('appr-key'));
+      { step_no: +step, decision: decision, comment: pval('appr-comment') || null, condition: pval('appr-cond') || null }, pval('appr-key'));
     if (!r.ok) {
       var e = null;
       try { e = await r.clone().json(); } catch (x) { /* plain */ }
@@ -3543,6 +3543,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     apprRefresh();
   });
   on('appr-reload', 'click', apprRefresh);
+  on('appr-amend', 'click', async function () {
+    var id = pval('appr-id');
+    if (!id) { pmsg('appr-dmsg', 'Isi ID permintaan.'); return; }
+    var r = await ppost('/api/v1/approvals/' + encodeURIComponent(id) + '/amend', { title: pval('appr-title') || null });
+    if (!r.ok) { pmsg('appr-dmsg', 'Gagal (' + r.status + '). Hanya yang sudah disetujui bisa diamendemen.'); return; }
+    var v = await r.json();
+    pmsg('appr-dmsg', '');
+    document.getElementById('appr-id').value = v.id;
+    apprShow();
+    apprRefresh();
+  });
   /* ---- approval simulation (F-D09-034) ---- */
   on('appr-sim', 'click', async function () {
     var box = document.getElementById('appr-sim-out');

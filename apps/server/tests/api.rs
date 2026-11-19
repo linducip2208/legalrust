@@ -9209,6 +9209,105 @@ async fn approval_attachments_and_archive() {
 }
 
 #[tokio::test]
+async fn approval_conditional_and_amendment() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprcond@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Condition with non-approve decision is rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"reject","condition":"bayar dulu"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Conditional approve stores the condition visibly.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/decisions"),
+            r#"{"step_no":1,"decision":"approve","condition":"lunas sebelum serah terima"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}"), &tok))
+        .await
+        .unwrap();
+    let det = body_json(res).await;
+    assert!(det["steps"].as_array().unwrap()[0]["comment"]
+        .as_str()
+        .unwrap()
+        .contains("[syarat] lunas sebelum serah terima"));
+    // Amendment of a pending request is rejected; of approved spawns re-approval.
+    let mid2 = mk_matter(&a, &tok).await;
+    let pend = mk_approval(&a, &tok, mid2, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{pend}/amend"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/approvals/{aid}/amend"),
+            r#"{"title":"Amendemen nilai"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let nid = body_json(res).await["id"].as_i64().unwrap();
+    assert_eq!(
+        body_json(
+            a.clone()
+                .oneshot(get(&format!("/api/v1/approvals/{nid}"), &tok))
+                .await
+                .unwrap()
+        )
+        .await["status"],
+        serde_json::json!("pending")
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=approval", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "approval.amended"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/approvals/{aid}/amend"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_replay_protection_and_simulation() {
     use tower::ServiceExt;
     let a = app();
@@ -14860,6 +14959,8 @@ async fn uib_app_has_approvals_ui() {
         "blk-key",
         "appr-key",
         "appr-sim",
+        "appr-cond",
+        "appr-amend",
         "arc-status",
         "arc-reload",
         "arc-list",
