@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 92: PPAT KYC bundle + handover receipts (main, D13 opened)
 - ppat_parties + cert_handovers (0060) + kartu akta + uji.
-- F-D13-014/028 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 381/0; registry ~24.8 (145 IMPLEMENTED); mean ~25.7 (143 v).
+- F-D13-014/028 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 381/0; registry ~24.8 (145 IMPLEMENTED); mean 25.8 (143 v).
 
 ## Done wave 91: multi-desk dispatch (main, D12 closed)
 - task assignee+desk (0059 ALTER) + assign/board + kartu + uji.
