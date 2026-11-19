@@ -2077,6 +2077,188 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn copp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if amount_minor < 0 || note.len() > 500 {
+            return Err(StoreError::Conflict("amount/note".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_opps (org_id, client_id, title, amount_minor, note) VALUES (?,?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(title).bind(amount_minor).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn copp_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientOppRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, title, amount_minor, stage, note FROM client_opps WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, title, amount_minor, stage, note FROM client_opps WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientOppRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                title: x.get::<String, _>("title"),
+                amount_minor: x.get::<i64, _>("amount_minor"),
+                stage: x.get::<String, _>("stage"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn copp_set_stage(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT stage FROM client_opps WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("stage"));
+        let stage = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (stage.as_str(), to),
+            ("prospect", "qualified")
+                | ("qualified", "proposal")
+                | ("proposal", "won")
+                | ("proposal", "lost")
+                | ("qualified", "lost")
+                | ("prospect", "lost")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_opps SET stage=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn copp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_opps WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cwb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        reason: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let reason = reason.trim();
+        if client_id <= 0 || reason.len() < 2 || reason.len() > 200 {
+            return Err(StoreError::Conflict("reason".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_winbacks (org_id, client_id, reason, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(reason)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cwb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientWinbackRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, reason, status, note FROM client_winbacks WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, reason, status, note FROM client_winbacks WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientWinbackRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                reason: x.get::<String, _>("reason"),
+                status: x.get::<String, _>("status"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cwb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_winbacks WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("identified", "contacted") | ("contacted", "won") | ("contacted", "lost")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_winbacks SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cwb_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_winbacks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

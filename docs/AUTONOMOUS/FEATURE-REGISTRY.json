@@ -623,10 +623,15 @@
   "id": "F-D02-021",
   "domain": "D02",
   "title": "Pipeline & opportunity tracking",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0090: client_opps table (stage free, transitions in code, forward-only)",
+   "ops.rs + memory + mysql: copp add/list/stage/delete + chain guards",
+   "lib.rs: opportunity endpoints (existence-verified, RBAC)",
+   "site.js: pipeline card + hooks (klien panel)",
+   "tests: pipeline_and_winback e2e (skip-ahead 409, ghost 404, 403/401)"
+  ],
+  "audit_note": "Wave 142: pipeline live. Verified by test (432/0)."
  },
  {
   "id": "F-D02-022",
@@ -650,10 +655,15 @@
   "id": "F-D02-024",
   "domain": "D02",
   "title": "Lost-client / win-back workflow",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0090: client_winbacks table (forward-only)",
+   "ops.rs + memory + mysql: win-back add/list/status/delete + branch chain",
+   "lib.rs: win-back endpoints (existence-verified, RBAC)",
+   "site.js: win-back card + hooks (klien panel)",
+   "tests: contacted/won chain + skip-ahead 409 asserted"
+  ],
+  "audit_note": "Wave 142: win-back live. Verified by test (432/0)."
  },
  {
   "id": "F-D02-025",

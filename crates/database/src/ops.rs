@@ -225,6 +225,27 @@ pub struct ClientReferralRow {
     pub referred_id: i64,
     pub note: String,
 }
+/// Pipeline opportunity (stage-tracked deal).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientOppRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub title: String,
+    pub amount_minor: i64,
+    pub stage: String,
+    pub note: String,
+}
+/// Lost-client win-back case.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientWinbackRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub reason: String,
+    pub status: String,
+    pub note: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -1821,6 +1842,37 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientReferralRow>, StoreError>;
     async fn cref_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Pipeline opportunities (prospect->qualified->proposal->won/lost).
+    async fn copp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn copp_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientOppRow>, StoreError>;
+    async fn copp_set_stage(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn copp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Win-back workflow (identified->contacted->won/lost).
+    async fn cwb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        reason: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cwb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientWinbackRow>, StoreError>;
+    async fn cwb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cwb_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

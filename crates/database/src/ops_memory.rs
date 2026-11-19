@@ -139,6 +139,8 @@ struct Inner {
     cfees: HashMap<i64, ClientFeeRow>,
     cdreqs: HashMap<i64, ClientDocReqRow>,
     crefs: HashMap<i64, ClientReferralRow>,
+    copps: HashMap<i64, ClientOppRow>,
+    cwbs: HashMap<i64, ClientWinbackRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -2348,6 +2350,159 @@ impl OpsStore for MemoryOps {
         match m.crefs.get(&id) {
             Some(r) if r.org == org => {
                 m.crefs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn copp_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        amount_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if amount_minor < 0 || note.len() > 500 {
+            return Err(StoreError::Conflict("amount/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.copps.insert(
+            id,
+            ClientOppRow {
+                id,
+                org: org.into(),
+                client_id,
+                title: title.into(),
+                amount_minor,
+                stage: "prospect".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn copp_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientOppRow>, StoreError> {
+        let mut v: Vec<ClientOppRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .copps
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn copp_set_stage(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .copps
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.stage.as_str(), to),
+            ("prospect", "qualified")
+                | ("qualified", "proposal")
+                | ("proposal", "won")
+                | ("proposal", "lost")
+                | ("qualified", "lost")
+                | ("prospect", "lost")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.stage = to.into();
+        Ok(())
+    }
+    async fn copp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.copps.get(&id) {
+            Some(r) if r.org == org => {
+                m.copps.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cwb_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        reason: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let reason = reason.trim();
+        if client_id <= 0 || reason.len() < 2 || reason.len() > 200 {
+            return Err(StoreError::Conflict("reason".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cwbs.insert(
+            id,
+            ClientWinbackRow {
+                id,
+                org: org.into(),
+                client_id,
+                reason: reason.into(),
+                status: "identified".into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cwb_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientWinbackRow>, StoreError> {
+        let mut v: Vec<ClientWinbackRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cwbs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cwb_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cwbs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("identified", "contacted") | ("contacted", "won") | ("contacted", "lost")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cwb_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cwbs.get(&id) {
+            Some(r) if r.org == org => {
+                m.cwbs.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

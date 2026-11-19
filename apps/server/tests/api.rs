@@ -5631,6 +5631,12 @@ async fn crm_app_contains_crm_ids() {
         "crf-add",
         "crf-list",
         "ltv-go",
+        "opp-cid",
+        "opp-add",
+        "opp-list",
+        "cwb-cid",
+        "cwb-add",
+        "cwb-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -10985,6 +10991,136 @@ async fn client_communication_timeline() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/timeline"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn pipeline_and_winback() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pipewb@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/opportunities",
+            &format!(r#"{{"client_id":{cli},"title":"KPR massal"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/opportunities",
+            r#"{"client_id":999999,"title":"Hantu"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Pipeline chain to won; skip-ahead rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/opportunities",
+            &format!(r#"{{"client_id":{cli},"title":"KPR massal","amount_minor":2000000000}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let oid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/opportunities/{oid}/stage"),
+            r#"{"stage":"proposal"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["qualified", "proposal", "won"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/opportunities/{oid}/stage"),
+                &format!(r#"{{"stage":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "opp to {st}");
+    }
+    // Win-back identified->contacted->won.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/winbacks",
+            &format!(r#"{{"client_id":{cli},"reason":"Pindah ke kompetitor"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let wid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/winbacks/{wid}/status"),
+            r#"{"status":"won"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["contacted", "won"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/winbacks/{wid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "wb to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/opportunities?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(oid) && r["stage"] == "won"));
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/winbacks?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(wid) && r["status"] == "won"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/opportunities")
                 .body(Body::empty())
                 .unwrap(),
         )

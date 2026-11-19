@@ -2998,6 +2998,80 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
     if (out) out.textContent = 'Klien #' + v.client_id + ': ' + v.matters + ' perkara · tagihan ' + fmtRp(v.invoiced_minor) + ' · terbuka ' + fmtRp(v.open_minor) + ' · lunas ' + fmtRp(v.paid_minor);
   });
+  /* ---- pipeline + win-back (F-D02-021/024) ---- */
+  var OPP_NEXT = { prospect: 'qualified', qualified: 'proposal', proposal: 'won' };
+  async function oppRefresh() {
+    var box = document.getElementById('opp-list');
+    if (!box) return;
+    var v = await j('/api/v1/opportunities' + (pval('opp-cid') ? '?client_id=' + encodeURIComponent(pval('opp-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = OPP_NEXT[x.stage];
+      var act = (nx ? '<button class="btn btn-sm" data-opp-next="' + x.id + '" data-opp-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '')
+        + (x.stage !== 'won' && x.stage !== 'lost' ? '<button class="btn btn-sm btn-outline-danger" data-opp-next="' + x.id + '" data-opp-to="lost" type="button">lost</button> ' : '<span class="text-muted">' + x.stage + '</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-opp-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + esc(x.title) + '</td><td>' + fmtRp(x.amount_minor) + '</td><td>' + badge(x.stage) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada peluang.</td></tr>';
+    qsa('[data-opp-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/opportunities/' + b.getAttribute('data-opp-next') + '/stage', { stage: b.getAttribute('data-opp-to') });
+        if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('opp-msg', '');
+        oppRefresh();
+      });
+    });
+    qsa('[data-opp-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/opportunities/' + b.getAttribute('data-opp-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+        oppRefresh();
+      });
+    });
+  }
+  on('opp-add', 'click', async function () {
+    if (!pval('opp-cid') || !pval('opp-title')) { pmsg('opp-msg', 'Isi ID klien dan judul.'); return; }
+    var r = await ppost('/api/v1/opportunities', { client_id: +pval('opp-cid'), title: pval('opp-title'), amount_minor: +pval('opp-amt') || 0 });
+    if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('opp-msg', '');
+    oppRefresh();
+  });
+  on('opp-reload', 'click', oppRefresh);
+  var CWB_NEXT = { identified: 'contacted', contacted: 'won' };
+  async function cwbRefresh() {
+    var box = document.getElementById('cwb-list');
+    if (!box) return;
+    var v = await j('/api/v1/winbacks' + (pval('cwb-cid') ? '?client_id=' + encodeURIComponent(pval('cwb-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = CWB_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-cwb-next="' + x.id + '" data-cwb-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">' + x.status + '</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-cwb-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>#' + x.client_id + '</td><td>' + esc(x.reason) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada kasus.</td></tr>';
+    qsa('[data-cwb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/winbacks/' + b.getAttribute('data-cwb-next') + '/status', { status: b.getAttribute('data-cwb-to') });
+        if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('opp-msg', '');
+        cwbRefresh();
+      });
+    });
+    qsa('[data-cwb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/winbacks/' + b.getAttribute('data-cwb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+        cwbRefresh();
+      });
+    });
+  }
+  on('cwb-add', 'click', async function () {
+    if (!pval('cwb-cid') || !pval('cwb-reason')) { pmsg('opp-msg', 'Isi ID klien dan alasan.'); return; }
+    var r = await ppost('/api/v1/winbacks', { client_id: +pval('cwb-cid'), reason: pval('cwb-reason') });
+    if (!r.ok) { pmsg('opp-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('opp-msg', '');
+    cwbRefresh();
+  });
+  on('cwb-reload', 'click', cwbRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -3824,6 +3898,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cfeeRefresh();
   cdrqRefresh();
   crfRefresh();
+  oppRefresh();
+  cwbRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();
