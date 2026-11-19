@@ -9151,6 +9151,29 @@ impl OpsStore for MemoryOps {
         v.sort_by_key(|r| -r.id);
         Ok(v)
     }
+    async fn pparty_search(
+        &self,
+        org: &str,
+        needle: &str,
+    ) -> Result<Vec<PpatPartyRow>, StoreError> {
+        let n = needle.trim().to_lowercase();
+        let mut v: Vec<PpatPartyRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pparties
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && (r.name.to_lowercase().contains(&n)
+                        || r.id_number.to_lowercase().contains(&n))
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(50);
+        Ok(v)
+    }
     async fn pparty_set_verified(
         &self,
         org: &str,

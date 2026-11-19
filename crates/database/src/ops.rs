@@ -3180,6 +3180,9 @@ pub trait OpsStore: Send + Sync {
         id_number: &str,
     ) -> Result<i64, StoreError>;
     async fn pparty_list(&self, org: &str, ppat_id: i64) -> Result<Vec<PpatPartyRow>, StoreError>;
+    /// Org-wide party search by name/id-number fragment (conflict screening).
+    async fn pparty_search(&self, org: &str, needle: &str)
+        -> Result<Vec<PpatPartyRow>, StoreError>;
     async fn pparty_set_verified(
         &self,
         org: &str,

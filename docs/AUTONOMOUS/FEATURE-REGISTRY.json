@@ -473,11 +473,15 @@
   "id": "F-D02-008",
   "domain": "D02",
   "title": "Conflict-of-interest check",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "ops.rs + memory + mysql: pparty_search (org-scoped name/id LIKE, capped 50)",
+   "lib.rs: GET /api/v1/conflicts/check (clients + matters + parties, role context, RBAC)",
+   "site.js: conflict card + hooks (klien panel), human-review note",
+   "tests: conflict_of_interest_screening e2e (3-surface hits, clean, short 422, 401)",
+   "Note: stale CONFIGURATION_REQUIRED (OCR-cited) corrected — no external service involved"
+  ],
+  "audit_note": "Wave 156: conflict screening live; adversity judgment stays human. Verified by test (446/0)."
  },
  {
   "id": "F-D02-009",

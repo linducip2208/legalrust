@@ -3160,6 +3160,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('cem-msg', '');
     cemRefresh();
   });
+  /* ---- conflict screening (F-D02-008) ---- */
+  on('cfx-go', 'click', async function () {
+    var out = document.getElementById('cfx-out');
+    if (!pval('cfx-name') || pval('cfx-name').length < 2) { pmsg('cfx-msg', 'Isi nama minimal 2 huruf.'); return; }
+    var v = await j('/api/v1/conflicts/check?name=' + encodeURIComponent(pval('cfx-name')));
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    pmsg('cfx-msg', '');
+    var n = (v.clients || []).length + (v.matters || []).length + (v.parties || []).length;
+    if (out) out.innerHTML = n === 0 ? 'Bersih: tidak ada tabrakan nama.' :
+      '<span class="badge bg-red-lt">' + n + ' temuan</span> — klien ' + (v.clients || []).length + ', perkara ' + (v.matters || []).length + ', pihak ' + (v.parties || []).length + ' (' + esc(v.note || '') + ')';
+  });
   /* ---- 360 overview (F-D02-035) ---- */
   on('ov-go', 'click', async function () {
     var out = document.getElementById('ov-out');

@@ -10385,6 +10385,27 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn pparty_search(
+        &self,
+        org: &str,
+        needle: &str,
+    ) -> Result<Vec<PpatPartyRow>, StoreError> {
+        let like = format!("%{}%", needle.trim());
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, role, name, id_number, verified FROM ppat_parties WHERE org_id=? AND (name LIKE ? OR id_number LIKE ?) ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(&like).bind(&like).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PpatPartyRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                role: x.get::<String, _>("role"),
+                name: x.get::<String, _>("name"),
+                id_number: x.get::<String, _>("id_number"),
+                verified: x.get::<u8, _>("verified") != 0,
+            })
+            .collect())
+    }
     async fn pparty_set_verified(
         &self,
         org: &str,

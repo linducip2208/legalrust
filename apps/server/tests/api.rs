@@ -5682,6 +5682,8 @@ async fn crm_app_contains_crm_ids() {
         "cem-crole",
         "ov-cid",
         "ov-go",
+        "cfx-name",
+        "cfx-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11653,6 +11655,91 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn conflict_of_interest_screening() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliconf@x.id").await;
+    // Seed: client + matter + ppat party sharing one name.
+    let cli = mk_crm_client(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"Waris Hartono","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"9/2026","deed_kind":"hibah"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/parties"),
+            r#"{"role":"seller","name":"Hartono","id_number":"ID-H1"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Screen hits all three surfaces.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/conflicts/check?name=Hartono", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cv = body_json(res).await;
+    assert!(cv["matters"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["title"] == "Waris Hartono"));
+    assert!(cv["parties"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["name"] == "Hartono" && p["role"] == "seller"));
+    // Clean name, short needle, anon.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/conflicts/check?name=ZulfikarTidakAda", &tok))
+        .await
+        .unwrap();
+    let ev = body_json(res).await;
+    assert!(
+        ev["clients"].as_array().unwrap().is_empty()
+            && ev["parties"].as_array().unwrap().is_empty()
+    );
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/conflicts/check?name=X", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/conflicts/check?name=Hartono")
                 .body(Body::empty())
                 .unwrap(),
         )
