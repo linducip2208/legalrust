@@ -174,7 +174,7 @@ pub struct DocLockRow {
 /// step numbers starting at 1 with non-empty roles.
 pub fn appr_check(entity: &str, steps: &[(i64, String)]) -> Result<(), super::store::StoreError> {
     use super::store::StoreError;
-    if !["deed", "invoice", "matter"].contains(&entity) {
+    if !["deed", "invoice", "matter", "document"].contains(&entity) {
         return Err(StoreError::Conflict("entity".into()));
     }
     if steps.is_empty() {

@@ -9658,6 +9658,34 @@ async fn approval_policy_versions_and_fast_track() {
 }
 
 #[tokio::test]
+async fn document_approval_routing() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docappr@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"route-me";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"r.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Document is now a first-class approval entity.
+    let res = a.clone().oneshot(post("/api/v1/approvals", &format!(r#"{{"entity":"document","entity_id":{did},"title":"Setujui dokumen","steps":[{{"step_no":1,"role":"office_admin"}}]}}"#, ), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let aid = body_json(res).await["id"].as_i64().unwrap();
+    // Attachments resolve through the doc's matter.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/approvals/{aid}/attachments"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["matter_id"].as_i64().unwrap(), mid);
+    // Unknown entity still rejected; ghost document 404s.
+    let res = a.clone().oneshot(post("/api/v1/approvals", r#"{"entity":"alien","entity_id":1,"title":"X","steps":[{"step_no":1,"role":"office_admin"}]}"#, Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a.clone().oneshot(post("/api/v1/approvals", r#"{"entity":"document","entity_id":999999,"title":"X","steps":[{"step_no":1,"role":"office_admin"}]}"#, Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn document_duplicates_manifest_and_auto_index() {
     use tower::ServiceExt;
     let a = app();

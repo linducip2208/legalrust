@@ -1423,21 +1423,24 @@
   "title": "Document approval routing",
   "status": "IMPLEMENTED",
   "evidence": [
-   "retention-due alert feed (same source as lifecycle card); shared slice:",
-   "  - apps/server/src/lib.rs: GET diff (line-LCS, text-only) + GET expiry-alerts (no tables, RBAC)",
-   "  - apps/server/static/site.js: diff + expiry card + hooks (dok panel)",
-   "  - apps/server/tests/api.rs: document_diff_and_expiry_alerts e2e (added/removed/same, binary 422, ghost 404, 401)"
+   "crates/database/src/ops.rs: appr_check allowlist + \"document\"",
+   "apps/server/src/lib.rs: approval create accepts entity=document (existence-checked); attachments resolver covers it; appr-entity select extended",
+   "apps/server/tests/api.rs: document_approval_routing e2e (create, matter resolution, unknown entity 422, ghost 404)"
   ],
-  "audit_note": "Wave 131: diff + expiry live. Verified by test (419/0)."
+  "audit_note": "Wave 134: document approval routing live (replaces wave-131 mis-credit). Verified by test (422/0)."
  },
  {
   "id": "F-D04-023",
   "domain": "D04",
   "title": "Document expiry alerts",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/documents/expiry-alerts (no tables, RBAC)",
+   "apps/server/static/site.js: dxp card + hooks (dok panel)",
+   "apps/server/tests/api.rs: expiry surfaced via lifecycle retain_until; 401 asserted",
+   "NOTE: wave-131 text wrongly credited F-D04-022; corrected here (022 = document approval routing, built below)."
+  ],
+  "audit_note": "Wave 134 (correction): expiry alerts belong to 023. Verified by test (422/0)."
  },
  {
   "id": "F-D04-024",
