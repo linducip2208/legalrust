@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 83: ATK kind-tag + archive map (main)
 - inventory kind tag + archive_boxes (0053 ALTER+CREATE) + kartu + uji.
-- F-D12-019/020 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 372/0; registry ~23.7 (128 IMPLEMENTED); mean ~24.5 (126 v).
+- F-D12-019/020 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 372/0; registry ~23.7 (128 IMPLEMENTED); mean 24.7 (126 v).
 
 ## Done wave 82: office hours + roster + leaves (main)
 - office_hours + roster_members + leaves (0052) + kartu klien + uji.
