@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 93: zone table + PPh/BPHTB worksheets (main)
 - zones (0061) + worksheet endpoints + kartu akta + uji (formula jujur, bukan advis).
-- F-D13-031/018/019 PLANNED/NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 382/0; registry ~24.9 (148 IMPLEMENTED); mean ~25.8 (146 v).
+- F-D13-031/018/019 PLANNED/NOT_STARTED->IMPLEMENTED (~72.9 verified). Workspace 382/0; registry ~24.9 (148 IMPLEMENTED); mean 26.0 (146 v).
 
 ## Done wave 92: PPAT KYC bundle + handover receipts (main, D13 opened)
 - ppat_parties + cert_handovers (0060) + kartu akta + uji.
