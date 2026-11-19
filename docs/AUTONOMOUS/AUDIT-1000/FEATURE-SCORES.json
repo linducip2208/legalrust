@@ -6904,36 +6904,36 @@
  {
   "feature_id": "F-D11-007",
   "domain": "D11",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 85,
+   "database": 85,
+   "frontend": 75,
+   "business_logic": 85,
+   "security": 85,
+   "testing": 85,
+   "integration": 60,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 76.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D11-008",
   "domain": "D11",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 10,
-   "database": 10,
-   "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "backend": 85,
+   "database": 85,
+   "frontend": 75,
+   "business_logic": 85,
+   "security": 85,
+   "testing": 85,
+   "integration": 60,
+   "documentation": 55
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 76.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D11-009",
@@ -8264,36 +8264,36 @@
  {
   "feature_id": "F-D13-007",
   "domain": "D13",
-  "status": "IMPLEMENTED",
+  "status": "NOT_STARTED",
   "scores": {
-   "backend": 85,
-   "database": 85,
-   "frontend": 75,
-   "business_logic": 85,
-   "security": 85,
-   "testing": 85,
-   "integration": 60,
-   "documentation": 55
+   "backend": 0,
+   "database": 0,
+   "frontend": 0,
+   "business_logic": 0,
+   "security": 0,
+   "testing": 0,
+   "integration": 0,
+   "documentation": 0
   },
-  "overall_score": 76.9,
-  "verified_8cat": true
+  "overall_score": 0.0,
+  "verified_8cat": false
  },
  {
   "feature_id": "F-D13-008",
   "domain": "D13",
-  "status": "IMPLEMENTED",
+  "status": "PLANNED",
   "scores": {
-   "backend": 85,
-   "database": 85,
-   "frontend": 75,
-   "business_logic": 85,
-   "security": 85,
-   "testing": 85,
-   "integration": 60,
-   "documentation": 55
+   "backend": 10,
+   "database": 10,
+   "frontend": 10,
+   "business_logic": 10,
+   "security": 10,
+   "testing": 10,
+   "integration": 10,
+   "documentation": 10
   },
-  "overall_score": 76.9,
-  "verified_8cat": true
+  "overall_score": 10.0,
+  "verified_8cat": false
  },
  {
   "feature_id": "F-D13-009",

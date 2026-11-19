@@ -3987,19 +3987,29 @@
   "id": "F-D11-007",
   "domain": "D11",
   "title": "DPIA workflow",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0020_dpia.sql + 0021_breach.sql (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dpia/breach CRUD + guarded transitions",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dpia + /breach + status endpoints (RBAC + validator + audit)",
+   "apps/server/static/site.js: DPIA + breach cards + advance wiring + boot + tab hooks",
+   "apps/server/tests/api.rs: dpia_breach_lifecycle_and_guards + memory unit + needles"
+  ],
+  "audit_note": "Wave 37 (dikoreksi): DPIA + breach 72h live end-to-end."
  },
  {
   "id": "F-D11-008",
   "domain": "D11",
   "title": "Breach notification workflow (72h)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0020_dpia.sql + 0021_breach.sql (org-scoped, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dpia/breach CRUD + guarded transitions",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dpia + /breach + status endpoints (RBAC + validator + audit)",
+   "apps/server/static/site.js: DPIA + breach cards + advance wiring + boot + tab hooks",
+   "apps/server/tests/api.rs: dpia_breach_lifecycle_and_guards + memory unit + needles"
+  ],
+  "audit_note": "Wave 37 (dikoreksi): DPIA + breach 72h live end-to-end."
  },
  {
   "id": "F-D11-009",
@@ -4744,29 +4754,17 @@
   "id": "F-D13-007",
   "domain": "D13",
   "title": "Tukar-menukar deed support",
-  "status": "IMPLEMENTED",
-  "evidence": [
-   "migrations/0020_dpia.sql: dpia_assessments (org-scoped, forward-only)",
-   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: dpia CRUD + draft->review->approved",
-   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/dpia + /{id}/status (Create/View/Update + audit)",
-   "apps/server/static/site.js: DPIA card + advance wiring + boot/tab hooks",
-   "apps/server/tests/api.rs: dpia_breach_lifecycle_and_guards + memory unit + needles"
-  ],
-  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021)."
+  "status": "NOT_STARTED",
+  "evidence": [],
+  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021). Koreksi 2026-11-19: skor wave 37 salah tempel; dikembalikan ke status awal."
  },
  {
   "id": "F-D13-008",
   "domain": "D13",
   "title": "APHT (mortgage) drafting",
-  "status": "IMPLEMENTED",
-  "evidence": [
-   "migrations/0021_breach.sql: breach_logs (org-scoped, forward-only)",
-   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: breach CRUD + draft->assessing->notified->closed",
-   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/breach + /{id}/status (Create/View/Update + audit)",
-   "apps/server/static/site.js: breach card (72h) + advance wiring + boot/tab hooks",
-   "apps/server/tests/api.rs: breach lifecycle + audit entity trail + needles"
-  ],
-  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021)."
+  "status": "PLANNED",
+  "evidence": [],
+  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021). Koreksi 2026-11-19: skor wave 37 salah tempel; dikembalikan ke status awal."
  },
  {
   "id": "F-D13-009",
