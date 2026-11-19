@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 137: client hierarchy + segments (main)
+- client_links + client_tags (0085, cycle DFS) + kartu + uji.
+- F-D02-006/007 NOT_STARTED/PLANNED->IMPLEMENTED (~72.2 verified). Workspace 427/0; registry ~28.7 (247 IMPLEMENTED); mean 31.6 (237 v).
+
 ## Done wave 136: redaction + segregation (main)
 - text masking + protocol register (no tables) + kartu + uji.
 - F-D04-020/040 NOT_STARTED/PLANNED->IMPLEMENTED (~72.1 verified). Workspace 424/0; registry ~28.4 (241 IMPLEMENTED); mean 31.3 (231 v).

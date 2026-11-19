@@ -2794,6 +2794,56 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     crmClientTags();
   });
   on('crm-recent-btn', 'click', crmRecent);
+  /* ---- client hierarchy + segmentation (F-D02-006/007) ---- */
+  async function chlRefresh() {
+    var box = document.getElementById('chl-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-links');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.child_id + '</td><td>#' + x.parent_id + '</td><td>' + badge(x.relation) + '</td><td><button class="btn btn-sm btn-outline-danger" data-chl-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada tautan.</td></tr>';
+    qsa('[data-chl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/client-links/' + b.getAttribute('data-chl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('chl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('chl-msg', '');
+        chlRefresh();
+      });
+    });
+  }
+  on('chl-add', 'click', async function () {
+    if (!pval('chl-child') || !pval('chl-parent')) { pmsg('chl-msg', 'Isi ID anak dan induk.'); return; }
+    var r = await ppost('/api/v1/client-links', { child_id: +pval('chl-child'), parent_id: +pval('chl-parent'), relation: pval('chl-rel') || 'subsidiary' });
+    if (!r.ok) { pmsg('chl-msg', 'Gagal (' + r.status + '). Siklus / ganda?'); return; }
+    pmsg('chl-msg', '');
+    chlRefresh();
+  });
+  on('chl-reload', 'click', chlRefresh);
+  async function csgRefresh() {
+    var box = document.getElementById('csg-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-tags' + (pval('csg-cid') ? '?client_id=' + encodeURIComponent(pval('csg-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.client_id + '</td><td>' + badge(x.tag) + '</td><td><button class="btn btn-sm btn-outline-danger" data-csg-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada tag.</td></tr>';
+    qsa('[data-csg-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/client-tags/' + b.getAttribute('data-csg-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('chl-msg', 'Gagal (' + r.status + ').'); return; }
+        chlRefresh();
+      });
+    });
+  }
+  on('csg-add', 'click', async function () {
+    if (!pval('csg-cid') || !pval('csg-tag')) { pmsg('chl-msg', 'Isi ID klien dan tag.'); return; }
+    var r = await ppost('/api/v1/client-tags', { client_id: +pval('csg-cid'), tag: pval('csg-tag') });
+    if (!r.ok) { pmsg('chl-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('chl-msg', '');
+    csgRefresh();
+  });
+  on('csg-reload', 'click', csgRefresh);
   /* ---- office: appointments + queue board ---- */
   var APPT_NEXT = { scheduled: 'checked_in', checked_in: 'done' };
   async function apptRefresh() {
@@ -3600,6 +3650,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('wait-reload', 'click', waitRefresh);
   crmTags();
   crmRecent();
+  chlRefresh();
+  csgRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

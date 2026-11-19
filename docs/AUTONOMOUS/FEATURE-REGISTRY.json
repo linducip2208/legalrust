@@ -439,19 +439,31 @@
   "id": "F-D02-006",
   "domain": "D02",
   "title": "Client hierarchy (group/subsidiary)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "group/subsidiary links with cycle protection; shared slice:",
+   "  - migrations/0085_client_hierarchy_tags.sql: client_links + client_tags (cycle-safe dup keys, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: link/list/delete + tag add/list/delete (allowlist + cycle DFS + idempotent add)",
+   "  - apps/server/src/lib.rs: POST/GET/DELETE client-links + client-tags (existence-verified, RBAC, audit)",
+   "  - apps/server/static/site.js: hierarchy + segment card + hooks (klien panel)",
+   "  - apps/server/tests/api.rs: client_hierarchy_and_segments e2e (dup/self/ghost/cycle, validator+store 409s, idempotent tag, 401)"
+  ],
+  "audit_note": "Wave 137: hierarchy + segments live. Verified by test (427/0)."
  },
  {
   "id": "F-D02-007",
   "domain": "D02",
   "title": "Client segmentation & tagging",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "normalized per-client tag vocabulary; shared slice:",
+   "  - migrations/0085_client_hierarchy_tags.sql: client_links + client_tags (cycle-safe dup keys, forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: link/list/delete + tag add/list/delete (allowlist + cycle DFS + idempotent add)",
+   "  - apps/server/src/lib.rs: POST/GET/DELETE client-links + client-tags (existence-verified, RBAC, audit)",
+   "  - apps/server/static/site.js: hierarchy + segment card + hooks (klien panel)",
+   "  - apps/server/tests/api.rs: client_hierarchy_and_segments e2e (dup/self/ghost/cycle, validator+store 409s, idempotent tag, 401)"
+  ],
+  "audit_note": "Wave 137: hierarchy + segments live. Verified by test (427/0)."
  },
  {
   "id": "F-D02-008",

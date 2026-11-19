@@ -132,6 +132,8 @@ struct Inner {
     dlcs: HashMap<i64, DocLifecycleRow>,
     mfields: HashMap<i64, MetaFieldRow>,
     dmeta: HashMap<i64, DocMetaRow>,
+    chlinks: HashMap<i64, ClientLinkRow>,
+    csegs: HashMap<i64, ClientSegRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -161,6 +163,14 @@ fn month_ok(month: &str) -> Result<(), StoreError> {
     }
     Ok(())
 }
+fn chrel_ok(relation: &str) -> Result<String, StoreError> {
+    let r = relation.trim().to_lowercase();
+    if !["subsidiary", "branch", "division", "holding"].contains(&r.as_str()) {
+        return Err(StoreError::Conflict("relation".into()));
+    }
+    Ok(r)
+}
+
 fn meta_key_ok(key: &str) -> Result<String, StoreError> {
     let k = key.trim().to_lowercase();
     if k.len() < 2
@@ -1842,6 +1852,147 @@ impl OpsStore for MemoryOps {
             Ok(())
         } else {
             Err(StoreError::NotFound)
+        }
+    }
+    async fn chlink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if child_id <= 0 || parent_id <= 0 || child_id == parent_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let relation = chrel_ok(relation)?;
+        let mut m = self.inner.lock().unwrap();
+        if m.chlinks
+            .values()
+            .any(|r| r.org == org && r.child_id == child_id && r.parent_id == parent_id)
+        {
+            return Err(StoreError::Conflict("already linked".into()));
+        }
+        // No cycles: parent must not already descend from child.
+        let mut seen = std::collections::HashSet::new();
+        let mut frontier = vec![parent_id];
+        while let Some(cur) = frontier.pop() {
+            if cur == child_id {
+                return Err(StoreError::Conflict("cycle".into()));
+            }
+            if !seen.insert(cur) {
+                continue;
+            }
+            for r in m
+                .chlinks
+                .values()
+                .filter(|r| r.org == org && r.child_id == cur)
+            {
+                frontier.push(r.parent_id);
+            }
+        }
+        let id = self.next(&mut m);
+        m.chlinks.insert(
+            id,
+            ClientLinkRow {
+                id,
+                org: org.into(),
+                child_id,
+                parent_id,
+                relation,
+            },
+        );
+        Ok(id)
+    }
+    async fn chlink_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientLinkRow>, StoreError> {
+        let mut v: Vec<ClientLinkRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .chlinks
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && client_id
+                        .map(|c| r.child_id == c || r.parent_id == c)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn chlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.chlinks.get(&id) {
+            Some(r) if r.org == org => {
+                m.chlinks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let tag = tag.trim().to_lowercase();
+        if tag.len() < 2
+            || tag.len() > 40
+            || !tag
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            return Err(StoreError::Conflict("tag".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, _)) = m
+            .csegs
+            .iter()
+            .find(|(_, r)| r.org == org && r.client_id == client_id && r.tag == tag)
+        {
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.csegs.insert(
+            id,
+            ClientSegRow {
+                id,
+                org: org.into(),
+                client_id,
+                tag,
+            },
+        );
+        Ok(id)
+    }
+    async fn cseg_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSegRow>, StoreError> {
+        let mut v: Vec<ClientSegRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .csegs
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.tag.cmp(&b.tag));
+        Ok(v)
+    }
+    async fn cseg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.csegs.get(&id) {
+            Some(r) if r.org == org => {
+                m.csegs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
         }
     }
     #[allow(clippy::too_many_arguments)]

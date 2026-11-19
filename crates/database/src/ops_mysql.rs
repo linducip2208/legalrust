@@ -1546,6 +1546,169 @@ impl OpsStore for MysqlOps {
             },
         })
     }
+    async fn chlink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if child_id <= 0 || parent_id <= 0 || child_id == parent_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let r = relation.trim().to_lowercase();
+        if !["subsidiary", "branch", "division", "holding"].contains(&r.as_str()) {
+            return Err(StoreError::Conflict("relation".into()));
+        }
+        // Cycle guard: walk ancestors of the would-be parent.
+        let links: Vec<(i64, i64)> =
+            sqlx::query("SELECT child_id, parent_id FROM client_links WHERE org_id=?")
+                .bind(org)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?
+                .into_iter()
+                .map(|x| {
+                    (
+                        x.get::<u64, _>("child_id") as i64,
+                        x.get::<u64, _>("parent_id") as i64,
+                    )
+                })
+                .collect();
+        let mut seen = std::collections::HashSet::new();
+        let mut frontier = vec![parent_id];
+        while let Some(cur) = frontier.pop() {
+            if cur == child_id {
+                return Err(StoreError::Conflict("cycle".into()));
+            }
+            if !seen.insert(cur) {
+                continue;
+            }
+            for (c, p) in &links {
+                if *c == cur {
+                    frontier.push(*p);
+                }
+            }
+        }
+        let r = sqlx::query(
+            "INSERT INTO client_links (org_id, child_id, parent_id, relation) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(child_id as u64)
+        .bind(parent_id as u64)
+        .bind(&r)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn chlink_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientLinkRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, child_id, parent_id, relation FROM client_links WHERE org_id=? AND (child_id=? OR parent_id=?) ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, child_id, parent_id, relation FROM client_links WHERE org_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientLinkRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                child_id: x.get::<u64, _>("child_id") as i64,
+                parent_id: x.get::<u64, _>("parent_id") as i64,
+                relation: x.get::<String, _>("relation"),
+            })
+            .collect())
+    }
+    async fn chlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_links WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let tag = tag.trim().to_lowercase();
+        if tag.len() < 2
+            || tag.len() > 40
+            || !tag
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            return Err(StoreError::Conflict("tag".into()));
+        }
+        let r =
+            sqlx::query("INSERT IGNORE INTO client_tags (org_id, client_id, tag) VALUES (?,?,?)")
+                .bind(org)
+                .bind(client_id as u64)
+                .bind(&tag)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        let id = r.last_insert_id() as i64;
+        if id == 0 {
+            let x: Option<u64> =
+                sqlx::query("SELECT id FROM client_tags WHERE org_id=? AND client_id=? AND tag=?")
+                    .bind(org)
+                    .bind(client_id as u64)
+                    .bind(&tag)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?
+                    .map(|x| x.get::<u64, _>("id"));
+            return x.map(|v| v as i64).ok_or(StoreError::NotFound);
+        }
+        Ok(id)
+    }
+    async fn cseg_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSegRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, tag FROM client_tags WHERE org_id=? AND client_id=? ORDER BY tag LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, tag FROM client_tags WHERE org_id=? ORDER BY tag LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientSegRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                tag: x.get::<String, _>("tag"),
+            })
+            .collect())
+    }
+    async fn cseg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_tags WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,

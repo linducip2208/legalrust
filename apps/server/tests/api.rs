@@ -5606,6 +5606,13 @@ async fn crm_app_contains_crm_ids() {
         "mtf-list",
         "mtm-doc",
         "mtm-set",
+        "chl-child",
+        "chl-add",
+        "chl-reload",
+        "chl-list",
+        "csg-cid",
+        "csg-add",
+        "csg-list",
         "up-file",
         "up-go",
         "up-prog",
@@ -10406,6 +10413,159 @@ async fn matter_bundle_and_scanned_ingest() {
         .unwrap()
         .iter()
         .any(|j| j["document_id"].as_i64() == Some(pid)));
+}
+
+#[tokio::test]
+async fn client_hierarchy_and_segments() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clihier@x.id").await;
+    let c1 = mk_crm_client(&a, &tok).await;
+    let c2 = mk_crm_client(&a, &tok).await;
+    let c3 = mk_crm_client(&a, &tok).await;
+    // Link + dup/self/ghost guards.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-links",
+            &format!(r#"{{"child_id":{c1},"parent_id":{c2},"relation":"subsidiary"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-links",
+            &format!(r#"{{"child_id":{c1},"parent_id":{c2}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-links",
+            &format!(r#"{{"child_id":{c1},"parent_id":{c1}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-links",
+            r#"{"child_id":999999,"parent_id":999998}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-links",
+            &format!(r#"{{"child_id":{c2},"parent_id":{c1}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/client-links?client_id={c1}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["relation"] == "subsidiary"));
+    // Tags: idempotent add, invalid rejected, filtered list, delete.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{c3},"tag":"korporat_besar"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{c3},"tag":"Korporat_Besar"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["id"].as_i64().unwrap(), tid);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{c3},"tag":"x"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-tags",
+            &format!(r#"{{"client_id":{c3},"tag":"a b"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/client-tags?client_id={c3}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["tag"] == "korporat_besar"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/client-tags/{tid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-links")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

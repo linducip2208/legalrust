@@ -159,6 +159,23 @@ pub struct OrgQuotaRow {
     pub quota_bytes: i64,
     pub note: String,
 }
+/// Client hierarchy link (subsidiary/branch/...).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientLinkRow {
+    pub id: i64,
+    pub org: String,
+    pub child_id: i64,
+    pub parent_id: i64,
+    pub relation: String,
+}
+/// Client segment tag assignment.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientSegRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub tag: String,
+}
 /// Document metadata value (tags = repeated rows on tag-kind fields).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DocMetaRow {
@@ -1662,6 +1679,28 @@ pub trait OpsStore: Send + Sync {
     async fn dfav_add(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError>;
     async fn dfav_list(&self, org: &str, user: &str) -> Result<Vec<i64>, StoreError>;
     async fn dfav_remove(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError>;
+    /// Client hierarchy links.
+    async fn chlink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError>;
+    async fn chlink_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientLinkRow>, StoreError>;
+    async fn chlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Client segment tags.
+    async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError>;
+    async fn cseg_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientSegRow>, StoreError>;
+    async fn cseg_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

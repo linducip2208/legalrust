@@ -163,6 +163,9 @@
 ## 2026-11-19 AUDIT-1000 wave 137: kuota + sinkron (main)
 - Kuota penyimpanan + umpan sinkronisasi; workspace **425 passed, 0 failed**; F-D04-029/034 IMPLEMENTED.
 
+## 2026-11-19 AUDIT-1000 wave 137: hierarki klien (main)
+- Hierarki + segmen klien; workspace **427 passed, 0 failed**; F-D02-006/007 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Redaksi + register protokol; workspace **424 passed, 0 failed**; F-D04-020/040 IMPLEMENTED.
 
