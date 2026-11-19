@@ -3172,10 +3172,13 @@
   "id": "F-D09-005",
   "domain": "D09",
   "title": "Approval SLA & escalation",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/sla (age math, warn/breach states, RBAC)",
+   "apps/server/static/site.js: sla card SLA & eskalasi + hooks (appr panel)",
+   "apps/server/tests/api.rs: approval_sla_and_conflicts e2e (thresholds, ok state, 401)"
+  ],
+  "audit_note": "Wave 114: SLA derivation live (no silent auto-decision by design). Verified by test (403/0)."
  },
  {
   "id": "F-D09-006",
@@ -3468,10 +3471,13 @@
   "id": "F-D09-033",
   "domain": "D09",
   "title": "Approval conflict detection",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/approvals/conflicts (open-request grouping, RBAC)",
+   "apps/server/static/site.js: cfx card Deteksi konflik + hooks (appr panel)",
+   "apps/server/tests/api.rs: same-matterTwice -> conflict_count 1 asserted"
+  ],
+  "audit_note": "Wave 114: advisory conflict detection live. Verified by test (403/0)."
  },
  {
   "id": "F-D09-034",

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 114: approval SLA + conflicts (main)
+- sla + conflicts derivations (no tables) + kartu + uji.
+- F-D09-005/033 PLANNED->IMPLEMENTED (~72.5 verified). Workspace 403/0; registry ~27.2 (192 IMPLEMENTED); mean 28.5 (187 v).
+
 ## Done wave 113: D12 close-out (main)
 - notary-monthly-pack + mpn-pack + audit actor filter + 009 rescore.
 - F-D12-005/006/034 PARTIAL->IMPLEMENTED, 009 PLANNED->IMPLEMENTED (~72.4 verified). Workspace 402/0; registry ~27.1 (190 IMPLEMENTED); mean 28.4 (185 v). D12 CLOSED 40/40.

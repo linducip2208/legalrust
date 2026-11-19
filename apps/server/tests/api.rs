@@ -8928,6 +8928,57 @@ async fn protocol_retention_and_aml_scores() {
 }
 
 #[tokio::test]
+async fn approval_sla_and_conflicts() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "apprsla@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let _ = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    let _ = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // SLA: fresh rows are ok; thresholds echoed.
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/approvals/sla?warn_hours=24&breach_hours=72",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sv = body_json(res).await;
+    assert_eq!(sv["warn_hours"].as_i64().unwrap(), 24);
+    assert_eq!(sv["rows"].as_array().unwrap().len(), 2);
+    assert!(sv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["sla"] == "ok"));
+    // Conflicts: same matter twice.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/approvals/conflicts", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cv = body_json(res).await;
+    assert_eq!(cv["conflict_count"].as_i64().unwrap(), 1);
+    let c0 = &cv["conflicts"].as_array().unwrap()[0];
+    assert_eq!(c0["entity"], serde_json::json!("matter"));
+    assert_eq!(c0["count"].as_i64().unwrap(), 2);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/approvals/sla")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn retention_rules_and_gated_purge() {
     use tower::ServiceExt;
     let a = app();
@@ -14335,6 +14386,11 @@ async fn uib_app_has_approvals_ui() {
         "appr-cal-month",
         "appr-cal-reload",
         "appr-cal-list",
+        "sla-warn",
+        "sla-reload",
+        "sla-list",
+        "cfx-reload",
+        "cfx-list",
         "appr-id",
         "appr-show",
         "appr-detail",

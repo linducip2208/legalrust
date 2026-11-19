@@ -3557,6 +3557,33 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       }).join('');
   }
   on('appr-cal-reload', 'click', apprCalRefresh);
+  /* ---- approval SLA (F-D09-005) ---- */
+  async function slaRefresh() {
+    var box = document.getElementById('sla-list');
+    if (!box) return;
+    var w = parseInt(pval('sla-warn'), 10);
+    var b = parseInt(pval('sla-breach'), 10);
+    if (!(w >= 1)) w = 24;
+    if (!(b >= 1)) b = 72;
+    var v = await j('/api/v1/approvals/sla?warn_hours=' + w + '&breach_hours=' + b);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x) {
+      var s = x.sla === 'breach' ? '<span class="badge bg-red-lt">langgar</span>' : (x.sla === 'warn' ? '<span class="badge bg-yellow-lt">peringatan</span>' : '<span class="badge bg-green-lt">aman</span>');
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + x.age_hours + '</td><td>' + s + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada antrean terbuka.</td></tr>';
+  }
+  on('sla-reload', 'click', slaRefresh);
+  /* ---- approval conflicts (F-D09-033) ---- */
+  async function cfxRefresh() {
+    var box = document.getElementById('cfx-list');
+    if (!box) return;
+    var v = await j('/api/v1/approvals/conflicts');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.conflicts || []).map(function (x) {
+      return '<tr><td>' + badge(x.entity) + ' #' + x.entity_id + '</td><td>' + x.requests.map(function (r) { return '#' + r.id + ' ' + esc(r.title); }).join('; ') + '</td><td><strong>' + x.count + '</strong></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Tidak ada konflik. Satu entitas, satu antrean.</td></tr>';
+  }
+  on('cfx-reload', 'click', cfxRefresh);
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3612,10 +3639,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4733,6 +4760,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   apprNotifRefresh();
   apprOverdueRefresh();
   apprCalRefresh();
+  slaRefresh();
+  cfxRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();
