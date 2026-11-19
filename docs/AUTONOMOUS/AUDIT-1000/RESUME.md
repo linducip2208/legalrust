@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 74: protocol books + handover log (main, D12 opened)
 - protocol_books + protocol_handovers (0044) + kartu akta + uji.
-- F-D12-003/004 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 363/0; registry ~22.8 (110 IMPLEMENTED); mean ~23.3 (108 v).
+- F-D12-003/004 NOT_STARTED/PLANNED->IMPLEMENTED (~72.8 verified). Workspace 363/0; registry ~22.8 (110 IMPLEMENTED); mean 23.4 (108 v).
 
 ## Done wave 73: evidence vault + regulator pack (main, D11 closed)
 - compliance_evidence (0043, 19-register referential check) + paket regulator + kartu + uji.
