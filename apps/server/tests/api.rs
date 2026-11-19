@@ -9319,6 +9319,163 @@ async fn approval_routing_amount_and_risk() {
 }
 
 #[tokio::test]
+async fn quorum_rounds_and_dual_override() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "quorum@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // required > members rejected.
+    let res = a.clone().oneshot(post("/api/v1/quorums", &format!(r#"{{"entity":"matter","entity_id":{mid},"title":"R1","required":5,"members":["a","b"]}}"#, ), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a.clone().oneshot(post("/api/v1/quorums", &format!(r#"{{"entity":"matter","entity_id":{mid},"title":"Rilis SHM","required":2,"members":["v1","v2","v3"]}}"#, ), Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    // Non-member + dup votes rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{rid}/vote"),
+            r#"{"voter":"outsider","decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{rid}/vote"),
+            r#"{"voter":"v1","decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"], serde_json::json!("open"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{rid}/vote"),
+            r#"{"voter":"v1","decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Second approve meets quorum; further votes rejected (closed).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{rid}/vote"),
+            r#"{"voter":"v2","decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["status"], serde_json::json!("met"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{rid}/vote"),
+            r#"{"voter":"v3","decision":"approve"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Fail path: 2 rejects out of 3 with required 2.
+    let res = a.clone().oneshot(post("/api/v1/quorums", &format!(r#"{{"entity":"matter","entity_id":{mid},"title":"Rilis gagal","required":2,"members":["a","b","c"]}}"#, ), Some(&tok))).await.unwrap();
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    for v in ["a", "b"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/quorums/{fid}/vote"),
+                &format!(r#"{{"voter":"{v}","decision":"reject"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/quorums/{fid}"), &tok))
+        .await
+        .unwrap();
+    let fv = body_json(res).await;
+    assert_eq!(fv["status"], serde_json::json!("failed"));
+    assert_eq!(fv["votes"].as_array().unwrap().len(), 2);
+    // Override: self-approve forbidden; second admin approves -> overridden.
+    let res = a.clone().oneshot(post("/api/v1/quorums", &format!(r#"{{"entity":"matter","entity_id":{mid},"title":"Butuh override","required":3,"members":["x","y","z"]}}"#, ), Some(&tok))).await.unwrap();
+    let oid_r = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorums/{oid_r}/override"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let oid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorum-overrides/{oid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"qadmin@x.id","role":"office_admin"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"qadmin@x.id","name":"QA","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    let adm2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/quorum-overrides/{oid}/decide"),
+            r#"{"approve":true}"#,
+            Some(&adm2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/quorums/{oid_r}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["status"],
+        serde_json::json!("overridden")
+    );
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/quorums")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn approval_conditional_and_amendment() {
     use tower::ServiceExt;
     let a = app();
@@ -15076,6 +15233,11 @@ async fn uib_app_has_approvals_ui() {
         "rr-reload",
         "rr-list",
         "rrs-go",
+        "qrm-title",
+        "qrm-add",
+        "qrm-reload",
+        "qrm-list",
+        "qrv-go",
         "arc-status",
         "arc-reload",
         "arc-list",

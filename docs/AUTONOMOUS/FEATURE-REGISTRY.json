@@ -3282,10 +3282,15 @@
   "id": "F-D09-014",
   "domain": "D09",
   "title": "Quorum approval (M-of-N)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0079_quorum.sql: quorum_rounds + quorum_votes (unique vote, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: rounds/votes + met/failed tally (Tx)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/quorums + detail + vote (RBAC, audit)",
+   "apps/server/static/site.js: qrm card Kuorum + hooks (appr panel)",
+   "apps/server/tests/api.rs: quorum_rounds_and_dual_override e2e (met/failed/dup/non-member/closed)"
+  ],
+  "audit_note": "Wave 121: M-of-N quorum live. Verified by test (410/0)."
  },
  {
   "id": "F-D09-015",
@@ -3587,10 +3592,15 @@
   "id": "F-D09-040",
   "domain": "D09",
   "title": "Approval quorum override with dual control",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0079_quorum.sql: quorum_overrides (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: request/decide SoD + forced overridden (Tx)",
+   "apps/server/src/lib.rs: override request + decide endpoints (admin gate, audit x2)",
+   "apps/server/static/site.js: override buttons + wiring (appr panel)",
+   "apps/server/tests/api.rs: self-approve 409, second-admin approve -> overridden asserted"
+  ],
+  "audit_note": "Wave 121: dual-control override live. Verified by test (410/0)."
  },
  {
   "id": "F-D10-001",

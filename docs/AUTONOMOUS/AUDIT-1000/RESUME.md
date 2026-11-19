@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 121: quorum + override (main)
+- quorum_rounds/votes/overrides (0079, Tx tally, SoD) + kartu + uji.
+- F-D09-014/040 NOT_STARTED->IMPLEMENTED (~73.1 verified). Workspace 410/0 (1 transient api flake unreproduced x3 runs). Registry ~27.8 (206 IMPLEMENTED); mean 29.4 (200 v).
+
 ## Done wave 120: approval routing (main)
 - approval_routes (0078) + resolver (amount+risk) + kartu + uji.
 - F-D09-012/013 PLANNED/NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 409/0; registry ~27.8 (204 IMPLEMENTED); mean 29.2 (198 v).

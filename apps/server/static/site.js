@@ -3732,6 +3732,61 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('rr-msg', '');
     if (out) out.textContent = 'Nominal ' + v.amount_minor + ', risiko ' + v.risk_score + ' → ' + (v.roles || []).join(', ') || 'tanpa peran';
   });
+  /* ---- quorum rounds (F-D09-014/040) ---- */
+  async function qrmRefresh() {
+    var box = document.getElementById('qrm-list');
+    if (!box) return;
+    var v = await j('/api/v1/quorums');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'open'
+        ? '<button class="btn btn-sm" data-qrm-vote="' + x.id + '" type="button">Lihat</button> <button class="btn btn-sm btn-outline-secondary" data-qrm-ovr="' + x.id + '" type="button">Override</button>'
+        : '<span class="text-muted">' + x.status + '</span>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + x.required + ' dari ' + esc(x.members) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada ronde.</td></tr>';
+    qsa('[data-qrm-ovr]', function (b) {
+      b.addEventListener('click', async function () {
+        document.getElementById('qrv-id').value = b.getAttribute('data-qrm-ovr');
+        onQovGo();
+      });
+    });
+    qsa('[data-qrm-vote]', function (b) {
+      b.addEventListener('click', async function () {
+        document.getElementById('qrv-id').value = b.getAttribute('data-qrm-vote');
+      });
+    });
+  }
+  on('qrm-add', 'click', async function () {
+    if (!pval('qrm-eid') || !pval('qrm-title') || !pval('qrm-members')) { pmsg('qrm-msg', 'Lengkapi entitas, judul, anggota.'); return; }
+    var r = await ppost('/api/v1/quorums', { entity: pval('qrm-entity') || 'matter', entity_id: +pval('qrm-eid'), title: pval('qrm-title'), required: +pval('qrm-req') || 1, members: pval('qrm-members').split(',').map(function (s) { return s.trim(); }).filter(Boolean) });
+    if (!r.ok) { pmsg('qrm-msg', 'Gagal (' + r.status + '). Syarat > anggota?'); return; }
+    pmsg('qrm-msg', '');
+    qrmRefresh();
+  });
+  on('qrm-reload', 'click', qrmRefresh);
+  on('qrv-go', 'click', async function () {
+    if (!pval('qrv-id') || !pval('qrv-voter')) { pmsg('qrm-msg', 'Isi ronde dan pemilih.'); return; }
+    var r = await ppost('/api/v1/quorums/' + encodeURIComponent(pval('qrv-id')) + '/vote', { voter: pval('qrv-voter'), decision: pval('qrv-dec') || 'approve' });
+    if (!r.ok) { pmsg('qrm-msg', 'Gagal (' + r.status + '). Bukan anggota / sudah vote?'); return; }
+    pmsg('qrm-msg', '');
+    qrmRefresh();
+  });
+  async function onQovGo() {
+    if (!pval('qrv-id')) { pmsg('qrm-msg', 'Isi ronde.'); return; }
+    var r = await ppost('/api/v1/quorums/' + encodeURIComponent(pval('qrv-id')) + '/override', {});
+    if (!r.ok) { pmsg('qrm-msg', 'Gagal (' + r.status + '). Perlu admin / ronde tertutup?'); return; }
+    pmsg('qrm-msg', '');
+    var v = await r.json();
+    document.getElementById('qov-id').value = v.id;
+  }
+  on('qov-go', 'click', onQovGo);
+  on('qov-ok', 'click', async function () {
+    if (!pval('qov-id')) { pmsg('qrm-msg', 'Isi ID override.'); return; }
+    var r = await ppost('/api/v1/quorum-overrides/' + encodeURIComponent(pval('qov-id')) + '/decide', { approve: true });
+    if (!r.ok) { pmsg('qrm-msg', 'Gagal (' + r.status + '). Penyetuju harus orang berbeda (admin)?'); return; }
+    pmsg('qrm-msg', '');
+    qrmRefresh();
+  });
   on('appr-csv', 'click', function () { dlCsv('/api/v1/reports/approvals.csv', 'approvals.csv', 'appr-msg'); });
   on('appr-filter', 'change', apprRefresh);
   /* ---- approval notifications (kind-routed action node) ---- */
@@ -3787,10 +3842,10 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('deleg-reload', 'click', delegRefresh);
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); delegRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); });
   });
   qsa('.snav[data-tab="appr"]', function (a) {
-    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); });
+    a.addEventListener('click', function () { apprRefresh(); apprNotifRefresh(); apprOverdueRefresh(); apprCalRefresh(); slaRefresh(); cfxRefresh(); blkRefresh(); arcRefresh(); dgstRefresh(); frzRefresh(); rrRefresh(); qrmRefresh(); });
   });
   on('appr-show', 'click', apprShow);
   on('appr-ok', 'click', function () { apprDecide('approve'); });
@@ -4915,6 +4970,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dgstRefresh();
   frzRefresh();
   rrRefresh();
+  qrmRefresh();
   delegRefresh();
   certRefresh();
   ppatRefresh();

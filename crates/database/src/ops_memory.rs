@@ -124,6 +124,9 @@ struct Inner {
     freezes: HashMap<String, FreezeRow>,
     idem: std::collections::HashSet<(String, String)>,
     aroutes: HashMap<i64, RouteRuleRow>,
+    qrounds: HashMap<i64, QuorumRoundRow>,
+    qvotes: HashMap<i64, QuorumVoteRow>,
+    qoverrides: HashMap<i64, QuorumOverrideRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -147,6 +150,15 @@ fn month_ok(month: &str) -> Result<(), StoreError> {
         return Err(StoreError::Conflict("month YYYY-MM".into()));
     }
     Ok(())
+}
+fn qround_tally(members: usize, required: i64, approves: usize, rejects: usize) -> &'static str {
+    if approves as i64 >= required {
+        "met"
+    } else if rejects as i64 > members as i64 - required {
+        "failed"
+    } else {
+        "open"
+    }
 }
 #[async_trait::async_trait]
 impl OpsStore for MemoryOps {
@@ -1213,6 +1225,211 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    #[allow(clippy::too_many_arguments)]
+    async fn qround_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        required: i64,
+        members: &[String],
+        created_by: &str,
+    ) -> Result<i64, StoreError> {
+        if !["matter", "invoice", "deed"].contains(&entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if entity_id <= 0 {
+            return Err(StoreError::Conflict("entity_id".into()));
+        }
+        let title = title.trim();
+        if title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let clean: Vec<String> = members
+            .iter()
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect();
+        if clean.is_empty() || clean.len() > 20 {
+            return Err(StoreError::Conflict("members 1..20".into()));
+        }
+        if required < 1 || required > clean.len() as i64 {
+            return Err(StoreError::Conflict("required".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.qrounds.insert(
+            id,
+            QuorumRoundRow {
+                id,
+                org: org.into(),
+                entity: entity.into(),
+                entity_id,
+                title: title.into(),
+                required,
+                members: clean.join(","),
+                status: "open".into(),
+                created_by: created_by.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn qround_list(&self, org: &str) -> Result<Vec<QuorumRoundRow>, StoreError> {
+        let mut v: Vec<QuorumRoundRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .qrounds
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn qround_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(QuorumRoundRow, Vec<QuorumVoteRow>), StoreError> {
+        let m = self.inner.lock().unwrap();
+        let r = m
+            .qrounds
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        let mut vs: Vec<QuorumVoteRow> = m
+            .qvotes
+            .values()
+            .filter(|v| v.org == org && v.round_id == id)
+            .cloned()
+            .collect();
+        vs.sort_by_key(|v| v.id);
+        Ok((r, vs))
+    }
+    async fn qvote_add(
+        &self,
+        org: &str,
+        round_id: i64,
+        voter: &str,
+        decision: &str,
+    ) -> Result<String, StoreError> {
+        if !["approve", "reject"].contains(&decision) {
+            return Err(StoreError::Conflict("decision".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .qrounds
+            .get(&round_id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "open" {
+            return Err(StoreError::Conflict("round closed".into()));
+        }
+        let members: Vec<String> = r.members.split(',').map(str::to_string).collect();
+        if !members.iter().any(|x| x == voter) {
+            return Err(StoreError::Conflict("not a member".into()));
+        }
+        if m.qvotes
+            .values()
+            .any(|v| v.org == org && v.round_id == round_id && v.voter == voter)
+        {
+            return Err(StoreError::Conflict("already voted".into()));
+        }
+        let id = self.next(&mut m);
+        m.qvotes.insert(
+            id,
+            QuorumVoteRow {
+                id,
+                org: org.into(),
+                round_id,
+                voter: voter.into(),
+                decision: decision.into(),
+            },
+        );
+        let approves = m
+            .qvotes
+            .values()
+            .filter(|v| v.round_id == round_id && v.decision == "approve")
+            .count();
+        let rejects = m
+            .qvotes
+            .values()
+            .filter(|v| v.round_id == round_id && v.decision == "reject")
+            .count();
+        let status = qround_tally(members.len(), r.required, approves, rejects);
+        m.qrounds.get_mut(&round_id).unwrap().status = status.into();
+        Ok(status.into())
+    }
+    async fn qoverride_request(
+        &self,
+        org: &str,
+        round_id: i64,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("requested_by".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .qrounds
+            .get(&round_id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "open" {
+            return Err(StoreError::Conflict("round closed".into()));
+        }
+        if m.qoverrides
+            .values()
+            .any(|o| o.org == org && o.round_id == round_id && o.status == "requested")
+        {
+            return Err(StoreError::Conflict("override pending".into()));
+        }
+        let id = self.next(&mut m);
+        m.qoverrides.insert(
+            id,
+            QuorumOverrideRow {
+                id,
+                org: org.into(),
+                round_id,
+                requested_by: requested_by.into(),
+                approved_by: String::new(),
+                status: "requested".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn qoverride_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let o = m
+            .qoverrides
+            .get(&id)
+            .filter(|o| o.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if o.status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by.trim().is_empty() || decided_by == o.requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        let status = if approve { "approved" } else { "rejected" };
+        m.qoverrides.get_mut(&id).unwrap().status = status.into();
+        m.qoverrides.get_mut(&id).unwrap().approved_by = decided_by.into();
+        if approve {
+            m.qrounds.get_mut(&o.round_id).unwrap().status = "overridden".into();
+        }
+        Ok(status.into())
     }
     async fn webhook_log(
         &self,

@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 121: kuorum (main)
+- Tally + SoD + guards; workspace **410 passed, 0 failed** (1 transient api failure seen once, unreproduced in 3 reruns).
+
 ## 2026-11-19 AUDIT-1000 wave 120: routing (main)
 - Tiers + shared weights + guards; workspace **409 passed, 0 failed**.
 

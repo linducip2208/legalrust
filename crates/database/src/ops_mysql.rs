@@ -1126,6 +1126,290 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    #[allow(clippy::too_many_arguments)]
+    async fn qround_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        required: i64,
+        members: &[String],
+        created_by: &str,
+    ) -> Result<i64, StoreError> {
+        if !["matter", "invoice", "deed"].contains(&entity) {
+            return Err(StoreError::Conflict("entity".into()));
+        }
+        if entity_id <= 0 {
+            return Err(StoreError::Conflict("entity_id".into()));
+        }
+        let title = title.trim();
+        if title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let clean: Vec<String> = members
+            .iter()
+            .map(|x| x.trim().to_string())
+            .filter(|x| !x.is_empty())
+            .collect();
+        if clean.is_empty() || clean.len() > 20 {
+            return Err(StoreError::Conflict("members 1..20".into()));
+        }
+        if required < 1 || required > clean.len() as i64 {
+            return Err(StoreError::Conflict("required".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO quorum_rounds (org_id, entity, entity_id, title, required, members, created_by) VALUES (?,?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(entity)
+        .bind(entity_id as u64)
+        .bind(title)
+        .bind(required)
+        .bind(clean.join(","))
+        .bind(created_by)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn qround_list(&self, org: &str) -> Result<Vec<QuorumRoundRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, entity, entity_id, title, required, members, status, created_by FROM quorum_rounds WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| QuorumRoundRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                entity: x.get::<String, _>("entity"),
+                entity_id: x.get::<u64, _>("entity_id") as i64,
+                title: x.get::<String, _>("title"),
+                required: x.get::<i32, _>("required") as i64,
+                members: x.get::<String, _>("members"),
+                status: x.get::<String, _>("status"),
+                created_by: x.get::<String, _>("created_by"),
+            })
+            .collect())
+    }
+    async fn qround_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(QuorumRoundRow, Vec<QuorumVoteRow>), StoreError> {
+        let r = sqlx::query("SELECT id, org_id, entity, entity_id, title, required, members, status, created_by FROM quorum_rounds WHERE id=? AND org_id=?")
+            .bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?
+            .ok_or(StoreError::NotFound)?;
+        let round = QuorumRoundRow {
+            id: r.get::<u64, _>("id") as i64,
+            org: r.get::<String, _>("org_id"),
+            entity: r.get::<String, _>("entity"),
+            entity_id: r.get::<u64, _>("entity_id") as i64,
+            title: r.get::<String, _>("title"),
+            required: r.get::<i32, _>("required") as i64,
+            members: r.get::<String, _>("members"),
+            status: r.get::<String, _>("status"),
+            created_by: r.get::<String, _>("created_by"),
+        };
+        let vs = sqlx::query("SELECT id, org_id, round_id, voter, decision FROM quorum_votes WHERE round_id=? AND org_id=? ORDER BY id")
+            .bind(id as u64).bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok((
+            round,
+            vs.into_iter()
+                .map(|x| QuorumVoteRow {
+                    id: x.get::<u64, _>("id") as i64,
+                    org: x.get::<String, _>("org_id"),
+                    round_id: x.get::<u64, _>("round_id") as i64,
+                    voter: x.get::<String, _>("voter"),
+                    decision: x.get::<String, _>("decision"),
+                })
+                .collect(),
+        ))
+    }
+    async fn qvote_add(
+        &self,
+        org: &str,
+        round_id: i64,
+        voter: &str,
+        decision: &str,
+    ) -> Result<String, StoreError> {
+        if !["approve", "reject"].contains(&decision) {
+            return Err(StoreError::Conflict("decision".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let r = sqlx::query(
+            "SELECT required, members, status FROM quorum_rounds WHERE id=? AND org_id=?",
+        )
+        .bind(round_id as u64)
+        .bind(org)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .ok_or(StoreError::NotFound)?;
+        let required = r.get::<i32, _>("required") as i64;
+        let members: Vec<String> = r
+            .get::<String, _>("members")
+            .split(',')
+            .map(str::to_string)
+            .collect();
+        if r.get::<String, _>("status") != "open" {
+            return Err(StoreError::Conflict("round closed".into()));
+        }
+        if !members.iter().any(|x| x == voter) {
+            return Err(StoreError::Conflict("not a member".into()));
+        }
+        let dup: Option<u64> =
+            sqlx::query("SELECT id FROM quorum_votes WHERE round_id=? AND org_id=? AND voter=?")
+                .bind(round_id as u64)
+                .bind(org)
+                .bind(voter)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        if dup.is_some() {
+            return Err(StoreError::Conflict("already voted".into()));
+        }
+        sqlx::query(
+            "INSERT INTO quorum_votes (org_id, round_id, voter, decision) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(round_id as u64)
+        .bind(voter)
+        .bind(decision)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let approves: i64 = sqlx::query(
+            "SELECT COUNT(*) AS n FROM quorum_votes WHERE round_id=? AND decision='approve'",
+        )
+        .bind(round_id as u64)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .get::<i64, _>("n");
+        let rejects: i64 = sqlx::query(
+            "SELECT COUNT(*) AS n FROM quorum_votes WHERE round_id=? AND decision='reject'",
+        )
+        .bind(round_id as u64)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .get::<i64, _>("n");
+        let status = if approves >= required {
+            "met"
+        } else if rejects > members.len() as i64 - required {
+            "failed"
+        } else {
+            "open"
+        };
+        sqlx::query("UPDATE quorum_rounds SET status=? WHERE id=?")
+            .bind(status)
+            .bind(round_id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
+        Ok(status.into())
+    }
+    async fn qoverride_request(
+        &self,
+        org: &str,
+        round_id: i64,
+        requested_by: &str,
+    ) -> Result<i64, StoreError> {
+        if requested_by.trim().is_empty() {
+            return Err(StoreError::Conflict("requested_by".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM quorum_rounds WHERE id=? AND org_id=?")
+                .bind(round_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        match cur.as_deref() {
+            Some("open") => {}
+            Some(_) => return Err(StoreError::Conflict("round closed".into())),
+            None => return Err(StoreError::NotFound),
+        }
+        let pending: Option<u64> = sqlx::query(
+            "SELECT id FROM quorum_overrides WHERE round_id=? AND org_id=? AND status='requested'",
+        )
+        .bind(round_id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .map(|x| x.get::<u64, _>("id"));
+        if pending.is_some() {
+            return Err(StoreError::Conflict("override pending".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO quorum_overrides (org_id, round_id, requested_by) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(round_id as u64)
+        .bind(requested_by)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn qoverride_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError> {
+        if decided_by.trim().is_empty() {
+            return Err(StoreError::Conflict("decided_by".into()));
+        }
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let cur: Option<(u64, String, String)> = sqlx::query(
+            "SELECT round_id, requested_by, status FROM quorum_overrides WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .map(|x| {
+            (
+                x.get::<u64, _>("round_id"),
+                x.get::<String, _>("requested_by"),
+                x.get::<String, _>("status"),
+            )
+        });
+        let (round_id, requested_by, status) = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        if status != "requested" {
+            return Err(StoreError::Conflict("already decided".into()));
+        }
+        if decided_by == requested_by {
+            return Err(StoreError::Conflict("self-approval forbidden".into()));
+        }
+        let to = if approve { "approved" } else { "rejected" };
+        sqlx::query("UPDATE quorum_overrides SET status=?, approved_by=? WHERE id=?")
+            .bind(to)
+            .bind(decided_by)
+            .bind(id as u64)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        if approve {
+            sqlx::query("UPDATE quorum_rounds SET status='overridden' WHERE id=?")
+                .bind(round_id)
+                .execute(&mut *tx)
+                .await
+                .map_err(db_err)?;
+        }
+        tx.commit().await.map_err(db_err)?;
+        Ok(to.into())
+    }
     async fn webhook_log(
         &self,
         org: Option<&str>,

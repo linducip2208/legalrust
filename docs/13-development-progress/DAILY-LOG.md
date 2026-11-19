@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 121: kuorum (main)
+- Kuorum M-of-N + override ganda; workspace **410 passed, 0 failed**; F-D09-014/040 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 120: routing (main)
 - Routing ambang + risiko; workspace **409 passed, 0 failed**; F-D09-012/013 IMPLEMENTED.
 

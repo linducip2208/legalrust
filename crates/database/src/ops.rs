@@ -77,6 +77,38 @@ pub struct RouteRuleRow {
     pub priority: i64,
     pub note: String,
 }
+/// Quorum round (M-of-N parallel sign-off).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuorumRoundRow {
+    pub id: i64,
+    pub org: String,
+    pub entity: String,
+    pub entity_id: i64,
+    pub title: String,
+    pub required: i64,
+    pub members: String,
+    pub status: String,
+    pub created_by: String,
+}
+/// Quorum vote (one per voter per round).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuorumVoteRow {
+    pub id: i64,
+    pub org: String,
+    pub round_id: i64,
+    pub voter: String,
+    pub decision: String,
+}
+/// Dual-control quorum override.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuorumOverrideRow {
+    pub id: i64,
+    pub org: String,
+    pub round_id: i64,
+    pub requested_by: String,
+    pub approved_by: String,
+    pub status: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1457,6 +1489,44 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn aroute_list(&self, org: &str) -> Result<Vec<RouteRuleRow>, StoreError>;
     async fn aroute_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Quorum rounds (M-of-N) + votes + dual-control overrides.
+    #[allow(clippy::too_many_arguments)]
+    async fn qround_add(
+        &self,
+        org: &str,
+        entity: &str,
+        entity_id: i64,
+        title: &str,
+        required: i64,
+        members: &[String],
+        created_by: &str,
+    ) -> Result<i64, StoreError>;
+    async fn qround_list(&self, org: &str) -> Result<Vec<QuorumRoundRow>, StoreError>;
+    async fn qround_get(
+        &self,
+        org: &str,
+        id: i64,
+    ) -> Result<(QuorumRoundRow, Vec<QuorumVoteRow>), StoreError>;
+    async fn qvote_add(
+        &self,
+        org: &str,
+        round_id: i64,
+        voter: &str,
+        decision: &str,
+    ) -> Result<String, StoreError>;
+    async fn qoverride_request(
+        &self,
+        org: &str,
+        round_id: i64,
+        requested_by: &str,
+    ) -> Result<i64, StoreError>;
+    async fn qoverride_decide(
+        &self,
+        org: &str,
+        id: i64,
+        approve: bool,
+        decided_by: &str,
+    ) -> Result<String, StoreError>;
     /// Record an inbound webhook receipt (observability; never fails the
     /// webhook itself — callers ignore the result).
     async fn webhook_log(
