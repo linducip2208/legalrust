@@ -5606,6 +5606,11 @@ async fn crm_app_contains_crm_ids() {
         "mtf-list",
         "mtm-doc",
         "mtm-set",
+        "up-file",
+        "up-go",
+        "up-prog",
+        "prv-doc",
+        "prv-go",
         "dlk-doc",
         "dlk-lock",
         "dlk-status",
@@ -9761,6 +9766,175 @@ async fn document_duplicates_manifest_and_auto_index() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn chunked_upload_sessions() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "upchunk@x.id").await;
+    let bearer = format!("Bearer {tok}")
+        .parse::<axum::http::HeaderValue>()
+        .unwrap();
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"0123456789abcdef";
+    let sha = legalrust_document::sha256_hex(content);
+    // Oversize rejected at session open.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/uploads",
+            &format!(
+                r#"{{"name":"big.bin","mime":"application/octet-stream","size":{},"sha":"{sha}"}}"#,
+                100 * 1024 * 1024
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/uploads",
+            &format!(
+                r#"{{"name":"c.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sid = body_json(res).await["id"].as_i64().unwrap();
+    // Chunks append in order; overflow rejected.
+    for part in [&content[..6], &content[6..]] {
+        let res = a
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(format!("/api/v1/uploads/{sid}/chunk"))
+                    .method("POST")
+                    .header("authorization", bearer.clone())
+                    .body(Body::from(part.to_vec()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/uploads/{sid}/chunk"))
+                .method("POST")
+                .header("authorization", bearer.clone())
+                .body(Body::from(b"zzz".to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/uploads/{sid}/complete"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["doc_id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/content"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Tampered bytes fail the sha gate at complete.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/uploads",
+            &format!(r#"{{"name":"t.bin","mime":"text/plain","size":4,"sha":"{sha}"}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/uploads/{tid}/chunk"))
+                .method("POST")
+                .header("authorization", bearer.clone())
+                .body(Body::from(b"xxxx".to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/uploads/{tid}/complete"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Abort drops the session.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/uploads",
+            &format!(r#"{{"name":"a.txt","mime":"text/plain","size":2,"sha":"{sha}"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let abid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/uploads/{abid}"))
+                .method("DELETE")
+                .header("authorization", bearer.clone())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/uploads/{abid}/complete"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let _ = mid;
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/uploads")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from("{}"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
 
 #[tokio::test]

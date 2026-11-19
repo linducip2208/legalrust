@@ -170,6 +170,9 @@ pub struct DocLockRow {
     pub note: String,
 }
 
+/// Document upload session head: (org, user, name, mime, total, sha).
+pub(crate) type UpSessionHead = (String, String, String, String, u64, String);
+
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
 pub fn appr_check(entity: &str, steps: &[(i64, String)]) -> Result<(), super::store::StoreError> {
@@ -1600,6 +1603,30 @@ pub trait OpsStore: Send + Sync {
         value: Option<&str>,
     ) -> Result<u64, StoreError>;
     async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError>;
+    /// Chunked upload sessions (ephemeral; process-local buffers).
+    async fn up_start(
+        &self,
+        org: &str,
+        user: &str,
+        name: &str,
+        mime: &str,
+        size: u64,
+        sha: &str,
+    ) -> Result<i64, StoreError>;
+    async fn up_append(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+        chunk: &[u8],
+    ) -> Result<u64, StoreError>;
+    async fn up_take(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+    ) -> Result<(String, String, u64, String, Vec<u8>), StoreError>;
+    async fn up_abort(&self, org: &str, user: &str, id: i64) -> Result<(), StoreError>;
     /// Check-in/out locking (one holder per doc).
     async fn dlock_lock(
         &self,

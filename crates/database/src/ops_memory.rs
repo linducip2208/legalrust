@@ -132,6 +132,8 @@ struct Inner {
     dlcs: HashMap<i64, DocLifecycleRow>,
     mfields: HashMap<i64, MetaFieldRow>,
     dmeta: HashMap<i64, DocMetaRow>,
+    upsessions: HashMap<i64, UpSessionHead>,
+    upbufs: HashMap<i64, Vec<u8>>,
     dlocks: HashMap<i64, DocLockRow>,
     dfavs: std::collections::HashSet<(String, String, i64)>,
     delegs: HashMap<i64, DelegationRow>,
@@ -1619,6 +1621,105 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| -r.id);
         Ok(v)
+    }
+    async fn up_start(
+        &self,
+        org: &str,
+        user: &str,
+        name: &str,
+        mime: &str,
+        size: u64,
+        sha: &str,
+    ) -> Result<i64, StoreError> {
+        const MAX_UPLOAD: u64 = 50 * 1024 * 1024;
+        let name = name.trim();
+        if name.is_empty() || name.len() > 255 || mime.trim().is_empty() || mime.len() > 120 {
+            return Err(StoreError::Conflict("name/mime".into()));
+        }
+        if size == 0 || size > MAX_UPLOAD {
+            return Err(StoreError::Conflict("size".into()));
+        }
+        if sha.trim().len() != 64 {
+            return Err(StoreError::Conflict("sha".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.upsessions.insert(
+            id,
+            (
+                org.into(),
+                user.into(),
+                name.into(),
+                mime.trim().into(),
+                size,
+                sha.trim().to_string(),
+            ),
+        );
+        m.upbufs.insert(id, Vec::new());
+        Ok(id)
+    }
+    async fn up_append(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+        chunk: &[u8],
+    ) -> Result<u64, StoreError> {
+        if chunk.is_empty() || chunk.len() > 8 * 1024 * 1024 {
+            return Err(StoreError::Conflict("chunk 1B..8MB".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let (_o, u, _, _, size, _) = m
+            .upsessions
+            .get(&id)
+            .filter(|(o, _, _, _, _, _)| o == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if u != user {
+            return Err(StoreError::Conflict("not owner".into()));
+        }
+        let buf = m.upbufs.get_mut(&id).ok_or(StoreError::NotFound)?;
+        if buf.len() as u64 + chunk.len() as u64 > size {
+            return Err(StoreError::Conflict("overflow".into()));
+        }
+        buf.extend_from_slice(chunk);
+        Ok(buf.len() as u64)
+    }
+    async fn up_take(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+    ) -> Result<(String, String, u64, String, Vec<u8>), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let (_o, u, name, mime, size, sha) = m
+            .upsessions
+            .get(&id)
+            .filter(|(o, _, _, _, _, _)| o == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if u != user {
+            return Err(StoreError::Conflict("not owner".into()));
+        }
+        let buf = m.upbufs.get(&id).cloned().unwrap_or_default();
+        if buf.len() as u64 != size {
+            return Err(StoreError::Conflict("incomplete".into()));
+        }
+        m.upsessions.remove(&id);
+        m.upbufs.remove(&id);
+        Ok((name, mime, size, sha, buf))
+    }
+    async fn up_abort(&self, org: &str, user: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.upsessions.get(&id) {
+            Some((o, u, _, _, _, _)) if o == org && u == user => {
+                m.upsessions.remove(&id);
+                m.upbufs.remove(&id);
+                Ok(())
+            }
+            Some(_) => Err(StoreError::Conflict("not owner".into())),
+            None => Err(StoreError::NotFound),
+        }
     }
     async fn dlock_lock(
         &self,

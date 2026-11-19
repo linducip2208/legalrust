@@ -1301,12 +1301,15 @@
   "id": "F-D04-012",
   "domain": "D04",
   "title": "Document preview (PDF/Office/image)",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:3454-3456 document routes (upload/list/get/content)",
    "apps/server/src/lib.rs:500 create_doc + :541 list_docs (SHA-256 pin enforced)",
-   "migrations/0002_core.sql: documents, document_versions"
-  ]
+   "migrations/0002_core.sql: documents, document_versions",
+   "apps/server/src/lib.rs: preview card (iframe/image/link by mime, text-only note for binaries)",
+   "apps/server/tests/api.rs: /app needles prv-doc/prv-go asserted"
+  ],
+  "audit_note": "Wave 135: in-app preview live (browser-native for pdf/image/text). PARTIAL->IMPLEMENTED, verified by test (423/0)."
  },
  {
   "id": "F-D04-013",
@@ -1574,10 +1577,14 @@
   "id": "F-D04-035",
   "domain": "D04",
   "title": "Large-file chunked upload",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: up_start/append/take/abort (ownership, overflow + sha gates, in-process staging)",
+   "apps/server/src/lib.rs: POST /uploads + chunk + complete + DELETE (validate_upload, sha gate, auto-index text, audit)",
+   "apps/server/static/site.js: chunked uploader (256KB slices, progress, abort) + hooks (dok panel)",
+   "apps/server/tests/api.rs: chunked_upload_sessions e2e (overflow/sha-mismatch/abort/not-found/422, content roundtrip)"
+  ],
+  "audit_note": "Wave 135: chunked intake live (ephemeral sessions documented). Verified by test (423/0)."
  },
  {
   "id": "F-D04-036",

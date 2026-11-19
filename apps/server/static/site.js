@@ -3292,6 +3292,57 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('dlk-msg', '');
     dlkFavs();
   });
+  /* ---- document preview (F-D04-012) ---- */
+  on('prv-go', 'click', async function () {
+    var out = document.getElementById('prv-out');
+    if (!pval('prv-doc')) { pmsg('dlk-msg', 'Isi ID dokumen.'); return; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(pval('prv-doc')));
+    if (!v) { if (out) out.textContent = 'Dokumen tidak ditemukan.'; return; }
+    pmsg('dlk-msg', '');
+    var url = '/api/v1/documents/' + encodeURIComponent(pval('prv-doc')) + '/content';
+    var html;
+    if ((v.mime || '').indexOf('image/') === 0) html = '<img src="' + url + '" style="max-width:100%" alt="pratinjau">';
+    else if (v.mime === 'application/pdf') html = '<iframe src="' + url + '" style="width:100%;height:480px" title="pratinjau"></iframe>';
+    else if ((v.mime || '').indexOf('text/') === 0) html = '<a href="' + url + '" target="_blank" rel="noopener">Buka teks di tab baru</a>';
+    else html = '<span class="text-muted">Pratinjau tidak tersedia untuk ' + esc(v.mime || '?') + '. <a href="' + url + '">Unduh</a></span>';
+    if (out) out.innerHTML = '<p class="text-muted">' + esc(v.name || '') + ' (' + esc(v.mime || '') + ')</p>' + html;
+  });
+  /* ---- chunked upload (F-D04-035) ---- */
+  var UP_ID = null;
+  on('up-go', 'click', async function () {
+    var f = document.getElementById('up-file').files[0];
+    var prog = document.getElementById('up-prog');
+    if (!f) { pmsg('up-msg', 'Pilih berkas dulu.'); return; }
+    var buf = await f.arrayBuffer();
+    var h = await crypto.subtle.digest('SHA-256', buf);
+    var sha = [...new Uint8Array(h)].map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+    var s = await ppost('/api/v1/uploads', { name: f.name, mime: f.type || 'application/octet-stream', size: f.size, sha: sha });
+    if (!s.ok) { pmsg('up-msg', 'Gagal membuka sesi (' + s.status + ').'); return; }
+    var sid = (await s.json()).id;
+    UP_ID = sid;
+    var CH = 262144, off = 0;
+    while (off < buf.byteLength) {
+      var chunk = buf.slice(off, off + CH);
+      var r = await fetch('/api/v1/uploads/' + sid + '/chunk', { method: 'POST', headers: H, body: chunk });
+      if (!r.ok) { pmsg('up-msg', 'Gagal pada byte ' + off + ' (' + r.status + ').'); if (prog) prog.textContent = 'Terhenti di ' + off + '/' + buf.byteLength + '.'; return; }
+      off = (await r.json()).received;
+      if (prog) prog.textContent = 'Terkirim ' + off + '/' + buf.byteLength + ' byte…';
+    }
+    var done = await ppost('/api/v1/uploads/' + sid + '/complete', {});
+    if (!done.ok) { pmsg('up-msg', 'Gagal menyelesaikan (' + done.status + ').'); return; }
+    var v = await done.json();
+    pmsg('up-msg', '');
+    if (prog) prog.textContent = 'Selesai: dokumen #' + v.doc_id + '.';
+    UP_ID = null;
+  });
+  on('up-abort', 'click', async function () {
+    if (!UP_ID) { pmsg('up-msg', 'Tidak ada sesi berjalan.'); return; }
+    await fetch('/api/v1/uploads/' + UP_ID, { method: 'DELETE', headers: H });
+    UP_ID = null;
+    var prog = document.getElementById('up-prog');
+    if (prog) prog.textContent = 'Dibatalkan.';
+    pmsg('up-msg', '');
+  });
   /* ---- watermark + stamp (F-D04-018/019, text layer) ---- */
   on('dwm-go', 'click', async function () {
     if (!pval('dlk-doc') || !pval('dwm-text')) { pmsg('dlk-msg', 'Isi ID dokumen dan teks.'); return; }

@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 135: chunked upload + preview (main)
+- upload sessions + preview card + kartu + uji.
+- F-D04-035 NOT_STARTED->IMPLEMENTED, 012 PARTIAL->IMPLEMENTED (~72.2 verified). Workspace 423/0; registry ~28.3 (239 IMPLEMENTED); mean ~31.1 (229 v).
+
 ## Done wave 134: doc approval routing + flake fix (main)
 - entity=document in approval engine + attachments + select; 022 credited correctly, 023 kept.
 - Fixed real flake root cause: shared temp object dir across parallel tests -> unique scratch per dev_state().

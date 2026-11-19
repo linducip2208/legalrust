@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 135: chunked + pratinjau (main)
+- Sessions + viewer + guards; workspace **423 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 134: routing + flake (main)
 - Entity allowlist + attachments + race fix; workspace **422 passed, 0 failed** x2 runs.
 

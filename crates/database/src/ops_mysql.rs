@@ -4,10 +4,18 @@ use sqlx::{MySqlPool, Row};
 #[derive(Debug, Clone)]
 pub struct MysqlOps {
     pub pool: MySqlPool,
+    upmeta: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<i64, UpSessionHead>>>,
+    upbuf: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<i64, Vec<u8>>>>,
+    upseq: std::sync::Arc<std::sync::atomic::AtomicI64>,
 }
 impl MysqlOps {
     pub fn new(pool: MySqlPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            upmeta: Default::default(),
+            upbuf: Default::default(),
+            upseq: std::sync::Arc::new(std::sync::atomic::AtomicI64::new(1)),
+        }
     }
 }
 fn db_err(e: sqlx::Error) -> StoreError {
@@ -1501,6 +1509,108 @@ impl OpsStore for MysqlOps {
             return Err(StoreError::NotFound);
         }
         Ok(n)
+    }
+    async fn up_start(
+        &self,
+        org: &str,
+        user: &str,
+        name: &str,
+        mime: &str,
+        size: u64,
+        sha: &str,
+    ) -> Result<i64, StoreError> {
+        const MAX_UPLOAD: u64 = 50 * 1024 * 1024;
+        let name = name.trim();
+        if name.is_empty() || name.len() > 255 || mime.trim().is_empty() || mime.len() > 120 {
+            return Err(StoreError::Conflict("name/mime".into()));
+        }
+        if size == 0 || size > MAX_UPLOAD {
+            return Err(StoreError::Conflict("size".into()));
+        }
+        if sha.trim().len() != 64 {
+            return Err(StoreError::Conflict("sha".into()));
+        }
+        let id = self
+            .upseq
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.upmeta.lock().unwrap().insert(
+            id,
+            (
+                org.into(),
+                user.into(),
+                name.into(),
+                mime.trim().into(),
+                size,
+                sha.trim().to_string(),
+            ),
+        );
+        self.upbuf.lock().unwrap().insert(id, Vec::new());
+        Ok(id)
+    }
+    async fn up_append(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+        chunk: &[u8],
+    ) -> Result<u64, StoreError> {
+        if chunk.is_empty() || chunk.len() > 8 * 1024 * 1024 {
+            return Err(StoreError::Conflict("chunk 1B..8MB".into()));
+        }
+        let meta = self.upmeta.lock().unwrap();
+        let (_o, u, _, _, size, _) = meta
+            .get(&id)
+            .filter(|(o, _, _, _, _, _)| o == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if u != user {
+            return Err(StoreError::Conflict("not owner".into()));
+        }
+        drop(meta);
+        let mut bufs = self.upbuf.lock().unwrap();
+        let buf = bufs.get_mut(&id).ok_or(StoreError::NotFound)?;
+        if buf.len() as u64 + chunk.len() as u64 > size {
+            return Err(StoreError::Conflict("overflow".into()));
+        }
+        buf.extend_from_slice(chunk);
+        Ok(buf.len() as u64)
+    }
+    async fn up_take(
+        &self,
+        org: &str,
+        user: &str,
+        id: i64,
+    ) -> Result<(String, String, u64, String, Vec<u8>), StoreError> {
+        let meta = self.upmeta.lock().unwrap();
+        let (_o, u, name, mime, size, sha) = meta
+            .get(&id)
+            .filter(|(o, _, _, _, _, _)| o == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)?;
+        if u != user {
+            return Err(StoreError::Conflict("not owner".into()));
+        }
+        drop(meta);
+        let mut bufs = self.upbuf.lock().unwrap();
+        let buf = bufs.get(&id).cloned().unwrap_or_default();
+        if buf.len() as u64 != size {
+            return Err(StoreError::Conflict("incomplete".into()));
+        }
+        self.upmeta.lock().unwrap().remove(&id);
+        bufs.remove(&id);
+        Ok((name, mime, size, sha, buf))
+    }
+    async fn up_abort(&self, org: &str, user: &str, id: i64) -> Result<(), StoreError> {
+        let mut meta = self.upmeta.lock().unwrap();
+        match meta.get(&id) {
+            Some((o, u, _, _, _, _)) if o == org && u == user => {
+                meta.remove(&id);
+                self.upbuf.lock().unwrap().remove(&id);
+                Ok(())
+            }
+            Some(_) => Err(StoreError::Conflict("not owner".into())),
+            None => Err(StoreError::NotFound),
+        }
     }
     async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError> {
         let tag = tag.trim();
