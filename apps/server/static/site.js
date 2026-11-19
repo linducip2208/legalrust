@@ -3400,6 +3400,28 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     csvRefresh();
   });
   on('csv-reload', 'click', csvRefresh);
+  /* ---- portal login (F-D19-001/030) ---- */
+  var PTL_TOK = '';
+  on('ptl-login', 'click', async function () {
+    if (!pval('ptl-token')) { pmsg('ptl-msg', 'Isi token undangan.'); return; }
+    var r = await ppost('/api/v1/portal/login', { token: pval('ptl-token') });
+    if (!r.ok) { pmsg('ptl-msg', 'Gagal (' + r.status + '). Token salah / dicabut?'); return; }
+    var v = await r.json().catch(function () { return null; });
+    PTL_TOK = (v && v.token) || '';
+    pmsg('ptl-msg', '');
+    var out = document.getElementById('ptl-out');
+    if (out) out.textContent = v ? 'Masuk sebagai klien #' + v.client_id + ' (sesi 8 jam).' : 'Masuk.';
+  });
+  on('ptl-me', 'click', async function () {
+    var out = document.getElementById('ptl-out');
+    var h = {};
+    for (var k in H) h[k] = H[k];
+    if (PTL_TOK) h['authorization'] = 'Bearer ' + PTL_TOK;
+    var r = await fetch('/api/v1/portal/me', { headers: h });
+    if (!r.ok) { if (out) out.textContent = 'Gagal (' + r.status + '). Masuk dulu.'; return; }
+    var v = await r.json().catch(function () { return null; });
+    if (out && v) out.textContent = 'Portal: ' + v.display_name + ' (' + v.kind + ') · peran ' + (v.roles || []).join(',');
+  });
   /* ---- campaigns + participations (F-D02-022) ---- */
   async function mcpRefresh() {
     var box = document.getElementById('mcp-list');

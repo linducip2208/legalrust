@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 156: konflik — D02 CLOSED (main)
+## 2026-11-19 AUDIT-1000 wave 157: login portal (main)
+- Client JWT + revocation; workspace **447 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 156: konflik — D02 CLOSED (main)
 - 3-surface screen + human note; workspace **446 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 155: 360 + peran kontak (main)

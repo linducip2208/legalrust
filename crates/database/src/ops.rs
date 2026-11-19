@@ -2188,6 +2188,11 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: Option<i64>,
     ) -> Result<Vec<ClientPortalInviteRow>, StoreError>;
+    /// Lookup by stored token hash (hash is unguessable; org derived from row).
+    async fn cpi_get_by_token(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<ClientPortalInviteRow>, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

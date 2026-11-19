@@ -7897,10 +7897,14 @@
   "id": "F-D19-001",
   "domain": "D19",
   "title": "Client login (secure)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "ops.rs + memory + mysql: cpi_get_by_token (hash lookup)",
+   "lib.rs: POST /api/v1/portal/login (hashed token, pending->accepted, client JWT) + GET /api/v1/portal/me",
+   "site.js: portal access card + hooks (klien panel)",
+   "tests: portal_login_and_session e2e (bad token 401, staff 403 on me, least-privilege)"
+  ],
+  "audit_note": "Wave 157: portal token login live. Verified by test (447/0)."
  },
  {
   "id": "F-D19-002",
@@ -8173,10 +8177,12 @@
   "id": "F-D19-030",
   "domain": "D19",
   "title": "Portal session security",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "8h JWT like staff sessions + server-side session row + shared brute-force gate",
+   "tests: logout revokes portal session (me 401s after), re-login works"
+  ],
+  "audit_note": "Wave 157: portal session security live on shared infra. Verified by test (447/0)."
  },
  {
   "id": "F-D19-031",

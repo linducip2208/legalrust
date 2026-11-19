@@ -64,6 +64,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 157: portal login + session (main)
+- cpi_get_by_token + portal login/me (client JWT, 8h, revocable) + kartu + uji.
+- F-D19-001 PLANNED->IMPLEMENTED, F-D19-030 NOT_STARTED->IMPLEMENTED (~73.2 verified). Workspace 447/0; registry ~30.5 (283 IMPLEMENTED); mean 34.0 (273 v).
+
 ## Done wave 156: conflict screening — D02 CLOSED (main)
 - pparty_search + /conflicts/check (3-surface, human-review note) + kartu + uji.
 - F-D02-008 CONFIGURATION_REQUIRED->IMPLEMENTED (~72.8 verified; stale OCR evidence corrected). Workspace 446/0; registry ~30.4 (281 IMPLEMENTED); mean 33.8 (271 v).

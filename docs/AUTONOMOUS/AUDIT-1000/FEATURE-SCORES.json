@@ -12242,19 +12242,19 @@
  {
   "feature_id": "F-D19-001",
   "domain": "D19",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 10,
-   "database": 10,
-   "frontend": 10,
-   "business_logic": 10,
-   "security": 10,
-   "testing": 10,
-   "integration": 10,
-   "documentation": 10
+   "backend": 83,
+   "database": 72,
+   "frontend": 75,
+   "business_logic": 78,
+   "security": 82,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 10.0,
-  "verified_8cat": false
+  "overall_score": 73.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D19-002",
@@ -12735,19 +12735,19 @@
  {
   "feature_id": "F-D19-030",
   "domain": "D19",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 83,
+   "database": 72,
+   "frontend": 75,
+   "business_logic": 78,
+   "security": 82,
+   "testing": 83,
+   "integration": 58,
+   "documentation": 55
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 73.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D19-031",

@@ -3406,6 +3406,19 @@ impl OpsStore for MemoryOps {
         v.sort_by_key(|r| -r.id);
         Ok(v)
     }
+    async fn cpi_get_by_token(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<ClientPortalInviteRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .cpis
+            .values()
+            .find(|r| r.token == token_hash)
+            .cloned())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
         let r = m

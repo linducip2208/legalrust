@@ -5684,6 +5684,9 @@ async fn crm_app_contains_crm_ids() {
         "ov-go",
         "cfx-name",
         "cfx-go",
+        "ptl-token",
+        "ptl-login",
+        "ptl-me",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11661,6 +11664,95 @@ async fn client_portal_invites_and_surveys() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn portal_login_and_session() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliportal2@x.id").await;
+    let cli = mk_crm_client(&a, &tok).await;
+    // Invite, then log in with the once-shown token.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal-invites",
+            &format!(r#"{{"client_id":{cli},"email":"portal@x.id"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ptoken = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            r#"{"token":"salah-salah-salah"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let ptok = body_json(res).await["token"].as_str().unwrap().to_string();
+    // Me resolves the client; staff token is not a portal identity.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/me", &ptok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["client_id"].as_i64().unwrap(), cli);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/me", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Logout revokes the portal session; me then 401s. Client role is least-privilege.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/auth/logout", "{}", Some(&ptok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/portal/me", &ptok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Fresh login again for role-gate probe: client cannot manage retention rules.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/portal/login",
+            &format!(r#"{{"token":"{ptoken}"}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    let ptok2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/retention-rules",
+            r#"{"entity":"bpn"}"#,
+            Some(&ptok2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]

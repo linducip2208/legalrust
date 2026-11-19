@@ -3147,6 +3147,21 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn cpi_get_by_token(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<ClientPortalInviteRow>, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, client_id, email, token, status FROM client_portal_invites WHERE token=?")
+            .bind(token_hash).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(x.map(|x| ClientPortalInviteRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            client_id: x.get::<u64, _>("client_id") as i64,
+            email: x.get::<String, _>("email"),
+            token: x.get::<String, _>("token"),
+            status: x.get::<String, _>("status"),
+        }))
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")
