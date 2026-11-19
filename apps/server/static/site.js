@@ -1687,6 +1687,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
+  /* ---- integration health (F-D21-031, no secrets exposed) ---- */
+  async function intRefresh() {
+    var box = document.getElementById('int-list');
+    if (!box) return;
+    var v = await j('/api/v1/integrations/health');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.kind) + '</td><td>' + (x.configured ? '<span class="badge bg-green-lt">siap</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td><td class="text-muted">' + esc(x.detail) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada integrasi.</td></tr>';
+  }
+  on('int-reload', 'click', intRefresh);
+  qsa('.snav[data-tab="jobs"]', function (a) {
+    a.addEventListener('click', function () { whDlRefresh(); intRefresh(); });
+  });
   async function whDlRefresh() {
     var box = document.getElementById('wh-dl-list');
     if (!box) return;
@@ -1696,9 +1710,6 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       return '<tr><td>' + x.id + '</td><td>' + esc(x.provider) + '</td><td>' + esc(x.event) + '</td><td>' + esc(x.detail) + '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada dead letter. Semua terkirim.</td></tr>';
   }
-  qsa('.snav[data-tab="jobs"]', function (a) {
-    a.addEventListener('click', function () { whDlRefresh(); });
-  });
   mktRefresh();
   loadAudit();
   loadJobs();
@@ -1716,4 +1727,6 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   breachRefresh();
   vendorRefresh();
   whDlRefresh();
+  intRefresh();
+  intRefresh();
 })();

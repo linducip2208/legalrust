@@ -8072,8 +8072,12 @@
   "status": "PARTIAL",
   "evidence": [
    "apps/server/src/lib.rs:3485 POST /api/v1/webhooks/incoming/{provider}; :1317 webhook_in (secret-gated)",
-   "integrations list endpoint (providers named, not connected)"
-  ]
+   "integrations list endpoint (providers named, not connected)",
+   "apps/server/src/lib.rs: GET /api/v1/integrations/health (per-provider readiness, no secrets)",
+   "apps/server/static/site.js: intRefresh card + hooks in Jobs tab",
+   "apps/server/tests/api.rs: integration_health_reports_without_secrets + needles"
+  ],
+  "audit_note": " Wave 57: health console live; stays PARTIAL (no alerting/scheduler)."
  },
  {
   "id": "F-D21-032",

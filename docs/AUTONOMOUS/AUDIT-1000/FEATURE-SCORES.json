@@ -14114,17 +14114,17 @@
   "domain": "D21",
   "status": "PARTIAL",
   "scores": {
-   "backend": 60,
+   "backend": 80,
    "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "frontend": 75,
+   "business_logic": 75,
+   "security": 75,
+   "testing": 82,
+   "integration": 65,
+   "documentation": 55
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 70.9,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D21-032",

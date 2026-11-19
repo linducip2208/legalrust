@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 57: monitor integrasi (main)
+- Health per provider + kartu Jobs; workspace **346 passed, 0 failed**; F-D21-031 70.9 PARTIAL.
+
 ## 2026-11-19 AUDIT-1000 wave 56: prefill akta + verifikasi (main)
 - Prefill register->akta; delivery/read evidence; workspace **345 passed, 0 failed**.
 

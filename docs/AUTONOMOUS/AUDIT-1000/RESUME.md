@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 57: monitor kesehatan integrasi (main)
+- /api/v1/integrations/health + kartu Jobs (tanpa bocor secret) + uji no-leak.
+- F-D21-031 51.8->70.9 PARTIAL (verified). Workspace 346/0; registry 19.9 (80 IMPLEMENTED); mean 21.5 (70 v).
+
 ## Done wave 56: register->akta prefill + verifikasi delivery/read (main)
 - PPAT "Buat akta" prefill nomor/jenis; F-D13-005 59.4->62.2 PARTIAL.
 - F-D20-028 NOT_STARTED->PARTIAL (59.4); F-D09-039 PLANNED->PARTIAL (60.6).

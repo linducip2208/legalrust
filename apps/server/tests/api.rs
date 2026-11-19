@@ -4649,6 +4649,42 @@ async fn role_matrix_lists_least_privilege_sets() {
 }
 
 #[tokio::test]
+async fn integration_health_reports_without_secrets() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "inthealth@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/integrations/health", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    let all = v.as_array().unwrap();
+    assert!(all.iter().any(|x| x["name"] == "tripay"));
+    assert!(all.iter().any(|x| x["name"] == "ocr"));
+    assert!(all.iter().any(|x| x["name"] == "database"));
+    // No secret material leaks through the health surface.
+    let raw = serde_json::to_string(&v).unwrap().to_lowercase();
+    assert!(
+        !raw.contains("key_") && !raw.contains("secret_value"),
+        "leak: {raw}"
+    );
+    // Unauthenticated callers get nothing.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/integrations/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn public_pages_all_render_200() {
     use tower::ServiceExt;
     let a = app();
@@ -7444,6 +7480,8 @@ async fn uib_app_has_approvals_ui() {
         "wh-dl-list",
         "wh-dl-reload",
         "wh-dl-msg",
+        "int-list",
+        "int-reload",
         "p-kepatuhan",
         "kep-title",
         "kep-add",
