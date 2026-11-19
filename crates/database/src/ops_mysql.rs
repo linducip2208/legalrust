@@ -1651,25 +1651,27 @@ impl OpsStore for MysqlOps {
         {
             return Err(StoreError::Conflict("tag".into()));
         }
-        let r =
-            sqlx::query("INSERT IGNORE INTO client_tags (org_id, client_id, tag) VALUES (?,?,?)")
-                .bind(org)
-                .bind(client_id as u64)
-                .bind(&tag)
-                .execute(&self.pool)
-                .await
-                .map_err(db_err)?;
+        let r = sqlx::query(
+            "INSERT IGNORE INTO client_segments (org_id, client_id, tag) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(client_id as u64)
+        .bind(&tag)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
         let id = r.last_insert_id() as i64;
         if id == 0 {
-            let x: Option<u64> =
-                sqlx::query("SELECT id FROM client_tags WHERE org_id=? AND client_id=? AND tag=?")
-                    .bind(org)
-                    .bind(client_id as u64)
-                    .bind(&tag)
-                    .fetch_optional(&self.pool)
-                    .await
-                    .map_err(db_err)?
-                    .map(|x| x.get::<u64, _>("id"));
+            let x: Option<u64> = sqlx::query(
+                "SELECT id FROM client_segments WHERE org_id=? AND client_id=? AND tag=?",
+            )
+            .bind(org)
+            .bind(client_id as u64)
+            .bind(&tag)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<u64, _>("id"));
             return x.map(|v| v as i64).ok_or(StoreError::NotFound);
         }
         Ok(id)
@@ -1680,10 +1682,10 @@ impl OpsStore for MysqlOps {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientSegRow>, StoreError> {
         let rows = if let Some(c) = client_id {
-            sqlx::query("SELECT id, org_id, client_id, tag FROM client_tags WHERE org_id=? AND client_id=? ORDER BY tag LIMIT 200")
+            sqlx::query("SELECT id, org_id, client_id, tag FROM client_segments WHERE org_id=? AND client_id=? ORDER BY tag LIMIT 200")
                 .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
         } else {
-            sqlx::query("SELECT id, org_id, client_id, tag FROM client_tags WHERE org_id=? ORDER BY tag LIMIT 500")
+            sqlx::query("SELECT id, org_id, client_id, tag FROM client_segments WHERE org_id=? ORDER BY tag LIMIT 500")
                 .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
         };
         Ok(rows
@@ -1697,7 +1699,7 @@ impl OpsStore for MysqlOps {
             .collect())
     }
     async fn cseg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
-        let n = sqlx::query("DELETE FROM client_tags WHERE id=? AND org_id=?")
+        let n = sqlx::query("DELETE FROM client_segments WHERE id=? AND org_id=?")
             .bind(id as u64)
             .bind(org)
             .execute(&self.pool)

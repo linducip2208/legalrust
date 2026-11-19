@@ -163,6 +163,10 @@
 ## 2026-11-19 AUDIT-1000 wave 137: kuota + sinkron (main)
 - Kuota penyimpanan + umpan sinkronisasi; workspace **425 passed, 0 failed**; F-D04-029/034 IMPLEMENTED.
 
+## 2026-11-19 INCIDENT: duplicate migration version 0084 (main)
+- Root cause: wave 129 created migrations/0084_doc_lock_fav.sql; wave 137 added a second migrations/0084_org_quota.sql. sqlx embeds both under version 84 and aborts the whole run with `migration 84 was previously applied but has been modified` (error only in server log; launcher showed healthy 401s). Effect: migrations 85/86 never applied on dev MySQL; wave-137 live check passed on needles only and missed the missing tables.
+- Recovery (no data loss, forward-only): renamed quota file to migrations/0087_org_quota.sql; renamed colliding client_tags table to client_segments in 0085 + ops_mysql; removed the orphan success row for 84 (its table never existed); restarted server -> versions 85, 86, 87 applied success=1. Lesson: every relaunch must assert `_sqlx_migrations` max version + new tables, not just endpoints/needles.
+
 ## 2026-11-19 AUDIT-1000 wave 138: checklist klien (main)
 - Onboarding + offboarding; workspace **428 passed, 0 failed**; F-D02-009/010 IMPLEMENTED.
 

@@ -13,15 +13,15 @@ CREATE TABLE client_links (
   KEY ix_clink_child (child_id),
   KEY ix_clink_parent (parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE TABLE client_tags (
+CREATE TABLE client_segments (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   org_id CHAR(36) NOT NULL,
   client_id BIGINT UNSIGNED NOT NULL,
   tag VARCHAR(60) NOT NULL DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_ctlink_org FOREIGN KEY (org_id) REFERENCES organizations (id),
-  CONSTRAINT fk_ctlink_client FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
-  UNIQUE KEY uq_ctag_triple (org_id, client_id, tag),
-  KEY ix_ctag_client (client_id),
-  KEY ix_ctag_tag (org_id, tag)
+  CONSTRAINT fk_cseg_org FOREIGN KEY (org_id) REFERENCES organizations (id),
+  CONSTRAINT fk_cseg_client FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
+  UNIQUE KEY uq_cseg_triple (org_id, client_id, tag),
+  KEY ix_cseg_client (client_id),
+  KEY ix_cseg_tag (org_id, tag)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
