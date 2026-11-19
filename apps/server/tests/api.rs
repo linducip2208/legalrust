@@ -5647,6 +5647,10 @@ async fn crm_app_contains_crm_ids() {
         "cem-list",
         "ccn-channel",
         "ccn-set",
+        "vip-cid",
+        "vip-add",
+        "vip-list",
+        "crd-go",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11124,6 +11128,142 @@ async fn client_roster_and_consents() {
         .oneshot(
             Request::builder()
                 .uri(format!("/api/v1/clients/{cli}/employees"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_vip_and_credit() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "clivip@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-flags",
+            &format!(r#"{{"client_id":{cli},"tier":"vip"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-flags",
+            r#"{"client_id":999999,"tier":"vip"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-flags",
+            &format!(r#"{{"client_id":{cli},"tier":"alien"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-flags",
+            &format!(r#"{{"client_id":{cli},"tier":"vip"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let vid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-flags",
+            &format!(r#"{{"client_id":{cli},"tier":"vip"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/client-flags?client_id={cli}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(vid)));
+    // Credit: under-limit then over-limit.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"MC","client_id":{cli}}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let _ = mk_invoice(&a, &tok, mid, 5_000_000).await;
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-credit",
+            &format!(r#"{{"client_id":{cli},"limit_minor":10000000}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/exposure"), &tok))
+        .await
+        .unwrap();
+    let ev = body_json(res).await;
+    assert_eq!(ev["over_limit"], serde_json::json!(false));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/client-credit",
+            &format!(r#"{{"client_id":{cli},"limit_minor":1000}}"#,),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/clients/{cli}/exposure"), &tok))
+        .await
+        .unwrap();
+    let ev2 = body_json(res).await;
+    assert_eq!(ev2["over_limit"], serde_json::json!(true));
+    assert_eq!(ev2["exposure_minor"], ev["exposure_minor"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/clients/999999/exposure", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/client-flags")
                 .body(Body::empty())
                 .unwrap(),
         )

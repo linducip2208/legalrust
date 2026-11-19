@@ -2640,6 +2640,111 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn cvip_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        tier: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let t = tier.trim().to_lowercase();
+        if !["vip", "priority", "watch"].contains(&t.as_str()) {
+            return Err(StoreError::Conflict("tier".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO client_vips (org_id, client_id, tier, note) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(client_id as u64)
+                .bind(&t)
+                .bind(note.trim())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cvip_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientVipRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, tier, note FROM client_vips WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 100")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, tier, note FROM client_vips WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientVipRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                tier: x.get::<String, _>("tier"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn cvip_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_vips WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn ccred_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        limit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || limit_minor < 0 {
+            return Err(StoreError::Conflict("limit".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        sqlx::query("INSERT INTO client_credit (org_id, client_id, limit_minor, note) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE limit_minor=VALUES(limit_minor), note=VALUES(note)")
+            .bind(org).bind(client_id as u64).bind(limit_minor).bind(note.trim())
+            .execute(&self.pool).await.map_err(db_err)?;
+        let x: Option<u64> =
+            sqlx::query("SELECT id FROM client_credit WHERE org_id=? AND client_id=?")
+                .bind(org)
+                .bind(client_id as u64)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<u64, _>("id"));
+        x.map(|v| v as i64).ok_or(StoreError::NotFound)
+    }
+    async fn ccred_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientCreditRow>, StoreError> {
+        let x = sqlx::query("SELECT id, org_id, client_id, limit_minor, note FROM client_credit WHERE org_id=? AND client_id=?")
+            .bind(org).bind(client_id as u64).fetch_optional(&self.pool).await.map_err(db_err)?;
+        Ok(x.map(|x| ClientCreditRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            client_id: x.get::<u64, _>("client_id") as i64,
+            limit_minor: x.get::<i64, _>("limit_minor"),
+            note: x.get::<String, _>("note"),
+        }))
+    }
     async fn up_start(
         &self,
         org: &str,

@@ -3169,6 +3169,45 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ccnRefresh();
   });
   on('ccn-reload', 'click', ccnRefresh);
+  /* ---- VIP flags + credit exposure (F-D02-030/031) ---- */
+  async function vipRefresh() {
+    var box = document.getElementById('vip-list');
+    if (!box) return;
+    var v = await j('/api/v1/client-flags' + (pval('vip-cid') ? '?client_id=' + encodeURIComponent(pval('vip-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.client_id + '</td><td>' + badge(x.tier) + '</td><td><button class="btn btn-sm btn-outline-danger" data-vip-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada flag.</td></tr>';
+    qsa('[data-vip-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/client-flags/' + b.getAttribute('data-vip-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('vip-msg', 'Gagal (' + r.status + ').'); return; }
+        vipRefresh();
+      });
+    });
+  }
+  on('vip-add', 'click', async function () {
+    if (!pval('vip-cid')) { pmsg('vip-msg', 'Isi ID klien.'); return; }
+    var r = await ppost('/api/v1/client-flags', { client_id: +pval('vip-cid'), tier: pval('vip-tier') || 'vip' });
+    if (!r.ok) { pmsg('vip-msg', 'Gagal (' + r.status + '). Ganda?'); return; }
+    pmsg('vip-msg', '');
+    vipRefresh();
+  });
+  on('vip-reload', 'click', vipRefresh);
+  on('crd-save', 'click', async function () {
+    if (!pval('vip-cid')) { pmsg('vip-msg', 'Isi ID klien.'); return; }
+    var r = await ppost('/api/v1/client-credit', { client_id: +pval('vip-cid'), limit_minor: +pval('crd-limit') || 0 });
+    if (!r.ok) { pmsg('vip-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('vip-msg', '');
+  });
+  on('crd-go', 'click', async function () {
+    var out = document.getElementById('crd-out');
+    if (!pval('vip-cid')) { if (out) out.textContent = 'Isi ID klien.'; return; }
+    var v = await j('/api/v1/clients/' + encodeURIComponent(pval('vip-cid')) + '/exposure');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = 'Limit ' + fmtRp(v.limit_minor) + ' · eksposur ' + fmtRp(v.exposure_minor)
+      + (v.over_limit ? ' <span class="badge bg-red-lt">LEWAT LIMIT</span>' : ' <span class="badge bg-green-lt">aman</span>');
+  });
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -3999,6 +4038,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   cwbRefresh();
   ccrRefresh();
   cemRefresh();
+  vipRefresh();
   apptRefresh();
   queueRefresh();
   visRefresh();

@@ -733,19 +733,29 @@
   "id": "F-D02-030",
   "domain": "D02",
   "title": "VIP / priority client flagging",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0093: client_vips table (tier check, forward-only)",
+   "ops.rs + memory + mysql: cvip add/list/delete + allowlists",
+   "lib.rs: flag endpoints (existence-verified, RBAC)",
+   "site.js: VIP card + hooks (klien panel)",
+   "tests: vip_and_credit e2e (dup/bad-tier/ghost, 403/401)"
+  ],
+  "audit_note": "Wave 145: VIP flags live. Verified by test (435/0)."
  },
  {
   "id": "F-D02-031",
   "domain": "D02",
   "title": "Client credit limit & exposure",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0093: client_credit table (upsert key, forward-only)",
+   "ops.rs + memory + mysql: ccred upsert/get",
+   "lib.rs: credit + exposure endpoints (live open-AR math, RBAC, audit-free read)",
+   "site.js: exposure calculator + hooks (klien panel)",
+   "tests: under/over-limit asserted, ghost 404, 401"
+  ],
+  "audit_note": "Wave 145: credit exposure live. Verified by test (435/0)."
  },
  {
   "id": "F-D02-032",

@@ -278,6 +278,24 @@ pub struct ClientConsentRow {
     pub channel: String,
     pub allowed: bool,
 }
+/// VIP / priority / watch flag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientVipRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub tier: String,
+    pub note: String,
+}
+/// Client credit limit (exposure derived from open AR).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientCreditRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub limit_minor: i64,
+    pub note: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -1961,6 +1979,33 @@ pub trait OpsStore: Send + Sync {
         org: &str,
         client_id: i64,
     ) -> Result<Vec<ClientConsentRow>, StoreError>;
+    /// VIP / priority / watch flags.
+    async fn cvip_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        tier: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cvip_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientVipRow>, StoreError>;
+    async fn cvip_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Credit limits (upsert per client, exposure derived from open AR).
+    async fn ccred_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        limit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ccred_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientCreditRow>, StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

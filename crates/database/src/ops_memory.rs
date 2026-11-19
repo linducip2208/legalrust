@@ -144,6 +144,8 @@ struct Inner {
     ccors: HashMap<i64, ClientCorrectionRow>,
     cemps: HashMap<i64, ClientEmployeeRow>,
     ccnss: HashMap<i64, ClientConsentRow>,
+    vips: HashMap<i64, ClientVipRow>,
+    creds: HashMap<i64, ClientCreditRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -179,6 +181,14 @@ fn chrel_ok(relation: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("relation".into()));
     }
     Ok(r)
+}
+
+fn cvip_ok(tier: &str) -> Result<String, StoreError> {
+    let t = tier.trim().to_lowercase();
+    if !["vip", "priority", "watch"].contains(&t.as_str()) {
+        return Err(StoreError::Conflict("tier".into()));
+    }
+    Ok(t)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -2870,6 +2880,119 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by(|a, b| a.channel.cmp(&b.channel));
         Ok(v)
+    }
+    async fn cvip_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        tier: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 {
+            return Err(StoreError::Conflict("client".into()));
+        }
+        let tier = cvip_ok(tier)?;
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.vips
+            .values()
+            .any(|r| r.org == org && r.client_id == client_id && r.tier == tier)
+        {
+            return Err(StoreError::Conflict("already flagged".into()));
+        }
+        let id = self.next(&mut m);
+        m.vips.insert(
+            id,
+            ClientVipRow {
+                id,
+                org: org.into(),
+                client_id,
+                tier,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cvip_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientVipRow>, StoreError> {
+        let mut v: Vec<ClientVipRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .vips
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cvip_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.vips.get(&id) {
+            Some(r) if r.org == org => {
+                m.vips.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ccred_set(
+        &self,
+        org: &str,
+        client_id: i64,
+        limit_minor: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if client_id <= 0 || limit_minor < 0 {
+            return Err(StoreError::Conflict("limit".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, _)) = m
+            .creds
+            .iter()
+            .find(|(_, r)| r.org == org && r.client_id == client_id)
+        {
+            let id = *id;
+            let r = m.creds.get_mut(&id).unwrap();
+            r.limit_minor = limit_minor;
+            r.note = note.trim().into();
+            return Ok(id);
+        }
+        let id = self.next(&mut m);
+        m.creds.insert(
+            id,
+            ClientCreditRow {
+                id,
+                org: org.into(),
+                client_id,
+                limit_minor,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ccred_get(
+        &self,
+        org: &str,
+        client_id: i64,
+    ) -> Result<Option<ClientCreditRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .creds
+            .values()
+            .find(|r| r.org == org && r.client_id == client_id)
+            .cloned())
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(
