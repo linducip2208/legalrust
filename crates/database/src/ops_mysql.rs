@@ -2811,6 +2811,170 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ctest_add(
+        &self,
+        org: &str,
+        control_id: i64,
+        tested_at: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if tested_at.len() > 10 {
+            return Err(StoreError::Conflict("tested_at".into()));
+        }
+        if !matches!(result, "pass" | "fail" | "partial") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM controls WHERE id=?")
+            .bind(control_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO control_tests (org_id, control_id, tested_at, result, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(control_id as u64)
+        .bind(tested_at.trim())
+        .bind(result)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ctest_list(
+        &self,
+        org: &str,
+        control_id: i64,
+    ) -> Result<Vec<ControlTestRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM controls WHERE id=?")
+            .bind(control_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, control_id, tested_at, result, note FROM control_tests WHERE org_id=? AND control_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(control_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ControlTestRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                control_id: x.get::<u64, _>("control_id") as i64,
+                tested_at: x.get::<String, _>("tested_at"),
+                result: x.get::<String, _>("result"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn ctest_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM control_tests WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn aplan_create(
+        &self,
+        org: &str,
+        title: &str,
+        period: &str,
+        scope: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let per: String = period.trim().chars().take(20).collect();
+        let sc: String = scope.trim().chars().take(255).collect();
+        let r =
+            sqlx::query("INSERT INTO audit_plans (org_id, title, period, scope) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(title)
+                .bind(per)
+                .bind(sc)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn aplan_list(&self, org: &str) -> Result<Vec<AuditPlanRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, period, scope, status FROM audit_plans WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AuditPlanRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                period: x.get::<String, _>("period"),
+                scope: x.get::<String, _>("scope"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn aplan_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "in_progress" | "completed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM audit_plans WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("planned"), "in_progress") | (Some("in_progress"), "completed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE audit_plans SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn aplan_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM audit_plans WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

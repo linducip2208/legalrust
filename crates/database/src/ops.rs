@@ -306,6 +306,26 @@ pub struct ControlRow {
     pub frequency: String,
     pub active: bool,
 }
+/// Control test log entry (scheduled operation evidence).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ControlTestRow {
+    pub id: i64,
+    pub org: String,
+    pub control_id: i64,
+    pub tested_at: String,
+    pub result: String,
+    pub note: String,
+}
+/// Internal audit plan.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuditPlanRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub period: String,
+    pub scope: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1064,6 +1084,32 @@ pub trait OpsStore: Send + Sync {
     async fn control_list(&self, org: &str) -> Result<Vec<ControlRow>, StoreError>;
     async fn control_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
     async fn control_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Control test scheduler log.
+    async fn ctest_add(
+        &self,
+        org: &str,
+        control_id: i64,
+        tested_at: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn ctest_list(
+        &self,
+        org: &str,
+        control_id: i64,
+    ) -> Result<Vec<ControlTestRow>, StoreError>;
+    async fn ctest_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Internal audit plan register.
+    async fn aplan_create(
+        &self,
+        org: &str,
+        title: &str,
+        period: &str,
+        scope: &str,
+    ) -> Result<i64, StoreError>;
+    async fn aplan_list(&self, org: &str) -> Result<Vec<AuditPlanRow>, StoreError>;
+    async fn aplan_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn aplan_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

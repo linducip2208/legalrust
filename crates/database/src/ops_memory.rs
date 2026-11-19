@@ -62,6 +62,8 @@ struct Inner {
     policies: HashMap<i64, PolicyRow>,
     policy_acks: HashMap<i64, PolicyAckRow>,
     controls: HashMap<i64, ControlRow>,
+    ctests: HashMap<i64, ControlTestRow>,
+    aplans: HashMap<i64, AuditPlanRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2453,6 +2455,138 @@ impl OpsStore for MemoryOps {
         match m.controls.get(&id) {
             Some(r) if r.org == org => {
                 m.controls.remove(&id);
+                m.ctests.retain(|_, t| t.control_id != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ctest_add(
+        &self,
+        org: &str,
+        control_id: i64,
+        tested_at: &str,
+        result: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        if tested_at.len() > 10 {
+            return Err(StoreError::Conflict("tested_at".into()));
+        }
+        if !matches!(result, "pass" | "fail" | "partial") {
+            return Err(StoreError::Conflict("result".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.controls.get(&control_id) {
+            Some(c) if c.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.ctests.insert(
+            id,
+            ControlTestRow {
+                id,
+                org: org.into(),
+                control_id,
+                tested_at: tested_at.trim().into(),
+                result: result.into(),
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn ctest_list(
+        &self,
+        org: &str,
+        control_id: i64,
+    ) -> Result<Vec<ControlTestRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.controls.get(&control_id) {
+            Some(c) if c.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<ControlTestRow> = m
+            .ctests
+            .values()
+            .filter(|t| t.org == org && t.control_id == control_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ctest_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.ctests.get(&id) {
+            Some(r) if r.org == org => {
+                m.ctests.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn aplan_create(
+        &self,
+        org: &str,
+        title: &str,
+        period: &str,
+        scope: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.aplans.insert(
+            id,
+            AuditPlanRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                period: period.trim().chars().take(20).collect(),
+                scope: scope.trim().chars().take(255).collect(),
+                status: "planned".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn aplan_list(&self, org: &str) -> Result<Vec<AuditPlanRow>, StoreError> {
+        let mut v: Vec<AuditPlanRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .aplans
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn aplan_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .aplans
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("planned", "in_progress") | ("in_progress", "completed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn aplan_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.aplans.get(&id) {
+            Some(r) if r.org == org => {
+                m.aplans.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

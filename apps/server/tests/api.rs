@@ -6916,6 +6916,152 @@ async fn compliance_alerts_feed() {
 }
 
 #[tokio::test]
+async fn control_tests_and_audit_plans() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ctest@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Control seed: never-tested control is due immediately.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/controls",
+            r#"{"code":"CT-01","title":"Backup","frequency":"weekly"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/controls/due", &tok))
+        .await
+        .unwrap();
+    let due = body_json(res).await;
+    assert!(due
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["overdue"] == true));
+    // Log a test: control drops off the overdue list.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/controls/{cid}/tests"),
+            r#"{"result":"pass","note":"OK"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/controls/{cid}/tests"),
+            r#"{"result":"bogus"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/controls/{cid}/tests"),
+            r#"{"result":"pass","note":"OK"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/controls/due", &tok))
+        .await
+        .unwrap();
+    let due = body_json(res).await;
+    assert!(due
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["overdue"] == false));
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/compliance/controls/{cid}/tests"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // Ghost control 404s.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/controls/999999/tests", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Audit plans: planned -> in_progress -> completed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/aplans",
+            r#"{"title":"Audit 2026","period":"2026-Q1","scope":"PDP"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["in_progress", "completed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/aplans/{pid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "aplan to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/aplans", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["status"] == "completed"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=ctest", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.ctest_added"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=aplan", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.aplan_created"));
+}
+
+#[tokio::test]
 async fn policy_library_and_controls() {
     use tower::ServiceExt;
     let a = app();
@@ -9008,6 +9154,16 @@ async fn uib_app_has_approvals_ui() {
         "ctl-add",
         "ctl-reload",
         "ctl-list",
+        "ctdue-reload",
+        "ctdue-list",
+        "ctest-ctl",
+        "ctest-add",
+        "ctest-reload",
+        "ctest-list",
+        "aplan-title",
+        "aplan-add",
+        "aplan-reload",
+        "aplan-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

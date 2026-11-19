@@ -2281,6 +2281,85 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     ctlRefresh();
   });
   on('ctl-reload', 'click', ctlRefresh);
+  /* ---- compliance: control test scheduler ---- */
+  async function ctdueRefresh() {
+    var box = document.getElementById('ctdue-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/controls/due');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var st = x.overdue ? '<span class="badge bg-red-lt">terlambat</span>' : '<span class="badge bg-green-lt">tepat waktu</span>';
+      return '<tr><td>' + esc(x.code) + ' <span class="text-muted">(' + esc(x.frequency) + ')</span></td><td>' + esc(x.last_tested_at || 'belum pernah') + '</td><td>' + esc(x.next_due) + '</td><td>' + st + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada kontrol aktif.</td></tr>';
+  }
+  on('ctdue-reload', 'click', ctdueRefresh);
+  async function ctestRefresh() {
+    var box = document.getElementById('ctest-list');
+    if (!box) return;
+    var cid = pval('ctest-ctl');
+    if (!cid) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID kontrol lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/compliance/controls/' + encodeURIComponent(cid) + '/tests');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.tested_at) + '</td><td>' + badge(x.result) + '</td><td>' + esc(x.note) + '</td><td><button class="btn btn-sm btn-outline-danger" data-ctest-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada log uji.</td></tr>';
+    qsa('[data-ctest-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/ctests/' + b.getAttribute('data-ctest-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ctest-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ctest-msg', '');
+        ctestRefresh();
+        ctdueRefresh();
+      });
+    });
+  }
+  on('ctest-add', 'click', async function () {
+    if (!pval('ctest-ctl')) { pmsg('ctest-msg', 'Isi ID kontrol.'); return; }
+    var r = await ppost('/api/v1/compliance/controls/' + encodeURIComponent(pval('ctest-ctl')) + '/tests', { result: pval('ctest-res') || 'pass', note: pval('ctest-note') || '' });
+    if (!r.ok) { pmsg('ctest-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('ctest-msg', '');
+    ctestRefresh();
+    ctdueRefresh();
+  });
+  on('ctest-reload', 'click', ctestRefresh);
+  /* ---- compliance: audit plans ---- */
+  var AP_NEXT = { planned: 'in_progress', in_progress: 'completed' };
+  async function aplanRefresh() {
+    var box = document.getElementById('aplan-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/aplans');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = AP_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-aplan-next="' + x.id + '" data-aplan-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">selesai</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-aplan-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + ' <span class="text-muted">(' + esc(x.scope) + ')</span></td><td>' + esc(x.period) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada rencana audit.</td></tr>';
+    qsa('[data-aplan-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/aplans/' + b.getAttribute('data-aplan-next') + '/status', { status: b.getAttribute('data-aplan-to') });
+        if (!r.ok) { pmsg('aplan-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('aplan-msg', '');
+        aplanRefresh();
+      });
+    });
+    qsa('[data-aplan-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/aplans/' + b.getAttribute('data-aplan-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('aplan-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('aplan-msg', '');
+        aplanRefresh();
+      });
+    });
+  }
+  on('aplan-add', 'click', async function () {
+    if (!pval('aplan-title')) { pmsg('aplan-msg', 'Isi judul rencana.'); return; }
+    var r = await ppost('/api/v1/compliance/aplans', { title: pval('aplan-title'), period: pval('aplan-period') || '', scope: pval('aplan-scope') || '' });
+    if (!r.ok) { pmsg('aplan-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('aplan-msg', '');
+    aplanRefresh();
+  });
+  on('aplan-reload', 'click', aplanRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2306,7 +2385,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('alerts-reload', 'click', alertsRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); postureRefresh(); alertsRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); ctdueRefresh(); ctestRefresh(); aplanRefresh(); postureRefresh(); alertsRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2364,6 +2443,9 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   wvRefresh();
   polRefresh();
   ctlRefresh();
+  ctdueRefresh();
+  ctestRefresh();
+  aplanRefresh();
   postureRefresh();
   alertsRefresh();
   whDlRefresh();

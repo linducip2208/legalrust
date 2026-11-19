@@ -4247,10 +4247,15 @@
   "id": "F-D11-025",
   "domain": "D11",
   "title": "Internal audit plan",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0041_audit_plans.sql: audit_plans table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + planned->in_progress->completed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/aplans + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: aplanRefresh card + hooks",
+   "apps/server/tests/api.rs: control_tests_and_audit_plans e2e"
+  ],
+  "audit_note": "Wave 71: full lifecycle live; verified by test (360/0)."
  },
  {
   "id": "F-D11-026",
@@ -4284,10 +4289,15 @@
   "id": "F-D11-028",
   "domain": "D11",
   "title": "Control test scheduler",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0040_control_tests.sql: control_tests table (FK control CASCADE)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/controls/{id}/tests + GET /controls/due (interval math, never-tested due now)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped CRUD",
+   "apps/server/static/site.js: ctdueRefresh + ctestRefresh cards + hooks",
+   "apps/server/tests/api.rs: control_tests_and_audit_plans e2e (due->tested->not-due, ghost 404)"
+  ],
+  "audit_note": "Wave 71: scheduler view live; verified by test (360/0)."
  },
  {
   "id": "F-D11-029",
