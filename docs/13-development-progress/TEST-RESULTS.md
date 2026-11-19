@@ -26,6 +26,9 @@
 ## 2026-11-18 — AUDIT-1000 wave 48: akurasi OCR (main)
 - Aggregate unit + empty-org + trail + needles; workspace **342 passed, 0 failed**.
 
+## 2026-11-19 AUDIT-1000 wave 107: AJB + audit (main)
+- Draft guards + trail merge + role gates; workspace **396 passed, 0 failed**.
+
 ## 2026-11-19 AUDIT-1000 wave 106: KPR + register (main)
 - Branch chains + guards + audit; workspace **395 passed, 0 failed**.
 

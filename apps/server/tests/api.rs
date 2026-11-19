@@ -3678,6 +3678,13 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "prg-add",
         "prg-reload",
         "prg-list",
+        "ajb-ppat",
+        "ajb-save",
+        "ajb-reload",
+        "ajb-list",
+        "pat-limit",
+        "pat-reload",
+        "pat-list",
         "seal-year",
         "seal-add",
         "seal-reload",
@@ -8682,6 +8689,96 @@ async fn pbb_and_ppat_fee() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/pbb-checks")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn ajb_drafts_and_ppat_audit() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ajbpat@x.id").await;
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"AJB/1","deed_kind":"ajb","seller":"AA","buyer":"BB"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Too-short body rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/ajb-drafts"),
+            r#"{"body":"terlalu pendek"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(&format!("/api/v1/ppat/{pid}/ajb-drafts"), r#"{"template_name":"AJB standar","body":"Pada hari ini menghadap ___, penjual AA menjual kepada pembeli BB objek SHM 1 seharga Rp500jt.","price_minor":500000000}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/ajb-drafts"), &tok))
+        .await
+        .unwrap();
+    let av = body_json(res).await;
+    assert_eq!(av.as_array().unwrap().len(), 1);
+    assert_eq!(av[0]["price_minor"].as_i64().unwrap(), 500000000);
+    // Ghost deed 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/ajb-drafts",
+            r#"{"body":"zzzzzzzzzzzzzzzzzzzz"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // PPAT audit: owner sees the ajbd event; lawyer is forbidden; anon 401.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ppat-audit?limit=50", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pv = body_json(res).await;
+    assert!(pv["entities"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e == "ajbd"));
+    assert!(pv["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["action"] == "property.ajbd_added"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ppat-audit", &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/ppat-audit")
                 .body(Body::empty())
                 .unwrap(),
         )

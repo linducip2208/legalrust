@@ -324,6 +324,16 @@ pub struct KprPackRow {
     pub status: String,
     pub note: String,
 }
+/// Stored AJB draft (template-based composition artifact).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AjbDraftRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub template_name: String,
+    pub body: String,
+    pub price_minor: i64,
+}
 /// Protocol register (in/out day-book of the protocol archive).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PregRow {
@@ -1524,6 +1534,17 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<i64, StoreError>;
     async fn preg_list(&self, org: &str) -> Result<Vec<PregRow>, StoreError>;
     async fn preg_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Stored AJB drafts.
+    async fn ajbd_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        template_name: &str,
+        body: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError>;
+    async fn ajbd_list(&self, org: &str, ppat_id: i64) -> Result<Vec<AjbDraftRow>, StoreError>;
+    async fn ajbd_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Out-of-office approval delegation: delegate may decide steps the
     /// delegator could decide. Returns delegation id.
     async fn delegation_set(

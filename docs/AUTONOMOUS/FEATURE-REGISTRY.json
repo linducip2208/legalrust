@@ -5041,13 +5041,18 @@
   "id": "F-D13-005",
   "domain": "D13",
   "title": "AJB drafting (sale & purchase)",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "migrations/0018_ppat.sql + CRUD: AJB entries recordable with parties+object (deed_kind=ajb)",
    "apps/server/src/lib.rs: checklist validates AJB completeness before signing",
-   "apps/server/static/site.js: data-ppat-deed prefill (register -> akta tab nomor/jenis)"
+   "apps/server/static/site.js: data-ppat-deed prefill (register -> akta tab nomor/jenis)",
+   "migrations/0072_ajb_drafts.sql: ajb_drafts table (template_name+body+price, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: add/list/delete + body 20..20000 guard",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/ajb-drafts + delete (RBAC, audit, preview)",
+   "apps/server/static/site.js: ajbRefresh card Draf AJB + hooks",
+   "apps/server/tests/api.rs: ajb_drafts_and_ppat_audit e2e (short-body 422, ghost 404)"
   ],
-  "audit_note": "Wave 29: AJB recordable + gated; template-based drafting + price/tax worksheets pending. Wave 56: register-to-draft prefill live."
+  "audit_note": "Wave 107: template-based drafting with stored drafts live; PARTIAL->IMPLEMENTED, verified by test (396/0)."
  },
  {
   "id": "F-D13-006",
@@ -5481,12 +5486,16 @@
   "id": "F-D13-038",
   "domain": "D13",
   "title": "PPAT audit trail",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
    "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
    "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "migrations/0001_foundation.sql: audit_events",
+   "apps/server/src/lib.rs: GET /api/v1/reports/ppat-audit merging 16 property entities (owner/admin/auditor gate)",
+   "apps/server/static/site.js: patRefresh card Jejak audit PPAT + hooks",
+   "apps/server/tests/api.rs: entities list + ajbd event present + lawyer 403 + 401 asserted"
+  ],
+  "audit_note": "Wave 107: consolidated PPAT trail live; PARTIAL->IMPLEMENTED, verified by test (396/0)."
  },
  {
   "id": "F-D13-039",

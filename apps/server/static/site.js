@@ -2136,6 +2136,47 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     prgRefresh();
   });
   on('prg-reload', 'click', prgRefresh);
+  /* ---- property: AJB drafts ---- */
+  async function ajbRefresh() {
+    var box = document.getElementById('ajb-list');
+    if (!box) return;
+    var pid = pval('ajb-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/ajb-drafts');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.template_name || '—') + '</td><td>' + fmtRp(x.price_minor) + '</td><td>' + esc(x.preview) + '</td><td><button class="btn btn-sm btn-outline-danger" data-ajb-del="' + x.id + '" type="button">Hapus</button></td>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada draf.</td></tr>';
+    qsa('[data-ajb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/ajb-drafts/' + b.getAttribute('data-ajb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ajb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ajb-msg', '');
+        ajbRefresh();
+      });
+    });
+  }
+  on('ajb-save', 'click', async function () {
+    if (!pval('ajb-ppat') || (pval('ajb-body') || '').length < 20) { pmsg('ajb-msg', 'Isi ID akta dan isi draf (min. 20 karakter).'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('ajb-ppat')) + '/ajb-drafts', { template_name: pval('ajb-tpl') || '', body: pval('ajb-body'), price_minor: +pval('ajb-price') || 0 });
+    if (!r.ok) { pmsg('ajb-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('ajb-msg', '');
+    ajbRefresh();
+  });
+  on('ajb-reload', 'click', ajbRefresh);
+  /* ---- property: PPAT audit trail ---- */
+  async function patRefresh() {
+    var box = document.getElementById('pat-list');
+    if (!box) return;
+    var lim = parseInt(pval('pat-limit'), 10);
+    if (!(lim >= 1)) lim = 50;
+    var v = await j('/api/v1/reports/ppat-audit?limit=' + lim);
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat (butuh peran admin/auditor?).</td></tr>'; return; }
+    box.innerHTML = (v.rows || []).map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.action) + '</td><td>' + badge(x.entity) + ' #' + x.entity_id + '</td><td>' + esc(x.created) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada jejak.</td></tr>';
+  }
+  on('pat-reload', 'click', patRefresh);
   /* ---- property: MPD transfers ---- */
   async function mpdRefresh() {
     var box = document.getElementById('mpd-list');
@@ -2309,7 +2350,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); chgRefresh(); chgdRefresh(); rdyRefresh(); spRefresh(); mgRefresh(); dsp2Refresh(); bndRefresh(); consentRefresh('mrt', 'mrt-ppat', 'mrt-list', 'mrt-msg', 'marital'); consentRefresh('hir', 'hir-ppat', 'hir-list', 'hir-msg', 'heir'); consentRefresh('bod', 'bod-ppat', 'bod-list', 'bod-msg', 'board'); consentRefresh('pow', 'pow-ppat', 'pow-list', 'pow-msg', 'power'); lhiRefresh(); uhoRefresh(); rpmRefresh(); pdbRefresh(); nhoRefresh(); grkRefresh(); dvbRefresh(); dvuRefresh(); kprRefresh(); prgRefresh(); ajbRefresh(); patRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -4484,6 +4525,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dvuRefresh();
   kprRefresh();
   prgRefresh();
+  ajbRefresh();
+  patRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();

@@ -115,6 +115,7 @@ struct Inner {
     dunits: HashMap<i64, DevUnitRow>,
     kprs: HashMap<i64, KprPackRow>,
     pregs: HashMap<i64, PregRow>,
+    ajbds: HashMap<i64, AjbDraftRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1957,6 +1958,66 @@ impl OpsStore for MemoryOps {
         match m.pregs.get(&id) {
             Some(r) if r.org == org => {
                 m.pregs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn ajbd_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        template_name: &str,
+        body: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if body.len() < 20 || body.len() > 20000 {
+            return Err(StoreError::Conflict("body 20..20000".into()));
+        }
+        if template_name.len() > 120 {
+            return Err(StoreError::Conflict("template_name".into()));
+        }
+        if price_minor < 0 {
+            return Err(StoreError::Conflict("price".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.ajbds.insert(
+            id,
+            AjbDraftRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                template_name: template_name.trim().into(),
+                body: body.into(),
+                price_minor,
+            },
+        );
+        Ok(id)
+    }
+    async fn ajbd_list(&self, org: &str, ppat_id: i64) -> Result<Vec<AjbDraftRow>, StoreError> {
+        let mut v: Vec<AjbDraftRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ajbds
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn ajbd_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.ajbds.get(&id) {
+            Some(r) if r.org == org => {
+                m.ajbds.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

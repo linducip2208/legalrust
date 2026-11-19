@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 107: AJB + audit (main)
+- Draf AJB tersimpan + jejak audit PPAT; workspace **396 passed, 0 failed**; F-D13-005/038 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 106: KPR + register (main)
 - Koordinasi KPR + register protokol; workspace **395 passed, 0 failed**; F-D13-025/030 IMPLEMENTED.
 

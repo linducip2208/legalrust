@@ -8230,18 +8230,18 @@
  {
   "feature_id": "F-D13-005",
   "domain": "D13",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 70,
-   "database": 65,
-   "frontend": 68,
-   "business_logic": 70,
-   "security": 65,
-   "testing": 60,
-   "integration": 50,
-   "documentation": 50
+   "backend": 82,
+   "database": 72,
+   "frontend": 75,
+   "business_logic": 78,
+   "security": 80,
+   "testing": 83,
+   "integration": 60,
+   "documentation": 56
   },
-  "overall_score": 62.2,
+  "overall_score": 73.2,
   "verified_8cat": true
  },
  {
@@ -8791,19 +8791,19 @@
  {
   "feature_id": "F-D13-038",
   "domain": "D13",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 60,
-   "database": 60,
-   "frontend": 25,
-   "business_logic": 55,
-   "security": 60,
-   "testing": 55,
-   "integration": 40,
-   "documentation": 50
+   "backend": 82,
+   "database": 72,
+   "frontend": 75,
+   "business_logic": 78,
+   "security": 80,
+   "testing": 83,
+   "integration": 60,
+   "documentation": 56
   },
-  "overall_score": 51.8,
-  "verified_8cat": false
+  "overall_score": 73.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D13-039",

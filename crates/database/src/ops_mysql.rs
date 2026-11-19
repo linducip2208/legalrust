@@ -2014,6 +2014,74 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn ajbd_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        template_name: &str,
+        body: &str,
+        price_minor: i64,
+    ) -> Result<i64, StoreError> {
+        let body = body.trim();
+        if body.len() < 20 || body.len() > 20000 {
+            return Err(StoreError::Conflict("body 20..20000".into()));
+        }
+        if template_name.len() > 120 {
+            return Err(StoreError::Conflict("template_name".into()));
+        }
+        if price_minor < 0 {
+            return Err(StoreError::Conflict("price".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO ajb_drafts (org_id, ppat_id, template_name, body, price_minor) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(template_name.trim())
+        .bind(body)
+        .bind(price_minor)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn ajbd_list(&self, org: &str, ppat_id: i64) -> Result<Vec<AjbDraftRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, template_name, body, price_minor FROM ajb_drafts WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 50")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| AjbDraftRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                template_name: x.get::<String, _>("template_name"),
+                body: x.get::<String, _>("body"),
+                price_minor: x.get::<i64, _>("price_minor"),
+            })
+            .collect())
+    }
+    async fn ajbd_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM ajb_drafts WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn dpia_create(
         &self,
         org: &str,
