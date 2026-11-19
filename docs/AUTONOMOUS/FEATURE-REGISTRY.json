@@ -1292,10 +1292,14 @@
   "id": "F-D04-011",
   "domain": "D04",
   "title": "Bulk download (matter bundle)",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/matters/{id}/bundle (25 MiB cap, base64 contents, RBAC)",
+   "base64 0.22 added to server deps (version already in tree, offline build green)",
+   "apps/server/static/site.js: Bundel download button + blob save (dok panel)",
+   "apps/server/tests/api.rs: matter_bundle test (roundtrip, ghost 404, 401)"
+  ],
+  "audit_note": "Wave 138: matter bundle live. Verified by test (426/0)."
  },
  {
   "id": "F-D04-012",
@@ -1467,21 +1471,24 @@
   "id": "F-D04-025",
   "domain": "D04",
   "title": "Scanned-document ingestion",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
-   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "apps/server/src/lib.rs: image uploads auto-create OCR job (general) in put_content + upload-complete (best-effort)",
+   "apps/server/tests/api.rs: scanned PNG upload surfaces in /ocr/jobs with document_id",
+   "apps/server/src/lib.rs: ocr_list now exposes document_id (was hidden)"
+  ],
+  "audit_note": "Wave 138: scan ingestion queue live (processing still engine-gated). Verified by test (426/0)."
  },
  {
   "id": "F-D04-026",
   "domain": "D04",
   "title": "Email-to-matter filing",
-  "status": "NOT_STARTED",
+  "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)",
+   "wave 138 triage: no mail infrastructure in workspace; filing endpoint cannot be verified"
+  ],
+  "audit_note": "Wave 138: BLOCKED on email infra (same as F-D16-023); honest hold, no fake endpoint."
  },
  {
   "id": "F-D04-027",

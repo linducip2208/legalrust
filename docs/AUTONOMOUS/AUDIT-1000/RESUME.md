@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 138: bundle + scan queue (main)
+- matter bundle (base64, capped) + image auto-OCR-queue + kartu + uji.
+- F-D04-011 PLANNED->IMPLEMENTED, 025 PARTIAL->IMPLEMENTED (~72.0 verified); 026 documented BLOCKED (no mail infra). Workspace 426/0; registry ~28.8 (245 IMPLEMENTED); mean 31.5 (235 v).
+
 ## Done wave 137: quota + sync (main)
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).

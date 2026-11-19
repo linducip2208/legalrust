@@ -3410,7 +3410,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var tot = document.getElementById('dfo-total');
     if (tot) tot.textContent = s.total + ' dokumen · ' + s.bytes + ' byte · ' + (s.by_mime || []).map(function (x) { return x.mime + ': ' + x.n; }).join(', ');
     box.innerHTML = (f.folders || []).map(function (x) {
-      return '<tr><td>#' + x.matter_id + ' ' + esc(x.title) + ' <span class="text-muted">(' + esc(x.status) + ')</span></td><td>' + x.docs + ' <button class="btn btn-sm" data-mnf="' + x.matter_id + '" type="button">Manifest</button></td></tr>';
+      return '<tr><td>#' + x.matter_id + ' ' + esc(x.title) + ' <span class="text-muted">(' + esc(x.status) + ')</span></td><td>' + x.docs + ' <button class="btn btn-sm" data-mnf="' + x.matter_id + '" type="button">Manifest</button> <button class="btn btn-sm" data-bdl="' + x.matter_id + '" type="button">Bundel</button></td></tr>';
     }).join('') + (f.unfiled ? '<tr><td>Tanpa perkara</td><td>' + f.unfiled + '</td></tr>' : '') || '<tr><td colspan="2" class="text-muted">Belum ada dokumen.</td></tr>';
     qsa('[data-mnf]', function (b) {
       b.addEventListener('click', async function () {
@@ -3418,6 +3418,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         var v = await j('/api/v1/matters/' + b.getAttribute('data-mnf') + '/export-manifest');
         if (!v || !rc) return;
         rc.innerHTML = 'Manifest perkara #' + v.matter_id + ' (' + v.files + ' berkas, ' + v.bytes + ' byte): ' + (v.entries || []).map(function (x) { return '#' + x.id + ' ' + esc(x.name); }).join('; ');
+      });
+    });
+    qsa('[data-bdl]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/matters/' + b.getAttribute('data-bdl') + '/bundle', { headers: H });
+        if (!r.ok) { pmsg('dfo-msg', 'Gagal mengunduh (' + r.status + '). Terlalu besar?'); return; }
+        var v = await r.json();
+        var blob = new Blob([JSON.stringify(v)], { type: 'application/json' });
+        var u = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = u;
+        a.download = 'berkas-perkara-' + b.getAttribute('data-bdl') + '.json';
+        a.click();
+        URL.revokeObjectURL(u);
       });
     });
     var rc = document.getElementById('dfo-recent');

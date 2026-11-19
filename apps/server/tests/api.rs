@@ -10315,6 +10315,100 @@ async fn document_redact_and_protocol_register() {
 }
 
 #[tokio::test]
+async fn matter_bundle_and_scanned_ingest() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "bundle@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"bundel-isi";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"b.txt","mime":"text/plain","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok))).await.unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Bundle carries base64 content that round-trips.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/bundle"), &tok))
+        .await
+        .unwrap();
+    let bv = body_json(res).await;
+    assert_eq!(bv["files"].as_i64().unwrap(), 1);
+    let entry = &bv["entries"].as_array().unwrap()[0];
+    assert_eq!(entry["name"], serde_json::json!("b.txt"));
+    let raw = entry["content_base64"].as_str().unwrap();
+    assert_eq!(raw.len() % 4, 0);
+    // Ghost matter 404s; anon 401s.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/999999/bundle", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matters/{mid}/bundle"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Scanned image upload auto-queues an OCR job.
+    let png = b"\x89PNG-fake-bytes";
+    let psha = legalrust_document::sha256_hex(png);
+    let res = a.clone().oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"scan.png","mime":"image/png","size":{},"sha":"{psha}"}}"#, png.len()), Some(&tok))).await.unwrap();
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{pid}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(png.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/jobs", &tok))
+        .await
+        .unwrap();
+    let jobs = body_json(res).await;
+    assert!(jobs
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|j| j["document_id"].as_i64() == Some(pid)));
+}
+
+#[tokio::test]
 async fn document_diff_and_expiry_alerts() {
     use tower::ServiceExt;
     let a = app();

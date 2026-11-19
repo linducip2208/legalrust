@@ -857,6 +857,11 @@ async fn put_content(
             let _ = s.stores.ops.rag_put(id, &chunks).await;
         }
     }
+    // Scanned-document ingestion (F-D04-025): image uploads auto-join the
+    // OCR queue with a general doctype; processing still needs the engine.
+    if d.mime.starts_with("image/") {
+        let _ = s.stores.ops.ocr_create(&u.claims.org, id, "general").await;
+    }
     Ok(Json(json!({"version": v.version_no})))
 }
 async fn get_content(
@@ -966,7 +971,7 @@ async fn ocr_list(State(s): State<FullState>, headers: HeaderMap) -> Result<Json
         .map_err(map_store)?;
     Ok(Json(json!(v
         .iter()
-        .map(|j: &OcrJobRow| json!({"id": j.id, "status": j.status, "doc_type": j.doc_type}))
+        .map(|j: &OcrJobRow| json!({"id": j.id, "status": j.status, "doc_type": j.doc_type, "document_id": j.doc}))
         .collect::<Vec<_>>())))
 }
 async fn ocr_get(
@@ -15045,6 +15050,56 @@ async fn dmeta_by_tag(
 }
 // ---------- end document slice: metadata ----------
 
+// ---------- document slice: bundle + OCR auto-queue ----------
+// Bulk download (F-D04-011): one JSON bundle with base64 contents, capped at
+// 25 MiB of raw bytes so a giant matter cannot OOM the server (413).
+async fn doc_bundle(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(mid): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    use base64::Engine as _;
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::Download)?;
+    s.stores
+        .core
+        .get_matter(&u.claims.org, mid)
+        .await
+        .map_err(|_| AppError::NotFound("matter".into()))?;
+    let docs = s
+        .stores
+        .core
+        .list_docs(&u.claims.org, Some(mid))
+        .await
+        .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+    const CAP: u64 = 25 * 1024 * 1024;
+    let total: u64 = docs.iter().map(|d| d.size).sum();
+    if total > CAP {
+        return Err(AppError::Validation("bundle too large".into()));
+    }
+    let mut files = Vec::new();
+    for d in docs {
+        let (_, vs) = s
+            .stores
+            .core
+            .get_doc(&u.claims.org, d.id)
+            .await
+            .map_err(|e| AppError::Internal(anyhow::anyhow!(e.to_string())))?;
+        let latest = vs
+            .last()
+            .ok_or_else(|| AppError::NotFound("content".into()))?;
+        let bytes = s.stores.objects.get(&latest.object_key).await?;
+        files.push(
+            json!({"id": d.id, "name": d.name, "mime": d.mime, "size": d.size,
+            "content_base64": base64::engine::general_purpose::STANDARD.encode(&bytes)}),
+        );
+    }
+    Ok(Json(
+        json!({"matter_id": mid, "files": files.len(), "bytes": total, "entries": files}),
+    ))
+}
+// ---------- end document slice: bundle ----------
+
 // ---------- document slice: chunked upload (F-D09-035) ----------
 // Resumable intake (F-D04-035): open a session, PUT chunks in order, then
 // complete into a real document + first version. Sessions are ephemeral
@@ -15139,6 +15194,13 @@ async fn up_complete(
             let chunks = legalrust_rag::chunk_text(&text, 800, 100);
             let _ = s.stores.ops.rag_put(doc.id, &chunks).await;
         }
+    }
+    if mime.starts_with("image/") {
+        let _ = s
+            .stores
+            .ops
+            .ocr_create(&u.claims.org, doc.id, "general")
+            .await;
     }
     audit(
         &s.pool,
@@ -18180,6 +18242,7 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/uploads/{id}/complete", post(up_complete))
         .route("/api/v1/uploads/{id}", delete(up_abort))
         .route("/api/v1/documents/duplicates", get(doc_duplicates))
+        .route("/api/v1/matters/{id}/bundle", get(doc_bundle))
         .route("/api/v1/matters/{id}/export-manifest", get(doc_manifest))
         .route(
             "/api/v1/documents/{id}/lock",
