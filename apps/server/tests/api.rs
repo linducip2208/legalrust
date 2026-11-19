@@ -6672,6 +6672,116 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn risk_register_and_heatmap() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "risk@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/risks",
+            r#"{"title":"X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Out-of-range score rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/risks",
+            r#"{"title":"Y","likelihood":9,"impact":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/risks",
+            r#"{"title":"Kebocoran data","category":"privacy","likelihood":4,"impact":5,"owner":"DPO"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    // Score-sorted list surfaces score 20 first.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/risks", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid) && r["score"].as_i64() == Some(20)));
+    // Heatmap counts the open risk at K4xD5 with high flag.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/risks/heatmap", &tok))
+        .await
+        .unwrap();
+    let h = body_json(res).await;
+    assert_eq!(h["matrix"][3][4].as_i64().unwrap(), 1);
+    assert_eq!(h["total_open"].as_i64().unwrap(), 1);
+    assert_eq!(h["high_count"].as_i64().unwrap(), 1);
+    for st in ["mitigating", "mitigated", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/risks/{rid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "risk to {st}");
+    }
+    // Closed risks drop out of the heatmap.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/risks/heatmap", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["total_open"].as_i64().unwrap(), 0);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/risks/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=risk", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.risk_created"));
+}
+
+#[tokio::test]
 async fn training_assignment_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7950,6 +8060,11 @@ async fn uib_app_has_approvals_ui() {
         "trn-add",
         "trn-reload",
         "trn-list",
+        "risk-title",
+        "risk-add",
+        "risk-reload",
+        "risk-list",
+        "risk-hm",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

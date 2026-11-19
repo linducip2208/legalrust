@@ -193,6 +193,18 @@ pub struct TrainingRow {
     pub due_date: String,
     pub status: String,
 }
+/// Enterprise risk entry; score = likelihood x impact (1-25).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RiskRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub category: String,
+    pub likelihood: i64,
+    pub impact: i64,
+    pub owner: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -826,6 +838,19 @@ pub trait OpsStore: Send + Sync {
     async fn training_list(&self, org: &str) -> Result<Vec<TrainingRow>, StoreError>;
     async fn training_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn training_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Enterprise risk register (score = likelihood x impact).
+    async fn risk_create(
+        &self,
+        org: &str,
+        title: &str,
+        category: &str,
+        likelihood: i64,
+        impact: i64,
+        owner: &str,
+    ) -> Result<i64, StoreError>;
+    async fn risk_list(&self, org: &str) -> Result<Vec<RiskRow>, StoreError>;
+    async fn risk_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn risk_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

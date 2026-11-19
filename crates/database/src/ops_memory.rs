@@ -51,6 +51,7 @@ struct Inner {
     capas: HashMap<i64, CapaRow>,
     regchanges: HashMap<i64, RegChangeRow>,
     trainings: HashMap<i64, TrainingRow>,
+    risks: HashMap<i64, RiskRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1693,6 +1694,79 @@ impl OpsStore for MemoryOps {
         match m.trainings.get(&id) {
             Some(r) if r.org == org => {
                 m.trainings.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn risk_create(
+        &self,
+        org: &str,
+        title: &str,
+        category: &str,
+        likelihood: i64,
+        impact: i64,
+        owner: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !(1..=5).contains(&likelihood) || !(1..=5).contains(&impact) {
+            return Err(StoreError::Conflict("likelihood/impact 1-5".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.risks.insert(
+            id,
+            RiskRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                category: category.trim().chars().take(60).collect(),
+                likelihood,
+                impact,
+                owner: owner.trim().chars().take(120).collect(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn risk_list(&self, org: &str) -> Result<Vec<RiskRow>, StoreError> {
+        let mut v: Vec<RiskRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .risks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -(r.likelihood * r.impact * 1_000_000 + r.id));
+        Ok(v)
+    }
+    async fn risk_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .risks
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "mitigating") | ("mitigating", "mitigated") | ("mitigated", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn risk_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.risks.get(&id) {
+            Some(r) if r.org == org => {
+                m.risks.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

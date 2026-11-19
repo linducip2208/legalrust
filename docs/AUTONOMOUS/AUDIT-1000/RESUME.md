@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 63: risk register + heatmap (main)
+- risk_register (migration 0030) + state machine + heatmap 5xKxD + kartu kepatuhan + uji.
+- F-D11-037/038 NOT_STARTED/PLANNED->IMPLEMENTED (~73.0 verified). Workspace 352/0; registry ~20.9 (88 IMPLEMENTED); mean ~21.9 (86 v).
+
 ## Done wave 62: training assignments (main)
 - training_assignments (migration 0029) + assigned->in_progress->completed + kartu kepatuhan + uji lifecycle.
 - F-D11-023 NOT_STARTED->IMPLEMENTED (~72.6 verified). Workspace 351/0; registry ~20.7 (86 IMPLEMENTED); mean ~21.8 (84 v).

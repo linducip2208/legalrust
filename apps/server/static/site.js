@@ -1867,8 +1867,64 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     trnRefresh();
   });
   on('trn-reload', 'click', trnRefresh);
+  /* ---- compliance: risk register + heatmap ---- */
+  var RISK_NEXT = { open: 'mitigating', mitigating: 'mitigated', mitigated: 'closed' };
+  async function riskRefresh() {
+    var box = document.getElementById('risk-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/risks');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = RISK_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-risk-next="' + x.id + '" data-risk-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">ditutup</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-risk-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + ' <span class="text-muted">(' + esc(x.category) + ' K' + x.likelihood + '×D' + x.impact + ')</span></td><td><strong>' + x.score + '</strong></td><td>' + esc(x.owner) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada risiko.</td></tr>';
+    qsa('[data-risk-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/risks/' + b.getAttribute('data-risk-next') + '/status', { status: b.getAttribute('data-risk-to') });
+        if (!r.ok) { pmsg('risk-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('risk-msg', '');
+        riskRefresh();
+        riskHmRefresh();
+      });
+    });
+    qsa('[data-risk-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/risks/' + b.getAttribute('data-risk-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('risk-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('risk-msg', '');
+        riskRefresh();
+        riskHmRefresh();
+      });
+    });
+  }
+  async function riskHmRefresh() {
+    var box = document.getElementById('risk-hm');
+    var sum = document.getElementById('risk-hm-sum');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/risks/heatmap');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Terbuka: ' + v.total_open + ' • Skor ≥12: ' + v.high_count;
+    box.innerHTML = (v.matrix || []).map(function (row, li) {
+      return '<tr><td><strong>K' + (li + 1) + '</strong></td>' + row.map(function (c, im) {
+        var hot = (li + 1) * (im + 1) >= 12;
+        return '<td' + (hot && c > 0 ? ' class="text-danger"' : '') + '>' + (c || '·') + '</td>';
+      }).join('') + '</tr>';
+    }).join('');
+  }
+  on('risk-add', 'click', async function () {
+    if (!pval('risk-title')) { pmsg('risk-msg', 'Isi judul risiko.'); return; }
+    var r = await ppost('/api/v1/compliance/risks', { title: pval('risk-title'), category: pval('risk-cat') || 'operational', likelihood: +pval('risk-like') || 3, impact: +pval('risk-imp') || 3, owner: pval('risk-owner') || '' });
+    if (!r.ok) { pmsg('risk-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('risk-msg', '');
+    riskRefresh();
+    riskHmRefresh();
+  });
+  on('risk-reload', 'click', function () { riskRefresh(); riskHmRefresh(); });
+  on('risk-hm-reload', 'click', riskHmRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); riskRefresh(); riskHmRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -1916,6 +1972,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   capaRefresh();
   regRefresh();
   trnRefresh();
+  riskRefresh();
+  riskHmRefresh();
   whDlRefresh();
   intRefresh();
 })();

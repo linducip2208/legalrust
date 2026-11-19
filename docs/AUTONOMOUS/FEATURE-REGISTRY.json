@@ -4320,19 +4320,27 @@
   "id": "F-D11-037",
   "domain": "D11",
   "title": "Risk register (enterprise)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0030_risks.sql: risk_register table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: risk CRUD + open->mitigating->mitigated->closed chain, score-sorted",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/risks + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: riskRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: risk_register_and_heatmap e2e"
+  ],
+  "audit_note": "Wave 63: full lifecycle live; verified by test (352/0)."
  },
  {
   "id": "F-D11-038",
   "domain": "D11",
   "title": "Risk heatmap",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/compliance/risks/heatmap (5x5 KxD matrix, total_open, high_count>=12, closed excluded)",
+   "apps/server/static/site.js: riskHmRefresh heatmap table + summary + hooks",
+   "apps/server/tests/api.rs: heatmap counts asserted (K4xD5=1, closed exclusion)"
+  ],
+  "audit_note": "Wave 63: aggregation live over risk_register; verified by test (352/0)."
  },
  {
   "id": "F-D11-039",
