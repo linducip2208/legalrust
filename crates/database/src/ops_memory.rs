@@ -149,6 +149,7 @@ struct Inner {
     crems: HashMap<i64, ClientReminderRow>,
     cfb: HashMap<i64, ClientFeedbackRow>,
     cnrs: HashMap<i64, ClientNotifRouteRow>,
+    cels: HashMap<i64, ClientEngLetterRow>,
     quotas: HashMap<String, OrgQuotaRow>,
     upsessions: HashMap<i64, UpSessionHead>,
     upbufs: HashMap<i64, Vec<u8>>,
@@ -3218,6 +3219,83 @@ impl OpsStore for MemoryOps {
         match m.cnrs.get(&id) {
             Some(r) if r.org == org => {
                 m.cnrs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn cel_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        let body = body.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.len() < 2 || body.len() > 20000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.cels.insert(
+            id,
+            ClientEngLetterRow {
+                id,
+                org: org.into(),
+                client_id,
+                title: title.into(),
+                body: body.into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cel_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientEngLetterRow>, StoreError> {
+        let mut v: Vec<ClientEngLetterRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .cels
+            .values()
+            .filter(|r| r.org == org && client_id.map(|c| r.client_id == c).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn cel_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .cels
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "issued")
+                | ("issued", "signed")
+                | ("draft", "cancelled")
+                | ("issued", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn cel_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.cels.get(&id) {
+            Some(r) if r.org == org => {
+                m.cels.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

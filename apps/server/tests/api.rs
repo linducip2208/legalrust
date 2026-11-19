@@ -5661,6 +5661,9 @@ async fn crm_app_contains_crm_ids() {
         "cnr-add",
         "cnr-list",
         "cli-csv",
+        "cel-cid",
+        "cel-add",
+        "cel-list",
         "cdrq-list",
         "up-file",
         "up-go",
@@ -11427,6 +11430,95 @@ async fn client_vip_and_credit() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/client-flags")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn client_engagement_letters() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cliengel@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let cli = mk_crm_client(&a, &tok).await;
+    // Create-gated + ghost 404s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/engagement-letters",
+            &format!(r#"{{"client_id":{cli},"title":"Kuasa","body":"Menangani perkara"}}"#),
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/engagement-letters",
+            r#"{"client_id":999999,"title":"Kuasa","body":"Isi surat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/engagement-letters",
+            &format!(r#"{{"client_id":{cli},"title":"Kuasa","body":"Menangani perkara"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    // Skip-ahead rejected; chain draft->issued->signed.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/engagement-letters/{eid}/status"),
+            r#"{"status":"signed"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for st in ["issued", "signed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/engagement-letters/{eid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "letter to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/engagement-letters?client_id={cli}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid) && r["status"] == "signed"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/engagement-letters")
                 .body(Body::empty())
                 .unwrap(),
         )

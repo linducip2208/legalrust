@@ -3297,6 +3297,35 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (out) out.innerHTML = (v.routes || []).map(function (x) { return '<span class="badge">' + esc(x.to) + ' via ' + esc(x.channel) + (x.allowed ? '' : ' (ditolak)') + '</span>'; }).join(' ') || 'Tidak ada rute.';
   });
   on('cli-csv', 'click', function () { dlCsv('/api/v1/reports/clients.csv', 'klien.csv', 'cnr-msg'); });
+  /* ---- engagement letters (F-D02-014) ---- */
+  async function celRefresh() {
+    var box = document.getElementById('cel-list');
+    if (!box) return;
+    var v = await j('/api/v1/engagement-letters' + (pval('cel-cid') ? '?client_id=' + encodeURIComponent(pval('cel-cid')) : ''));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'draft' ? '<button class="btn btn-sm" data-cel-next="' + x.id + '" data-cel-to="issued" type="button">Terbitkan</button> '
+        : (x.status === 'issued' ? '<button class="btn btn-sm" data-cel-next="' + x.id + '" data-cel-to="signed" type="button">Tandai ditandatangani</button> ' : '<span class="text-muted">' + x.status + '</span> ');
+      if (x.status === 'draft' || x.status === 'issued') act += '<button class="btn btn-sm btn-outline-danger" data-cel-next="' + x.id + '" data-cel-to="cancelled" type="button">Batal</button> ';
+      return '<tr><td>' + esc(x.title) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada surat.</td></tr>';
+    qsa('[data-cel-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/engagement-letters/' + b.getAttribute('data-cel-next') + '/status', { status: b.getAttribute('data-cel-to') });
+        if (!r.ok) { pmsg('cel-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cel-msg', '');
+        celRefresh();
+      });
+    });
+  }
+  on('cel-add', 'click', async function () {
+    if (!pval('cel-cid') || !pval('cel-title') || !pval('cel-body')) { pmsg('cel-msg', 'Isi klien, judul, isi.'); return; }
+    var r = await ppost('/api/v1/engagement-letters', { client_id: +pval('cel-cid'), title: pval('cel-title'), body: pval('cel-body') });
+    if (!r.ok) { pmsg('cel-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cel-msg', '');
+    celRefresh();
+  });
+  on('cel-reload', 'click', celRefresh);
   /* ---- communication timeline (F-D02-011) ---- */
   async function ctmRefresh() {
     var box = document.getElementById('ctm-list');
@@ -4130,6 +4159,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   crmRefresh();
   cfbRefresh();
   cnrRefresh();
+  celRefresh();
   vipRefresh();
   apptRefresh();
   queueRefresh();

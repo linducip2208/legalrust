@@ -326,6 +326,16 @@ pub struct ClientNotifRouteRow {
     pub channel: String,
     pub target: String,
 }
+/// Engagement letter (draft->issued->signed, or ->cancelled).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClientEngLetterRow {
+    pub id: i64,
+    pub org: String,
+    pub client_id: i64,
+    pub title: String,
+    pub body: String,
+    pub status: String,
+}
 /// Client lifetime value snapshot (derived, not stored).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientLtv {
@@ -2081,6 +2091,21 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientNotifRouteRow>, StoreError>;
     async fn cnr_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Engagement letters (draft->issued->signed; draft/issued->cancelled).
+    async fn cel_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cel_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientEngLetterRow>, StoreError>;
+    async fn cel_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn cel_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

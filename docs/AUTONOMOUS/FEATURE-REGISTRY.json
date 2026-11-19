@@ -533,19 +533,27 @@
   "id": "F-D02-013",
   "domain": "D02",
   "title": "Quotation & engagement proposal",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: quote_create/list/status/delete + items + totals (office slice, RBAC, audited office.quote_created)",
+   "apps/server/tests/api.rs: price_list_and_quotations e2e green (workspace 438/0)",
+   "Note: quotations keyed by client_name string, not client_id FK — functional for proposals, linkage by name."
+  ],
+  "audit_note": "Wave 148: verify-only rescore; quotation flow live since finance slice (438/0 green)."
  },
  {
   "id": "F-D02-014",
   "domain": "D02",
   "title": "Engagement letter management",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0096: client_engagement_letters table (forward-only)",
+   "ops.rs + memory + mysql: cel add/list/status/delete + lifecycle guards",
+   "lib.rs: engagement-letter endpoints (existence-verified, RBAC)",
+   "site.js: engagement card + hooks (klien panel)",
+   "tests: client_engagement_letters e2e (skip-ahead 409, ghost 404, 403/401)"
+  ],
+  "audit_note": "Wave 148: engagement letters live. Verified by test (438/0)."
  },
  {
   "id": "F-D02-015",

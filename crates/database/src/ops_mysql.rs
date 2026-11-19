@@ -2985,6 +2985,94 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn cel_add(
+        &self,
+        org: &str,
+        client_id: i64,
+        title: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        let body = body.trim();
+        if client_id <= 0 || title.len() < 2 || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.len() < 2 || body.len() > 20000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let r = sqlx::query("INSERT INTO client_engagement_letters (org_id, client_id, title, body) VALUES (?,?,?,?)")
+            .bind(org).bind(client_id as u64).bind(title).bind(body)
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cel_list(
+        &self,
+        org: &str,
+        client_id: Option<i64>,
+    ) -> Result<Vec<ClientEngLetterRow>, StoreError> {
+        let rows = if let Some(c) = client_id {
+            sqlx::query("SELECT id, org_id, client_id, title, body, status FROM client_engagement_letters WHERE org_id=? AND client_id=? ORDER BY id DESC LIMIT 200")
+                .bind(org).bind(c as u64).fetch_all(&self.pool).await.map_err(db_err)?
+        } else {
+            sqlx::query("SELECT id, org_id, client_id, title, body, status FROM client_engagement_letters WHERE org_id=? ORDER BY id DESC LIMIT 500")
+                .bind(org).fetch_all(&self.pool).await.map_err(db_err)?
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| ClientEngLetterRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                client_id: x.get::<u64, _>("client_id") as i64,
+                title: x.get::<String, _>("title"),
+                body: x.get::<String, _>("body"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn cel_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM client_engagement_letters WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let status = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (status.as_str(), to),
+            ("draft", "issued")
+                | ("issued", "signed")
+                | ("draft", "cancelled")
+                | ("issued", "cancelled")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE client_engagement_letters SET status=? WHERE id=?")
+            .bind(to)
+            .bind(id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn cel_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM client_engagement_letters WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn up_start(
         &self,
         org: &str,
