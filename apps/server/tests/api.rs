@@ -5684,6 +5684,10 @@ async fn crm_app_contains_crm_ids() {
         "ov-go",
         "cfx-name",
         "cfx-go",
+        "cfx-verdict",
+        "cfx-log",
+        "cfx-list",
+        "cfx-reg",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11692,6 +11696,82 @@ async fn client_portal_invites_and_surveys() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/portal-invites")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn conflict_register_log_and_list() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "cconfreg@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Create-gated.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/conflicts/register",
+            r#"{"needle":"Hartono","verdict":"clear"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/conflicts/register",
+            r#"{"needle":"H","verdict":"clear"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/conflicts/register",
+            r#"{"needle":"Hartono","clients_hits":1,"verdict":"alien"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a.clone().oneshot(post("/api/v1/conflicts/register", r#"{"needle":"Hartono","clients_hits":1,"parties_hits":2,"verdict":"flagged","note":"Perlu telaah"}"#, Some(&tok))).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/conflicts/register", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["needle"] == "Hartono"
+            && r["verdict"] == "flagged"
+            && !r["checked_by"].as_str().unwrap().is_empty()));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=conflict", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.conflict_logged"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/conflicts/register")
                 .body(Body::empty())
                 .unwrap(),
         )

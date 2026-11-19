@@ -3423,6 +3423,51 @@ impl OpsStore for MysqlOps {
             .map(|x| x.get::<u8, _>("enabled"));
         Ok(x.unwrap_or(0) != 0)
     }
+    async fn cck_add(
+        &self,
+        org: &str,
+        needle: &str,
+        clients_hits: i64,
+        matters_hits: i64,
+        parties_hits: i64,
+        verdict: &str,
+        note: &str,
+        checked_by: &str,
+    ) -> Result<i64, StoreError> {
+        let needle = needle.trim();
+        if needle.len() < 2 || needle.len() > 160 {
+            return Err(StoreError::Conflict("needle".into()));
+        }
+        let v = verdict.trim().to_lowercase();
+        if !["clear", "flagged", "waived"].contains(&v.as_str()) {
+            return Err(StoreError::Conflict("verdict".into()));
+        }
+        if note.len() > 500 || checked_by.trim().is_empty() {
+            return Err(StoreError::Conflict("note/checker".into()));
+        }
+        let r = sqlx::query("INSERT INTO conflict_checks (org_id, needle, clients_hits, matters_hits, parties_hits, verdict, note, checked_by) VALUES (?,?,?,?,?,?,?,?)")
+            .bind(org).bind(needle).bind(clients_hits).bind(matters_hits).bind(parties_hits).bind(&v).bind(note.trim()).bind(checked_by)
+            .execute(&self.pool).await.map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn cck_list(&self, org: &str) -> Result<Vec<ConflictCheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, needle, clients_hits, matters_hits, parties_hits, verdict, note, checked_by FROM conflict_checks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ConflictCheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                needle: x.get::<String, _>("needle"),
+                clients_hits: x.get::<i64, _>("clients_hits"),
+                matters_hits: x.get::<i64, _>("matters_hits"),
+                parties_hits: x.get::<i64, _>("parties_hits"),
+                verdict: x.get::<String, _>("verdict"),
+                note: x.get::<String, _>("note"),
+                checked_by: x.get::<String, _>("checked_by"),
+            })
+            .collect())
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

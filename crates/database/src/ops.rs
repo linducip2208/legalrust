@@ -357,6 +357,19 @@ pub struct ClientMessageRow {
     pub sender: String,
     pub body: String,
 }
+/// Conflict-of-interest register entry (screening outcome, human verdict).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConflictCheckRow {
+    pub id: i64,
+    pub org: String,
+    pub needle: String,
+    pub clients_hits: i64,
+    pub matters_hits: i64,
+    pub parties_hits: i64,
+    pub verdict: String,
+    pub note: String,
+    pub checked_by: String,
+}
 /// Deed-copy request (requested->fulfilled/cancelled).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientCopyReqRow {
@@ -2296,6 +2309,20 @@ pub trait OpsStore: Send + Sync {
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;
+    /// Conflict-of-interest register (screening outcomes + human verdicts).
+    #[allow(clippy::too_many_arguments)]
+    async fn cck_add(
+        &self,
+        org: &str,
+        needle: &str,
+        clients_hits: i64,
+        matters_hits: i64,
+        parties_hits: i64,
+        verdict: &str,
+        note: &str,
+        checked_by: &str,
+    ) -> Result<i64, StoreError>;
+    async fn cck_list(&self, org: &str) -> Result<Vec<ConflictCheckRow>, StoreError>;
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn cpi_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Satisfaction surveys (score 1-10, list + average).

@@ -151,6 +151,7 @@ struct Inner {
     cnrs: HashMap<i64, ClientNotifRouteRow>,
     cels: HashMap<i64, ClientEngLetterRow>,
     cpis: HashMap<i64, ClientPortalInviteRow>,
+    ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
     prats: HashMap<i64, PortalRatingRow>,
@@ -291,6 +292,14 @@ fn pev_ok(kind: &str) -> Result<String, StoreError> {
         return Err(StoreError::Conflict("kind".into()));
     }
     Ok(k)
+}
+
+fn cck_ok(verdict: &str) -> Result<String, StoreError> {
+    let v = verdict.trim().to_lowercase();
+    if !["clear", "flagged", "waived"].contains(&v.as_str()) {
+        return Err(StoreError::Conflict("verdict".into()));
+    }
+    Ok(v)
 }
 
 fn ccns_ok(channel: &str) -> Result<String, StoreError> {
@@ -3689,6 +3698,57 @@ impl OpsStore for MemoryOps {
             .get(&(org.to_string(), flag.to_string()))
             .copied()
             .unwrap_or(false))
+    }
+    async fn cck_add(
+        &self,
+        org: &str,
+        needle: &str,
+        clients_hits: i64,
+        matters_hits: i64,
+        parties_hits: i64,
+        verdict: &str,
+        note: &str,
+        checked_by: &str,
+    ) -> Result<i64, StoreError> {
+        let needle = needle.trim();
+        if needle.len() < 2 || needle.len() > 160 {
+            return Err(StoreError::Conflict("needle".into()));
+        }
+        let verdict = cck_ok(verdict)?;
+        if note.len() > 500 || checked_by.trim().is_empty() {
+            return Err(StoreError::Conflict("note/checker".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.ccks.insert(
+            id,
+            ConflictCheckRow {
+                id,
+                org: org.into(),
+                needle: needle.into(),
+                clients_hits,
+                matters_hits,
+                parties_hits,
+                verdict,
+                note: note.trim().into(),
+                checked_by: checked_by.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn cck_list(&self, org: &str) -> Result<Vec<ConflictCheckRow>, StoreError> {
+        let mut v: Vec<ConflictCheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ccks
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        v.truncate(200);
+        Ok(v)
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

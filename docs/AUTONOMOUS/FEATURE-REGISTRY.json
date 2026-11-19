@@ -1496,10 +1496,11 @@
   "id": "F-D04-014",
   "domain": "D04",
   "title": "Document thumbnail generation",
-  "status": "NOT_STARTED",
+  "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "BLOCKED (infra): thumbnail generation needs a native image library; none vendored in this 100% Rust workspace."
+  ],
+  "audit_note": "Wave 172: honestly blocked on native lib. See daily log."
  },
  {
   "id": "F-D04-015",
@@ -4517,11 +4518,15 @@
   "id": "F-D11-014",
   "domain": "D11",
   "title": "Conflict-of-interest register",
-  "status": "CONFIGURATION_REQUIRED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "migrations/0108: conflict_checks table (verdict check, forward-only)",
+   "ops.rs + memory + mysql: cck add/list + allowlist",
+   "lib.rs: POST/GET /conflicts/register (RBAC, audited compliance.conflict_logged)",
+   "site.js: register card (log + list) in klien panel",
+   "tests: conflict_register_log_and_list e2e (gates, audit)"
+  ],
+  "audit_note": "Wave 172: conflict register live; stale OCR evidence corrected. Verified by test (462/0)."
  },
  {
   "id": "F-D11-015",
@@ -4541,9 +4546,10 @@
   "title": "Sanctions re-screening scheduler",
   "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "apps/server/src/lib.rs:747 ocr_process -> 501 BlockedExternal (no OCR engine configured)",
-   "apps/server/src/lib.rs:2220 honest-status table: OCR process 501 without engine"
-  ]
+   "BLOCKED (external): sanctions re-screening needs a sanctions-list feed (UN/EU consolidated lists); no feed configured.",
+   "Stale OCR-cited evidence corrected."
+  ],
+  "audit_note": "Wave 172: honestly blocked on external feed. See daily log."
  },
  {
   "id": "F-D11-017",
@@ -8314,28 +8320,34 @@
   "id": "F-D19-036",
   "domain": "D19",
   "title": "Public office directory",
-  "status": "PLANNED",
+  "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "BLOCKED (design): public office directory needs anonymous org resolution; org-scoped reads would leak across tenants.",
+   "Needed decision: verified-domain mapping or explicit public-org config before any public endpoint ships."
+  ],
+  "audit_note": "Wave 172: honestly blocked, no fake endpoint. See daily log."
  },
  {
   "id": "F-D19-037",
   "domain": "D19",
   "title": "Public lawyer/notary profiles",
-  "status": "NOT_STARTED",
+  "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "BLOCKED (design): same anonymous-org-resolution blocker as F-D19-036; staff names are PII.",
+   "Needed decision: public-org resolution + publication consent model."
+  ],
+  "audit_note": "Wave 172: honestly blocked, no fake endpoint. See daily log."
  },
  {
   "id": "F-D19-038",
   "domain": "D19",
   "title": "Public regulation digest",
-  "status": "NOT_STARTED",
+  "status": "CONFIGURATION_REQUIRED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "BLOCKED (design): public digest over org-scoped regulatory_changes has the same anonymous-org blocker.",
+   "Portal clients already see live retention schedules (F-D19-040); curated public digest waits on the org-resolution decision."
+  ],
+  "audit_note": "Wave 172: honestly blocked. See daily log."
  },
  {
   "id": "F-D19-039",

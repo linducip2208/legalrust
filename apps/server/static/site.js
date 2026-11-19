@@ -3178,10 +3178,34 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await j('/api/v1/conflicts/check?name=' + encodeURIComponent(pval('cfx-name')));
     if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
     pmsg('cfx-msg', '');
+    window._cfx = v;
     var n = (v.clients || []).length + (v.matters || []).length + (v.parties || []).length;
     if (out) out.innerHTML = n === 0 ? 'Bersih: tidak ada tabrakan nama.' :
       '<span class="badge bg-red-lt">' + n + ' temuan</span> — klien ' + (v.clients || []).length + ', perkara ' + (v.matters || []).length + ', pihak ' + (v.parties || []).length + ' (' + esc(v.note || '') + ')';
   });
+  on('cfx-log', 'click', async function () {
+    var v = window._cfx;
+    if (!v) { pmsg('cfx-msg', 'Periksa dulu sebelum mencatat.'); return; }
+    var r = await ppost('/api/v1/conflicts/register', {
+      needle: pval('cfx-name'), clients_hits: (v.clients || []).length,
+      matters_hits: (v.matters || []).length, parties_hits: (v.parties || []).length,
+      verdict: pval('cfx-verdict') || 'clear', note: pval('cfx-note') || ''
+    });
+    if (!r.ok) { pmsg('cfx-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('cfx-msg', '');
+    cfxReg();
+  });
+  async function cfxReg() {
+    var box = document.getElementById('cfx-reg');
+    if (!box) return;
+    var v = await j('/api/v1/conflicts/register');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var hits = (x.clients_hits || 0) + (x.matters_hits || 0) + (x.parties_hits || 0);
+      return '<tr><td>' + esc(x.needle) + '</td><td>' + hits + '</td><td>' + badge(x.verdict) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada catatan.</td></tr>';
+  }
+  on('cfx-list', 'click', cfxReg);
   /* ---- 360 overview (F-D02-035) ---- */
   on('ov-go', 'click', async function () {
     var out = document.getElementById('ov-out');

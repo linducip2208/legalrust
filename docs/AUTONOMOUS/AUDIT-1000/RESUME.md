@@ -64,6 +64,12 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - org_quotas (0084) + sync feed + enforcement + kartu + uji.
 - F-D04-029/034 PLANNED->IMPLEMENTED (~72.3 verified). Workspace 425/0; registry ~28.6 (243 IMPLEMENTED); mean 31.4 (233 v).
 
+## Done wave 172: conflict register + honest BLOCKEDs (main)
+- conflict_checks (0108) + register UI + uji.
+- F-D11-014 CONFIGURATION_REQUIRED->IMPLEMENTED (~72.5 verified). F-D19-036/037/038, F-D11-016, F-D04-014 honestly blocked with corrected evidence (no fake endpoints). Workspace 462/0; registry ~32.1 (312 IMPLEMENTED); mean 35.7 (302 v).
+D19 remainder: only external-blocked items (002 KYC, 008 e-sign, 010 checkout).
+Note: stale OCR-cited evidence on 008/014/016 corrected this wave.
+
 ## Done wave 171: maintenance + i18n (main)
 - org_flags (0107) + login gates (503) + admin toggle + portal ID/EN + kartu + uji.
 - F-D19-035/028 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 461/0; registry ~32.0 (311 IMPLEMENTED); mean 35.6 (301 v).

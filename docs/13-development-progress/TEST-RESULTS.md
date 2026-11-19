@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 171: maintenance + i18n (main)
+## 2026-11-19 AUDIT-1000 wave 172: register konflik (main)
+- Register + BLOCKED docs; workspace **462 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 171: maintenance + i18n (main)
 - 503 gates + toggle; workspace **461 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 170: analitik portal (main)
