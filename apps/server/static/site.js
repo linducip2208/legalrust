@@ -2030,6 +2030,84 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     annRefresh();
   });
   on('ann-reload', 'click', annRefresh);
+  /* ---- office: document checklist ---- */
+  async function dclRefresh() {
+    var box = document.getElementById('dcl-list');
+    if (!box) return;
+    var did = pval('dcl-doc');
+    if (!did) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID dokumen lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(did) + '/checklist');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var done = v.filter(function (x) { return x.done; }).length;
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.item) + '</td><td>' + (x.done ? '<span class="badge bg-green-lt">ya</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td>'
+        + '<td><button class="btn btn-sm" data-dcl-tg="' + x.id + '" data-dcl-done="' + (!x.done) + '" type="button">Ubah</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-dcl-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada butir.</td></tr>';
+    if (v.length) box.innerHTML += '<tr><td colspan="4" class="text-muted">Progres: ' + done + '/' + v.length + ' selesai.</td></tr>';
+    qsa('[data-dcl-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/doc-checklist/' + b.getAttribute('data-dcl-tg') + '/toggle', { done: b.getAttribute('data-dcl-done') === 'true' });
+        if (!r.ok) { pmsg('dcl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dcl-msg', '');
+        dclRefresh();
+      });
+    });
+    qsa('[data-dcl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/doc-checklist/' + b.getAttribute('data-dcl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dcl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('dcl-msg', '');
+        dclRefresh();
+      });
+    });
+  }
+  on('dcl-add', 'click', async function () {
+    if (!pval('dcl-doc') || !pval('dcl-item')) { pmsg('dcl-msg', 'Isi ID dokumen dan butir.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dcl-doc')) + '/checklist', { item: pval('dcl-item') });
+    if (!r.ok) { pmsg('dcl-msg', 'Gagal (' + r.status + '). Dokumen tidak ada?'); return; }
+    pmsg('dcl-msg', '');
+    dclRefresh();
+  });
+  on('dcl-reload', 'click', dclRefresh);
+  /* ---- office: office incidents ---- */
+  var OIN_NEXT = { open: 'investigating', investigating: 'resolved', resolved: 'closed' };
+  async function oinRefresh() {
+    var box = document.getElementById('oin-list');
+    if (!box) return;
+    var v = await j('/api/v1/office-incidents');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = OIN_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-oin-next="' + x.id + '" data-oin-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">ditutup</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-oin-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + ' <span class="text-muted">(' + esc(x.severity) + ')</span></td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada insiden.</td></tr>';
+    qsa('[data-oin-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/office-incidents/' + b.getAttribute('data-oin-next') + '/status', { status: b.getAttribute('data-oin-to') });
+        if (!r.ok) { pmsg('oin-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('oin-msg', '');
+        oinRefresh();
+      });
+    });
+    qsa('[data-oin-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/office-incidents/' + b.getAttribute('data-oin-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('oin-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('oin-msg', '');
+        oinRefresh();
+      });
+    });
+  }
+  on('oin-add', 'click', async function () {
+    if (!pval('oin-title')) { pmsg('oin-msg', 'Isi judul insiden.'); return; }
+    var r = await ppost('/api/v1/office-incidents', { title: pval('oin-title'), severity: pval('oin-sev') || 'medium' });
+    if (!r.ok) { pmsg('oin-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('oin-msg', '');
+    oinRefresh();
+  });
+  on('oin-reload', 'click', oinRefresh);
   crmTags();
   crmRecent();
   apptRefresh();
@@ -3394,6 +3472,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   atkRefresh();
   aboxRefresh();
   useRefresh();
+  dclRefresh();
+  oinRefresh();
   dpRefresh();
   whDlRefresh();
   intRefresh();

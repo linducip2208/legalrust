@@ -4827,10 +4827,15 @@
   "id": "F-D12-030",
   "domain": "D12",
   "title": "Office document checklist",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0055_doccheck_oinc.sql: doc_checklist_items table (FK document CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: scoped CRUD + toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/documents/{id}/checklist + toggle + delete (doc existence 404, RBAC)",
+   "apps/server/static/site.js: dclRefresh card Checklist dokumen in dok tab + hooks",
+   "apps/server/tests/api.rs: doc_checklist_and_office_incidents e2e (ghost 404, cross-org 404, progress)"
+  ],
+  "audit_note": "Wave 86: full lifecycle live; verified by test (375/0)."
  },
  {
   "id": "F-D12-031",
@@ -4888,10 +4893,15 @@
   "id": "F-D12-036",
   "domain": "D12",
   "title": "Office incident log",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0055_doccheck_oinc.sql: office_incidents table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + open->investigating->resolved->closed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/office-incidents + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: oinRefresh card Insiden kantor in ringkas tab + hooks",
+   "apps/server/tests/api.rs: lifecycle asserted, 401"
+  ],
+  "audit_note": "Wave 86: verified by test (375/0)."
  },
  {
   "id": "F-D12-037",

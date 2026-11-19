@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 86: doc checklist + office incidents (main)
+- doc_checklist_items + office_incidents (0055) + kartu dok/ringkas + uji.
+- F-D12-030/036 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 375/0; registry ~24.0 (134 IMPLEMENTED); mean ~24.9 (132 v).
+
 ## Done wave 85: storage boxes + MPD transfers (main)
 - storage_boxes + mpd_transfers (0054) + kartu akta + uji.
 - F-D12-021/022 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 374/0; registry ~23.9 (132 IMPLEMENTED); mean 24.9 (130 v).

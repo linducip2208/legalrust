@@ -87,6 +87,8 @@ struct Inner {
     leaves: HashMap<i64, LeaveRow>,
     sboxes: HashMap<i64, StorageBoxRow>,
     mtransfers: HashMap<i64, MpdTransferRow>,
+    dclists: HashMap<i64, DocCheckRow>,
+    oincidents: HashMap<i64, OfficeIncidentRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4187,6 +4189,125 @@ impl OpsStore for MemoryOps {
         match m.mtransfers.get(&id) {
             Some(r) if r.org == org => {
                 m.mtransfers.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dclist_add(&self, org: &str, doc_id: i64, item: &str) -> Result<i64, StoreError> {
+        let item = item.trim();
+        if item.is_empty() || item.len() > 200 {
+            return Err(StoreError::Conflict("item".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.dclists.insert(
+            id,
+            DocCheckRow {
+                id,
+                org: org.into(),
+                doc_id,
+                item: item.into(),
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn dclist_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocCheckRow>, StoreError> {
+        let mut v: Vec<DocCheckRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dclists
+            .values()
+            .filter(|r| r.org == org && r.doc_id == doc_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn dclist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .dclists
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.done = done;
+        Ok(())
+    }
+    async fn dclist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dclists.get(&id) {
+            Some(r) if r.org == org => {
+                m.dclists.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn oincident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.oincidents.insert(
+            id,
+            OfficeIncidentRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                severity: severity.into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn oincident_list(&self, org: &str) -> Result<Vec<OfficeIncidentRow>, StoreError> {
+        let mut v: Vec<OfficeIncidentRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .oincidents
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn oincident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .oincidents
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "investigating") | ("investigating", "resolved") | ("resolved", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn oincident_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.oincidents.get(&id) {
+            Some(r) if r.org == org => {
+                m.oincidents.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

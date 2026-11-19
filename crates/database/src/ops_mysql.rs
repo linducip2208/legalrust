@@ -4883,6 +4883,146 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn dclist_add(&self, org: &str, doc_id: i64, item: &str) -> Result<i64, StoreError> {
+        let item = item.trim();
+        if item.is_empty() || item.len() > 200 {
+            return Err(StoreError::Conflict("item".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO doc_checklist_items (org_id, doc_id, item) VALUES (?,?,?)")
+                .bind(org)
+                .bind(doc_id as u64)
+                .bind(item)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn dclist_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocCheckRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, doc_id, item, done FROM doc_checklist_items WHERE org_id=? AND doc_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).bind(doc_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| DocCheckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                doc_id: x.get::<u64, _>("doc_id") as i64,
+                item: x.get::<String, _>("item"),
+                done: x.get::<i8, _>("done") != 0,
+            })
+            .collect())
+    }
+    async fn dclist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE doc_checklist_items SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn dclist_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM doc_checklist_items WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn oincident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(severity, "low" | "medium" | "high" | "critical") {
+            return Err(StoreError::Conflict("severity".into()));
+        }
+        let r =
+            sqlx::query("INSERT INTO office_incidents (org_id, title, severity) VALUES (?,?,?)")
+                .bind(org)
+                .bind(title)
+                .bind(severity)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn oincident_list(&self, org: &str) -> Result<Vec<OfficeIncidentRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, severity, status FROM office_incidents WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| OfficeIncidentRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                severity: x.get::<String, _>("severity"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn oincident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "investigating" | "resolved" | "closed") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM office_incidents WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "investigating")
+                | (Some("investigating"), "resolved")
+                | (Some("resolved"), "closed")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE office_incidents SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn oincident_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM office_incidents WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

@@ -535,6 +535,24 @@ pub struct MpdTransferRow {
     pub receipt_no: String,
     pub status: String,
 }
+/// Office document checklist item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocCheckRow {
+    pub id: i64,
+    pub org: String,
+    pub doc_id: i64,
+    pub item: String,
+    pub done: bool,
+}
+/// Office incident log entry (non-compliance ops incidents).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfficeIncidentRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub severity: String,
+    pub status: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1625,6 +1643,21 @@ pub trait OpsStore: Send + Sync {
     async fn mtransfer_list(&self, org: &str) -> Result<Vec<MpdTransferRow>, StoreError>;
     async fn mtransfer_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn mtransfer_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office document checklist.
+    async fn dclist_add(&self, org: &str, doc_id: i64, item: &str) -> Result<i64, StoreError>;
+    async fn dclist_list(&self, org: &str, doc_id: i64) -> Result<Vec<DocCheckRow>, StoreError>;
+    async fn dclist_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    async fn dclist_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office incident log.
+    async fn oincident_create(
+        &self,
+        org: &str,
+        title: &str,
+        severity: &str,
+    ) -> Result<i64, StoreError>;
+    async fn oincident_list(&self, org: &str) -> Result<Vec<OfficeIncidentRow>, StoreError>;
+    async fn oincident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn oincident_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

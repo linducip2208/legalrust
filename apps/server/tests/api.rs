@@ -5445,6 +5445,10 @@ async fn crm_app_contains_crm_ids() {
         "rch-add",
         "rch-reload",
         "rch-list",
+        "dcl-doc",
+        "dcl-add",
+        "dcl-reload",
+        "dcl-list",
         "hrs-day",
         "hrs-set",
         "hrs-reload",
@@ -5511,6 +5515,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "ann-add",
         "ann-reload",
         "ann-list",
+        "oin-title",
+        "oin-add",
+        "oin-reload",
+        "oin-list",
         "price-code",
         "price-add",
         "price-reload",
@@ -7711,6 +7719,147 @@ async fn atk_and_archive_boxes() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/archive-boxes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn doc_checklist_and_office_incidents() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dcloinc@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Checklist requires a real document.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents/999999/checklist",
+            r#"{"item":"Butir hantu"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let mid = mk_matter(&a, &tok).await;
+    let content = b"fake-checklist-bytes";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/documents", &format!(r#"{{"matter_id":{mid},"name":"kontrak.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#, content.len()), Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(
+        res.status(),
+        StatusCode::OK,
+        "seed doc: {}",
+        body_json(res).await
+    );
+    let doc = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{doc}/checklist"),
+            r#"{"item":"XX"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{doc}/checklist"),
+            r#"{"item":"Cek tanda tangan"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/doc-checklist/{cid}/toggle"),
+            r#"{"done":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{doc}/checklist"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["done"] == true));
+    // Cross-org isolation: item invisible elsewhere.
+    let tok2 = reg(&a, "dcloinc2@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{doc}/checklist"), &tok2))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Office incidents: lifecycle + guards.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-incidents",
+            r#"{"title":"AC bocor","severity":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let oid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["investigating", "resolved", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/office-incidents/{oid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "oincident to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/office-incidents", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(oid) && r["status"] == "closed"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=oincident", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.oincident_created"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/office-incidents")
                 .body(Body::empty())
                 .unwrap(),
         )
