@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 87: bank + feedback (main)
+- Rate sheet + umpan balik; workspace **376 passed, 0 failed**; F-D12-025/038 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 86: doc checklist + incidents (main)
 - Checklist per dokumen + log insiden; workspace **375 passed, 0 failed**; F-D12-030/036 IMPLEMENTED.
 

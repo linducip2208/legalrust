@@ -3122,6 +3122,10 @@ async fn mkt_app_has_marketing_tab_and_admin_refs() {
         "mkt-csv",
         "mkt-demos",
         "mkt-contacts",
+        "fb-name",
+        "fb-add",
+        "fb-reload",
+        "fb-list",
         "mkt-news-count",
         "mkt-sub-btn",
         "mkt-unsub-btn",
@@ -5555,6 +5559,10 @@ async fn uib_app_has_audit_jobs_ui() {
         "dp-add",
         "dp-reload",
         "dp-list",
+        "bank-name",
+        "bank-add",
+        "bank-reload",
+        "bank-list",
         "bell",
         "bell-n",
         "bell-list",
@@ -7719,6 +7727,133 @@ async fn atk_and_archive_boxes() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/archive-boxes")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn bank_facilities_and_feedback() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "bankfb@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bank-facilities",
+            r#"{"bank_name":"BB","facility":"FF"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/bank-facilities",
+            r#"{"bank_name":"Bank Maju","facility":"KPR","rate_text":"9,5%","tenor":"15 tahun"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let bid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/bank-facilities/{bid}/active"),
+            r#"{"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/bank-facilities", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(bid) && r["active"] == false));
+    // Feedback: rating bounds + new->reviewed->archived.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/feedbacks",
+            r#"{"message":"Bagus","rating":9}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/feedbacks",
+            r#"{"name":"Klien A","message":"Pelayanan cepat","rating":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let fid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["reviewed", "archived"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/feedbacks/{fid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "feedback to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/feedbacks/{fid}/status"),
+            r#"{"status":"new"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=bankf", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.bankf_created"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=feedback", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "office.feedback_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/bank-facilities")
                 .body(Body::empty())
                 .unwrap(),
         )

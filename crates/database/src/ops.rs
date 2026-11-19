@@ -553,6 +553,27 @@ pub struct OfficeIncidentRow {
     pub severity: String,
     pub status: String,
 }
+/// Bank-partner facility & rate sheet entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BankFacilityRow {
+    pub id: i64,
+    pub org: String,
+    pub bank_name: String,
+    pub facility: String,
+    pub rate_text: String,
+    pub tenor: String,
+    pub active: bool,
+}
+/// Office feedback capture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeedbackRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub message: String,
+    pub rating: i64,
+    pub status: String,
+}
 /// Weekly office-hours row (weekday 0=Senin..6=Ahad).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OfficeHoursRow {
@@ -1658,6 +1679,29 @@ pub trait OpsStore: Send + Sync {
     async fn oincident_list(&self, org: &str) -> Result<Vec<OfficeIncidentRow>, StoreError>;
     async fn oincident_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn oincident_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Bank-partner facility & rate sheet.
+    async fn bankf_create(
+        &self,
+        org: &str,
+        bank_name: &str,
+        facility: &str,
+        rate_text: &str,
+        tenor: &str,
+    ) -> Result<i64, StoreError>;
+    async fn bankf_list(&self, org: &str) -> Result<Vec<BankFacilityRow>, StoreError>;
+    async fn bankf_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn bankf_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office feedback capture.
+    async fn feedback_add(
+        &self,
+        org: &str,
+        name: &str,
+        message: &str,
+        rating: i64,
+    ) -> Result<i64, StoreError>;
+    async fn feedback_list(&self, org: &str) -> Result<Vec<FeedbackRow>, StoreError>;
+    async fn feedback_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn feedback_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

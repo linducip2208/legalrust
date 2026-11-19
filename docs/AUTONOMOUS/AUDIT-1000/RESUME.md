@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 87: bank facilities + feedback (main)
+- bank_facilities + feedbacks (0056) + kartu keu/mkt + uji.
+- F-D12-025/038 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 376/0; registry ~24.2 (136 IMPLEMENTED); mean ~25.1 (134 v).
+
 ## Done wave 86: doc checklist + office incidents (main)
 - doc_checklist_items + office_incidents (0055) + kartu dok/ringkas + uji.
 - F-D12-030/036 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 375/0; registry ~24.0 (134 IMPLEMENTED); mean 25.1 (132 v).

@@ -784,6 +784,80 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     dpRefresh();
   });
   on('dp-reload', 'click', dpRefresh);
+  /* ---- office: bank facilities ---- */
+  async function bankRefresh() {
+    var box = document.getElementById('bank-list');
+    if (!box) return;
+    var v = await j('/api/v1/bank-facilities');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '<button class="btn btn-sm" data-bank-tg="' + x.id + '" data-bank-on="' + (!x.active) + '" type="button">' + (x.active ? 'Nonaktifkan' : 'Aktifkan') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-bank-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.bank_name) + '</td><td>' + esc(x.facility) + ' <span class="text-muted">(' + esc(x.rate_text) + ' / ' + esc(x.tenor) + ')</span></td><td>' + (x.active ? '<span class="badge bg-green-lt">aktif</span>' : '<span class="badge bg-yellow-lt">nonaktif</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada fasilitas.</td></tr>';
+    qsa('[data-bank-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/bank-facilities/' + b.getAttribute('data-bank-tg') + '/active', { active: b.getAttribute('data-bank-on') === 'true' });
+        if (!r.ok) { pmsg('bank-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('bank-msg', '');
+        bankRefresh();
+      });
+    });
+    qsa('[data-bank-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/bank-facilities/' + b.getAttribute('data-bank-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('bank-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('bank-msg', '');
+        bankRefresh();
+      });
+    });
+  }
+  on('bank-add', 'click', async function () {
+    if (!pval('bank-name') || !pval('bank-fac')) { pmsg('bank-msg', 'Isi bank dan fasilitas.'); return; }
+    var r = await ppost('/api/v1/bank-facilities', { bank_name: pval('bank-name'), facility: pval('bank-fac'), rate_text: pval('bank-rate') || '', tenor: pval('bank-tenor') || '' });
+    if (!r.ok) { pmsg('bank-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('bank-msg', '');
+    bankRefresh();
+  });
+  on('bank-reload', 'click', bankRefresh);
+  /* ---- office: feedback ---- */
+  var FB_NEXT = { new: 'reviewed', reviewed: 'archived' };
+  async function fbRefresh() {
+    var box = document.getElementById('fb-list');
+    if (!box) return;
+    var v = await j('/api/v1/feedbacks');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = FB_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-fb-next="' + x.id + '" data-fb-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">arsip</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-fb-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.message) + '</td><td>' + x.rating + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada umpan balik.</td></tr>';
+    qsa('[data-fb-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/feedbacks/' + b.getAttribute('data-fb-next') + '/status', { status: b.getAttribute('data-fb-to') });
+        if (!r.ok) { pmsg('fb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('fb-msg', '');
+        fbRefresh();
+      });
+    });
+    qsa('[data-fb-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/feedbacks/' + b.getAttribute('data-fb-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('fb-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('fb-msg', '');
+        fbRefresh();
+      });
+    });
+  }
+  on('fb-add', 'click', async function () {
+    if (!pval('fb-msg-in')) { pmsg('fb-msg', 'Isi pesan umpan balik.'); return; }
+    var r = await ppost('/api/v1/feedbacks', { name: pval('fb-name') || '', message: pval('fb-msg-in'), rating: +pval('fb-rating') || 0 });
+    if (!r.ok) { pmsg('fb-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('fb-msg', '');
+    fbRefresh();
+  });
+  on('fb-reload', 'click', fbRefresh);
   /* ---- office: klapper ---- */
   async function klapperRefresh() {
     var box = document.getElementById('klapper-list');
@@ -3418,6 +3492,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada dead letter. Semua terkirim.</td></tr>';
   }
   mktRefresh();
+  fbRefresh();
   loadAudit();
   loadJobs();
   apprRefresh();
@@ -3475,6 +3550,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dclRefresh();
   oinRefresh();
   dpRefresh();
+  bankRefresh();
   whDlRefresh();
   intRefresh();
 })();

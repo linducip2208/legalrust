@@ -4776,10 +4776,15 @@
   "id": "F-D12-025",
   "domain": "D12",
   "title": "Office bank-partner facility & rate sheet",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0056_bank_feedback.sql: bank_facilities table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + active toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/bank-facilities + active + delete (RBAC, audit)",
+   "apps/server/static/site.js: bankRefresh card in keu tab + hooks",
+   "apps/server/tests/api.rs: bank_facilities_and_feedback e2e (toggle, Delete-gate, 401)"
+  ],
+  "audit_note": "Wave 87: full lifecycle live; verified by test (376/0)."
  },
  {
   "id": "F-D12-026",
@@ -4921,10 +4926,15 @@
   "id": "F-D12-038",
   "domain": "D12",
   "title": "Office feedback capture",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0056_bank_feedback.sql: feedbacks table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + new->reviewed->archived, rating 0-5",
+   "apps/server/src/lib.rs: POST/GET /api/v1/feedbacks + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: fbRefresh card Umpan balik in mkt tab + hooks",
+   "apps/server/tests/api.rs: rating 9 rejected 409, chain + revert guard asserted"
+  ],
+  "audit_note": "Wave 87: verified by test (376/0)."
  },
  {
   "id": "F-D12-039",

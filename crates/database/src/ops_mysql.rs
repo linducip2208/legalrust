@@ -5023,6 +5023,170 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn bankf_create(
+        &self,
+        org: &str,
+        bank_name: &str,
+        facility: &str,
+        rate_text: &str,
+        tenor: &str,
+    ) -> Result<i64, StoreError> {
+        let bank_name = bank_name.trim();
+        if bank_name.is_empty() || bank_name.len() > 120 {
+            return Err(StoreError::Conflict("bank_name".into()));
+        }
+        if facility.trim().is_empty() || facility.len() > 120 {
+            return Err(StoreError::Conflict("facility".into()));
+        }
+        if rate_text.len() > 20 || tenor.len() > 40 {
+            return Err(StoreError::Conflict("rate/tenor".into()));
+        }
+        let tn: String = tenor.trim().chars().take(40).collect();
+        let r = sqlx::query(
+            "INSERT INTO bank_facilities (org_id, bank_name, facility, rate_text, tenor) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(bank_name)
+        .bind(facility.trim())
+        .bind(rate_text.trim())
+        .bind(tn)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn bankf_list(&self, org: &str) -> Result<Vec<BankFacilityRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, bank_name, facility, rate_text, tenor, active FROM bank_facilities WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| BankFacilityRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                bank_name: x.get::<String, _>("bank_name"),
+                facility: x.get::<String, _>("facility"),
+                rate_text: x.get::<String, _>("rate_text"),
+                tenor: x.get::<String, _>("tenor"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn bankf_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE bank_facilities SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn bankf_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM bank_facilities WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn feedback_add(
+        &self,
+        org: &str,
+        name: &str,
+        message: &str,
+        rating: i64,
+    ) -> Result<i64, StoreError> {
+        let message = message.trim();
+        if message.is_empty() || message.len() > 2000 {
+            return Err(StoreError::Conflict("message".into()));
+        }
+        if !(0..=5).contains(&rating) {
+            return Err(StoreError::Conflict("rating 0-5".into()));
+        }
+        if name.len() > 120 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let nm: String = name.trim().chars().take(120).collect();
+        let r =
+            sqlx::query("INSERT INTO feedbacks (org_id, name, message, rating) VALUES (?,?,?,?)")
+                .bind(org)
+                .bind(nm)
+                .bind(message)
+                .bind(rating as i8)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn feedback_list(&self, org: &str) -> Result<Vec<FeedbackRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, name, message, rating, status FROM feedbacks WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| FeedbackRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                message: x.get::<String, _>("message"),
+                rating: x.get::<i8, _>("rating") as i64,
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn feedback_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "reviewed" | "archived") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM feedbacks WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("new"), "reviewed") | (Some("reviewed"), "archived")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE feedbacks SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn feedback_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM feedbacks WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

@@ -89,6 +89,8 @@ struct Inner {
     mtransfers: HashMap<i64, MpdTransferRow>,
     dclists: HashMap<i64, DocCheckRow>,
     oincidents: HashMap<i64, OfficeIncidentRow>,
+    bankf: HashMap<i64, BankFacilityRow>,
+    feedback: HashMap<i64, FeedbackRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4308,6 +4310,145 @@ impl OpsStore for MemoryOps {
         match m.oincidents.get(&id) {
             Some(r) if r.org == org => {
                 m.oincidents.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn bankf_create(
+        &self,
+        org: &str,
+        bank_name: &str,
+        facility: &str,
+        rate_text: &str,
+        tenor: &str,
+    ) -> Result<i64, StoreError> {
+        let bank_name = bank_name.trim();
+        if bank_name.is_empty() || bank_name.len() > 120 {
+            return Err(StoreError::Conflict("bank_name".into()));
+        }
+        if facility.trim().is_empty() || facility.len() > 120 {
+            return Err(StoreError::Conflict("facility".into()));
+        }
+        if rate_text.len() > 20 || tenor.len() > 40 {
+            return Err(StoreError::Conflict("rate/tenor".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.bankf.insert(
+            id,
+            BankFacilityRow {
+                id,
+                org: org.into(),
+                bank_name: bank_name.into(),
+                facility: facility.trim().into(),
+                rate_text: rate_text.trim().into(),
+                tenor: tenor.trim().chars().take(40).collect(),
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn bankf_list(&self, org: &str) -> Result<Vec<BankFacilityRow>, StoreError> {
+        let mut v: Vec<BankFacilityRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .bankf
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn bankf_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .bankf
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
+        Ok(())
+    }
+    async fn bankf_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.bankf.get(&id) {
+            Some(r) if r.org == org => {
+                m.bankf.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn feedback_add(
+        &self,
+        org: &str,
+        name: &str,
+        message: &str,
+        rating: i64,
+    ) -> Result<i64, StoreError> {
+        let message = message.trim();
+        if message.is_empty() || message.len() > 2000 {
+            return Err(StoreError::Conflict("message".into()));
+        }
+        if !(0..=5).contains(&rating) {
+            return Err(StoreError::Conflict("rating 0-5".into()));
+        }
+        if name.len() > 120 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.feedback.insert(
+            id,
+            FeedbackRow {
+                id,
+                org: org.into(),
+                name: name.trim().chars().take(120).collect(),
+                message: message.into(),
+                rating,
+                status: "new".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn feedback_list(&self, org: &str) -> Result<Vec<FeedbackRow>, StoreError> {
+        let mut v: Vec<FeedbackRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .feedback
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn feedback_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .feedback
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("new", "reviewed") | ("reviewed", "archived")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn feedback_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.feedback.get(&id) {
+            Some(r) if r.org == org => {
+                m.feedback.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
