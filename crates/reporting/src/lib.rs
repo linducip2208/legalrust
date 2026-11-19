@@ -99,6 +99,53 @@ pub fn ar_aging_csv(entries: &[ArAgingEntry]) -> String {
     out
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct OcrAccuracyRow {
+    pub doc_type: String,
+    pub jobs: i64,
+    pub fields: i64,
+    pub avg_confidence: f32,
+}
+
+/// Group per-job (doc_type, field_count, mean_confidence) samples into
+/// per-type accuracy rows (mean of job means, unweighted).
+pub fn ocr_accuracy_aggregate(samples: &[(String, i64, f32)]) -> Vec<OcrAccuracyRow> {
+    use std::collections::BTreeMap;
+    let mut acc: BTreeMap<&str, (i64, i64, f64)> = BTreeMap::new();
+    for (t, nf, mc) in samples {
+        let e = acc.entry(t.as_str()).or_insert((0, 0, 0.0));
+        e.0 += 1;
+        e.1 += *nf;
+        e.2 += *mc as f64;
+    }
+    acc.into_iter()
+        .map(|(t, (jobs, fields, sum))| OcrAccuracyRow {
+            doc_type: t.to_string(),
+            jobs,
+            fields,
+            avg_confidence: if jobs > 0 {
+                (sum / jobs as f64) as f32
+            } else {
+                0.0
+            },
+        })
+        .collect()
+}
+pub fn ocr_accuracy_csv(rows: &[OcrAccuracyRow]) -> String {
+    let mut out = String::from("doc_type,jobs,fields,avg_confidence");
+    for r in rows {
+        out.push('\n');
+        out.push_str(&escape(&r.doc_type));
+        out.push(',');
+        out.push_str(&r.jobs.to_string());
+        out.push(',');
+        out.push_str(&r.fields.to_string());
+        out.push(',');
+        out.push_str(&format!("{:.3}", r.avg_confidence));
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +198,43 @@ mod tests {
             ar_aging_csv(&[]),
             "id,number,matter_id,total_minor,paid_minor,balance_minor"
         );
+    }
+    #[test]
+    fn ocr_accuracy_csv_header_and_rounding() {
+        let rows = vec![
+            OcrAccuracyRow {
+                doc_type: "ktp".into(),
+                jobs: 2,
+                fields: 6,
+                avg_confidence: 0.91234,
+            },
+            OcrAccuracyRow {
+                doc_type: "general".into(),
+                jobs: 1,
+                fields: 0,
+                avg_confidence: 0.0,
+            },
+        ];
+        assert_eq!(
+            ocr_accuracy_csv(&rows),
+            "doc_type,jobs,fields,avg_confidence\nktp,2,6,0.912\ngeneral,1,0,0.000"
+        );
+        assert_eq!(ocr_accuracy_csv(&[]), "doc_type,jobs,fields,avg_confidence");
+    }
+    #[test]
+    fn ocr_accuracy_aggregate_groups_by_type() {
+        let out = ocr_accuracy_aggregate(&[
+            ("ktp".to_string(), 3, 0.9),
+            ("ktp".to_string(), 1, 0.7),
+            ("kk".to_string(), 2, 0.5),
+        ]);
+        assert_eq!(out.len(), 2);
+        let kk = out.iter().find(|r| r.doc_type == "kk").unwrap();
+        assert_eq!((kk.jobs, kk.fields), (1, 2));
+        assert!((kk.avg_confidence - 0.5).abs() < 1e-6);
+        let ktp = out.iter().find(|r| r.doc_type == "ktp").unwrap();
+        assert_eq!((ktp.jobs, ktp.fields), (2, 4));
+        assert!((ktp.avg_confidence - 0.8).abs() < 1e-6);
+        assert!(ocr_accuracy_aggregate(&[]).is_empty());
     }
 }

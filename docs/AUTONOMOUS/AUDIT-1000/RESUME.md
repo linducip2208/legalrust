@@ -43,6 +43,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - 8-cat: F-D24-003/007/015/025 -> PARTIAL (outbox core verified, 12 unit tests); F-D08-013/F-D25-017 re-scored.
 - Benchmarks recorded (dev, live-DB). Workspace 304/0; registry 17.6; 8-cat mean 19.0 (24 verified).
 
+## Done wave 48: telemetri akurasi OCR (main)
+- Aggregate per-tipe + CSV + tombol + trail; F-D20-010 NOT_STARTED->PARTIAL (64.1).
+- Workspace 342/0; registry 19.8 (77 IMPLEMENTED); 8-cat mean 20.9 (67 v).
+
 ## Done wave 47: register vendor + DPA (main)
 - CRUD + DPA workflow + kartu kepatuhan + audit; F-D11-009/010 -> IMPLEMENTED (75.6/73.1).
 - /skor page removed from user UI per owner request (API + registry retained as evidence).

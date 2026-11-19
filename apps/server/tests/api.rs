@@ -3528,6 +3528,7 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ocr-doc",
         "ocr-type",
         "ocr-btn",
+        "ocr-acc-btn",
         "deed-tpl",
         "deed-matter",
         "deed-number",
@@ -4038,6 +4039,43 @@ async fn land_certificate_intake_flow() {
         .unwrap()
         .iter()
         .any(|j| j["id"].as_i64() == Some(jid) && j["doc_type"] == "land_certificate"));
+}
+
+#[tokio::test]
+async fn ocr_accuracy_report_empty_and_audited() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ocracc@x.id").await;
+    // Fresh org: header only, still audit-trailed.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/ocr-accuracy.csv", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(res.headers()["content-type"]
+        .to_str()
+        .unwrap()
+        .contains("text/csv"));
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert_eq!(text.trim(), "doc_type,jobs,fields,avg_confidence");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.ocr_exported"));
 }
 
 #[tokio::test]

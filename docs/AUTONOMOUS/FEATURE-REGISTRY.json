@@ -7456,10 +7456,14 @@
   "id": "F-D20-010",
   "domain": "D20",
   "title": "OCR accuracy trend & benchmark report",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "crates/reporting/src/lib.rs: ocr_accuracy_aggregate + ocr_accuracy_csv + unit tests",
+   "apps/server/src/lib.rs: GET /api/v1/reports/ocr-accuracy.csv (Export + audit)",
+   "apps/server/static/site.js: ocr-acc-btn download wiring",
+   "apps/server/tests/api.rs: empty-org header + trail + needle"
+  ],
+  "audit_note": "Wave 48: accuracy telemetry live from real OCR fields; trend-over-time pending."
  },
  {
   "id": "F-D20-011",

@@ -13075,19 +13075,19 @@
  {
   "feature_id": "F-D20-010",
   "domain": "D20",
-  "status": "NOT_STARTED",
+  "status": "PARTIAL",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 70,
+   "database": 65,
+   "frontend": 60,
+   "business_logic": 70,
+   "security": 70,
+   "testing": 78,
+   "integration": 50,
+   "documentation": 50
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 64.1,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D20-011",

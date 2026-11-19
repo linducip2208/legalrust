@@ -701,6 +701,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('ocr-msg', 'Gagal (' + r.status + ').'); return; }
     location.reload();
   });
+  on('ocr-acc-btn', 'click', function () { dlCsv('/api/v1/reports/ocr-accuracy.csv', 'ocr-accuracy.csv', 'ocr-msg'); });
   function wireOcrView() {
     qsa('.ocrv', function (b) {
       b.addEventListener('click', async function () {
