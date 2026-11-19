@@ -5123,10 +5123,15 @@
   "id": "F-D13-014",
   "domain": "D13",
   "title": "Seller-buyer KYC bundle",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0060_ppat_kyc_handover.sql: ppat_parties table (FK deed CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + verify toggle, role allowlist",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/parties (verified/total counts) + verify + delete (RBAC)",
+   "apps/server/static/site.js: kycRefresh card Bundel KYC + hooks",
+   "apps/server/tests/api.rs: ppat_kyc_bundle_and_handover e2e (ghost 404, alien role 409, counts)"
+  ],
+  "audit_note": "Wave 92: full lifecycle live; verified by test (381/0)."
  },
  {
   "id": "F-D13-015",
@@ -5250,10 +5255,15 @@
   "id": "F-D13-028",
   "domain": "D13",
   "title": "Certificate handover receipt",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0060_ppat_kyc_handover.sql: cert_handovers table (FK deed CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: CRUD + prepared->handed",
+   "apps/server/src/lib.rs: POST/GET /api/v1/ppat/{id}/handovers + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: choRefresh card Berita acara + hooks",
+   "apps/server/tests/api.rs: revert 409 asserted"
+  ],
+  "audit_note": "Wave 92: verified by test (381/0)."
  },
  {
   "id": "F-D13-029",

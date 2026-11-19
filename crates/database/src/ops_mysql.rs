@@ -5504,6 +5504,192 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn pparty_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        role: &str,
+        name: &str,
+        id_number: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(role, "seller" | "buyer" | "witness" | "spouse" | "heir") {
+            return Err(StoreError::Conflict("role".into()));
+        }
+        if id_number.len() > 40 {
+            return Err(StoreError::Conflict("id_number".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let r = sqlx::query(
+            "INSERT INTO ppat_parties (org_id, ppat_id, role, name, id_number) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(role)
+        .bind(name)
+        .bind(id_number.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn pparty_list(&self, org: &str, ppat_id: i64) -> Result<Vec<PpatPartyRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, role, name, id_number, verified FROM ppat_parties WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PpatPartyRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                role: x.get::<String, _>("role"),
+                name: x.get::<String, _>("name"),
+                id_number: x.get::<String, _>("id_number"),
+                verified: x.get::<i8, _>("verified") != 0,
+            })
+            .collect())
+    }
+    async fn pparty_set_verified(
+        &self,
+        org: &str,
+        id: i64,
+        verified: bool,
+    ) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE ppat_parties SET verified=? WHERE id=? AND org_id=?")
+            .bind(if verified { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn pparty_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM ppat_parties WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn chandover_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        handed_to: &str,
+        handed_at: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError> {
+        let handed_to = handed_to.trim();
+        if handed_to.is_empty() || handed_to.len() > 160 {
+            return Err(StoreError::Conflict("handed_to".into()));
+        }
+        if handed_at.len() > 10 || receipt_no.len() > 60 {
+            return Err(StoreError::Conflict("date/receipt".into()));
+        }
+        let own: Option<String> = sqlx::query("SELECT org_id FROM ppat_entries WHERE id=?")
+            .bind(ppat_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rec: String = receipt_no.trim().chars().take(60).collect();
+        let r = sqlx::query(
+            "INSERT INTO cert_handovers (org_id, ppat_id, handed_to, handed_at, receipt_no) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(ppat_id as u64)
+        .bind(handed_to)
+        .bind(handed_at.trim())
+        .bind(rec)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn chandover_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<CertHandoverRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, ppat_id, handed_to, handed_at, receipt_no, status FROM cert_handovers WHERE org_id=? AND ppat_id=? ORDER BY id DESC LIMIT 100")
+            .bind(org).bind(ppat_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| CertHandoverRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                ppat_id: x.get::<u64, _>("ppat_id") as i64,
+                handed_to: x.get::<String, _>("handed_to"),
+                handed_at: x.get::<String, _>("handed_at"),
+                receipt_no: x.get::<String, _>("receipt_no"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn chandover_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if to != "handed" {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM cert_handovers WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        if cur.as_deref() != Some("prepared") {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE cert_handovers SET status='handed' WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn chandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM cert_handovers WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

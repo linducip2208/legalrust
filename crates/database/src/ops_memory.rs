@@ -95,6 +95,8 @@ struct Inner {
     bchecks: HashMap<i64, BackupCheckRow>,
     selfchecks: HashMap<i64, SelfcheckRow>,
     seals: HashMap<i64, YearSealRow>,
+    pparties: HashMap<i64, PpatPartyRow>,
+    chandovers: HashMap<i64, CertHandoverRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -4720,6 +4722,157 @@ impl OpsStore for MemoryOps {
         match m.seals.get(&id) {
             Some(r) if r.org == org => {
                 m.seals.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn pparty_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        role: &str,
+        name: &str,
+        id_number: &str,
+    ) -> Result<i64, StoreError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > 160 {
+            return Err(StoreError::Conflict("name".into()));
+        }
+        if !matches!(role, "seller" | "buyer" | "witness" | "spouse" | "heir") {
+            return Err(StoreError::Conflict("role".into()));
+        }
+        if id_number.len() > 40 {
+            return Err(StoreError::Conflict("id_number".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.pparties.insert(
+            id,
+            PpatPartyRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                role: role.into(),
+                name: name.into(),
+                id_number: id_number.trim().into(),
+                verified: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn pparty_list(&self, org: &str, ppat_id: i64) -> Result<Vec<PpatPartyRow>, StoreError> {
+        let mut v: Vec<PpatPartyRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .pparties
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn pparty_set_verified(
+        &self,
+        org: &str,
+        id: i64,
+        verified: bool,
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .pparties
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.verified = verified;
+        Ok(())
+    }
+    async fn pparty_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.pparties.get(&id) {
+            Some(r) if r.org == org => {
+                m.pparties.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn chandover_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        handed_to: &str,
+        handed_at: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError> {
+        let handed_to = handed_to.trim();
+        if handed_to.is_empty() || handed_to.len() > 160 {
+            return Err(StoreError::Conflict("handed_to".into()));
+        }
+        if handed_at.len() > 10 || receipt_no.len() > 60 {
+            return Err(StoreError::Conflict("date/receipt".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        match m.ppat.get(&ppat_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let id = self.next(&mut m);
+        m.chandovers.insert(
+            id,
+            CertHandoverRow {
+                id,
+                org: org.into(),
+                ppat_id,
+                handed_to: handed_to.into(),
+                handed_at: handed_at.trim().into(),
+                receipt_no: receipt_no.trim().chars().take(60).collect(),
+                status: "prepared".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn chandover_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<CertHandoverRow>, StoreError> {
+        let mut v: Vec<CertHandoverRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .chandovers
+            .values()
+            .filter(|r| r.org == org && r.ppat_id == ppat_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn chandover_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .chandovers
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if !matches!((r.status.as_str(), to), ("prepared", "handed")) {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn chandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.chandovers.get(&id) {
+            Some(r) if r.org == org => {
+                m.chandovers.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

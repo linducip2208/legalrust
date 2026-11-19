@@ -157,6 +157,9 @@
 ## 2026-11-19 AUDIT-1000 wave 52: audit trail + analitik (main)
 - Verifikasi bukti; F-D11-039 IMPLEMENTED (76.2), F-D09-027 PARTIAL (65.4). Tanpa perubahan kode.
 
+## 2026-11-19 AUDIT-1000 wave 92: KYC + handover (main)
+- Bundel KYC + berita acara; workspace **381 passed, 0 failed**; F-D13-014/028 IMPLEMENTED.
+
 ## 2026-11-19 AUDIT-1000 wave 91: dispatch board (main)
 - Assign + papan per meja; workspace **380 passed, 0 failed**; F-D12-033 IMPLEMENTED; D12 tuntas.
 

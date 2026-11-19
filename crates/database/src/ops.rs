@@ -503,6 +503,28 @@ pub struct WitnessRow {
     pub phone: String,
     pub active: bool,
 }
+/// PPAT party (seller/buyer/witness) with KYC verification flag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PpatPartyRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub role: String,
+    pub name: String,
+    pub id_number: String,
+    pub verified: bool,
+}
+/// Certificate handover receipt (berita acara penyerahan sertifikat).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CertHandoverRow {
+    pub id: i64,
+    pub org: String,
+    pub ppat_id: i64,
+    pub handed_to: String,
+    pub handed_at: String,
+    pub receipt_no: String,
+    pub status: String,
+}
 /// Manual identity re-verification log (external Dukcapil check BLOCKED).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecheckRow {
@@ -1782,6 +1804,39 @@ pub trait OpsStore: Send + Sync {
     async fn sealy_list(&self, org: &str) -> Result<Vec<YearSealRow>, StoreError>;
     async fn sealy_seal(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn sealy_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// PPAT party KYC bundle.
+    async fn pparty_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        role: &str,
+        name: &str,
+        id_number: &str,
+    ) -> Result<i64, StoreError>;
+    async fn pparty_list(&self, org: &str, ppat_id: i64) -> Result<Vec<PpatPartyRow>, StoreError>;
+    async fn pparty_set_verified(
+        &self,
+        org: &str,
+        id: i64,
+        verified: bool,
+    ) -> Result<(), StoreError>;
+    async fn pparty_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Certificate handover receipts.
+    async fn chandover_add(
+        &self,
+        org: &str,
+        ppat_id: i64,
+        handed_to: &str,
+        handed_at: &str,
+        receipt_no: &str,
+    ) -> Result<i64, StoreError>;
+    async fn chandover_list(
+        &self,
+        org: &str,
+        ppat_id: i64,
+    ) -> Result<Vec<CertHandoverRow>, StoreError>;
+    async fn chandover_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn chandover_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// App-layer referential check: does `register_name`/`register_id` exist?
     /// Default implementation reuses the register list methods so memory and
     /// MySQL backends behave identically; unknown names yield `false`.

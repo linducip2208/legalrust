@@ -3572,6 +3572,14 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "mpd-add",
         "mpd-reload",
         "mpd-list",
+        "kyc-ppat",
+        "kyc-add",
+        "kyc-reload",
+        "kyc-list",
+        "cho-ppat",
+        "cho-add",
+        "cho-reload",
+        "cho-list",
         "sbox-code",
         "sbox-add",
         "sbox-reload",
@@ -8493,6 +8501,171 @@ async fn staff_productivity_and_waiting_analytics() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/reports/waiting-analytics")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn ppat_kyc_bundle_and_handover() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kyccho@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat",
+            r#"{"number":"7/2026","deed_kind":"ajb","seller":"S","buyer":"B"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    // Ghost deed 404s for both sub-resources.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/parties",
+            r#"{"role":"seller","name":"XX"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ppat/999999/handovers",
+            r#"{"handed_to":"YY"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Auditor cannot add parties.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/parties"),
+            r#"{"role":"seller","name":"XX"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Unknown role rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/parties"),
+            r#"{"role":"alien","name":"XX"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    for (role, name) in [("seller", "Siti"), ("buyer", "Budi")] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/ppat/{pid}/parties"),
+                &format!(r#"{{"role":"{role}","name":"{name}","id_number":"ID-{name}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "party {role}");
+    }
+    // Bundle shows 0/2 verified, then 1/2.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/parties"), &tok))
+        .await
+        .unwrap();
+    let b = body_json(res).await;
+    assert_eq!(b["total_count"].as_i64().unwrap(), 2);
+    assert_eq!(b["verified_count"].as_i64().unwrap(), 0);
+    let first = b["parties"][0]["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat-parties/{first}/verified"),
+            r#"{"verified":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/parties"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await["verified_count"].as_i64().unwrap(), 1);
+    // Handover: prepared -> handed, no revert.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{pid}/handovers"),
+            r#"{"handed_to":"BPN Bogor","handed_at":"2026-06-01","receipt_no":"BA/77"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/cert-handovers/{hid}/status"),
+            r#"{"status":"handed"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/cert-handovers/{hid}/status"),
+            r#"{"status":"prepared"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{pid}/handovers"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(hid) && r["status"] == "handed"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=chandover", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "property.chandover_added"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/ppat/1/parties")
                 .body(Body::empty())
                 .unwrap(),
         )

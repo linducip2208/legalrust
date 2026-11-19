@@ -1536,8 +1536,87 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     mpdRefresh();
   });
   on('mpd-reload', 'click', mpdRefresh);
+  /* ---- property: PPAT KYC bundle ---- */
+  async function kycRefresh() {
+    var box = document.getElementById('kyc-list');
+    var sum = document.getElementById('kyc-sum');
+    if (!box) return;
+    var pid = pval('kyc-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; if (sum) sum.textContent = ''; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/parties');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var rows = (v && v.parties) || [];
+    if (sum) sum.textContent = 'Terverifikasi: ' + (v.verified_count || 0) + '/' + (v.total_count || 0);
+    box.innerHTML = rows.map(function (x) {
+      var act = '<button class="btn btn-sm" data-kyc-tg="' + x.id + '" data-kyc-on="' + (!x.verified) + '" type="button">' + (x.verified ? 'Batalkan' : 'Verifikasi') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-kyc-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + badge(x.role) + '</td><td>' + esc(x.name) + ' <span class="text-muted">(' + esc(x.id_number) + ')</span></td><td>' + (x.verified ? '<span class="badge bg-green-lt">ya</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada pihak.</td></tr>';
+    qsa('[data-kyc-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/ppat-parties/' + b.getAttribute('data-kyc-tg') + '/verified', { verified: b.getAttribute('data-kyc-on') === 'true' });
+        if (!r.ok) { pmsg('kyc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('kyc-msg', '');
+        kycRefresh();
+      });
+    });
+    qsa('[data-kyc-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/ppat-parties/' + b.getAttribute('data-kyc-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('kyc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('kyc-msg', '');
+        kycRefresh();
+      });
+    });
+  }
+  on('kyc-add', 'click', async function () {
+    if (!pval('kyc-ppat') || !pval('kyc-name')) { pmsg('kyc-msg', 'Isi ID akta dan nama.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('kyc-ppat')) + '/parties', { role: pval('kyc-role') || 'seller', name: pval('kyc-name'), id_number: pval('kyc-id') || '' });
+    if (!r.ok) { pmsg('kyc-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('kyc-msg', '');
+    kycRefresh();
+  });
+  on('kyc-reload', 'click', kycRefresh);
+  /* ---- property: certificate handover receipts ---- */
+  async function choRefresh() {
+    var box = document.getElementById('cho-list');
+    if (!box) return;
+    var pid = pval('cho-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID akta PPAT lalu Muat.</td></tr>'; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/handovers');
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = (x.status === 'prepared' ? '<button class="btn btn-sm btn-success" data-cho-go="' + x.id + '" type="button">Serahkan</button> ' : '<span class="text-muted">diserahkan</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-cho-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.handed_to) + ' <span class="text-muted">(' + esc(x.receipt_no) + ')</span></td><td>' + esc(x.handed_at) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada serah terima.</td></tr>';
+    qsa('[data-cho-go]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/cert-handovers/' + b.getAttribute('data-cho-go') + '/status', { status: 'handed' });
+        if (!r.ok) { pmsg('cho-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cho-msg', '');
+        choRefresh();
+      });
+    });
+    qsa('[data-cho-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/cert-handovers/' + b.getAttribute('data-cho-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('cho-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('cho-msg', '');
+        choRefresh();
+      });
+    });
+  }
+  on('cho-add', 'click', async function () {
+    if (!pval('cho-ppat') || !pval('cho-to')) { pmsg('cho-msg', 'Isi ID akta dan penerima.'); return; }
+    var r = await ppost('/api/v1/ppat/' + encodeURIComponent(pval('cho-ppat')) + '/handovers', { handed_to: pval('cho-to'), handed_at: pval('cho-at') || '', receipt_no: pval('cho-rcpt') || '' });
+    if (!r.ok) { pmsg('cho-msg', 'Gagal (' + r.status + '). Akta tidak ada?'); return; }
+    pmsg('cho-msg', '');
+    choRefresh();
+  });
+  on('cho-reload', 'click', choRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3689,6 +3768,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   pbRefresh();
   phRefresh();
   mpdRefresh();
+  kycRefresh();
+  choRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();
