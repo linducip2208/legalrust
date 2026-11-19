@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 73: evidence vault + regulator pack (main, D11 closed)
 - compliance_evidence (0043, 19-register referential check) + paket regulator + kartu + uji.
-- F-D11-030/031 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 362/0; registry ~22.7 (108 IMPLEMENTED); mean ~23.2 (106 v).
+- F-D11-030/031 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 362/0; registry ~22.7 (108 IMPLEMENTED); mean 23.3 (106 v).
 
 ## Done wave 72: matter checklist + scorecard (main)
 - matter_checklist_items (0042) + scorecard derivasi + kartu + uji.
