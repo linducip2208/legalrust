@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 89: self-check + year-end seals (main, D12 nearly closed)
 - selfcheck_runs + year_end_seals (0058, count snapshot) + kartu + uji.
-- F-D12-039/040 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 378/0; registry ~24.4 (140 IMPLEMENTED); mean ~25.3 (138 v).
+- F-D12-039/040 NOT_STARTED/PLANNED->IMPLEMENTED (~72.9 verified). Workspace 378/0; registry ~24.4 (140 IMPLEMENTED); mean 25.5 (138 v).
 
 ## Done wave 88: SOP library + backup verification (main)
 - sop_docs + backup_checks (0057) + kartu dok/jobs + uji.
