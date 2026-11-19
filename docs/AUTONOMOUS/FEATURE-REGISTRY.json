@@ -5053,18 +5053,24 @@
   "id": "F-D13-006",
   "domain": "D13",
   "title": "Hibah deed support",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "apps/server/src/lib.rs: GET /api/v1/ppat/{id}/readiness (hibah rules: fields + giver-KYC + object)",
+   "apps/server/static/site.js: rdyRefresh card Kesiapan akta + hooks",
+   "apps/server/tests/api.rs: ppat_kind_readiness_hibah_tukar e2e (not-ready -> verified -> ready)"
+  ],
+  "audit_note": "Wave 95: kind-aware derivation; verified by test (384/0)."
  },
  {
   "id": "F-D13-007",
   "domain": "D13",
   "title": "Tukar-menukar deed support",
-  "status": "NOT_STARTED",
-  "evidence": [],
-  "audit_note": "Wave 37: live end-to-end (migrations 0020/0021). Koreksi 2026-11-19: skor wave 37 salah tempel; dikembalikan ke status awal."
+  "status": "IMPLEMENTED",
+  "evidence": [
+   "apps/server/src/lib.rs: readiness kyc_both rule for tukar_menukar (both sides verified)",
+   "apps/server/tests/api.rs: one-sided remains not-ready asserted; ghost 404; 401"
+  ],
+  "audit_note": "Wave 95: verified by test (384/0)."
  },
  {
   "id": "F-D13-008",

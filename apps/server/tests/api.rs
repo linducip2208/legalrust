@@ -3568,6 +3568,8 @@ async fn dash_app_has_kpi_labels_and_panels() {
         "ppat-list",
         "klapper-reload",
         "klapper-list",
+        "rdy-ppat",
+        "rdy-reload",
         "mpd-book",
         "mpd-add",
         "mpd-reload",
@@ -8720,6 +8722,111 @@ async fn zones_and_tax_worksheets() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/worksheets/pph?value_minor=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn ppat_kind_readiness_hibah_tukar() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "rdyppat@x.id").await;
+    // Hibah deed: ready only when giver (seller) is KYC-verified.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/ppat", r#"{"number":"H/1","deed_kind":"hibah","seller":"Ayah","buyer":"Anak","object":"SHM 9"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hid = body_json(res).await["id"].as_i64().unwrap();
+    // Fresh hibah deed: fields complete but giver not verified -> not ready.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{hid}/readiness"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(!body_json(res).await["ready"].as_bool().unwrap());
+    // Verify the giver -> hibah becomes ready.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{hid}/parties"),
+            r#"{"role":"seller","name":"Ayah"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat-parties/{pid}/verified"),
+            r#"{"verified":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{hid}/readiness"), &tok))
+        .await
+        .unwrap();
+    let r = body_json(res).await;
+    assert!(r["ready"].as_bool().unwrap());
+    assert!(r["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["key"] == "kyc_giver" && c["pass"].as_bool().unwrap()));
+    // Tukar-menukar: needs both sides verified.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/ppat", r#"{"number":"T/1","deed_kind":"tukar_menukar","seller":"Pihak A","buyer":"Pihak B","object":"SHM 1 vs SHM 2"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/ppat/{tid}/parties"),
+            r#"{"role":"seller","name":"Pihak A"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ppat/{tid}/readiness"), &tok))
+        .await
+        .unwrap();
+    let r = body_json(res).await;
+    assert!(!r["ready"].as_bool().unwrap());
+    assert!(r["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["key"] == "kyc_both" && !c["pass"].as_bool().unwrap()));
+    // 404 for ghost deed; 401 without token.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ppat/999999/readiness", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/ppat/{hid}/readiness"))
                 .body(Body::empty())
                 .unwrap(),
         )

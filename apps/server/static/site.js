@@ -1684,8 +1684,23 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     choRefresh();
   });
   on('cho-reload', 'click', choRefresh);
+  /* ---- property: kind-aware readiness ---- */
+  async function rdyRefresh() {
+    var box = document.getElementById('rdy-list');
+    var sum = document.getElementById('rdy-sum');
+    if (!box) return;
+    var pid = pval('rdy-ppat');
+    if (!pid) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID akta PPAT lalu Periksa.</td></tr>'; if (sum) sum.textContent = ''; return; }
+    var v = await j('/api/v1/ppat/' + encodeURIComponent(pid) + '/readiness');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    if (sum) sum.textContent = 'Jenis: ' + v.deed_kind + ' • ' + (v.ready ? 'SIAP' : 'belum siap') + ' (' + v.verified_parties + '/' + v.total_parties + ' KYC)';
+    box.innerHTML = (v.checks || []).map(function (x) {
+      return '<tr><td>' + esc(x.label) + '</td><td>' + (x.pass ? '<span class="badge bg-green-lt">lolos</span>' : '<span class="badge bg-yellow-lt">kurang</span>') + '</td><td class="text-muted">' + esc(x.detail) + '</td></tr>';
+    }).join('');
+  }
+  on('rdy-reload', 'click', rdyRefresh);
   qsa('.snav[data-tab="akta"]', function (a) {
-    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
+    a.addEventListener('click', function () { certRefresh(); ppatRefresh(); pbRefresh(); phRefresh(); mpdRefresh(); kycRefresh(); choRefresh(); rdyRefresh(); klapperRefresh(); perfRefresh(); volRefresh(); sboxRefresh(); sealRefresh(); zoneRefresh(); pbbRefresh(); });
   });
   /* ---- document detail + version history ---- */
   async function docVersionRefresh() {
@@ -3839,6 +3854,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   mpdRefresh();
   kycRefresh();
   choRefresh();
+  rdyRefresh();
   klapperRefresh();
   perfRefresh();
   volRefresh();
