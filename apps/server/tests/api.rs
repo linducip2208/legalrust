@@ -6617,6 +6617,98 @@ async fn incident_and_capa_lifecycle() {
 }
 
 #[tokio::test]
+async fn regulatory_change_lifecycle() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "regchange@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/regchanges",
+            r#"{"title":"X"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/regchanges",
+            r#"{"title":"Revisi UU PDP","source":"LN 2026","effective_date":"2026-06-01"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    for st in ["acknowledged", "implemented"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/compliance/regchanges/{rid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "regchange to {st}");
+    }
+    // Bad transition (implemented -> open) rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/regchanges/{rid}/status"),
+            r#"{"status":"open"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/regchanges", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid) && r["status"] == "implemented"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/compliance/regchanges/{rid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=regchange", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.regchange_created"));
+}
+
+#[tokio::test]
 async fn vendor_register_and_dpa_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -7701,6 +7793,10 @@ async fn uib_app_has_approvals_ui() {
         "capa-add",
         "capa-reload",
         "capa-list",
+        "reg-title",
+        "reg-add",
+        "reg-reload",
+        "reg-list",
         "ROPA",
         "Kepatuhan",
         "Persetujuan",

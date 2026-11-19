@@ -173,6 +173,16 @@ pub struct CapaRow {
     pub action: String,
     pub status: String,
 }
+/// Tracked regulatory change (peraturan baru / revisi).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegChangeRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub source: String,
+    pub effective_date: String,
+    pub status: String,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -784,6 +794,17 @@ pub trait OpsStore: Send + Sync {
     async fn capa_list(&self, org: &str) -> Result<Vec<CapaRow>, StoreError>;
     async fn capa_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn capa_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Regulatory change tracker.
+    async fn regchange_create(
+        &self,
+        org: &str,
+        title: &str,
+        source: &str,
+        effective: &str,
+    ) -> Result<i64, StoreError>;
+    async fn regchange_list(&self, org: &str) -> Result<Vec<RegChangeRow>, StoreError>;
+    async fn regchange_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn regchange_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)

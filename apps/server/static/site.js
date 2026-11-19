@@ -1772,8 +1772,46 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     capaRefresh();
   });
   on('capa-reload', 'click', capaRefresh);
+  /* ---- compliance: regulatory change tracker ---- */
+  var REG_NEXT = { open: 'acknowledged', acknowledged: 'implemented' };
+  async function regRefresh() {
+    var box = document.getElementById('reg-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/regchanges');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = REG_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-reg-next="' + x.id + '" data-reg-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '<span class="text-muted">diterapkan</span> ')
+        + '<button class="btn btn-sm btn-outline-danger" data-reg-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.source) + '</td><td>' + esc(x.effective_date) + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada perubahan regulasi.</td></tr>';
+    qsa('[data-reg-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/regchanges/' + b.getAttribute('data-reg-next') + '/status', { status: b.getAttribute('data-reg-to') });
+        if (!r.ok) { pmsg('reg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('reg-msg', '');
+        regRefresh();
+      });
+    });
+    qsa('[data-reg-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/regchanges/' + b.getAttribute('data-reg-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('reg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('reg-msg', '');
+        regRefresh();
+      });
+    });
+  }
+  on('reg-add', 'click', async function () {
+    if (!pval('reg-title')) { pmsg('reg-msg', 'Isi judul peraturan.'); return; }
+    var r = await ppost('/api/v1/compliance/regchanges', { title: pval('reg-title'), source: pval('reg-source') || '', effective_date: pval('reg-effective') || '' });
+    if (!r.ok) { pmsg('reg-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('reg-msg', '');
+    regRefresh();
+  });
+  on('reg-reload', 'click', regRefresh);
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -1818,7 +1856,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   vendorRefresh();
   incRefresh();
   capaRefresh();
+  regRefresh();
   whDlRefresh();
-  intRefresh();
   intRefresh();
 })();

@@ -49,6 +49,7 @@ struct Inner {
     vendors: HashMap<i64, VendorRow>,
     incidents: HashMap<i64, IncidentRow>,
     capas: HashMap<i64, CapaRow>,
+    regchanges: HashMap<i64, RegChangeRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1553,6 +1554,75 @@ impl OpsStore for MemoryOps {
         match m.capas.get(&id) {
             Some(r) if r.org == org => {
                 m.capas.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn regchange_create(
+        &self,
+        org: &str,
+        title: &str,
+        source: &str,
+        effective: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if effective.len() > 10 {
+            return Err(StoreError::Conflict("effective_date".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.regchanges.insert(
+            id,
+            RegChangeRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                source: source.trim().chars().take(120).collect(),
+                effective_date: effective.trim().into(),
+                status: "open".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn regchange_list(&self, org: &str) -> Result<Vec<RegChangeRow>, StoreError> {
+        let mut v: Vec<RegChangeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .regchanges
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn regchange_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .regchanges
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("open", "acknowledged") | ("acknowledged", "implemented")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn regchange_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.regchanges.get(&id) {
+            Some(r) if r.org == org => {
+                m.regchanges.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

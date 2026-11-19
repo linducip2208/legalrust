@@ -4172,10 +4172,15 @@
   "id": "F-D11-022",
   "domain": "D11",
   "title": "Regulatory change tracker",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0028_regulatory_changes.sql: regulatory_changes table (forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: regchange CRUD + open->acknowledged->implemented chain",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/regchanges + status + delete (RBAC, audit)",
+   "apps/server/static/site.js: regRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: regulatory_change_lifecycle e2e (incl. bad-transition 409)"
+  ],
+  "audit_note": "Wave 60: full lifecycle live; verified by test (349/0)."
  },
  {
   "id": "F-D11-023",

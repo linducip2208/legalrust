@@ -56,6 +56,10 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 - F-D11-039 PARTIAL->IMPLEMENTED (76.9); F-D09-027 PLANNED->PARTIAL (68.1).
 - Workspace 344/0 (no code change; evidence+rescore). Registry 20.2 (80 IMPLEMENTED); mean 21.0 (71 v).
 
+## Done wave 60: regulatory change tracker (main)
+- regulatory_changes (migration 0028) + open->acknowledged->implemented + kartu kepatuhan + uji lifecycle.
+- F-D11-022 PLANNED->IMPLEMENTED (~72.6 verified). Workspace 349/0; registry ~20.5 (84 IMPLEMENTED); mean ~21.6 (82 v).
+
 ## Done wave 59: overdue approval alerts (main)
 - GET /api/v1/approvals/overdue?days=N + kartu Terlambat di tab Persetujuan (tanpa migrasi, pakai created).
 - F-D09-018 PLANNED->IMPLEMENTED (~72.4 verified). Workspace 348/0; registry ~20.4 (83 IMPLEMENTED); mean ~21.6 (81 v).

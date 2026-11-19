@@ -1696,6 +1696,93 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn regchange_create(
+        &self,
+        org: &str,
+        title: &str,
+        source: &str,
+        effective: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if effective.len() > 10 {
+            return Err(StoreError::Conflict("effective_date".into()));
+        }
+        let src: String = source.trim().chars().take(120).collect();
+        let r = sqlx::query(
+            "INSERT INTO regulatory_changes (org_id, title, source, effective_date) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(title)
+        .bind(src)
+        .bind(effective.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn regchange_list(&self, org: &str) -> Result<Vec<RegChangeRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, source, effective_date, status FROM regulatory_changes WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| RegChangeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                source: x.get::<String, _>("source"),
+                effective_date: x.get::<String, _>("effective_date"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn regchange_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "acknowledged" | "implemented") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM regulatory_changes WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("open"), "acknowledged") | (Some("acknowledged"), "implemented")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE regulatory_changes SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn regchange_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM regulatory_changes WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",
