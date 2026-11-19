@@ -33,12 +33,12 @@ pub enum DbError {
 }
 pub use ops::{
     appr_check, marketing_allowed_transition, ApprovalReqRow, ApprovalStepRow, ArOpenRow,
-    AuditFindingRow, AuditRow, BreachRow, CapaRow, ClauseRow, ClientTagRow, ConsentRow, CrmStore,
-    DeedRow, DelegationRow, DpiaRow, DsarRow, EthicsRow, GiftRow, IncidentRow, InviteRow,
+    AuditFindingRow, AuditRow, BreachRow, CapaRow, ClauseRow, ClientTagRow, ConsentRow, ControlRow,
+    CrmStore, DeedRow, DelegationRow, DpiaRow, DsarRow, EthicsRow, GiftRow, IncidentRow, InviteRow,
     InvoiceRow, JobRow, MarketingArticleRow, MarketingContactRow, MarketingDemoRow,
     MarketingFaqRow, MarketingFollowUpRow, MarketingLeadRow, MarketingNoteRow, MarketingPlanRow,
     MarketingStore, MarketingSubscriberRow, MeetingRow, NotifRow, OcrFieldRow, OcrJobRow, OpsStore,
-    PaymentRow, PdpObligationRow, PpatRow, RagHit, RegChangeRow, RiskRow, RopaRow, ShareRow,
-    TemplateRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow, TrustEntryRow, VendorRow,
-    WaiverRow, WebhookDeliveryRow, WebhookEndpointRow, WhistleRow,
+    PaymentRow, PdpObligationRow, PolicyAckRow, PolicyRow, PpatRow, RagHit, RegChangeRow, RiskRow,
+    RopaRow, ShareRow, TemplateRow, TrainingEvidenceRow, TrainingRow, TrustAccountRow,
+    TrustEntryRow, VendorRow, WaiverRow, WebhookDeliveryRow, WebhookEndpointRow, WhistleRow,
 };

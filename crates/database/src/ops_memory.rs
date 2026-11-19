@@ -59,6 +59,9 @@ struct Inner {
     afindings: HashMap<i64, AuditFindingRow>,
     whistle: HashMap<i64, WhistleRow>,
     waivers: HashMap<i64, WaiverRow>,
+    policies: HashMap<i64, PolicyRow>,
+    policy_acks: HashMap<i64, PolicyAckRow>,
+    controls: HashMap<i64, ControlRow>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -2262,6 +2265,194 @@ impl OpsStore for MemoryOps {
         match m.waivers.get(&id) {
             Some(r) if r.org == org => {
                 m.waivers.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn policy_create(
+        &self,
+        org: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.trim().is_empty() || body.len() > 200_000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.policies.insert(
+            id,
+            PolicyRow {
+                id,
+                org: org.into(),
+                title: title.into(),
+                version: version.trim().chars().take(20).collect(),
+                body: body.trim().into(),
+                status: "draft".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn policy_list(&self, org: &str) -> Result<Vec<PolicyRow>, StoreError> {
+        let mut v: Vec<PolicyRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .policies
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn policy_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .policies
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to),
+            ("draft", "published") | ("published", "archived")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to.into();
+        Ok(())
+    }
+    async fn policy_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.policies.get(&id) {
+            Some(r) if r.org == org => {
+                m.policies.remove(&id);
+                m.policy_acks.retain(|_, a| a.policy_id != id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn policy_ack(&self, org: &str, policy_id: i64, user: &str) -> Result<i64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.policies.get(&policy_id) {
+            Some(p) if p.org == org && p.status == "published" => {}
+            Some(_) => return Err(StoreError::Conflict("not published".into())),
+            None => return Err(StoreError::NotFound),
+        }
+        if m.policy_acks
+            .values()
+            .any(|a| a.policy_id == policy_id && a.user_id == user)
+        {
+            return Err(StoreError::Conflict("already acked".into()));
+        }
+        let id = self.next(&mut m);
+        m.policy_acks.insert(
+            id,
+            PolicyAckRow {
+                id,
+                org: org.into(),
+                policy_id,
+                user_id: user.into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn policy_ack_list(
+        &self,
+        org: &str,
+        policy_id: i64,
+    ) -> Result<Vec<PolicyAckRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        match m.policies.get(&policy_id) {
+            Some(p) if p.org == org => {}
+            _ => return Err(StoreError::NotFound),
+        }
+        let mut v: Vec<PolicyAckRow> = m
+            .policy_acks
+            .values()
+            .filter(|a| a.org == org && a.policy_id == policy_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn control_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        area: &str,
+        frequency: &str,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let title = title.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(
+            frequency,
+            "daily" | "weekly" | "monthly" | "quarterly" | "annual"
+        ) {
+            return Err(StoreError::Conflict("frequency".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.controls.values().any(|c| c.org == org && c.code == code) {
+            return Err(StoreError::Conflict("duplicate code".into()));
+        }
+        let id = self.next(&mut m);
+        m.controls.insert(
+            id,
+            ControlRow {
+                id,
+                org: org.into(),
+                code: code.into(),
+                title: title.into(),
+                area: area.trim().chars().take(60).collect(),
+                frequency: frequency.into(),
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn control_list(&self, org: &str) -> Result<Vec<ControlRow>, StoreError> {
+        let mut v: Vec<ControlRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .controls
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn control_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .controls
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
+        Ok(())
+    }
+    async fn control_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.controls.get(&id) {
+            Some(r) if r.org == org => {
+                m.controls.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

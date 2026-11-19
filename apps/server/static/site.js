@@ -2198,6 +2198,89 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     wvRefresh();
   });
   on('wv-reload', 'click', wvRefresh);
+  /* ---- compliance: policy library + acks ---- */
+  var POL_NEXT = { draft: 'published', published: 'archived' };
+  async function polRefresh() {
+    var box = document.getElementById('pol-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/policies');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var nx = POL_NEXT[x.status];
+      var act = (nx ? '<button class="btn btn-sm" data-pol-next="' + x.id + '" data-pol-to="' + nx + '" type="button">→ ' + nx + '</button> ' : '')
+        + (x.status === 'published' ? '<button class="btn btn-sm btn-success" data-pol-ack="' + x.id + '" type="button">Saya setuju</button> ' : '')
+        + '<button class="btn btn-sm btn-outline-danger" data-pol-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.version) + '</td><td>' + badge(x.status) + '</td><td>' + x.ack_count + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada kebijakan.</td></tr>';
+    qsa('[data-pol-next]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/policies/' + b.getAttribute('data-pol-next') + '/status', { status: b.getAttribute('data-pol-to') });
+        if (!r.ok) { pmsg('pol-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('pol-msg', '');
+        polRefresh();
+      });
+    });
+    qsa('[data-pol-ack]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/policies/' + b.getAttribute('data-pol-ack') + '/ack', {});
+        if (!r.ok) { pmsg('pol-msg', 'Gagal (' + r.status + '). Mungkin sudah pernah.'); return; }
+        pmsg('pol-msg', '');
+        polRefresh();
+      });
+    });
+    qsa('[data-pol-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/policies/' + b.getAttribute('data-pol-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('pol-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('pol-msg', '');
+        polRefresh();
+      });
+    });
+  }
+  on('pol-add', 'click', async function () {
+    if (!pval('pol-title') || !pval('pol-body')) { pmsg('pol-msg', 'Isi judul dan isi kebijakan.'); return; }
+    var r = await ppost('/api/v1/compliance/policies', { title: pval('pol-title'), version: pval('pol-ver') || '1.0', body: pval('pol-body') });
+    if (!r.ok) { pmsg('pol-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('pol-msg', '');
+    polRefresh();
+  });
+  on('pol-reload', 'click', polRefresh);
+  /* ---- compliance: control library ---- */
+  async function ctlRefresh() {
+    var box = document.getElementById('ctl-list');
+    if (!box) return;
+    var v = await j('/api/v1/compliance/controls');
+    if (!v) { box.innerHTML = '<tr><td colspan="6" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = '<button class="btn btn-sm" data-ctl-tg="' + x.id + '" data-ctl-on="' + (!x.active) + '" type="button">' + (x.active ? 'Nonaktifkan' : 'Aktifkan') + '</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-ctl-del="' + x.id + '" type="button">Hapus</button>';
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.code) + '</td><td>' + esc(x.title) + ' <span class="text-muted">(' + esc(x.area) + ')</span></td><td>' + esc(x.frequency) + '</td><td>' + (x.active ? '<span class="badge bg-green-lt">aktif</span>' : '<span class="badge bg-yellow-lt">nonaktif</span>') + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="text-muted">Belum ada kontrol.</td></tr>';
+    qsa('[data-ctl-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/compliance/controls/' + b.getAttribute('data-ctl-tg') + '/active', { active: b.getAttribute('data-ctl-on') === 'true' });
+        if (!r.ok) { pmsg('ctl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ctl-msg', '');
+        ctlRefresh();
+      });
+    });
+    qsa('[data-ctl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/compliance/controls/' + b.getAttribute('data-ctl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ctl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ctl-msg', '');
+        ctlRefresh();
+      });
+    });
+  }
+  on('ctl-add', 'click', async function () {
+    if (!pval('ctl-code') || !pval('ctl-title')) { pmsg('ctl-msg', 'Isi kode dan judul kontrol.'); return; }
+    var r = await ppost('/api/v1/compliance/controls', { code: pval('ctl-code'), title: pval('ctl-title'), area: pval('ctl-area') || 'general', frequency: pval('ctl-freq') || 'quarterly' });
+    if (!r.ok) { pmsg('ctl-msg', 'Gagal (' + r.status + '). Kode mungkin duplikat.'); return; }
+    pmsg('ctl-msg', '');
+    ctlRefresh();
+  });
+  on('ctl-reload', 'click', ctlRefresh);
   /* ---- compliance: posture dashboard + exporter ---- */
   async function postureRefresh() {
     var box = document.getElementById('posture-list');
@@ -2212,7 +2295,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   on('posture-reload', 'click', postureRefresh);
   on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
   qsa('.snav[data-tab="kepatuhan"]', function (a) {
-    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); postureRefresh(); });
+    a.addEventListener('click', function () { kepRefresh(); conRefresh(); ropaRefresh(); dpiaRefresh(); breachRefresh(); vendorRefresh(); incRefresh(); capaRefresh(); regRefresh(); trnRefresh(); tevRefresh(); riskRefresh(); riskHmRefresh(); dsarRefresh(); ethicsRefresh(); giftRefresh(); afRefresh(); wbRefresh(); wvRefresh(); polRefresh(); ctlRefresh(); postureRefresh(); });
   });
   on('wh-dl-reload', 'click', whDlRefresh);
   /* ---- integration health (F-D21-031, no secrets exposed) ---- */
@@ -2268,6 +2351,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   afRefresh();
   wbRefresh();
   wvRefresh();
+  polRefresh();
+  ctlRefresh();
   postureRefresh();
   whDlRefresh();
   intRefresh();

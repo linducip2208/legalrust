@@ -4270,10 +4270,15 @@
   "id": "F-D11-027",
   "domain": "D11",
   "title": "Control library (UUJN/PDP/ITE)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0039_controls.sql: controls table (unique code per org, forward-only)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: control CRUD + active toggle",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/controls + active + delete (RBAC, audit)",
+   "apps/server/static/site.js: ctlRefresh card + hooks in kepatuhan tab",
+   "apps/server/tests/api.rs: policy_library_and_controls e2e (dup code 409)"
+  ],
+  "audit_note": "Wave 69: full lifecycle live; verified by test (358/0)."
  },
  {
   "id": "F-D11-028",
@@ -4345,10 +4350,15 @@
   "id": "F-D11-035",
   "domain": "D11",
   "title": "Policy library with ack tracking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0038_policies.sql: policies + policy_acks tables (unique ack per user, CASCADE)",
+   "crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: policy CRUD + draft->published->archived + ack (published-only, dedup)",
+   "apps/server/src/lib.rs: POST/GET /api/v1/compliance/policies + status + delete + ack endpoints (RBAC, audit)",
+   "apps/server/static/site.js: polRefresh card (terbit/arsip/setuju) + hooks",
+   "apps/server/tests/api.rs: policy_library_and_controls e2e (draft-ack 409, dup-ack 409)"
+  ],
+  "audit_note": "Wave 69: full lifecycle live; verified by test (358/0)."
  },
  {
   "id": "F-D11-036",

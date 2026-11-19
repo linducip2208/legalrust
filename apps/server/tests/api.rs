@@ -6761,6 +6761,148 @@ async fn compliance_posture_and_export() {
 }
 
 #[tokio::test]
+async fn policy_library_and_controls() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "polctl@x.id").await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Draft cannot be acked; ack requires published.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/policies",
+            r#"{"title":"XX","body":"Isi kebijakan"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/policies",
+            r#"{"title":"Kode Etik","version":"2.0","body":"Isi kebijakan"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let pid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/policies/{pid}/ack"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/policies/{pid}/status"),
+            r#"{"status":"published"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/policies/{pid}/ack"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Duplicate ack rejected; ack count visible in list.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/policies/{pid}/ack"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/policies", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(pid) && r["ack_count"].as_i64() == Some(1)));
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/compliance/policies/{pid}/ack"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 1);
+    // Controls: duplicate code rejected; active toggle works.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/controls",
+            r#"{"code":"PDP-01","title":"Enkripsi data","frequency":"monthly"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/compliance/controls",
+            r#"{"code":"PDP-01","title":"Duplikat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/compliance/controls/{cid}/active"),
+            r#"{"active":false}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/compliance/controls", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(cid) && r["active"] == false));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=policy", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "compliance.policy_created"));
+}
+
+#[tokio::test]
 async fn whistle_and_waiver_lifecycle() {
     use tower::ServiceExt;
     let a = app();
@@ -8703,6 +8845,14 @@ async fn uib_app_has_approvals_ui() {
         "wv-add",
         "wv-reload",
         "wv-list",
+        "pol-title",
+        "pol-add",
+        "pol-reload",
+        "pol-list",
+        "ctl-code",
+        "ctl-add",
+        "ctl-reload",
+        "ctl-list",
         "posture-reload",
         "posture-csv",
         "posture-list",

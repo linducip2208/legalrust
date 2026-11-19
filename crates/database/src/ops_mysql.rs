@@ -2584,6 +2584,233 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn policy_create(
+        &self,
+        org: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let title = title.trim();
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if body.trim().is_empty() || body.len() > 200_000 {
+            return Err(StoreError::Conflict("body".into()));
+        }
+        let ver: String = version.trim().chars().take(20).collect();
+        let r = sqlx::query("INSERT INTO policies (org_id, title, version, body) VALUES (?,?,?,?)")
+            .bind(org)
+            .bind(title)
+            .bind(ver)
+            .bind(body.trim())
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn policy_list(&self, org: &str) -> Result<Vec<PolicyRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, title, version, body, status FROM policies WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PolicyRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                title: x.get::<String, _>("title"),
+                version: x.get::<String, _>("version"),
+                body: x.get::<String, _>("body"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn policy_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        if !matches!(to, "published" | "archived") {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM policies WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        let ok = matches!(
+            (cur.as_deref(), to),
+            (Some("draft"), "published") | (Some("published"), "archived")
+        );
+        if !ok {
+            return Err(if cur.is_none() {
+                StoreError::NotFound
+            } else {
+                StoreError::Conflict("bad transition".into())
+            });
+        }
+        sqlx::query("UPDATE policies SET status=? WHERE id=? AND org_id=?")
+            .bind(to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn policy_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM policies WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn policy_ack(&self, org: &str, policy_id: i64, user: &str) -> Result<i64, StoreError> {
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM policies WHERE id=? AND org_id=?")
+                .bind(policy_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        match cur.as_deref() {
+            Some("published") => {}
+            Some(_) => return Err(StoreError::Conflict("not published".into())),
+            None => return Err(StoreError::NotFound),
+        }
+        let r = sqlx::query("INSERT INTO policy_acks (org_id, policy_id, user_id) VALUES (?,?,?)")
+            .bind(org)
+            .bind(policy_id as u64)
+            .bind(user)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| {
+                let msg = e.to_string();
+                if msg.contains("Duplicate") {
+                    StoreError::Conflict("already acked".into())
+                } else {
+                    db_err(e)
+                }
+            })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn policy_ack_list(
+        &self,
+        org: &str,
+        policy_id: i64,
+    ) -> Result<Vec<PolicyAckRow>, StoreError> {
+        let own: Option<String> = sqlx::query("SELECT org_id FROM policies WHERE id=?")
+            .bind(policy_id as u64)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("org_id"));
+        if own.as_deref() != Some(org) {
+            return Err(StoreError::NotFound);
+        }
+        let rows = sqlx::query("SELECT id, org_id, policy_id, user_id FROM policy_acks WHERE org_id=? AND policy_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).bind(policy_id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| PolicyAckRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                policy_id: x.get::<u64, _>("policy_id") as i64,
+                user_id: x.get::<String, _>("user_id"),
+            })
+            .collect())
+    }
+    async fn control_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        area: &str,
+        frequency: &str,
+    ) -> Result<i64, StoreError> {
+        let code = code.trim();
+        let title = title.trim();
+        if code.is_empty() || code.len() > 40 {
+            return Err(StoreError::Conflict("code".into()));
+        }
+        if title.is_empty() || title.len() > 200 {
+            return Err(StoreError::Conflict("title".into()));
+        }
+        if !matches!(
+            frequency,
+            "daily" | "weekly" | "monthly" | "quarterly" | "annual"
+        ) {
+            return Err(StoreError::Conflict("frequency".into()));
+        }
+        let ar: String = area.trim().chars().take(60).collect();
+        let r = sqlx::query(
+            "INSERT INTO controls (org_id, code, title, area, frequency) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(code)
+        .bind(title)
+        .bind(ar)
+        .bind(frequency)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            let msg = e.to_string();
+            if msg.contains("Duplicate") {
+                StoreError::Conflict("duplicate code".into())
+            } else {
+                db_err(e)
+            }
+        })?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn control_list(&self, org: &str) -> Result<Vec<ControlRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, code, title, area, frequency, active FROM controls WHERE org_id=? ORDER BY id DESC LIMIT 200")
+            .bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| ControlRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                title: x.get::<String, _>("title"),
+                area: x.get::<String, _>("area"),
+                frequency: x.get::<String, _>("frequency"),
+                active: x.get::<i8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn control_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE controls SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1i8 } else { 0i8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn control_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM controls WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn notif_pref_list(&self, user: &str) -> Result<Vec<(String, bool)>, StoreError> {
         let rows = sqlx::query(
             "SELECT kind, enabled FROM notification_prefs WHERE user_id=? ORDER BY kind",

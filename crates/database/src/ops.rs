@@ -277,6 +277,35 @@ pub struct WaiverRow {
     pub expires_at: String,
     pub status: String,
 }
+/// Policy library document (draft -> published -> archived).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyRow {
+    pub id: i64,
+    pub org: String,
+    pub title: String,
+    pub version: String,
+    pub body: String,
+    pub status: String,
+}
+/// Policy acknowledgement (one per user per policy).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyAckRow {
+    pub id: i64,
+    pub org: String,
+    pub policy_id: i64,
+    pub user_id: String,
+}
+/// Control library entry (UUJN/PDP/ITE).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ControlRow {
+    pub id: i64,
+    pub org: String,
+    pub code: String,
+    pub title: String,
+    pub area: String,
+    pub frequency: String,
+    pub active: bool,
+}
 /// Approval delegation (delegator -> delegate).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DelegationRow {
@@ -1006,6 +1035,35 @@ pub trait OpsStore: Send + Sync {
     async fn waiver_list(&self, org: &str) -> Result<Vec<WaiverRow>, StoreError>;
     async fn waiver_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn waiver_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Policy library with acknowledgement tracking.
+    async fn policy_create(
+        &self,
+        org: &str,
+        title: &str,
+        version: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn policy_list(&self, org: &str) -> Result<Vec<PolicyRow>, StoreError>;
+    async fn policy_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
+    async fn policy_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    async fn policy_ack(&self, org: &str, policy_id: i64, user: &str) -> Result<i64, StoreError>;
+    async fn policy_ack_list(
+        &self,
+        org: &str,
+        policy_id: i64,
+    ) -> Result<Vec<PolicyAckRow>, StoreError>;
+    /// Control library.
+    async fn control_create(
+        &self,
+        org: &str,
+        code: &str,
+        title: &str,
+        area: &str,
+        frequency: &str,
+    ) -> Result<i64, StoreError>;
+    async fn control_list(&self, org: &str) -> Result<Vec<ControlRow>, StoreError>;
+    async fn control_set_active(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
+    async fn control_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Notification preferences: per-user kind opt-out. Disabled kinds are
     /// skipped by the notify fan-out (F-D18-006).
     async fn notif_pref_set(&self, user: &str, kind: &str, enabled: bool)
