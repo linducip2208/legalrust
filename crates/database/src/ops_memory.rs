@@ -132,6 +132,8 @@ struct Inner {
     dlcs: HashMap<i64, DocLifecycleRow>,
     mfields: HashMap<i64, MetaFieldRow>,
     dmeta: HashMap<i64, DocMetaRow>,
+    dlocks: HashMap<i64, DocLockRow>,
+    dfavs: std::collections::HashSet<(String, String, i64)>,
     delegs: HashMap<i64, DelegationRow>,
     prefs: HashMap<(String, String), bool>,
     seq: i64,
@@ -1617,6 +1619,93 @@ impl OpsStore for MemoryOps {
             .collect();
         v.sort_by_key(|r| -r.id);
         Ok(v)
+    }
+    async fn dlock_lock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        holder: &str,
+        note: &str,
+    ) -> Result<DocLockRow, StoreError> {
+        if doc_id <= 0 || holder.trim().is_empty() {
+            return Err(StoreError::Conflict("lock".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some(r) = m.dlocks.get(&doc_id).filter(|r| r.org == org) {
+            if r.holder != holder {
+                return Err(StoreError::Conflict("locked by other".into()));
+            }
+            return Ok(r.clone());
+        }
+        let row = DocLockRow {
+            doc_id,
+            org: org.into(),
+            holder: holder.trim().into(),
+            note: note.trim().into(),
+        };
+        m.dlocks.insert(doc_id, row.clone());
+        Ok(row)
+    }
+    async fn dlock_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLockRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .dlocks
+            .get(&doc_id)
+            .filter(|r| r.org == org)
+            .cloned())
+    }
+    async fn dlock_unlock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        by: &str,
+        force: bool,
+    ) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.dlocks.get(&doc_id) {
+            Some(r) if r.org == org => {
+                if !force && r.holder != by {
+                    return Err(StoreError::Conflict("not holder".into()));
+                }
+                m.dlocks.remove(&doc_id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn dfav_add(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError> {
+        if doc_id <= 0 || user.trim().is_empty() {
+            return Err(StoreError::Conflict("fav".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        m.dfavs.insert((org.into(), user.into(), doc_id));
+        Ok(())
+    }
+    async fn dfav_list(&self, org: &str, user: &str) -> Result<Vec<i64>, StoreError> {
+        let mut v: Vec<i64> = self
+            .inner
+            .lock()
+            .unwrap()
+            .dfavs
+            .iter()
+            .filter(|(o, u, _)| o == org && u == user)
+            .map(|(_, _, d)| *d)
+            .collect();
+        v.sort_unstable();
+        Ok(v)
+    }
+    async fn dfav_remove(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if m.dfavs.remove(&(org.to_string(), user.to_string(), doc_id)) {
+            Ok(())
+        } else {
+            Err(StoreError::NotFound)
+        }
     }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

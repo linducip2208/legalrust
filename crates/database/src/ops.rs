@@ -161,6 +161,14 @@ pub struct DocMetaRow {
     pub key: String,
     pub value: String,
 }
+/// Document check-in/out lock.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocLockRow {
+    pub doc_id: i64,
+    pub org: String,
+    pub holder: String,
+    pub note: String,
+}
 
 /// Shared validation for approval creation: entity allowlist + contiguous
 /// step numbers starting at 1 with non-empty roles.
@@ -1592,6 +1600,26 @@ pub trait OpsStore: Send + Sync {
         value: Option<&str>,
     ) -> Result<u64, StoreError>;
     async fn dmeta_by_tag(&self, org: &str, tag: &str) -> Result<Vec<DocMetaRow>, StoreError>;
+    /// Check-in/out locking (one holder per doc).
+    async fn dlock_lock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        holder: &str,
+        note: &str,
+    ) -> Result<DocLockRow, StoreError>;
+    async fn dlock_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLockRow>, StoreError>;
+    async fn dlock_unlock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        by: &str,
+        force: bool,
+    ) -> Result<(), StoreError>;
+    /// Favorites (per user id).
+    async fn dfav_add(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError>;
+    async fn dfav_list(&self, org: &str, user: &str) -> Result<Vec<i64>, StoreError>;
+    async fn dfav_remove(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError>;
     /// Quorum rounds (M-of-N) + votes + dual-control overrides.
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(

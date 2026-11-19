@@ -5606,6 +5606,10 @@ async fn crm_app_contains_crm_ids() {
         "mtf-list",
         "mtm-doc",
         "mtm-set",
+        "dlk-doc",
+        "dlk-lock",
+        "dlk-status",
+        "dlk-fav",
         "sop-code",
         "sop-add",
         "sop-reload",
@@ -9637,6 +9641,206 @@ async fn approval_policy_versions_and_fast_track() {
         .oneshot(
             Request::builder()
                 .uri("/api/v1/approval-policies")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn document_locks_and_favorites() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "doclock@x.id").await;
+    // Second user in the same org (different sub) for holder conflicts.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"memberlock@x.id","role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a.clone().oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"memberlock@x.id","name":"Anggota","password":"password1-2-3","invite_token":"{inv}"}}"#), None)).await.unwrap();
+    let mem = body_json(res).await["token"].as_str().unwrap().to_string();
+    let content = b"lock-bytes-1234";
+    let sha = legalrust_document::sha256_hex(content);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/documents",
+            &format!(
+                r#"{{"name":"kunci.pdf","mime":"application/pdf","size":{},"sha":"{sha}"}}"#,
+                content.len()
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    // Member locks; owner lock attempt rejected; same-holder relock idempotent.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lock"),
+            "{}",
+            Some(&mem),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lock"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/lock"),
+            "{}",
+            Some(&mem),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Locked by other: content write blocked for owner.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Unlock by non-holder rejected; holder unlocks; write proceeds.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/unlock"),
+            "{}",
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/unlock"),
+            "{}",
+            Some(&mem),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/content"))
+                .method("PUT")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::from(content.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Favorites roundtrip + ghost handling.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/documents/{did}/fav"),
+            "{}",
+            Some(&mem),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/favorites", &mem))
+        .await
+        .unwrap();
+    let fv = body_json(res).await;
+    assert!(fv["favorites"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["doc_id"].as_i64() == Some(did)));
+    assert!(!fv["recent"].as_array().unwrap().is_empty());
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/fav"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {mem}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/fav"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {mem}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/999999/lock", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await.get("holder").is_some());
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/favorites")
                 .body(Body::empty())
                 .unwrap(),
         )

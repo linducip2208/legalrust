@@ -1520,6 +1520,153 @@ impl OpsStore for MysqlOps {
             })
             .collect())
     }
+    async fn dlock_lock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        holder: &str,
+        note: &str,
+    ) -> Result<DocLockRow, StoreError> {
+        if doc_id <= 0 || holder.trim().is_empty() {
+            return Err(StoreError::Conflict("lock".into()));
+        }
+        if note.len() > 200 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT holder FROM doc_locks WHERE doc_id=? AND org_id=?")
+                .bind(doc_id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("holder"));
+        match cur {
+            Some(h) if h != holder => return Err(StoreError::Conflict("locked by other".into())),
+            Some(_) => {}
+            None => {
+                sqlx::query(
+                    "INSERT INTO doc_locks (doc_id, org_id, holder, note) VALUES (?,?,?,?)",
+                )
+                .bind(doc_id as u64)
+                .bind(org)
+                .bind(holder.trim())
+                .bind(note.trim())
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?;
+            }
+        }
+        Ok(DocLockRow {
+            doc_id,
+            org: org.into(),
+            holder: holder.trim().into(),
+            note: note.trim().into(),
+        })
+    }
+    async fn dlock_get(&self, org: &str, doc_id: i64) -> Result<Option<DocLockRow>, StoreError> {
+        let x = sqlx::query(
+            "SELECT doc_id, org_id, holder, note FROM doc_locks WHERE doc_id=? AND org_id=?",
+        )
+        .bind(doc_id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(x.map(|x| DocLockRow {
+            doc_id: x.get::<u64, _>("doc_id") as i64,
+            org: x.get::<String, _>("org_id"),
+            holder: x.get::<String, _>("holder"),
+            note: x.get::<String, _>("note"),
+        }))
+    }
+    async fn dlock_unlock(
+        &self,
+        org: &str,
+        doc_id: i64,
+        by: &str,
+        force: bool,
+    ) -> Result<(), StoreError> {
+        if force {
+            let n = sqlx::query("DELETE FROM doc_locks WHERE doc_id=? AND org_id=?")
+                .bind(doc_id as u64)
+                .bind(org)
+                .execute(&self.pool)
+                .await
+                .map_err(db_err)?
+                .rows_affected();
+            return if n == 0 {
+                Err(StoreError::NotFound)
+            } else {
+                Ok(())
+            };
+        }
+        let n = sqlx::query("DELETE FROM doc_locks WHERE doc_id=? AND org_id=? AND holder=?")
+            .bind(doc_id as u64)
+            .bind(org)
+            .bind(by)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            let exists: bool =
+                sqlx::query("SELECT doc_id FROM doc_locks WHERE doc_id=? AND org_id=?")
+                    .bind(doc_id as u64)
+                    .bind(org)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?
+                    .is_some();
+            return if exists {
+                Err(StoreError::Conflict("not holder".into()))
+            } else {
+                Err(StoreError::NotFound)
+            };
+        }
+        Ok(())
+    }
+    async fn dfav_add(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError> {
+        if doc_id <= 0 || user.trim().is_empty() {
+            return Err(StoreError::Conflict("fav".into()));
+        }
+        sqlx::query("INSERT IGNORE INTO doc_favs (user_id, org_id, doc_id) VALUES (?,?,?)")
+            .bind(user)
+            .bind(org)
+            .bind(doc_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(())
+    }
+    async fn dfav_list(&self, org: &str, user: &str) -> Result<Vec<i64>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT doc_id FROM doc_favs WHERE org_id=? AND user_id=? ORDER BY doc_id LIMIT 500",
+        )
+        .bind(org)
+        .bind(user)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| x.get::<u64, _>("doc_id") as i64)
+            .collect())
+    }
+    async fn dfav_remove(&self, org: &str, user: &str, doc_id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM doc_favs WHERE org_id=? AND user_id=? AND doc_id=?")
+            .bind(org)
+            .bind(user)
+            .bind(doc_id as u64)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     #[allow(clippy::too_many_arguments)]
     async fn qround_add(
         &self,

@@ -1178,10 +1178,16 @@
   "id": "F-D04-004",
   "domain": "D04",
   "title": "Check-in / check-out locking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "check-in/out locking with write enforcement; shared slice:",
+   "  - migrations/0084_doc_lock_fav.sql: doc_locks + doc_favs tables (forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: lock/get/unlock + fav add/list/remove",
+   "  - apps/server/src/lib.rs: lock/get/unlock + fav endpoints + put_content lock gate + /favorites (recents via audit)",
+   "  - apps/server/static/site.js: lock/fav card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_locks_and_favorites e2e (holder conflicts, write gate, idempotent relock, fav roundtrip)"
+  ],
+  "audit_note": "Wave 129: locks + favorites live. Verified by test (417/0)."
  },
  {
   "id": "F-D04-005",
@@ -1440,10 +1446,16 @@
   "id": "F-D04-027",
   "domain": "D04",
   "title": "Document favorites & recent list",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "favorites + recent list; shared slice:",
+   "  - migrations/0084_doc_lock_fav.sql: doc_locks + doc_favs tables (forward-only)",
+   "  - crates/database/src/ops.rs + ops_memory.rs + ops_mysql.rs: lock/get/unlock + fav add/list/remove",
+   "  - apps/server/src/lib.rs: lock/get/unlock + fav endpoints + put_content lock gate + /favorites (recents via audit)",
+   "  - apps/server/static/site.js: lock/fav card + hooks (dok panel)",
+   "  - apps/server/tests/api.rs: document_locks_and_favorites e2e (holder conflicts, write gate, idempotent relock, fav roundtrip)"
+  ],
+  "audit_note": "Wave 129: locks + favorites live. Verified by test (417/0)."
  },
  {
   "id": "F-D04-028",

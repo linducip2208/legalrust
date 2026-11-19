@@ -3244,6 +3244,54 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
     if (out) out.innerHTML = v.map(function (x) { return '<span class="badge">dok #' + x.doc_id + ' (' + esc(x.key) + ')</span>'; }).join(' ') || 'Tidak ada dokumen dengan tag itu.';
   });
+  /* ---- document locks + favorites (F-D04-004/027) ---- */
+  async function dlkStatus(silent) {
+    var out = document.getElementById('dlk-out');
+    if (!pval('dlk-doc')) { if (out && !silent) out.textContent = 'Isi ID dokumen.'; return null; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/lock');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return null; }
+    if (out) out.innerHTML = v.holder ? 'Dikunci oleh <strong>' + esc(v.holder) + '</strong>' : '<span class="text-muted">Tidak terkunci.</span>';
+    return v;
+  }
+  async function dlkFavs() {
+    var box = document.getElementById('dlk-favs');
+    if (!box) return;
+    var v = await j('/api/v1/favorites');
+    if (!v) { box.innerHTML = '<tr><td class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = ((v.favorites || []).map(function (x) {
+      return '<tr><td>dok #' + x.doc_id + ' ' + esc(x.name || '') + ' <button class="btn btn-sm btn-outline-danger" data-unfav="' + x.doc_id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td class="text-muted">Belum ada favorit.</td></tr>')
+      + ((v.recent || []).length ? '<tr><td class="text-muted">Terkini: ' + v.recent.map(function (x) { return '#' + x.doc_id; }).join(', ') + '</td></tr>' : '');
+    qsa('[data-unfav]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/documents/' + b.getAttribute('data-unfav') + '/fav', { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + ').'); return; }
+        dlkFavs();
+      });
+    });
+  }
+  on('dlk-lock', 'click', async function () {
+    if (!pval('dlk-doc')) { pmsg('dlk-msg', 'Isi ID dokumen.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/lock', {});
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Dikunci orang lain?'); return; }
+    pmsg('dlk-msg', '');
+    dlkStatus(true);
+  });
+  on('dlk-status', 'click', function () { dlkStatus(false); });
+  on('dlk-unlock', 'click', async function () {
+    if (!pval('dlk-doc')) { pmsg('dlk-msg', 'Isi ID dokumen.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/unlock', {});
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + '). Bukan pemegang?'); return; }
+    pmsg('dlk-msg', '');
+    dlkStatus(true);
+  });
+  on('dlk-fav', 'click', async function () {
+    if (!pval('dlk-doc')) { pmsg('dlk-msg', 'Isi ID dokumen.'); return; }
+    var r = await ppost('/api/v1/documents/' + encodeURIComponent(pval('dlk-doc')) + '/fav', {});
+    if (!r.ok) { pmsg('dlk-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('dlk-msg', '');
+    dlkFavs();
+  });
   /* ---- office: SOP library ---- */
   var SOP_NEXT = { draft: 'published', published: 'archived' };
   async function sopRefresh() {
@@ -5217,6 +5265,7 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   dlcRefresh();
   dlcDueRefresh();
   mtfRefresh();
+  dlkFavs();
   sopRefresh();
   oinRefresh();
   dpRefresh();
