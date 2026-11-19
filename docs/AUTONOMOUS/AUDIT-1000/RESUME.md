@@ -58,7 +58,7 @@ Server + Apache running detached via WMI (survives shell sessions); legalrust.te
 
 ## Done wave 76: price list + quotations (main)
 - price_items + quotations/items (0046, snapshot Tx) + kartu keu + uji.
-- F-D12-012/014 NOT_STARTED->IMPLEMENTED (~73.4 verified). Workspace 365/0; registry ~23.0 (114 IMPLEMENTED); mean ~23.6 (112 v).
+- F-D12-012/014 NOT_STARTED->IMPLEMENTED (~73.4 verified). Workspace 365/0; registry ~23.0 (114 IMPLEMENTED); mean 23.7 (112 v).
 
 ## Done wave 75: appointments + queue board (main)
 - appointments (0045, slot ketat) + papan antrean derivasi + kartu klien + uji.
