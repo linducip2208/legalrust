@@ -3277,6 +3277,36 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await r.json().catch(function () { return null; });
     if (out && v) out.textContent = 'Jatuh tempo: ' + v.due + ' (' + v.weekday + '). ' + v.note;
   });
+  /* ---- kanban + ICS (F-D03-010/011) ---- */
+  var KAN_NEXT = { open: ['in_progress', 'blocked'], in_progress: ['done', 'blocked'], blocked: ['open'], done: [] };
+  async function kanRefresh() {
+    var box = document.getElementById('kan-body');
+    if (!box) return;
+    var v = await j('/api/v1/tasks/board');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    var cols = ['open', 'in_progress', 'blocked', 'done'];
+    var n = Math.max.apply(null, cols.map(function (c) { return (v[c] || []).length; }).concat([1]));
+    var rows = '';
+    for (var i = 0; i < n; i++) {
+      rows += '<tr>' + cols.map(function (c) {
+        var t = (v[c] || [])[i];
+        if (!t) return '<td></td>';
+        var btns = (KAN_NEXT[c] || []).map(function (nx) { return '<button class="btn btn-sm" data-kan-mv="' + t.id + '" data-kan-to="' + nx + '" type="button">→ ' + nx + '</button>'; }).join(' ');
+        return '<td><strong>#' + t.id + '</strong> ' + esc(t.title) + '<br>' + btns + '</td>';
+      }).join('') + '</tr>';
+    }
+    box.innerHTML = rows;
+    qsa('[data-kan-mv]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/tasks/' + b.getAttribute('data-kan-mv'), { status: b.getAttribute('data-kan-to') });
+        if (!r.ok) { pmsg('kan-msg', 'Gagal (' + r.status + '). Transisi tak valid?'); return; }
+        pmsg('kan-msg', '');
+        kanRefresh();
+      });
+    });
+  }
+  on('kan-go', 'click', kanRefresh);
+  on('cal-dl', 'click', function () { dlCsv('/api/v1/calendar.ics', 'tugas.ics', 'kan-msg'); });
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

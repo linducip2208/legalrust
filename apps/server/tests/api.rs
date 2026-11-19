@@ -5701,6 +5701,8 @@ async fn crm_app_contains_crm_ids() {
         "ddl-mid",
         "ddl-go",
         "ddl-calc",
+        "kan-go",
+        "cal-dl",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11791,6 +11793,104 @@ async fn conflict_register_log_and_list() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn kanban_board_and_ics_export() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kanban@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MKB"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Tugas A"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2027-08-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Board groups by status; illegal jump rejected client-side by transitions but server enforces too.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/tasks/board", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["open"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["id"].as_i64() == Some(tid)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}"),
+            r#"{"status":"done"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}"),
+            r#"{"status":"in_progress"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // ICS carries the dated open task; client role has no Export.
+    let client = forged_role_token(&tok, vec!["client"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/calendar.ics", &client))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/calendar.ics", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let text = String::from_utf8(
+        axum::body::to_bytes(res.into_body(), 1024 * 1024)
+            .await
+            .unwrap()
+            .to_vec(),
+    )
+    .unwrap();
+    assert!(text.starts_with("BEGIN:VCALENDAR"), "was {text}");
+    assert!(text.contains("Tugas A") && text.contains("20270801T090000"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=report", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "report.calendar_exported"));
 }
 
 #[tokio::test]
