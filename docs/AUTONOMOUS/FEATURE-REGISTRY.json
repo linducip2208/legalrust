@@ -1078,10 +1078,14 @@
   "id": "F-D03-014",
   "domain": "D03",
   "title": "Timer-based time capture",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0117: matter_timers (org,matter,user,note,started_at,active,stopped_minutes; 1 aktif/user)",
+   "ops.rs: MatterTimerRow + OpsStore::tmr_start/tmr_active/tmr_stop (same-user, stop->menit 1-960)",
+   "lib.rs: POST /api/v1/timers/start + GET active + POST {id}/stop (stop posting entri waktu draft + audit timer.stopped)",
+   "site.js: tmr card (mulai/aktif/hentikan); tests: matter_timer_capture e2e (404/409/roundtrip/stop-entry/401) + needle"
+  ],
+  "audit_note": "Wave 185: timer capture live. Verified by test."
  },
  {
   "id": "F-D03-015",

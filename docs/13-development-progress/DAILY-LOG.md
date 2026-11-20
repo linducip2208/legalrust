@@ -700,3 +700,7 @@
 ## 2026-11-20 AUDIT-1000 wave 184: stage pipeline via merge w182-pipeline (main)
 - Cabang paralel w182-pipeline digabung: handler matter_pipeline + rute + kartu mpipe + tes; resolusi konflik (baris HTML raksasa + interleave uji notes diperbaiki dari kedua sisi); tidak ada migrasi baru (read-only).
 - Workspace 481 passed, 0 failed; fmt+clippy+node clean; F-D03-004 PARTIAL->IMPLEMENTED (~71.3 verified).
+
+## 2026-11-20 AUDIT-1000 wave 185: timer capture (main)
+- Migrasi 0117 (matter_timers + indeks user-aktif); MatterTimerRow; OpsStore::tmr_start/active/stop (memory+mysql, guard 1-aktif/user, stop hitung menit ceil + clamp 960); 3 endpoint + audit timer.stopped; kartu /app + JS; tes matter_timer_capture + needle.
+- Workspace 483 passed, 0 failed; fmt+clippy+node clean; F-D03-014 NOT_STARTED->IMPLEMENTED (~72.2 verified).

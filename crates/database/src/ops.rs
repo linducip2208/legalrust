@@ -408,6 +408,18 @@ pub struct TaskDepRow {
     pub task_id: i64,
     pub depends_on: i64,
 }
+/// Running/stopped time-capture timer (one active per user; stop posts a time entry).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterTimerRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub user_id: String,
+    pub note: String,
+    pub started_at: String,
+    pub active: bool,
+    pub stopped_minutes: Option<i64>,
+}
 /// Time entry (draft->submitted->approved/rejected).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeEntryRow {
@@ -2477,6 +2489,20 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<TimeEntryRow>, StoreError>;
     async fn ten_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Timer capture: start (one active per user), active lookup, stop (-> minutes).
+    async fn tmr_start(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn tmr_active(
+        &self,
+        org: &str,
+        user_id: &str,
+    ) -> Result<Option<MatterTimerRow>, StoreError>;
+    async fn tmr_stop(&self, org: &str, id: i64, user_id: &str) -> Result<i64, StoreError>;
     /// Matter budgets (per-category caps) + expenses/advances + summary.
     async fn bdg_set(
         &self,

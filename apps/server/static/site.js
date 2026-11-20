@@ -3366,6 +3366,36 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     tenRefresh();
   });
   on('ten-reload', 'click', tenRefresh);
+  /* ---- timer capture (F-D03-014) ---- */
+  async function tmrShow() {
+    var out = document.getElementById('tmr-out');
+    if (!out) return;
+    var v = await j('/api/v1/timers/active');
+    if (!v) { pmsg('tmr-msg', 'Gagal memuat.'); return; }
+    pmsg('tmr-msg', '');
+    out.textContent = v ? ('Aktif #' + v.id + ' perkara ' + v.matter_id + ' sejak ' + v.started_at + (v.note ? ' — ' + v.note : '')) : 'Tidak ada timer aktif.';
+    window._tmr = v;
+  }
+  on('tmr-start', 'click', async function () {
+    if (!pval('tmr-mid')) { pmsg('tmr-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/timers/start', { matter_id: +pval('tmr-mid'), note: pval('tmr-note') || '' });
+    if (!r.ok) { pmsg('tmr-msg', 'Gagal (' + r.status + '). Sudah ada timer aktif?'); return; }
+    pmsg('tmr-msg', ''); tmrShow();
+  });
+  on('tmr-active', 'click', tmrShow);
+  on('tmr-stop', 'click', async function () {
+    var cur = window._tmr;
+    if (!cur) { await tmrShow(); cur = window._tmr; }
+    if (!cur) { pmsg('tmr-msg', 'Tidak ada timer aktif.'); return; }
+    var r = await ppost('/api/v1/timers/' + cur.id + '/stop', {});
+    if (!r.ok) { pmsg('tmr-msg', 'Gagal (' + r.status + ').'); return; }
+    var d = await r.json().catch(function () { return null; });
+    pmsg('tmr-msg', '');
+    window._tmr = null;
+    var out = document.getElementById('tmr-out');
+    if (out && d) out.textContent = 'Berhenti: ' + d.minutes + ' menit -> entri #' + d.entry_id + '.';
+    tenRefresh();
+  });
 /* ---- budgets + expenses/panjar (F-D03-016/017/018) ---- */
   async function bdgRefresh() {
     var box = document.getElementById('bdg-list');

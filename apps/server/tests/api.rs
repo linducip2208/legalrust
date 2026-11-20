@@ -23689,3 +23689,116 @@ async fn uib_app_has_submatter_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_timer_capture() {
+    let a = app();
+    let tok = reg(&a, "tmr@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MTIMER"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Start on ghost matter 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/timers/start",
+            r#"{"matter_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Start ok.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/timers/start",
+            &format!(r#"{{"matter_id":{mid},"note":"sidang"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    // Second start while running 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/timers/start",
+            &format!(r#"{{"matter_id":{mid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Active shows the timer.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/timers/active", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let act = body_json(res).await;
+    assert_eq!(act["id"].as_i64(), Some(tid));
+    assert_eq!(act["matter_id"].as_i64(), Some(mid));
+    // Stop posts a time entry (>=1 minute).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/timers/{tid}/stop"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let stopped = body_json(res).await;
+    assert!(stopped["minutes"].as_i64().unwrap_or(0) >= 1);
+    assert!(stopped["entry_id"].as_i64().unwrap_or(0) > 0);
+    // Active now empty; second stop 404.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/timers/active", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.is_null());
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/timers/{tid}/stop"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // No-token 401.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/timers/start", r#"{"matter_id":1}"#, None))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_timer_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "tmr-mid",
+        "tmr-note",
+        "tmr-start",
+        "tmr-active",
+        "tmr-stop",
+        "tmr-msg",
+        "tmr-out",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

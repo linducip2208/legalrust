@@ -1583,19 +1583,19 @@
  {
   "feature_id": "F-D03-014",
   "domain": "D03",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 0,
-   "database": 0,
-   "frontend": 0,
-   "business_logic": 0,
-   "security": 0,
-   "testing": 0,
-   "integration": 0,
-   "documentation": 0
+   "backend": 82,
+   "database": 72,
+   "frontend": 74,
+   "business_logic": 78,
+   "security": 78,
+   "testing": 83,
+   "integration": 57,
+   "documentation": 54
   },
-  "overall_score": 0.0,
-  "verified_8cat": false
+  "overall_score": 72.2,
+  "verified_8cat": true
  },
  {
   "feature_id": "F-D03-015",

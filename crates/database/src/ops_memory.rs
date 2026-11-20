@@ -155,6 +155,7 @@ struct Inner {
     mms: HashMap<i64, MatterMilestoneRow>,
     mlinks: HashMap<i64, MatterLinkRow>,
     tens: HashMap<i64, TimeEntryRow>,
+    tmrs: HashMap<i64, MatterTimerRow>,
     mbgs: HashMap<i64, MatterBudgetRow>,
     mxps: HashMap<i64, MatterExpenseRow>,
     mtms: HashMap<i64, MatterTeamRow>,
@@ -4137,6 +4138,72 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn tmr_start(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let u = user_id.trim();
+        let n = note.trim();
+        if matter_id <= 0 || u.is_empty() || u.len() > 160 || n.len() > 200 {
+            return Err(StoreError::Conflict("matter/user/note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.tmrs
+            .values()
+            .any(|r| r.org == org && r.user_id == u && r.active)
+        {
+            return Err(StoreError::Conflict("timer running".into()));
+        }
+        let id = self.next(&mut m);
+        m.tmrs.insert(
+            id,
+            MatterTimerRow {
+                id,
+                org: org.into(),
+                matter_id,
+                user_id: u.into(),
+                note: n.into(),
+                started_at: chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+                active: true,
+                stopped_minutes: None,
+            },
+        );
+        Ok(id)
+    }
+    async fn tmr_active(
+        &self,
+        org: &str,
+        user_id: &str,
+    ) -> Result<Option<MatterTimerRow>, StoreError> {
+        Ok(self
+            .inner
+            .lock()
+            .unwrap()
+            .tmrs
+            .values()
+            .find(|r| r.org == org && r.user_id == user_id && r.active)
+            .cloned())
+    }
+    async fn tmr_stop(&self, org: &str, id: i64, user_id: &str) -> Result<i64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .tmrs
+            .get_mut(&id)
+            .filter(|r| r.org == org && r.user_id == user_id && r.active)
+            .ok_or(StoreError::NotFound)?;
+        let start = chrono::NaiveDateTime::parse_from_str(&r.started_at, "%Y-%m-%d %H:%M:%S")
+            .map_err(|_| StoreError::Conflict("timer clock".into()))?;
+        let secs = (chrono::Utc::now().naive_utc() - start)
+            .num_seconds()
+            .max(0);
+        let minutes = ((secs + 59) / 60).clamp(1, 960);
+        r.active = false;
+        r.stopped_minutes = Some(minutes);
+        Ok(minutes)
     }
     async fn bdg_set(
         &self,

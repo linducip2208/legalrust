@@ -4360,6 +4360,103 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn tmr_start(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let u = user_id.trim();
+        let n = note.trim();
+        if matter_id <= 0 || u.is_empty() || u.len() > 160 || n.len() > 200 {
+            return Err(StoreError::Conflict("matter/user/note".into()));
+        }
+        let busy: Option<i64> = sqlx::query(
+            "SELECT id FROM matter_timers WHERE org_id=? AND user_id=? AND active=1 LIMIT 1",
+        )
+        .bind(org)
+        .bind(u)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?
+        .map(|x| x.get::<u64, _>("id") as i64);
+        if busy.is_some() {
+            return Err(StoreError::Conflict("timer running".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_timers (org_id, matter_id, user_id, note) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(u)
+        .bind(n)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn tmr_active(
+        &self,
+        org: &str,
+        user_id: &str,
+    ) -> Result<Option<MatterTimerRow>, StoreError> {
+        let row = sqlx::query(
+            "SELECT id, org_id, matter_id, user_id, note, started_at, active, stopped_minutes FROM matter_timers WHERE org_id=? AND user_id=? AND active=1 LIMIT 1",
+        )
+        .bind(org)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(row.map(|x| MatterTimerRow {
+            id: x.get::<u64, _>("id") as i64,
+            org: x.get::<String, _>("org_id"),
+            matter_id: x.get::<u64, _>("matter_id") as i64,
+            user_id: x.get::<String, _>("user_id"),
+            note: x.get::<String, _>("note"),
+            started_at: x
+                .get::<chrono::NaiveDateTime, _>("started_at")
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string(),
+            active: true,
+            stopped_minutes: x.get::<Option<i32>, _>("stopped_minutes").map(|v| v as i64),
+        }))
+    }
+    async fn tmr_stop(&self, org: &str, id: i64, user_id: &str) -> Result<i64, StoreError> {
+        let row: Option<chrono::NaiveDateTime> =
+            sqlx::query("SELECT started_at FROM matter_timers WHERE id=? AND org_id=? AND user_id=? AND active=1")
+                .bind(id as u64)
+                .bind(org)
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<chrono::NaiveDateTime, _>("started_at"));
+        let start = match row {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let secs = (chrono::Utc::now().naive_utc() - start)
+            .num_seconds()
+            .max(0);
+        let minutes: i64 = ((secs + 59) / 60).clamp(1, 960);
+        let n = sqlx::query(
+            "UPDATE matter_timers SET active=0, stopped_minutes=? WHERE id=? AND org_id=? AND user_id=? AND active=1",
+        )
+        .bind(minutes as i32)
+        .bind(id as u64)
+        .bind(org)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(minutes)
+    }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let cur: Option<String> =
             sqlx::query("SELECT status FROM client_portal_invites WHERE id=? AND org_id=?")

@@ -788,3 +788,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 - Read-only GET /api/v1/matters/pipeline (group by open/on_hold/closed + counts); kartu /app pipa; uji grouping + needle.
 - Merge-conflict repair: lib.rs HTML line resolved (HEAD + mpipe card); api.rs notes-test interleaving reconstructed from HEAD + w182-pipeline.
 - F-D03-004 PARTIAL->IMPLEMENTED (~71.3 verified). Workspace 481/0; clippy clean; live 116/116 + register PASS (legalrust_wave184).
+
+## Done wave 185: timer capture (main)
+- Migrasi 0117 (matter_timers); OpsStore tmr_* (memory+mysql, 1 aktif/user, stop->menit clamp 1-960); 3 endpoint (start/active/stop memposting entri draft + audit); kartu /app timer; uji capture + needle.
+- F-D03-014 NOT_STARTED->IMPLEMENTED (~72.2 verified). Workspace 483/0; clippy clean; live 117 pending.
