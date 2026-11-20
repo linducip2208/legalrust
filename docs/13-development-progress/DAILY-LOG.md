@@ -723,3 +723,7 @@
 - Merge cabang paralel: statement per-perkara (+CSV) + bulk import + kartu/uji; tanpa migrasi.
 - Temuan live: GET /timers/active + POST archive memutus koneksi saat hasil non-kosong; akar: sqlx u8 butuh flag UNSIGNED, kolom TINYINT(1) signed -> mismatch -> panic di .get(); perbaiki ke bool (19 situs) + i8 utk weekday; started_at via DATE_FORMAT/UNIX_TIMESTAMP.
 - Workspace 489 passed, 0 failed; fmt+clippy+node clean; F-D03-033/036 ->IMPLEMENTED (~71.5 verified).
+
+## 2026-11-20 AUDIT-1000 wave 189: inbox triage via merge w189-triage (main)
+- Merge cabang paralel: antrean triase read-only (matter tanpa tim + tugas tanpa pelaksana, cap 200) + saran beban-teringan; assignment pakai endpoint eksisting; kartu /app + JS; tes triage_queue_and_suggest + needle.
+- Workspace 491 passed, 0 failed; fmt+clippy+node clean; F-D03-040 NOT_STARTED->IMPLEMENTED (~70.8 verified).

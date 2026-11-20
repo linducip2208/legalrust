@@ -1395,10 +1395,13 @@
   "id": "F-D03-040",
   "domain": "D03",
   "title": "Matter inbox triage & auto-assignment",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/triage/queue (View): matter_no_team + task_unassigned (cap 200, closed skip)",
+   "POST /api/v1/triage/suggest (View): least-open-tasks lead/member; already_assigned/no_team reasons; assign via existing endpoint",
+   "site.js: triage card; tests: triage_queue_and_suggest e2e + needle"
+  ],
+  "audit_note": "Wave 189 (merge w189-triage): inbox triage live. Verified by test."
  },
  {
   "id": "F-D04-001",

@@ -602,3 +602,7 @@
 ## 2026-11-20 AUDIT-1000 wave 188: merge w187-statement (main)
 - Workspace 489 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
 - Live MySQL legalrust_wave188: migrate 118/118 + register PASS; matters/timer/archive/statement non-empty verified; /app needles OK.
+
+## 2026-11-20 AUDIT-1000 wave 189: merge w189-triage (main)
+- Workspace 491 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL legalrust_wave189: migrate 118/118 + register PASS; triage queue/suggest verified; /app needles OK.
