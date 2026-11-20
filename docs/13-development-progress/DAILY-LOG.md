@@ -718,3 +718,8 @@
 - Tanpa migrasi: GET /api/v1/matters/{id}/statement (+ .csv Export+audit) + POST /api/v1/matters/import (validasi total + cap 100 + audit per perkara); kartu /app + JS; tes statement/import + needle.
 - Merge cabang paralel w187-statement (konflik body raksasa -> HEAD + pasang ulang; api.js auto-merge bersih); mencakup fix decode timer MySQL yang sedang berjalan.
 - Workspace 489 passed, 0 failed; fmt+clippy+node clean; F-D03-033 PARTIAL->IMPLEMENTED, F-D03-036 NOT_STARTED->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 188: merge w187-statement + bool-decode hardening (main)
+- Merge cabang paralel: statement per-perkara (+CSV) + bulk import + kartu/uji; tanpa migrasi.
+- Temuan live: GET /timers/active + POST archive memutus koneksi saat hasil non-kosong; akar: sqlx u8 butuh flag UNSIGNED, kolom TINYINT(1) signed -> mismatch -> panic di .get(); perbaiki ke bool (19 situs) + i8 utk weekday; started_at via DATE_FORMAT/UNIX_TIMESTAMP.
+- Workspace 489 passed, 0 failed; fmt+clippy+node clean; F-D03-033/036 ->IMPLEMENTED (~71.5 verified).

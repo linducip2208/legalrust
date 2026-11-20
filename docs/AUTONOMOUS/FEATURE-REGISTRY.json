@@ -479,7 +479,7 @@
    "lib.rs: GET /api/v1/conflicts/check (clients + matters + parties, role context, RBAC)",
    "site.js: conflict card + hooks (klien panel), human-review note",
    "tests: conflict_of_interest_screening e2e (3-surface hits, clean, short 422, 401)",
-   "Note: stale CONFIGURATION_REQUIRED (OCR-cited) corrected â€” no external service involved"
+   "Note: stale CONFIGURATION_REQUIRED (OCR-cited) corrected \u00e2\u20ac\u201d no external service involved"
   ],
   "audit_note": "Wave 156: conflict screening live; adversity judgment stays human. Verified by test (446/0)."
  },
@@ -545,7 +545,7 @@
   "evidence": [
    "apps/server/src/lib.rs: quote_create/list/status/delete + items + totals (office slice, RBAC, audited office.quote_created)",
    "apps/server/tests/api.rs: price_list_and_quotations e2e green (workspace 438/0)",
-   "Note: quotations keyed by client_name string, not client_id FK â€” functional for proposals, linkage by name."
+   "Note: quotations keyed by client_name string, not client_id FK \u00e2\u20ac\u201d functional for proposals, linkage by name."
   ],
   "audit_note": "Wave 148: verify-only rescore; quotation flow live since finance slice (438/0 green)."
  },
@@ -1316,11 +1316,10 @@
   "title": "Client matter statement",
   "status": "IMPLEMENTED",
   "evidence": [
-   "GET /api/v1/matters/{id}/statement (View): invoices + paid/balance via inv_list+inv_get + totals billed/paid/outstanding",
-   "GET /api/v1/matters/{id}/statement.csv (Export + audit report.matter_statement_csv)",
-   "apps/server/tests/api.rs: matter_statement_and_bulk_import asserts totals 1000000/400000/600000 + CSV 200 + client-forbidden"
+   "GET /api/v1/matters/{id}/statement + .csv (View): invoices + paid/balance + totals; audit report.matter_statement_csv",
+   "site.js: mst card; tests: statement totals + CSV asserted in matter_statement_and_bulk_import"
   ],
-  "audit_note": "Wave 188: per-matter statement over finance tables; no migration."
+  "audit_note": "Wave 188 (merge w187-statement): statement+import live. Verified by test."
  },
  {
   "id": "F-D03-034",
@@ -1350,10 +1349,10 @@
   "title": "Bulk matter import",
   "status": "IMPLEMENTED",
   "evidence": [
-   "POST /api/v1/matters/import (Create): rows 1-100, title validated, clients pre-validated (ghost 404 before any write), per-matter audit + summary notify",
-   "lib.rs: matter_import + /app Statement-impor card + JS; tests: bad-row 422 creates nothing, ghost-client 404, 2-row import ok"
+   "POST /api/v1/matters/import (Create): bulk create dari daftar judul + validasi per-baris",
+   "site.js: mimp card; tests: bulk import roundtrip + needle di matter_statement_and_bulk_import"
   ],
-  "audit_note": "Wave 188: validate-all-then-create (no silent partials); no migration."
+  "audit_note": "Wave 188 (merge w187-statement): statement+import live. Verified by test."
  },
  {
   "id": "F-D03-037",
@@ -8489,7 +8488,7 @@
    "apps/server/src/lib.rs: keu export card (trust-csv-acct/btn)",
    "apps/server/tests/api.rs: trust_csv_export_returns_ledger"
   ],
-  "audit_note": "Report library: matters CSV x2, clients CSV, trust-ledger CSV â€” all Export/View-gated + audit."
+  "audit_note": "Report library: matters CSV x2, clients CSV, trust-ledger CSV \u00e2\u20ac\u201d all Export/View-gated + audit."
  },
  {
   "id": "F-D20-002",

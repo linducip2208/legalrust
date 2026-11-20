@@ -1908,16 +1908,16 @@
   "domain": "D03",
   "status": "IMPLEMENTED",
   "scores": {
-   "backend": 82,
-   "database": 72,
-   "frontend": 75,
-   "business_logic": 78,
-   "security": 79,
-   "testing": 83,
-   "integration": 58,
-   "documentation": 55
+   "backend": 81,
+   "database": 70,
+   "frontend": 73,
+   "business_logic": 77,
+   "security": 78,
+   "testing": 82,
+   "integration": 57,
+   "documentation": 54
   },
-  "overall_score": 72.8,
+  "overall_score": 71.5,
   "verified_8cat": true
  },
  {
@@ -1959,16 +1959,16 @@
   "domain": "D03",
   "status": "IMPLEMENTED",
   "scores": {
-   "backend": 82,
-   "database": 72,
-   "frontend": 75,
-   "business_logic": 78,
-   "security": 79,
-   "testing": 83,
-   "integration": 58,
-   "documentation": 55
+   "backend": 81,
+   "database": 70,
+   "frontend": 73,
+   "business_logic": 77,
+   "security": 78,
+   "testing": 82,
+   "integration": 57,
+   "documentation": 54
   },
-  "overall_score": 72.8,
+  "overall_score": 71.5,
   "verified_8cat": true
  },
  {
