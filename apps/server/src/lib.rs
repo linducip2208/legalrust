@@ -13407,7 +13407,41 @@ async fn password_change(
         .set_password(&u.claims.sub, &hash)
         .await
         .map_err(map_store)?;
-    Ok(Json(json!({"changed": true})))
+    // Rotation (F-D22-004): a password change revokes every other session so
+    // stolen tokens die with the old credential. The current session survives.
+    let mut rotated_out = 0i64;
+    for sess in s
+        .stores
+        .users
+        .list_sessions(&u.claims.sub)
+        .await
+        .map_err(map_store)?
+    {
+        if sess.id != u.claims.sid && !sess.revoked {
+            s.stores
+                .users
+                .revoke_session(&sess.id)
+                .await
+                .map_err(map_store)?;
+            rotated_out += 1;
+        }
+    }
+    audit(
+        &s.pool,
+        &s.stores,
+        AuditEvent {
+            tenant_id: u.claims.org.clone(),
+            actor_id: Some(u.claims.sub.clone()),
+            action: "user.password_rotated".into(),
+            entity: "user".into(),
+            entity_id: 0,
+            ip: None,
+        },
+    )
+    .await;
+    Ok(Json(
+        json!({"changed": true, "sessions_revoked": rotated_out}),
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -26902,6 +26936,10 @@ pub fn build_router(state: FullState) -> Router {
         .layer(SetResponseHeaderLayer::if_not_present(
             HeaderName::from_static("strict-transport-security"),
             HeaderValue::from_static("max-age=63072000; includeSubDomains"),
+        ))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            HeaderName::from_static("permissions-policy"),
+            HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
         ))
         .with_state(state)
 }

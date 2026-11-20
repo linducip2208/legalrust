@@ -870,3 +870,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 203: user offboarding (main)
 - Offboard peralihan peran/sesi/token + audit + UI; uji + needle.
 - F-D16-029 PARTIAL->IMPLEMENTED (~73.6 verified). Workspace 522/0; clippy clean; tanpa migrasi.
+
+## Done wave 204: session rotation + security headers (main)
+- Rotasi sesi + Permissions-Policy + tes; flake tripay didokumentasikan.
+- F-D22-018/004 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 524/0; clippy clean; tanpa migrasi.

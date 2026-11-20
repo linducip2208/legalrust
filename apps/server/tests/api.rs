@@ -25744,6 +25744,100 @@ async fn uib_app_has_doc_verify_ui() {
 }
 
 #[tokio::test]
+async fn security_headers_baseline_present() {
+    use tower::ServiceExt;
+    let a = app();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/healthz")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let h = res.headers();
+    for (k, v) in [
+        ("x-content-type-options", "nosniff"),
+        ("x-frame-options", "DENY"),
+        ("referrer-policy", "strict-origin-when-cross-origin"),
+        ("content-security-policy", "default-src 'self'"),
+        (
+            "strict-transport-security",
+            "max-age=63072000; includeSubDomains",
+        ),
+        (
+            "permissions-policy",
+            "camera=(), microphone=(), geolocation=()",
+        ),
+    ] {
+        assert_eq!(
+            h.get(k).and_then(|x| x.to_str().ok()),
+            Some(v),
+            "header {k}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn password_change_rotates_other_sessions() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok1 = reg(&a, "rot@x.id").await;
+    // Second session via login.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/login",
+            r#"{"email":"rot@x.id","password":"password1-2-3"}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tok2 = body_json(res).await["token"].as_str().unwrap().to_string();
+    assert_ne!(tok1, tok2);
+    // Change password on session 2: session 1 dies, session 2 survives.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/password",
+            r#"{"current_password":"password1-2-3","new_password":"password4-5-6-xyz"}"#,
+            Some(&tok2),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await["sessions_revoked"].as_i64().unwrap() >= 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &tok1))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &tok2))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Rotation audited.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=user", &tok2))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "user.password_rotated"));
+}
+
+#[tokio::test]
 async fn kpi_deeds_compare_counts_and_guards() {
     use tower::ServiceExt;
     let a = app();

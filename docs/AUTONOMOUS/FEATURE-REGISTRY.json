@@ -9319,12 +9319,12 @@
   "id": "F-D22-004",
   "domain": "D22",
   "title": "Session timeout & rotation",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:229 register; :264 login/logout; sessions JWT revocable",
-   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked (brute-force shield)",
-   "migrations/0001_foundation.sql: users, sessions"
-  ]
+   "password_change revokes every other session (rotation), keeps current; audit user.password_rotated + sessions_revoked count",
+   "tests: two-session rotation (old 401, current 200) + audit trail"
+  ],
+  "audit_note": "Wave 204: PARTIAL->IMPLEMENTED (sliding refresh out of scope; absolute 8h exp + rotation on credential change)."
  },
  {
   "id": "F-D22-005",
@@ -9454,11 +9454,11 @@
   "id": "F-D22-018",
   "domain": "D22",
   "title": "Security headers baseline",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:42 RateLimiter; :108 login_locked; validation guards",
-   "apps/server/src/lib.rs:1950 CSP-safe templates; honest-status disclosures in landing"
-  ]
+   "tower SetResponseHeaderLayer: nosniff/DENY/referrer/CSP/HSTS + permissions-policy baru; test asserts 6 headers on /healthz"
+  ],
+  "audit_note": "Wave 204: PARTIAL->IMPLEMENTED via baseline completion + test."
  },
  {
   "id": "F-D22-019",
