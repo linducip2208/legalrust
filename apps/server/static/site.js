@@ -3326,6 +3326,33 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('mpipe-msg', 'Buka ' + ((v.counts && v.counts.open) || 0) + ' | Tahan ' + ((v.counts && v.counts.on_hold) || 0) + ' | Tutup ' + ((v.counts && v.counts.closed) || 0));
   }
   on('mpipe-go', 'click', mpipeRefresh);
+  /* ---- matter insights (F-D03-032/038/039) ---- */
+  async function minsRefresh() {
+    var msg = 'mins-msg';
+    var days = parseInt(pval('mins-days'), 10);
+    if (!(days >= 1)) days = 7;
+    var d = await j('/api/v1/matters/dashboard');
+    if (d) {
+      document.getElementById('mins-out').innerHTML =
+        '<tr><td>Total perkara</td><td>' + esc(d.matters_total) + '</td></tr>'
+        + '<tr><td>Tugas terbuka / telat</td><td>' + esc(d.tasks_open) + ' / ' + esc(d.tasks_overdue) + '</td></tr>'
+        + '<tr><td>Milestone 7 hari</td><td>' + esc(d.milestones_due_7d) + '</td></tr>';
+    } else { pmsg(msg, 'Dasbor gagal dimuat.'); }
+    var p = await j('/api/v1/matters/profitability');
+    if (p) {
+      document.getElementById('mins-prof').innerHTML = p.map(function (r) {
+        return '<tr><td>' + esc(r.title) + '</td><td>' + esc(r.budget) + '</td><td>' + esc(r.spent) + '</td><td>' + esc(r.remaining) + '</td><td>' + esc(r.minutes_logged) + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada data.</td></tr>';
+    }
+    var s = await j('/api/v1/matters/sla-alerts?days=' + days);
+    if (s) {
+      document.getElementById('mins-sla').innerHTML = (s.items || []).map(function (x) {
+        return '<tr><td>' + esc(x.due) + '</td><td>' + esc(x.kind) + ' #' + x.ref_id + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.severity) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada siaga.</td></tr>';
+      pmsg(msg, '');
+    } else { pmsg(msg, 'Gagal memuat siaga SLA.'); }
+  }
+  on('mins-go', 'click', minsRefresh);
   /* ---- timesheet (F-D03-013/015) ---- */
   var TEN_NEXT = { draft: 'submitted', submitted: 'approved', rejected: 'draft' };
   async function tenRefresh() {

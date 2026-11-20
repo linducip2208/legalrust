@@ -704,3 +704,8 @@
 ## 2026-11-20 AUDIT-1000 wave 185: timer capture (main)
 - Migrasi 0117 (matter_timers + indeks user-aktif); MatterTimerRow; OpsStore::tmr_start/active/stop (memory+mysql, guard 1-aktif/user, stop hitung menit ceil + clamp 960); 3 endpoint + audit timer.stopped; kartu /app + JS; tes matter_timer_capture + needle.
 - Workspace 483 passed, 0 failed; fmt+clippy+node clean; F-D03-014 NOT_STARTED->IMPLEMENTED (~72.2 verified).
+
+## 2026-11-20 AUDIT-1000 wave 186: matter insights dashboard + profitability + SLA alerts (main)
+- Tanpa migrasi (read-only di atas list_matters/list_tasks/mms_list/bdg_list/mxp_list/ten_list): GET /api/v1/matters/dashboard (KPI firm-wide), /profitability (budget/spent/remaining/menit per perkara), /sla-alerts?days= (item breached/due_soon, clamp 1..90); kartu /app Wawasan + JS; tes matter_insights_dashboard_profitability_sla + needle.
+- Merge cabang paralel w185-insights (konflik body raksasa -> ambil HEAD + pasang ulang; uji terjalin -> rekonstruksi dari HEAD + test murni); artefak encoding dikembalikan persis.
+- Workspace 485 passed, 0 failed; fmt+clippy+node clean; F-D03-032/038 NOT_STARTED->IMPLEMENTED, F-D03-039 PARTIAL->IMPLEMENTED (~72.8 verified).

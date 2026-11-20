@@ -586,3 +586,7 @@
 ## 2026-11-20 AUDIT-1000 wave 185: timer capture (main)
 - Workspace 483 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
 - Live MySQL: verifikasi 117 menyusul (rebuild target-ui5 + relaunch + migrate).
+
+## 2026-11-20 AUDIT-1000 wave 186: merge w185-insights (main)
+- Workspace 485 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL legalrust_wave186: migrate 117/117 + register PASS; timer start/active(200+started_at)/stop(entry)/dashboard/profit/pipeline/sla verified; /app needles OK.

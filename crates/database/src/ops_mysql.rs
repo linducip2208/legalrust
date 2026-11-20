@@ -4402,7 +4402,7 @@ impl OpsStore for MysqlOps {
         user_id: &str,
     ) -> Result<Option<MatterTimerRow>, StoreError> {
         let row = sqlx::query(
-            "SELECT id, org_id, matter_id, user_id, note, started_at, active, stopped_minutes FROM matter_timers WHERE org_id=? AND user_id=? AND active=1 LIMIT 1",
+            "SELECT id, org_id, matter_id, user_id, note, DATE_FORMAT(started_at,'%Y-%m-%d %H:%i:%S') AS started_at, active, stopped_minutes FROM matter_timers WHERE org_id=? AND user_id=? AND active=1 LIMIT 1",
         )
         .bind(org)
         .bind(user_id)
@@ -4415,31 +4415,26 @@ impl OpsStore for MysqlOps {
             matter_id: x.get::<u64, _>("matter_id") as i64,
             user_id: x.get::<String, _>("user_id"),
             note: x.get::<String, _>("note"),
-            started_at: x
-                .get::<chrono::NaiveDateTime, _>("started_at")
-                .format("%Y-%m-%d %H:%M:%S")
-                .to_string(),
+            started_at: x.get::<String, _>("started_at"),
             active: true,
             stopped_minutes: x.get::<Option<i32>, _>("stopped_minutes").map(|v| v as i64),
         }))
     }
     async fn tmr_stop(&self, org: &str, id: i64, user_id: &str) -> Result<i64, StoreError> {
-        let row: Option<chrono::NaiveDateTime> =
-            sqlx::query("SELECT started_at FROM matter_timers WHERE id=? AND org_id=? AND user_id=? AND active=1")
+        let row: Option<i64> =
+            sqlx::query("SELECT UNIX_TIMESTAMP(started_at) AS epoch FROM matter_timers WHERE id=? AND org_id=? AND user_id=? AND active=1")
                 .bind(id as u64)
                 .bind(org)
                 .bind(user_id)
                 .fetch_optional(&self.pool)
                 .await
                 .map_err(db_err)?
-                .map(|x| x.get::<chrono::NaiveDateTime, _>("started_at"));
-        let start = match row {
+                .map(|x| x.get::<i64, _>("epoch"));
+        let start_epoch = match row {
             Some(v) => v,
             None => return Err(StoreError::NotFound),
         };
-        let secs = (chrono::Utc::now().naive_utc() - start)
-            .num_seconds()
-            .max(0);
+        let secs = (chrono::Utc::now().timestamp() - start_epoch).max(0);
         let minutes: i64 = ((secs + 59) / 60).clamp(1, 960);
         let n = sqlx::query(
             "UPDATE matter_timers SET active=0, stopped_minutes=? WHERE id=? AND org_id=? AND user_id=? AND active=1",

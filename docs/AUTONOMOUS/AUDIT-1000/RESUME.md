@@ -791,4 +791,9 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 
 ## Done wave 185: timer capture (main)
 - Migrasi 0117 (matter_timers); OpsStore tmr_* (memory+mysql, 1 aktif/user, stop->menit clamp 1-960); 3 endpoint (start/active/stop memposting entri draft + audit); kartu /app timer; uji capture + needle.
-- F-D03-014 NOT_STARTED->IMPLEMENTED (~72.2 verified). Workspace 483/0; clippy clean; live 117 pending.
+- F-D03-014 NOT_STARTED->IMPLEMENTED (~72.2 verified). Workspace 483/0; clippy clean; live 117/117 + register PASS (legalrust_wave185; timer stop POSTED entry + needles OK).
+
+## Done wave 186: insights dashboard + profitability + SLA alerts (merge w185-insights)
+- Tanpa migrasi (read-only): GET /api/v1/matters/dashboard + /profitability + /sla-alerts?days= (clamp 1..90); kartu /app Wawasan; uji KPI/profit/SLA + needle.
+- Merge-conflict repair: api.rs timer/insights interleave direkonstruksi dari HEAD + w185-insights; lib.rs/site.js automerge OK.
+- F-D03-032/038 NOT_STARTED->IMPLEMENTED, F-D03-039 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 485/0; clippy clean; live 117/117 + register PASS (legalrust_wave186; timer start/active/stop + dashboard/profit/pipeline/sla verified).
