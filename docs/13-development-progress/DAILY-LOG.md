@@ -740,3 +740,7 @@
 - Migrasi 0121 (visibility open|team + CHECK); MatterRow + set_matter_visibility (memory+MySQL); helper visible_matter/visible_matters (team + privileged SuperAdmin/OrgOwner/OfficeAdmin/Auditor, 404 anti-bocor); enforcement di 23 read/write per-perkara + filter list + 15 agregat + tree; endpoint visibility + audit + toggle /app + JS.
 - Batas jujur: portal client flows, conflict_check, dan doc/direct-read tetap model lama (follow-up); default open = nol regresi.
 - Workspace 493 passed, 0 failed; fmt+clippy+node clean; F-D03-034 PARTIAL->IMPLEMENTED (~72.2 verified); live MySQL 121/121 drill PASS (legalrust_wave191, visibility default open).
+
+## 2026-11-20 AUDIT-1000 wave 193: KPI dashboards (main, merge w193-kpi)
+- Tanpa migrasi: GET /api/v1/kpi/matters|finance|staff (View, read-only rollups) + kartu /app KPI + JS; tes math/guards + needle. Merge bersih.
+- Workspace 499 passed, 0 failed; fmt+clippy+node clean; F-D20-007/008 NOT_STARTED->IMPLEMENTED, F-D20-015 NOT_STARTED->IMPLEMENTED (~72.8 verified).

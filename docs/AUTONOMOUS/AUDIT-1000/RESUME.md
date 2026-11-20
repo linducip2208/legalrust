@@ -826,3 +826,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 191: matter access control (main, merge w190-access)
 - Visibility open|team + team-gated reads (23 situs), filter list/agregat/tree, endpoint + audit + UI; uji lifecycle/gating/bypass/member.
 - F-D03-034 PARTIAL->IMPLEMENTED (~72.2 verified). Workspace 493/0; clippy clean. Live 121/121 PASS (legalrust_wave191).
+
+## Done wave 193: KPI dashboards (main, merge w193-kpi)
+- KPI perkara/keuangan/staf + kartu /app + JS; uji math/guards/needle.
+- F-D20-007/008/015 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 499/0; clippy clean; tanpa migrasi.

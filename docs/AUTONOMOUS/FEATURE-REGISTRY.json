@@ -8559,19 +8559,23 @@
   "id": "F-D20-007",
   "domain": "D20",
   "title": "Matter KPI dashboard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/matters (View): totals, by_status, by_priority, open/overdue tasks, matters_without_team over visible_matters",
+   "lib.rs: kpi_matters + kartu /app KPI firma + JS; tests: KPIs carry seeded matter + 401 guards"
+  ],
+  "audit_note": "Wave 193: read-only rollups; no migration."
  },
  {
   "id": "F-D20-008",
   "domain": "D20",
   "title": "Financial KPI dashboard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/finance (View): billed/collected/outstanding (inv_list+inv_get paid math), open_invoices, trust_accounts+balance (trust_list)",
+   "tests: billed/collected/outstanding math asserted in kpi_dashboards_rollup"
+  ],
+  "audit_note": "Wave 193: read-only; no migration."
  },
  {
   "id": "F-D20-009",
@@ -8653,10 +8657,12 @@
   "id": "F-D20-015",
   "domain": "D20",
   "title": "Staff utilization report",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/staff (View): minutes per user (ten_list) + open tasks per assignee (task_board), sorted by minutes",
+   "tests: ani/120min surfaced in kpi_dashboards_rollup"
+  ],
+  "audit_note": "Wave 193: read-only; no migration."
  },
  {
   "id": "F-D20-016",
