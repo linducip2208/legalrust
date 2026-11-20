@@ -539,6 +539,33 @@ impl OpsStore for MysqlOps {
             x.try_get::<i64, _>("o").unwrap_or(0),
         ))
     }
+    async fn ai_stats(&self, org: &str) -> Result<(i64, i64, i64), StoreError> {
+        let c: i64 = sqlx::query("SELECT COUNT(*) AS n FROM ai_conversations WHERE org_id=?")
+            .bind(org)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(db_err)?
+            .try_get::<i64, _>("n")
+            .unwrap_or(0);
+        let rows = sqlx::query(
+            "SELECT m.role AS role, COUNT(*) AS n FROM ai_messages m JOIN ai_conversations c ON c.id=m.conv_id WHERE c.org_id=? GROUP BY m.role",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        let mut user = 0i64;
+        let mut asst = 0i64;
+        for x in rows {
+            let n: i64 = x.try_get::<i64, _>("n").unwrap_or(0);
+            if x.try_get::<String, _>("role").unwrap_or_default() == "assistant" {
+                asst += n;
+            } else {
+                user += n;
+            }
+        }
+        Ok((c, user, asst))
+    }
     async fn rag_put(&self, doc: i64, chunks: &[String]) -> Result<(), StoreError> {
         let mut tx = self.pool.begin().await.map_err(db_err)?;
         sqlx::query("DELETE FROM rag_chunks WHERE doc_id=?")

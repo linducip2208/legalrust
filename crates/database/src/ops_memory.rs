@@ -732,6 +732,28 @@ impl OpsStore for MemoryOps {
             .push((role.into(), content.into()));
         Ok(())
     }
+    async fn ai_stats(&self, org: &str) -> Result<(i64, i64, i64), StoreError> {
+        let m = self.inner.lock().unwrap();
+        let mut convs = 0i64;
+        let mut user = 0i64;
+        let mut asst = 0i64;
+        for (id, o) in m.convs.iter() {
+            if o != org {
+                continue;
+            }
+            convs += 1;
+            if let Some(v) = m.msgs.get(id) {
+                for (role, _) in v {
+                    if role == "assistant" {
+                        asst += 1;
+                    } else {
+                        user += 1;
+                    }
+                }
+            }
+        }
+        Ok((convs, user, asst))
+    }
     async fn usage_add(&self, org: &str, input: i64, output: i64) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();
         let e = m.usage.entry(org.into()).or_insert((0, 0));
