@@ -183,6 +183,13 @@ pub trait CoreStore: Send + Sync {
         id: i64,
         area: &str,
     ) -> Result<MatterRow, StoreError>;
+    /// Status lifecycle: open->on_hold->open|closed, open->closed. Closed is terminal.
+    async fn set_matter_status(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError>;
     async fn update_client(
         &self,
         org: &str,

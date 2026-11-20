@@ -35,7 +35,10 @@
 ## 2026-11-19 AUDIT-1000 wave 136: redaksi + segregasi (main)
 - Mask versions + linkage + guards; workspace **424 passed, 0 failed**.
 
-## 2026-11-19 AUDIT-1000 wave 177: timesheet + approval (main)
+## 2026-11-19 AUDIT-1000 wave 178: hold + reopen perkara (main)
+- Terminal closed + audit; workspace **470 passed, 0 failed**.
+
+## 2026-11-20 AUDIT-1000 wave 177: timesheet + approval (main)
 - Status chain + guards; workspace **467 passed, 0 failed**.
 
 ## 2026-11-20 AUDIT-1000 wave 176: kanban + ICS (main)

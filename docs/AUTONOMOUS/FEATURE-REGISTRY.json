@@ -1212,19 +1212,25 @@
   "id": "F-D03-028",
   "domain": "D03",
   "title": "Matter hold / suspension",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "store.rs + memory.rs + mysql.rs: set_matter_status (open->on_hold, terminal closed)",
+   "lib.rs: POST /matters/{id}/status (RBAC, 404/409, audited matter.status.*)",
+   "site.js: status control (mcla card, klien panel)",
+   "tests: matter_hold_and_reopen e2e (403/404/409, terminal closed, audit, 401)"
+  ],
+  "audit_note": "Wave 178: matter hold live. Verified by test (470/0)."
  },
  {
   "id": "F-D03-029",
   "domain": "D03",
   "title": "Matter reopen workflow",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "Same set_matter_status chain: on_hold->open reopen asserted",
+   "tests: reopen + terminal-closed rejection asserted"
+  ],
+  "audit_note": "Wave 178: matter reopen live. Verified by test (470/0)."
  },
  {
   "id": "F-D03-030",

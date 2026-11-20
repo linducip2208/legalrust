@@ -5706,6 +5706,8 @@ async fn crm_app_contains_crm_ids() {
         "ten-mid",
         "ten-add",
         "ten-list",
+        "mcla-status",
+        "mcla-status-save",
         "ptl-token",
         "ptl-login",
         "ptl-me",
@@ -11791,6 +11793,93 @@ async fn conflict_register_log_and_list() {
             Request::builder()
                 .uri("/api/v1/conflicts/register")
                 .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn matter_hold_and_reopen() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mhold@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    // Update-gated; ghost 404s; bad value 409s.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/status"),
+            r#"{"status":"on_hold"}"#,
+            Some(&auditor),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/999999/status",
+            r#"{"status":"on_hold"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/status"),
+            r#"{"status":"archived"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // open->on_hold->open (reopen); on_hold->closed; closed is terminal.
+    for st in ["on_hold", "open", "on_hold", "closed"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/matters/{mid}/status"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "matter to {st}");
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/status"),
+            r#"{"status":"open"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=matter", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "matter.status.closed"));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matters/{mid}/status"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"status":"open"}"#))
                 .unwrap(),
         )
         .await
@@ -22428,4 +22517,218 @@ async fn uib_app_has_approvals_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
     assert!(t.contains("data-tab=\"appr\""), "missing appr tab link");
+}
+
+#[tokio::test]
+async fn budgets_expenses_and_cost_summary() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "bdg@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MBDG"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Negative budget rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/budgets",
+            &format!(r#"{{"matter_id":{mid},"category":"jasa","amount":-5}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Set + upsert same category (one row, latest amount).
+    for amt in [1_000_000i64, 1_500_000] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/budgets",
+                &format!(r#"{{"matter_id":{mid},"category":"jasa","amount":{amt}}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/budgets",
+            &format!(r#"{{"matter_id":{mid},"category":"PNBP","amount":500000}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/budgets?matter_id={mid}"), &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    let arr = rows.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert!(arr
+        .iter()
+        .any(|r| r["category"] == "jasa" && r["amount"].as_i64() == Some(1_500_000)));
+    // Bad kind + zero amount rejected; ghost matter 404.
+    for (body, want) in [
+        (
+            format!(
+                r#"{{"matter_id":{mid},"entry_date":"2027-02-01","kind":"bonus","category":"jasa","amount":100}}"#
+            ),
+            StatusCode::CONFLICT,
+        ),
+        (
+            format!(
+                r#"{{"matter_id":{mid},"entry_date":"2027-02-01","kind":"expense","category":"jasa","amount":0}}"#
+            ),
+            StatusCode::CONFLICT,
+        ),
+        (
+            r#"{"matter_id":999999,"entry_date":"2027-02-01","kind":"expense","category":"jasa","amount":100}"#
+                .to_string(),
+            StatusCode::NOT_FOUND,
+        ),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/expenses", &body, Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "{body}");
+    }
+    // Expense + advance (panjar).
+    let res = a
+        .clone()
+        .oneshot(
+            post(
+                "/api/v1/expenses",
+                &format!(
+                    r#"{{"matter_id":{mid},"entry_date":"2027-02-01","kind":"expense","category":"jasa","amount":400000}}"#
+                ),
+                Some(&tok),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            post(
+                "/api/v1/expenses",
+                &format!(
+                    r#"{{"matter_id":{mid},"entry_date":"2027-02-02","kind":"advance","category":"panjar","amount":200000}}"#
+                ),
+                Some(&tok),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let eid = body_json(res).await["id"].as_i64().unwrap();
+    // Kind filter.
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/expenses?matter_id={mid}&kind=advance"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(eid)));
+    // Summary math: budget 2jt, spent 400rb, advances 200rb, sisa 1.6jt, per-line jasa 400rb/1.5jt.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/cost-summary"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let s = body_json(res).await;
+    assert_eq!(s["budget"].as_i64(), Some(2_000_000));
+    assert_eq!(s["spent"].as_i64(), Some(400_000));
+    assert_eq!(s["advances"].as_i64(), Some(200_000));
+    assert_eq!(s["remaining"].as_i64(), Some(1_600_000));
+    assert!(s["lines"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|l| l["category"] == "jasa" && l["spent"].as_i64() == Some(400_000)));
+    // Delete expense + budget; repeat delete 404.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/expenses/{eid}"))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/budgets/999999")
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matters/{mid}/cost-summary"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_budget_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "bdg-mid",
+        "bdg-cat",
+        "bdg-amt",
+        "bdg-add",
+        "bdg-reload",
+        "bdg-list",
+        "bdg-msg",
+        "mxp-mid",
+        "mxp-date",
+        "mxp-kind",
+        "mxp-add",
+        "mxp-reload",
+        "mxp-list",
+        "mxp-msg",
+        "csum-mid",
+        "csum-go",
+        "csum-out",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
 }

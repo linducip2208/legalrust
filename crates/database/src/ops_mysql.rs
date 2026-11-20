@@ -3778,6 +3778,194 @@ impl OpsStore for MysqlOps {
             .map_err(db_err)?;
         Ok(())
     }
+    async fn bdg_set(
+        &self,
+        org: &str,
+        matter_id: i64,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let category = category.trim();
+        if matter_id <= 0 || category.is_empty() || category.len() > 120 {
+            return Err(StoreError::Conflict("matter/category".into()));
+        }
+        if !(0..=9_000_000_000_000i64).contains(&amount) {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let upd = sqlx::query(
+            "UPDATE matter_budgets SET amount=?, note=? WHERE org_id=? AND matter_id=? AND category=?",
+        )
+        .bind(amount)
+        .bind(note.trim())
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(category)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        if upd.rows_affected() > 0 {
+            let id: Option<u64> = sqlx::query(
+                "SELECT id FROM matter_budgets WHERE org_id=? AND matter_id=? AND category=?",
+            )
+            .bind(org)
+            .bind(matter_id as u64)
+            .bind(category)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<u64, _>("id"));
+            return Ok(id.unwrap_or(0) as i64);
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_budgets (org_id, matter_id, category, amount, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(category)
+        .bind(amount)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn bdg_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterBudgetRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, matter_id, category, amount, note FROM matter_budgets WHERE org_id=? AND matter_id=? ORDER BY category LIMIT 500",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterBudgetRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                category: x.get::<String, _>("category"),
+                amount: x.get::<i64, _>("amount"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn bdg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_budgets WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
+    async fn mxp_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        entry_date: &str,
+        kind: &str,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let kind = kind.trim().to_lowercase();
+        if !["expense", "advance"].contains(&kind.as_str()) {
+            return Err(StoreError::Conflict("kind expense|advance".into()));
+        }
+        let category = category.trim();
+        if matter_id <= 0 || category.is_empty() || category.len() > 120 {
+            return Err(StoreError::Conflict("matter/category".into()));
+        }
+        if !(1..=9_000_000_000_000i64).contains(&amount) {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let d = entry_date.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_expenses (org_id, matter_id, entry_date, kind, category, amount, note) VALUES (?,?,?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(d)
+        .bind(kind.as_str())
+        .bind(category)
+        .bind(amount)
+        .bind(note.trim())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mxp_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+        kind: Option<String>,
+    ) -> Result<Vec<MatterExpenseRow>, StoreError> {
+        let rows = match kind.as_deref() {
+            Some(k) => sqlx::query(
+                "SELECT id, org_id, matter_id, entry_date, kind, category, amount, note FROM matter_expenses WHERE org_id=? AND matter_id=? AND kind=? ORDER BY entry_date DESC LIMIT 500",
+            )
+            .bind(org)
+            .bind(matter_id as u64)
+            .bind(k)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?,
+            None => sqlx::query(
+                "SELECT id, org_id, matter_id, entry_date, kind, category, amount, note FROM matter_expenses WHERE org_id=? AND matter_id=? ORDER BY entry_date DESC LIMIT 500",
+            )
+            .bind(org)
+            .bind(matter_id as u64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterExpenseRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                entry_date: x.get::<String, _>("entry_date"),
+                kind: x.get::<String, _>("kind"),
+                category: x.get::<String, _>("category"),
+                amount: x.get::<i64, _>("amount"),
+                note: x.get::<String, _>("note"),
+            })
+            .collect())
+    }
+    async fn mxp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_expenses WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM time_entries WHERE id=? AND org_id=?")
             .bind(id as u64)

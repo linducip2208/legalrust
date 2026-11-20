@@ -420,6 +420,28 @@ pub struct TimeEntryRow {
     pub note: String,
     pub status: String,
 }
+/// Matter budget line (per category, amount in minor units, >= 0).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterBudgetRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub category: String,
+    pub amount: i64,
+    pub note: String,
+}
+/// Matter expense / advance (panjar). kind in (expense, advance); amount > 0.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterExpenseRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub entry_date: String,
+    pub kind: String,
+    pub category: String,
+    pub amount: i64,
+    pub note: String,
+}
 /// Matter milestone (dated, flaggable done).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatterMilestoneRow {
@@ -2400,6 +2422,36 @@ pub trait OpsStore: Send + Sync {
     ) -> Result<Vec<TimeEntryRow>, StoreError>;
     async fn ten_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Matter budgets (per-category caps) + expenses/advances + summary.
+    async fn bdg_set(
+        &self,
+        org: &str,
+        matter_id: i64,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn bdg_list(&self, org: &str, matter_id: i64)
+        -> Result<Vec<MatterBudgetRow>, StoreError>;
+    async fn bdg_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    #[allow(clippy::too_many_arguments)]
+    async fn mxp_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        entry_date: &str,
+        kind: &str,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mxp_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+        kind: Option<String>,
+    ) -> Result<Vec<MatterExpenseRow>, StoreError>;
+    async fn mxp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

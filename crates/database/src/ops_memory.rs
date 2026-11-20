@@ -155,6 +155,8 @@ struct Inner {
     mms: HashMap<i64, MatterMilestoneRow>,
     mlinks: HashMap<i64, MatterLinkRow>,
     tens: HashMap<i64, TimeEntryRow>,
+    mbgs: HashMap<i64, MatterBudgetRow>,
+    mxps: HashMap<i64, MatterExpenseRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -4073,6 +4075,152 @@ impl OpsStore for MemoryOps {
         match m.tens.get(&id) {
             Some(r) if r.org == org => {
                 m.tens.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn bdg_set(
+        &self,
+        org: &str,
+        matter_id: i64,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let category = category.trim();
+        if matter_id <= 0 || category.is_empty() || category.len() > 120 {
+            return Err(StoreError::Conflict("matter/category".into()));
+        }
+        if !(0..=9_000_000_000_000i64).contains(&amount) {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, r)) = m
+            .mbgs
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.matter_id == matter_id && r.category == category)
+        {
+            r.amount = amount;
+            r.note = note.trim().into();
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.mbgs.insert(
+            id,
+            MatterBudgetRow {
+                id,
+                org: org.into(),
+                matter_id,
+                category: category.into(),
+                amount,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn bdg_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterBudgetRow>, StoreError> {
+        let mut v: Vec<MatterBudgetRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mbgs
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.category.cmp(&b.category));
+        Ok(v)
+    }
+    async fn bdg_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mbgs.get(&id) {
+            Some(r) if r.org == org => {
+                m.mbgs.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn mxp_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        entry_date: &str,
+        kind: &str,
+        category: &str,
+        amount: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let kind = kind.trim().to_lowercase();
+        if !["expense", "advance"].contains(&kind.as_str()) {
+            return Err(StoreError::Conflict("kind expense|advance".into()));
+        }
+        let category = category.trim();
+        if matter_id <= 0 || category.is_empty() || category.len() > 120 {
+            return Err(StoreError::Conflict("matter/category".into()));
+        }
+        if !(1..=9_000_000_000_000i64).contains(&amount) {
+            return Err(StoreError::Conflict("amount".into()));
+        }
+        if note.len() > 500 {
+            return Err(StoreError::Conflict("note".into()));
+        }
+        let d = entry_date.trim();
+        if d.len() != 10 || d.as_bytes()[4] != b'-' {
+            return Err(StoreError::Conflict("date YYYY-MM-DD".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mxps.insert(
+            id,
+            MatterExpenseRow {
+                id,
+                org: org.into(),
+                matter_id,
+                entry_date: d.into(),
+                kind,
+                category: category.into(),
+                amount,
+                note: note.trim().into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn mxp_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+        kind: Option<String>,
+    ) -> Result<Vec<MatterExpenseRow>, StoreError> {
+        let mut v: Vec<MatterExpenseRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mxps
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && r.matter_id == matter_id
+                    && kind.as_ref().map(|k| &r.kind == k).unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| b.entry_date.cmp(&a.entry_date));
+        Ok(v)
+    }
+    async fn mxp_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mxps.get(&id) {
+            Some(r) if r.org == org => {
+                m.mxps.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

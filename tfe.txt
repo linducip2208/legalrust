@@ -1,0 +1,60 @@
+cargo :    Compiling legalrust-reporting v0.1.0 (D:\project laravel\legalrust\crates\reporting)
+At line:1 char:1
++ cargo test --workspace 2>test_full_err.txt | tail -n 25
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (   Compiling le...ates\reporting):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling legalrust-application v0.1.0 (D:\project laravel\legalrust\crates\application)
+   Compiling legalrust-database v0.1.0 (D:\project laravel\legalrust\crates\database)
+   Compiling legalrust-storage v0.1.0 (D:\project laravel\legalrust\crates\storage)
+   Compiling legalrust-ai v0.1.0 (D:\project laravel\legalrust\crates\ai)
+   Compiling legalrust-ocr v0.1.0 (D:\project laravel\legalrust\crates\ocr)
+   Compiling legalrust-integrations v0.1.0 (D:\project laravel\legalrust\crates\integrations)
+   Compiling legalrust-auth v0.1.0 (D:\project laravel\legalrust\crates\auth)
+   Compiling legalrust-server v0.1.0 (D:\project laravel\legalrust\apps\server)
+   Compiling legalrust-worker v0.1.0 (D:\project laravel\legalrust\apps\worker)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 42s
+     Running unittests src\lib.rs (target\debug\deps\legalrust_ai-e2c789a24c146020.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_application-fe8e045d8cc4b511.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_audit-3911d136169dece2.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_auth-05ff3ba97b91af94.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_authorization-31eef2566038a674.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_database-5ac305c5d7d44780.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_document-5ed4521cc405d1af.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_domain-f8180a6a21d8e5bf.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_infrastructure-bb89e4bf8cb6f417.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_integrations-3a37cd4384846746.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_mobile-16dd080acb638b4a.exe)
+     Running unittests src\main.rs (target\debug\deps\legalrust_mobile-bc381d335b48fba9.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_notification-98a5200d3459362c.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_ocr-091f7feef617c1b2.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_rag-4605605fa022cd58.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_reporting-b9de555644f6c6ac.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_server-04c764194458852a.exe)
+     Running unittests src\main.rs (target\debug\deps\legalrust_server-d2a4eb9a01a11015.exe)
+     Running tests\api.rs (target\debug\deps\api-b03d59650ea14318.exe)
+     Running tests\api_db.rs (target\debug\deps\api_db-b3b525545b8a83f5.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_storage-f0d0a74bf50f6976.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_web-751b1f5ceff0a1f8.exe)
+     Running unittests src\main.rs (target\debug\deps\legalrust_worker-4868d83321dfb823.exe)
+     Running unittests src\lib.rs (target\debug\deps\legalrust_workflow-250b96958ba55a0f.exe)
+   Doc-tests legalrust_ai
+   Doc-tests legalrust_application
+   Doc-tests legalrust_audit
+   Doc-tests legalrust_auth
+   Doc-tests legalrust_authorization
+   Doc-tests legalrust_database
+   Doc-tests legalrust_document
+   Doc-tests legalrust_domain
+   Doc-tests legalrust_infrastructure
+   Doc-tests legalrust_integrations
+   Doc-tests legalrust_mobile
+   Doc-tests legalrust_notification
+   Doc-tests legalrust_ocr
+   Doc-tests legalrust_rag
+   Doc-tests legalrust_reporting
+   Doc-tests legalrust_server
+   Doc-tests legalrust_storage
+   Doc-tests legalrust_web
+   Doc-tests legalrust_workflow

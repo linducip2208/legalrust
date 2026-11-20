@@ -419,6 +419,32 @@ impl CoreStore for MemoryStores {
         r.practice_area = area;
         Ok(r.clone())
     }
+    async fn set_matter_status(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["open", "on_hold", "closed"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        let ok = matches!(
+            (r.status.as_str(), to.as_str()),
+            ("open", "on_hold") | ("on_hold", "open") | ("open", "closed") | ("on_hold", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        r.status = to;
+        Ok(r.clone())
+    }
     async fn create_task(
         &self,
         org: &str,

@@ -474,6 +474,43 @@ impl CoreStore for MysqlStores {
             .map_err(db_err)?;
         self.get_matter(org, id).await
     }
+    async fn set_matter_status(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["open", "on_hold", "closed"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let cur: Option<String> = sqlx::query("SELECT status FROM matters WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|x| x.get::<String, _>("status"));
+        let cur = match cur {
+            Some(v) => v,
+            None => return Err(StoreError::NotFound),
+        };
+        let ok = matches!(
+            (cur.as_str(), to.as_str()),
+            ("open", "on_hold") | ("on_hold", "open") | ("open", "closed") | ("on_hold", "closed")
+        );
+        if !ok {
+            return Err(StoreError::Conflict("bad transition".into()));
+        }
+        sqlx::query("UPDATE matters SET status=? WHERE id=? AND org_id=?")
+            .bind(&to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.get_matter(org, id).await
+    }
     async fn update_client(
         &self,
         org: &str,

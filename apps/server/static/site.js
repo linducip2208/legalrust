@@ -3194,6 +3194,12 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('mcla-msg', 'Gagal (' + r.status + ').'); return; }
     pmsg('mcla-msg', '');
   });
+  on('mcla-status-save', 'click', async function () {
+    if (!pval('mcla-mid')) { pmsg('mcla-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcla-mid')) + '/status', { status: pval('mcla-status') || 'open' });
+    if (!r.ok) { pmsg('mcla-msg', 'Gagal (' + r.status + '). Transisi tak valid?'); return; }
+    pmsg('mcla-msg', '');
+  });
   on('mcla-link', 'click', async function () {
     if (!pval('mcla-mid') || !pval('mcla-other')) { pmsg('mcla-msg', 'Isi kedua ID perkara.'); return; }
     var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcla-mid')) + '/links', { other_id: +pval('mcla-other'), relation: 'related' });
@@ -3347,6 +3353,65 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     tenRefresh();
   });
   on('ten-reload', 'click', tenRefresh);
+/* ---- budgets + expenses/panjar (F-D03-016/017/018) ---- */
+  async function bdgRefresh() {
+    var box = document.getElementById('bdg-list');
+    if (!box) return;
+    if (!pval('bdg-mid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/budgets?matter_id=' + encodeURIComponent(pval('bdg-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.category) + '</td><td>' + esc(x.amount) + '</td><td><button class="btn btn-sm" data-bdg-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada anggaran.</td></tr>';
+    qsa('[data-bdg-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/budgets/' + b.getAttribute('data-bdg-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('bdg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('bdg-msg', ''); bdgRefresh();
+      });
+    });
+  }
+  on('bdg-add', 'click', async function () {
+    var r = await ppost('/api/v1/budgets', { matter_id: +pval('bdg-mid'), category: pval('bdg-cat'), amount: +pval('bdg-amt'), note: pval('bdg-note') });
+    if (!r.ok) { pmsg('bdg-msg', 'Gagal (' + r.status + '). Kategori/nominal?'); return; }
+    pmsg('bdg-msg', ''); bdgRefresh();
+  });
+  on('bdg-reload', 'click', bdgRefresh);
+  async function mxpRefresh() {
+    var box = document.getElementById('mxp-list');
+    if (!box) return;
+    if (!pval('mxp-mid')) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var qs = 'matter_id=' + encodeURIComponent(pval('mxp-mid'));
+    if (pval('mxp-filter')) qs += '&kind=' + encodeURIComponent(pval('mxp-filter'));
+    var v = await j('/api/v1/expenses?' + qs);
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.entry_date) + '</td><td>' + esc(x.kind) + '</td><td>' + esc(x.category) + '</td><td>' + esc(x.amount) + '</td><td><button class="btn btn-sm" data-mxp-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada biaya.</td></tr>';
+    qsa('[data-mxp-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/expenses/' + b.getAttribute('data-mxp-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mxp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mxp-msg', ''); mxpRefresh();
+      });
+    });
+  }
+  on('mxp-add', 'click', async function () {
+    var r = await ppost('/api/v1/expenses', { matter_id: +pval('mxp-mid'), entry_date: pval('mxp-date'), kind: pval('mxp-kind'), category: pval('mxp-cat'), amount: +pval('mxp-amt'), note: pval('mxp-note') });
+    if (!r.ok) { pmsg('mxp-msg', 'Gagal (' + r.status + '). Tanggal/jenis/nominal?'); return; }
+    pmsg('mxp-msg', ''); mxpRefresh();
+  });
+  on('mxp-reload', 'click', mxpRefresh);
+  on('csum-go', 'click', async function () {
+    var out = document.getElementById('csum-out');
+    if (!pval('csum-mid')) { pmsg('csum-msg', 'Isi ID perkara.'); return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(pval('csum-mid')) + '/cost-summary');
+    if (!v) { pmsg('csum-msg', 'Gagal memuat.'); return; }
+    pmsg('csum-msg', '');
+    out.innerHTML = 'Anggaran ' + esc(v.budget) + ' | Terpakai ' + esc(v.spent) + ' | Panjar ' + esc(v.advances) + ' | Sisa ' + esc(v.remaining)
+      + (v.lines || []).map(function (l) { return '<div>' + esc(l.category) + ': ' + esc(l.spent) + '/' + esc(l.budget) + '</div>'; }).join('');
+  });
+
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');
