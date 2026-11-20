@@ -7139,14 +7139,13 @@
   "id": "F-D16-029",
   "domain": "D16",
   "title": "Permission-change audit",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
-   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events",
-   "apps/server/src/lib.rs: user_assign_role audits user.role_assigned:{role}; entity=user trail test"
+   "UserStore::clear_roles + revoke_user_sessions (memory+MySQL, org-checked, counts returned)",
+   "POST /api/v1/users/{uid}/offboard (Assign): clears roles, revokes sessions+tokens, blocks self, audit user.offboarded:roles=x,sessions=y,tokens=z",
+   "UI offboard button + confirm; tests: full offboard cycle + self/unknown/forbidden guards + needle"
   ],
-  "audit_note": " Wave 23: role-change audit live; stays PARTIAL (no review/offboarding UI)."
+  "audit_note": "Wave 203: PARTIAL->IMPLEMENTED (review trail existed; offboarding flow new)."
  },
  {
   "id": "F-D16-030",

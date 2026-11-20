@@ -781,3 +781,7 @@
 ## 2026-11-20 AUDIT-1000 wave 202: deeds compare JSON (main)
 - GET /api/v1/kpi/deeds-compare (View, guard tanggal, delta per tipe + mode jendela tunggal); /app flow line + tes.
 - Workspace 521 passed, 0 failed; fmt+clippy+node clean; F-D20-024 PARTIAL->IMPLEMENTED (~72.8 verified); tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 203: user offboarding (main)
+- UserStore::clear_roles + revoke_user_sessions (memory+MySQL) + POST /api/v1/users/{uid}/offboard (Assign, self-block, token loop, audit counts) + UI + tes siklus penuh.
+- Workspace 522 passed, 0 failed; fmt+clippy+node clean; F-D16-029 PARTIAL->IMPLEMENTED (~73.6 verified); tanpa migrasi.

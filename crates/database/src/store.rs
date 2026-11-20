@@ -150,6 +150,10 @@ pub trait UserStore: Send + Sync {
     async fn set_password(&self, id: &str, hash: &str) -> Result<(), StoreError>;
     async fn user_roles(&self, id: &str) -> Result<Vec<String>, StoreError>;
     async fn assign_role(&self, org: &str, user_id: &str, role: &str) -> Result<(), StoreError>;
+    /// Remove every role grant (offboarding). Returns grants removed.
+    async fn clear_roles(&self, org: &str, user_id: &str) -> Result<u64, StoreError>;
+    /// Revoke every session (offboarding). Returns sessions revoked.
+    async fn revoke_user_sessions(&self, user_id: &str) -> Result<u64, StoreError>;
     async fn create_token(
         &self,
         user_id: &str,

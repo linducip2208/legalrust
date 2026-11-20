@@ -6148,7 +6148,7 @@ async fn sod_enforcement_blocks_and_audited_override() {
 async fn uib_app_has_sod_ack_ui() {
     let (st, _, t) = page_get(&app(), "/app").await;
     assert_eq!(st, StatusCode::OK);
-    for needle in ["role-ack", "role-sod"] {
+    for needle in ["role-ack", "role-sod", "offb-btn"] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
@@ -25794,4 +25794,124 @@ async fn kpi_deeds_compare_counts_and_guards() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn user_offboard_clears_roles_sessions_tokens() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "offb@x.id").await;
+    // Member with lawyer role + own session + API token.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"offm@x.id","role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv_token = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"offm@x.id","name":"Off","password":"password1-2-3","invite_token":"{inv_token}"}}"#), None))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let j = body_json(res).await;
+    let member_tok = j["token"].as_str().unwrap().to_string();
+    let member_uid = j["user_id"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/auth/tokens",
+            r#"{"name":"ci"}"#,
+            Some(&member_tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Offboard: roles cleared, sessions revoked, tokens revoked, audited.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{member_uid}/offboard"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert!(v["roles_cleared"].as_i64().unwrap() >= 1);
+    assert!(v["sessions_revoked"].as_i64().unwrap() >= 1);
+    assert_eq!(v["tokens_revoked"].as_i64(), Some(1));
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/roles/sod?user={member_uid}"), &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res).await["permissions"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    // Member session no longer live: auth with it is rejected.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/orgs/me", &member_tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=user", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"]
+            .as_str()
+            .unwrap_or("")
+            .starts_with("user.offboarded:")));
+    // Self-offboard blocked; unknown user 404; non-Assign forbidden.
+    let me = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/orgs/me", &tok))
+            .await
+            .unwrap(),
+    )
+    .await["user_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{me}/offboard"),
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/users/nobody/offboard", r#"{}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{member_uid}/offboard"),
+            r#"{}"#,
+            Some(&lawyer),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }

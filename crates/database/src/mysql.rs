@@ -264,6 +264,36 @@ impl UserStore for MysqlStores {
             .map_err(db_err)?;
         Ok(())
     }
+    async fn clear_roles(&self, org: &str, user_id: &str) -> Result<u64, StoreError> {
+        let n = sqlx::query(
+            "DELETE ur FROM user_roles ur JOIN users u ON u.id=ur.user_id WHERE ur.user_id=? AND u.org_id=?",
+        )
+        .bind(user_id)
+        .bind(org)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        let exists: bool = sqlx::query("SELECT 1 FROM users WHERE id=?")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .is_some();
+        if !exists {
+            return Err(StoreError::NotFound);
+        }
+        Ok(n)
+    }
+    async fn revoke_user_sessions(&self, user_id: &str) -> Result<u64, StoreError> {
+        let n = sqlx::query("UPDATE sessions SET revoked=1 WHERE user_id=? AND revoked=0")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        Ok(n)
+    }
     async fn create_token(
         &self,
         user_id: &str,

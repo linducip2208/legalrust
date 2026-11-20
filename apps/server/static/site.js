@@ -1077,6 +1077,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     loadRoleUsers();
     loadSessions();
   });
+  on('offb-btn', 'click', async function () {
+    var uid = pval('role-uid');
+    if (!uid) { pmsg('role-msg', 'Pilih pengguna dulu.'); return; }
+    if (!window.confirm('Offboard ' + uid + '? Semua peran dicabut, sesi + token dicabut.')) return;
+    var r = await ppost('/api/v1/users/' + encodeURIComponent(uid) + '/offboard', {});
+    if (!r.ok) { pmsg('role-msg', 'Gagal (' + r.status + ').'); return; }
+    var v = await r.json();
+    pmsg('role-msg', 'Offboard selesai: ' + v.roles_cleared + ' peran, ' + v.sessions_revoked + ' sesi, ' + v.tokens_revoked + ' token.');
+    loadRoleUsers();
+    loadSessions();
+  });
   /* ---- organization invites (join existing org via token) ---- */
   async function loadInvites() {
     var box = document.getElementById('inv-list');

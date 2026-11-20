@@ -171,6 +171,27 @@ impl UserStore for MemoryStores {
         m.roles.entry(user_id.into()).or_default().push(role.into());
         Ok(())
     }
+    async fn clear_roles(&self, _org: &str, user_id: &str) -> Result<u64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.users.contains_key(user_id) {
+            return Err(StoreError::NotFound);
+        }
+        Ok(m.roles.remove(user_id).map(|v| v.len() as u64).unwrap_or(0))
+    }
+    async fn revoke_user_sessions(&self, user_id: &str) -> Result<u64, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        if !m.users.contains_key(user_id) {
+            return Err(StoreError::NotFound);
+        }
+        let mut n = 0u64;
+        for (u, _, revoked) in m.sessions.values_mut() {
+            if u == user_id && !*revoked {
+                *revoked = true;
+                n += 1;
+            }
+        }
+        Ok(n)
+    }
     async fn create_token(
         &self,
         user_id: &str,

@@ -866,3 +866,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 202: deeds compare JSON (main)
 - JSON twin komparasi + UI + tes.
 - F-D20-024 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 521/0; clippy clean; tanpa migrasi.
+
+## Done wave 203: user offboarding (main)
+- Offboard peralihan peran/sesi/token + audit + UI; uji + needle.
+- F-D16-029 PARTIAL->IMPLEMENTED (~73.6 verified). Workspace 522/0; clippy clean; tanpa migrasi.
