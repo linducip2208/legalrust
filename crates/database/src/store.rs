@@ -56,6 +56,7 @@ pub struct MatterRow {
     pub status: String,
     pub practice_area: String,
     pub priority: String,
+    pub visibility: String,
     pub parent_id: Option<i64>,
     pub archived: bool,
 }
@@ -195,6 +196,13 @@ pub trait CoreStore: Send + Sync {
     ) -> Result<MatterRow, StoreError>;
     /// Matter priority: low|normal|high|urgent. Free transition, audited.
     async fn set_matter_priority(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError>;
+    /// Matter visibility: open|team. Free transition, audited.
+    async fn set_matter_visibility(
         &self,
         org: &str,
         id: i64,

@@ -24366,3 +24366,133 @@ async fn uib_app_has_triage_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_visibility_lifecycle_and_gating() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mvis@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Lifecycle: bad value 409, ghost 404, open<->team roundtrip.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/visibility"),
+            r#"{"visibility":"rahasia"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/999999/visibility",
+            r#"{"visibility":"team"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    for vis in ["team", "open"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/matters/{mid}/visibility"),
+                &format!(r#"{{"visibility":"{vis}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    // Restrict: owner (privileged) still sees; outsider lawyer 404s; auditor bypasses.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/visibility"),
+            r#"{"visibility":"team"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let auditor = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/statement"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    for (t2, want) in [(&lawyer, StatusCode::NOT_FOUND), (&auditor, StatusCode::OK)] {
+        let res = a
+            .clone()
+            .oneshot(get(&format!("/api/v1/matters/{mid}/statement"), t2))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want);
+    }
+    // List hides restricted from outsider, keeps for member/auditor.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters", &lawyer))
+        .await
+        .unwrap();
+    assert!(!body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["id"].as_i64() == Some(mid)));
+    // Add owner-sub as team member -> visible again (member path, same identity).
+    let owner_sub: String = {
+        use base64::Engine;
+        let parts: Vec<&str> = tok.split('.').collect();
+        let payload =
+            Engine::decode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, parts[1]).unwrap();
+        serde_json::from_slice::<serde_json::Value>(&payload).unwrap()["sub"]
+            .as_str()
+            .unwrap()
+            .into()
+    };
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-team",
+            &format!(r#"{{"matter_id":{mid},"user_id":"{owner_sub}","role":"member"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/statement"), &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matters/{mid}/visibility"))
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(r#"{"visibility":"open"}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_visibility_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["mvis-mid", "mvis-val", "mvis-set", "mvis-msg"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
