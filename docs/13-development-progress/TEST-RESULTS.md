@@ -662,3 +662,6 @@
 
 ## 2026-11-20 AUDIT-1000 wave 206: verification closes (main)
 - Tests re-verified green (newsletter lifecycle, flood guard, unread/limit, kind filter, bell shape); tanpa perubahan kode.
+
+## 2026-11-20 AUDIT-1000 wave 207: OCR validation (main)
+- Workspace 528 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.

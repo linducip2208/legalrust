@@ -882,3 +882,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 206: notification closes (main, verification)
 - Verifikasi unsub/consent + flood guard; tanpa kode baru.
 - F-D18-026/029 PARTIAL->IMPLEMENTED (~73.4 verified).
+
+## Done wave 207: OCR schema + job validation (main)
+- Skema + validasi job OCR + UI + e2e.
+- F-D01-001..004 PARTIAL->IMPLEMENTED (~72.5 verified). Workspace 528/0; clippy clean; tanpa migrasi.

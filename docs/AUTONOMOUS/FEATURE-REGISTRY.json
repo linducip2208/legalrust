@@ -3,45 +3,49 @@
   "id": "F-D01-001",
   "domain": "D01",
   "title": "National ID (KTP-el) capture & validation",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
-   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "GET /api/v1/ocr/schema/{doc_type} (View): required fields + patterns per 8 tipe (ktp/kk/npwp/passport/...) dari FieldSpec crate",
+   "POST->GET /api/v1/ocr/jobs/{id}/validate (View): validate_extracted over stored fields -> {valid, issues}; ghost 404; unauth 401",
+   "UI tombol Validasi di detail OCR + hasil; e2e: schema ktp/nik, unknown 404, empty-job missing:nik"
+  ],
+  "audit_note": "Wave 207: wire-up validasi crate (missing/low-confidence); regex format tetap deskriptif (F-D01-009 terpisah)."
  },
  {
   "id": "F-D01-002",
   "domain": "D01",
   "title": "Family Card (KK) capture & linking",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
-   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "GET /api/v1/ocr/schema/{doc_type} (View): required fields + patterns per 8 tipe (ktp/kk/npwp/passport/...) dari FieldSpec crate",
+   "POST->GET /api/v1/ocr/jobs/{id}/validate (View): validate_extracted over stored fields -> {valid, issues}; ghost 404; unauth 401",
+   "UI tombol Validasi di detail OCR + hasil; e2e: schema ktp/nik, unknown 404, empty-job missing:nik"
+  ],
+  "audit_note": "Wave 207: wire-up validasi crate (missing/low-confidence); regex format tetap deskriptif (F-D01-009 terpisah)."
  },
  {
   "id": "F-D01-003",
   "domain": "D01",
   "title": "Tax ID (NPWP) verification",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
-   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "GET /api/v1/ocr/schema/{doc_type} (View): required fields + patterns per 8 tipe (ktp/kk/npwp/passport/...) dari FieldSpec crate",
+   "POST->GET /api/v1/ocr/jobs/{id}/validate (View): validate_extracted over stored fields -> {valid, issues}; ghost 404; unauth 401",
+   "UI tombol Validasi di detail OCR + hasil; e2e: schema ktp/nik, unknown 404, empty-job missing:nik"
+  ],
+  "audit_note": "Wave 207: wire-up validasi crate (missing/low-confidence); regex format tetap deskriptif (F-D01-009 terpisah)."
  },
  {
   "id": "F-D01-004",
   "domain": "D01",
   "title": "Passport capture & MRZ validation",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:654-662 DOC_TYPES = ktp,kk,npwp,passport,land_certificate,deed,contract,general",
-   "apps/server/src/lib.rs:3460-3462 ocr job routes; :664 ocr_create",
-   "migrations/0005_ocr.sql: ocr_jobs, ocr_fields"
-  ]
+   "GET /api/v1/ocr/schema/{doc_type} (View): required fields + patterns per 8 tipe (ktp/kk/npwp/passport/...) dari FieldSpec crate",
+   "POST->GET /api/v1/ocr/jobs/{id}/validate (View): validate_extracted over stored fields -> {valid, issues}; ghost 404; unauth 401",
+   "UI tombol Validasi di detail OCR + hasil; e2e: schema ktp/nik, unknown 404, empty-job missing:nik"
+  ],
+  "audit_note": "Wave 207: wire-up validasi crate (missing/low-confidence); regex format tetap deskriptif (F-D01-009 terpisah)."
  },
  {
   "id": "F-D01-005",

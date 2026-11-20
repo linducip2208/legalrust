@@ -1251,12 +1251,21 @@ qsa('#sbToggle, #sbToggle2', function (b) {
         if (!box) return;
         if (!v) { box.textContent = 'Gagal memuat.'; return; }
         var rows = (v.fields || []).map(function (f) { return '<div>' + esc(f.name) + ': <strong>' + esc(f.value) + '</strong> <span class="text-muted">(' + f.confidence + ')</span></div>'; }).join('') || '<div class="text-muted">Belum ada field.</div>';
-        box.innerHTML = '<div>Status: ' + badge(v.status) + '</div>' + rows + '<div class="mt-2"><button class="btn btn-sm btn-primary ocrd" data-id="' + v.id + '" data-d="approve">Setujui</button> <button class="btn btn-sm btn-outline-danger ocrd" data-id="' + v.id + '" data-d="reject">Tolak</button> <span class="text-danger" id="ocr-rev-msg"></span></div>';
+        box.innerHTML = '<div>Status: ' + badge(v.status) + '</div>' + rows + '<div class="mt-2"><button class="btn btn-sm btn-primary ocrd" data-id="' + v.id + '" data-d="approve">Setujui</button> <button class="btn btn-sm btn-outline-danger ocrd" data-id="' + v.id + '" data-d="reject">Tolak</button> <button class="btn btn-sm btn-outline-secondary ocrv-val" data-id="' + v.id + '" type="button">Validasi</button> <span class="text-danger" id="ocr-rev-msg"></span><div id="ocr-val-out" class="text-muted"></div></div>';
         qsa('.ocrd', function (x) {
           x.addEventListener('click', async function () {
             var r2 = await ppost('/api/v1/ocr/jobs/' + x.dataset.id + '/review', { decision: x.dataset.d });
             if (!r2.ok) { pmsg('ocr-rev-msg', 'Gagal (' + r2.status + '). Perlu hak Verify.'); return; }
             location.reload();
+          });
+        });
+        qsa('.ocrv-val', function (x) {
+          x.addEventListener('click', async function () {
+            var out = document.getElementById('ocr-val-out');
+            var v2 = await j('/api/v1/ocr/jobs/' + x.dataset.id + '/validate');
+            if (!v2) { pmsg('ocr-rev-msg', 'Gagal validasi.'); return; }
+            if (out) out.textContent = v2.valid ? 'Valid: semua field wajib terisi.' : ('Bermasalah: ' + (v2.issues || []).join(', '));
+            pmsg('ocr-rev-msg', '');
           });
         });
       });

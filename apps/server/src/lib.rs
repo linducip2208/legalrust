@@ -20398,6 +20398,58 @@ async fn kpi_deliveries(
 }
 // ---------- end reports slice: flow KPIs ----------
 
+// ---------- OCR slice: schema + validation (F-D01-001..004) ----------
+// Wire-up for the crate's field specs: machine-readable required-field
+// schemas per document type + validation of a job's extracted fields
+// (missing/low-confidence). Format regexes stay descriptive (no regex engine).
+async fn ocr_schema(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(doc_type): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let dt = legalrust_ocr::DocType::parse(&doc_type)
+        .ok_or_else(|| AppError::NotFound("doc_type".into()))?;
+    let _ = s;
+    Ok(Json(json!({
+        "doc_type": doc_type.trim().to_lowercase(),
+        "fields": legalrust_ocr::required_fields_for(dt).iter().map(|f| json!({
+            "name": f.name, "required": f.required, "pattern": f.regex,
+        })).collect::<Vec<_>>(),
+    })))
+}
+async fn ocr_validate(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    let (job, fields) = s
+        .stores
+        .ops
+        .ocr_get(&u.claims.org, id)
+        .await
+        .map_err(map_store)?;
+    let dt = legalrust_ocr::DocType::parse(&job.doc_type)
+        .ok_or_else(|| AppError::NotFound("doc_type".into()))?;
+    let ofields: Vec<legalrust_ocr::OcrField> = fields
+        .iter()
+        .map(|f| legalrust_ocr::OcrField {
+            name: f.name.clone(),
+            value: f.value.clone(),
+            confidence: f.confidence,
+            page: f.page.max(0) as u32,
+        })
+        .collect();
+    let issues = legalrust_ocr::validate_extracted(dt, &ofields);
+    Ok(Json(
+        json!({"id": job.id, "doc_type": job.doc_type, "valid": issues.is_empty(), "issues": issues}),
+    ))
+}
+// ---------- end OCR slice: schema + validation ----------
+
 // ---------- reports slice: deeds compare JSON (F-D20-024) ----------
 // JSON twin of the CSV comparative analysis: per-type counts for a window,
 // plus delta vs a comparison window when cmp_from/cmp_to are given.
@@ -26325,6 +26377,8 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/ocr/jobs/{id}/review", post(ocr_review))
         .route("/api/v1/ocr/jobs/{id}/process", post(ocr_process))
         .route("/api/v1/ocr/supported", get(ocr_supported))
+        .route("/api/v1/ocr/schema/{doc_type}", get(ocr_schema))
+        .route("/api/v1/ocr/jobs/{id}/validate", get(ocr_validate))
         .route(
             "/api/v1/reports/ocr-accuracy.csv",
             get(ocr_accuracy_csv_export),

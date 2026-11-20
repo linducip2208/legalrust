@@ -26074,3 +26074,79 @@ async fn user_offboard_clears_roles_sessions_tokens() {
         .unwrap();
     assert_eq!(res.status(), StatusCode::FORBIDDEN);
 }
+
+#[tokio::test]
+async fn ocr_schema_and_job_validation() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ocrv@x.id").await;
+    // Schema per type (ktp has nik; unknown type 404).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/schema/ktp", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let s = body_json(res).await;
+    assert!(s["fields"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|f| f["name"] == "nik" && f["required"] == true));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/schema/sim", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Empty job validates to missing-field issues.
+    let res = a
+        .clone()
+        .oneshot(
+            post("/api/v1/documents", r#"{"name":"k.pdf","mime":"application/pdf","size":4,"sha":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}"#, Some(&tok)),
+        )
+        .await
+        .unwrap();
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/ocr/jobs",
+            &format!(r#"{{"document_id":{did},"doc_type":"ktp"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let jid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/ocr/jobs/{jid}/validate"), &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert_eq!(v["valid"], false);
+    assert!(v["issues"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x == "missing:nik"));
+    // Ghost job 404; unauth blocked.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/ocr/jobs/999999/validate", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/ocr/jobs/{jid}/validate"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}

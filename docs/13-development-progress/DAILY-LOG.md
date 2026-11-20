@@ -797,3 +797,7 @@
 ## 2026-11-20 AUDIT-1000 wave 206: notification closes (main, verification)
 - Tanpa kode baru: F-D18-026 (unsub/resub + timestamp + preference center) dan F-D18-029 (flood cap + audit + visibilitas trail) diverifikasi lengkap via test eksisting yang hijau + bukti jejak UI wave-205.
 - F-D18-026/029 PARTIAL->IMPLEMENTED (~73.4 verified).
+
+## 2026-11-20 AUDIT-1000 wave 207: OCR schema + job validation (main)
+- GET /api/v1/ocr/schema/{type} + GET /api/v1/ocr/jobs/{id}/validate (View, baca stored fields, validasi missing/low-confidence) + tombol UI + e2e.
+- Workspace 528 passed, 0 failed; fmt+clippy+node clean; F-D01-001..004 PARTIAL->IMPLEMENTED (~72.5 verified); tanpa migrasi.
