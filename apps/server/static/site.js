@@ -3437,6 +3437,13 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada data.</td></tr>';
       pmsg('kpi-msg', '');
     } else { pmsg('kpi-msg', 'Gagal memuat laporan lanjutan.'); }
+    var b = await j('/api/v1/kpi/bottlenecks');
+    var d = await j('/api/v1/kpi/deadlines?days=30');
+    var v = await j('/api/v1/kpi/deliveries');
+    if (b && d && v) {
+      document.getElementById('kpi-flow').textContent = 'Persetujuan tertunda ' + b.pending + ' | Kepatuhan ' + d.done + '/' + d.total + ' (telat ' + d.overdue + ') | Pengiriman gagal ' + (v.recent_failed || []).length;
+      pmsg('kpi-msg', '');
+    }
   });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
