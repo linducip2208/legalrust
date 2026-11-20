@@ -23689,3 +23689,158 @@ async fn uib_app_has_submatter_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_insights_dashboard_profitability_sla() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mins@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MINS"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Seed: budget 1jt, expense 250rb, 60 menit, 1 overdue task, 1 future milestone.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/budgets",
+            &format!(r#"{{"matter_id":{mid},"category":"jasa","amount":1000000}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            post(
+                "/api/v1/expenses",
+                &format!(
+                    r#"{{"matter_id":{mid},"entry_date":"2027-01-02","kind":"expense","category":"jasa","amount":250000}}"#
+                ),
+                Some(&tok),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/time-entries",
+            &format!(
+                r#"{{"matter_id":{mid},"user_id":"u1","entry_date":"2027-01-03","minutes":60}}"#
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Telat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2020-01-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/milestones",
+            &format!(r#"{{"matter_id":{mid},"title":"Mile","due_on":"2020-02-01"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Dashboard KPIs.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/dashboard", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let d = body_json(res).await;
+    assert!(d["matters_total"].as_i64().unwrap() >= 1);
+    assert!(d["tasks_overdue"].as_i64().unwrap() >= 1);
+    assert!(d["by_status"]["open"].as_i64().unwrap() >= 1);
+    // Profitability math.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/profitability", &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    let row = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["matter_id"].as_i64() == Some(mid))
+        .expect("profit row")
+        .clone();
+    assert_eq!(row["budget"].as_i64(), Some(1_000_000));
+    assert_eq!(row["spent"].as_i64(), Some(250_000));
+    assert_eq!(row["remaining"].as_i64(), Some(750_000));
+    assert_eq!(row["minutes_logged"].as_i64(), Some(60));
+    // SLA alerts: breached task + breached milestone surface; unknown window clamps.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/sla-alerts?days=3650", &tok))
+        .await
+        .unwrap();
+    let s = body_json(res).await;
+    assert_eq!(s["window_days"].as_i64(), Some(90));
+    let items = s["items"].as_array().unwrap();
+    assert!(items
+        .iter()
+        .any(|x| x["kind"] == "task" && x["severity"] == "breached"));
+    assert!(items
+        .iter()
+        .any(|x| x["kind"] == "milestone" && x["severity"] == "breached"));
+    // Auth guards.
+    for uri in [
+        "/api/v1/matters/dashboard".to_string(),
+        "/api/v1/matters/profitability".to_string(),
+        "/api/v1/matters/sla-alerts".to_string(),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    }
+}
+
+#[tokio::test]
+async fn uib_app_has_insights_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mins-go",
+        "mins-days",
+        "mins-msg",
+        "mins-out",
+        "mins-prof",
+        "mins-sla",
+        "Wawasan perkara",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
