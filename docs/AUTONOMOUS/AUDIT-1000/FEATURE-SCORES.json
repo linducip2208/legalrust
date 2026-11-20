@@ -9471,18 +9471,18 @@
  {
   "feature_id": "F-D14-038",
   "domain": "D14",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "scores": {
-   "backend": 82,
-   "database": 70,
-   "frontend": 70,
-   "business_logic": 70,
-   "security": 75,
-   "testing": 82,
-   "integration": 60,
+   "backend": 84,
+   "database": 72,
+   "frontend": 75,
+   "business_logic": 82,
+   "security": 84,
+   "testing": 83,
+   "integration": 58,
    "documentation": 55
   },
-  "overall_score": 70.5,
+  "overall_score": 76.0,
   "verified_8cat": true
  },
  {

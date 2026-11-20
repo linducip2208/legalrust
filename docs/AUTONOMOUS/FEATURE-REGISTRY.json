@@ -6445,16 +6445,13 @@
   "id": "F-D14-038",
   "domain": "D14",
   "title": "Segregation-of-duties controls",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "migrations/0001_foundation.sql: roles, permissions, role_permissions, user_roles",
-   "apps/server/src/lib.rs:1471 POST /api/v1/users/{uid}/roles",
-   "authorize() checks per endpoint",
-   "apps/server/src/lib.rs: GET /api/v1/roles/sod?user= (Assign-gated, 3 conflict pairs, org-checked)",
-   "apps/server/static/site.js: sod-btn card + per-user conflict rendering",
-   "apps/server/tests/api.rs: sod_check_flags_risky_pairs (3 pairs + 403 + 404) + needles"
+   "SOD_PAIRS shared const + sod_conflicts_for() reused by advisory check; GET /api/v1/roles/sod?user=&role= what-if simulation (no side effects)",
+   "user_assign_role blocks grants that introduce NEW conflict pairs (409 sod:...), acknowledge:true override + user.sod_acknowledged audit; existing grants untouched",
+   "UI: role-ack checkbox + what-if display on 409; tests: block/override/audit/control-grant + needle; old sod test green"
   ],
-  "audit_note": " Wave 50: SoD advisory check live; stays PARTIAL (warn-only, no enforcement)."
+  "audit_note": "Wave 200: advisory->enforced (delta rule: only new pairs block). Invite path ungated (documented follow-up)."
  },
  {
   "id": "F-D14-039",

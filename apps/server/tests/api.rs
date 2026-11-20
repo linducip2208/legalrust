@@ -6050,6 +6050,110 @@ async fn uib_app_has_chain_ui() {
 }
 
 #[tokio::test]
+async fn sod_enforcement_blocks_and_audited_override() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "sodown2@x.id").await;
+    // Invite a lawyer (Create, no Approve yet).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/orgs/invites",
+            r#"{"email":"sodm@x.id","role":"lawyer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let inv_token = body_json(res).await["token"].as_str().unwrap().to_string();
+    let res = a
+        .clone()
+        .oneshot(
+            post("/api/v1/auth/register", &format!(r#"{{"org_name":"Acme","email":"sodm@x.id","name":"Sod","password":"password1-2-3","invite_token":"{inv_token}"}}"#), None),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let member_uid = body_json(res).await["user_id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // What-if simulation flags Create+Approve before any write.
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/roles/sod?user={member_uid}&role=finance_officer"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let sim = body_json(res).await;
+    assert!(sim["conflicts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["pair"][0] == "Create" && c["pair"][1] == "Approve"));
+    // Grant without ack -> 409 (nothing assigned).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{member_uid}/roles"),
+            r#"{"role":"finance_officer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Acknowledged override -> 200 + audited.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{member_uid}/roles"),
+            r#"{"role":"finance_officer","acknowledge":true}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=user", &tok))
+        .await
+        .unwrap();
+    let acts: Vec<String> = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["action"].as_str().unwrap_or("").to_string())
+        .collect();
+    assert!(
+        acts.iter()
+            .any(|x| x == "user.sod_acknowledged:finance_officer"),
+        "{acts:?}"
+    );
+    // Non-conflicting grant still flows without ack (lawyer already held; use legal_staff).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/users/{member_uid}/roles"),
+            r#"{"role":"auditor"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn uib_app_has_sod_ack_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["role-ack", "role-sod"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn uib_jobs_enqueue_list_flow() {
     use tower::ServiceExt;
     let a = app();

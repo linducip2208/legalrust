@@ -769,3 +769,7 @@
 - Kolom rantai sudah ada (0001) tapi tak pernah diisi -> kini chaining di record() + ops audit_add (memory+MySQL, tx + FOR UPDATE, tip per-tenant); canonical hash + verify per-tenant di audit crate; AuditRow += tenant/hashes; GET /api/v1/audit/verify (gate = audit list) + tombol /app.
 - Batas jujur: portal/conflict/doc-direct reads tetap model lama (follow-up).
 - Workspace 514 passed, 0 failed (9 audit-crate incl. tamper/multi-tenant); fmt+clippy+node clean; F-D22-026 NOT_STARTED->IMPLEMENTED (~74.1 verified); live 122/122 + after_hash terisi (legalrust_wave199, target-dblive dibersihkan 12GB).
+
+## 2026-11-20 AUDIT-1000 wave 200: SoD enforcement (main)
+- SOD_PAIRS bersama + simulasi what-if ?role=; assign memblokir pasangan BARU (409 sod:..) kecuali acknowledge:true (audit user.sod_acknowledged:*); UI ack + what-if; tes blokir/override/audit/kontrol + needle.
+- Workspace 516 passed, 0 failed; fmt+clippy+node clean; F-D14-038 PARTIAL->IMPLEMENTED (~76.0 verified); tanpa migrasi.

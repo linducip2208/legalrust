@@ -1053,9 +1053,27 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var uid = pval('role-uid');
     var sel = document.getElementById('role-sel');
     if (!uid) { pmsg('role-msg', 'Pilih pengguna dulu.'); return; }
-    var r = await ppost('/api/v1/users/' + encodeURIComponent(uid) + '/roles', { role: sel ? sel.value : '' });
-    if (!r.ok) { pmsg('role-msg', 'Gagal (' + r.status + '). Perlu hak Assign / peran valid.'); return; }
+    var ack = document.getElementById('role-ack');
+    var body = { role: sel ? sel.value : '' };
+    if (ack && ack.checked) body.acknowledge = true;
+    var r = await ppost('/api/v1/users/' + encodeURIComponent(uid) + '/roles', body);
+    if (!r.ok) {
+      if (r.status === 409) {
+        pmsg('role-msg', 'Ditolak SoD: kombinasi berisiko. Centang "Akui risiko SoD" untuk memaksa (tercatat audit).');
+        var w = await j('/api/v1/roles/sod?user=' + encodeURIComponent(uid) + '&role=' + encodeURIComponent(sel ? sel.value : ''));
+        if (w && w.conflicts && w.conflicts.length) {
+          var el = document.getElementById('role-sod');
+          if (el) el.textContent = 'Konflik: ' + w.conflicts.map(function (c) { return c.pair.join('+'); }).join(', ');
+        }
+        return;
+      }
+      pmsg('role-msg', 'Gagal (' + r.status + '). Perlu hak Assign / peran valid.');
+      return;
+    }
     pmsg('role-msg', 'Peran ditetapkan.');
+    var el2 = document.getElementById('role-sod');
+    if (el2) el2.textContent = '';
+    if (ack) ack.checked = false;
     loadRoleUsers();
     loadSessions();
   });
