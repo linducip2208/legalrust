@@ -774,4 +774,8 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 
 ## Done wave 181: notes + memos + closure (main)
 - matter_notes/memos/closure_items (0114) + 6 endpoint + toggle + kartu + uji.
-- F-D03-026/027/030 -> IMPLEMENTED (~72.8 verified). API 274/0; live pending.
+- F-D03-026/027/030 -> IMPLEMENTED (~72.8 verified). API 274/0; live 114/114 + register PASS.
+
+## Done wave 182: templates + recurrences + gantt (main)
+- Migrasi 0115 (matter_templates + matter_recurrences, FK SET NULL); OpsStore 6 metode (memory+mysql); 6 endpoint (templates add/list, instantiate->matter+closure items+audit, recurrences add/list/toggle, gantt aggregate); kartu /app template+jadwal+gantt; mcc-* rename (compliance checklist ID collision fix).
+- F-D03-024/025/012 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 476/0; clippy clean; live 115/115 + register PASS (legalrust_wave182).

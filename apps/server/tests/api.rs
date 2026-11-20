@@ -22490,10 +22490,10 @@ async fn uib_app_has_approvals_ui() {
         "aplan-add",
         "aplan-reload",
         "aplan-list",
-        "mcl-matter",
-        "mcl-add",
-        "mcl-reload",
-        "mcl-list",
+        "mcc-matter",
+        "mcc-add",
+        "mcc-reload",
+        "mcc-list",
         "score-reload",
         "score-list",
         "sc-period",
@@ -23120,6 +23120,369 @@ async fn uib_app_has_feed_ui() {
         "mcl-reload",
         "mcl-list",
         "mcl-msg",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
+async fn matter_templates_and_recurrences() {
+    let a = app();
+    let tok = reg(&a, "mtpl@x.id").await;
+    // Bad tasks_json (not an array) rejected 422.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates",
+            r#"{"name":"gugatan","description":"d","tasks_json":"bukan-json"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Empty name rejected 422.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates",
+            r#"{"name":"","tasks_json":"[\"a\"]"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Template roundtrip.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates",
+            r#"{"name":"gugatan","description":"standar","tasks_json":"[\"somasi\",\"gugat\"]"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matter-templates", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["name"] == "gugatan"));
+    // Instantiate creates a matter + 2 closure items.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matter-templates/{tid}/instantiate"),
+            r#"{"title":"Perkara dari template"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Instantiate ghost 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates/999999/instantiate",
+            r#"{}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Recurrence: bad cron rejected 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            &format!(r#"{{"template_id":{tid},"title":"jadwal","cron":"minutely"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Recurrence: ghost template 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            r#"{"template_id":999999,"title":"jadwal","cron":"monthly"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Recurrence roundtrip + toggle.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            &format!(r#"{{"template_id":{tid},"title":"jadwal bulanan","cron":"monthly"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matter-recurrences", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["title"] == "jadwal bulanan" && r["active"] == true));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matter-recurrences/{rid}/toggle"),
+            r#"{"done":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Ghost toggle 404 + no-token 401.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences/999999/toggle",
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matter-templates")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    // Gantt aggregates the instantiated matter.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/gantt", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["title"] == "Perkara dari template"));
+}
+
+#[tokio::test]
+async fn uib_app_has_template_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mtp-name",
+        "mtp-desc",
+        "mtp-tasks",
+        "mtp-add",
+        "mtp-reload",
+        "mtp-list",
+        "mtp-msg",
+        "mtp-use-id",
+        "mtp-use-title",
+        "mtp-use",
+        "mrc-tpl",
+        "mrc-title",
+        "mrc-cron",
+        "mrc-add",
+        "mrc-reload",
+        "mrc-list",
+        "mrc-msg",
+        "mcc-matter",
+        "mcc-item",
+        "mcc-add",
+        "mcc-reload",
+        "mcc-list",
+        "mcc-msg",
+        "gantt-go",
+        "gantt-msg",
+        "gantt-out",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
+async fn matter_templates_recurring_gantt() {
+    let a = app();
+    let tok = reg(&a, "mtpl@x.id").await;
+    // Bad tasks_json rejected (must be JSON array).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates",
+            r#"{"name":"t1","tasks_json":"bukan-array"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Create template.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-templates",
+            r#"{"name":"t1","description":"standar","tasks_json":"[\"draft\",\"review\"]"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    // List contains it.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matter-templates", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(tid)));
+    // Instantiate matter from template; ghost 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/from-template/{tid}"),
+            r#"{"title":"Perkara tpl"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["template_id"], tid);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/from-template/999999",
+            r#"{"title":"x"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Recurrence: bad cron 409, ghost template 404, happy path + toggle.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            r#"{"title":"jadwal","cron":"never"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            r#"{"template_id":999999,"title":"jadwal","cron":"monthly"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-recurrences",
+            &format!(r#"{{"template_id":{tid},"title":"jadwal","cron":"monthly"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matter-recurrences/{rid}/toggle"),
+            r#"{"active":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matter-recurrences", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid) && r["active"] == false));
+    // Gantt aggregates.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/gantt", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.as_array().unwrap().len() >= 1);
+    // No-token 401.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matter-templates")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_template_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mtp-name",
+        "mtp-desc",
+        "mtp-tasks",
+        "mtp-add",
+        "mtp-reload",
+        "mtp-list",
+        "mtp-msg",
+        "mfr-tpl",
+        "mfr-title",
+        "mfr-cron",
+        "mfr-add",
+        "mfr-reload",
+        "mfr-list",
+        "mfr-msg",
+        "gnt-go",
+        "gnt-out",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }

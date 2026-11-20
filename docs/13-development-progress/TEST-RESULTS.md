@@ -570,3 +570,7 @@
 ## 2026-11-20 AUDIT-1000 wave 181: notes + memo + closure (main)
 - API 274 passed, 0 failed (target-test); fmt+clippy clean.
 - Live MySQL legalrust_mig181: FK collision fk_mcl_* (0042) fixed to fk_mclo_*, partial state cleared (drop notes/memos + delete success=0), migrate 114/114 + register PASS; matter_notes/memos/closure_items verified.
+
+## 2026-11-20 AUDIT-1000 wave 182: templates + recurrences + gantt (main)
+- Workspace 476 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL legalrust_wave182: migrate 115/115 + register PASS; matter_templates/matter_recurrences verified; /app needles OK (mtp/mrc/mcc/gantt).

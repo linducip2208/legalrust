@@ -479,7 +479,7 @@
    "lib.rs: GET /api/v1/conflicts/check (clients + matters + parties, role context, RBAC)",
    "site.js: conflict card + hooks (klien panel), human-review note",
    "tests: conflict_of_interest_screening e2e (3-surface hits, clean, short 422, 401)",
-   "Note: stale CONFIGURATION_REQUIRED (OCR-cited) corrected — no external service involved"
+   "Note: stale CONFIGURATION_REQUIRED (OCR-cited) corrected \u00e2\u20ac\u201d no external service involved"
   ],
   "audit_note": "Wave 156: conflict screening live; adversity judgment stays human. Verified by test (446/0)."
  },
@@ -545,7 +545,7 @@
   "evidence": [
    "apps/server/src/lib.rs: quote_create/list/status/delete + items + totals (office slice, RBAC, audited office.quote_created)",
    "apps/server/tests/api.rs: price_list_and_quotations e2e green (workspace 438/0)",
-   "Note: quotations keyed by client_name string, not client_id FK — functional for proposals, linkage by name."
+   "Note: quotations keyed by client_name string, not client_id FK \u00e2\u20ac\u201d functional for proposals, linkage by name."
   ],
   "audit_note": "Wave 148: verify-only rescore; quotation flow live since finance slice (438/0 green)."
  },
@@ -1053,10 +1053,13 @@
   "id": "F-D03-012",
   "domain": "D03",
   "title": "Gantt timeline view",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "no new table (aggregate read over matters+tasks+milestones)",
+   "lib.rs: GET /api/v1/matters/gantt (View, per-matter tasks+milestones, cap 200)",
+   "site.js: gantt-go/gantt-out; tests: gantt contains instantiated matter in matter_templates_and_recurrences"
+  ],
+  "audit_note": "Wave 182: templates/recurrences/gantt merged single-impl, live. Verified by test."
  },
  {
   "id": "F-D03-013",
@@ -1194,19 +1197,27 @@
   "id": "F-D03-024",
   "domain": "D03",
   "title": "Matter templates library",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0115: matter_templates (org,name<=160,description,tasks_json)",
+   "ops.rs: MatterTemplateRow + OpsStore::mtpl_add/mtpl_list/mtpl_get",
+   "lib.rs: POST/GET /api/v1/matter-templates + POST /api/v1/matter-templates/{id}/instantiate (Create/View, array-validated, spawns matter+closure items, audit)",
+   "site.js: mtp card (add/list/pakai/instantiate); tests: matter_templates_and_recurrences e2e (422 bad-json/empty, roundtrip, 404 ghost, 401)"
+  ],
+  "audit_note": "Wave 182: templates/recurrences/gantt merged single-impl, live. Verified by test."
  },
  {
   "id": "F-D03-025",
   "domain": "D03",
   "title": "Recurring matter scheduler",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0115: matter_recurrences (org,template FK nullable,cron allowlist,active)",
+   "ops.rs: MatterRecurrenceRow + OpsStore::mrcr_add/mrcr_list/mrcr_toggle",
+   "lib.rs: POST/GET /api/v1/matter-recurrences + POST toggle (Create/Update, 409 bad-cron, 404 ghost template)",
+   "site.js: mrc card; tests: recurrence roundtrip + toggle + 404/401 in matter_templates_and_recurrences"
+  ],
+  "audit_note": "Wave 182: templates/recurrences/gantt merged single-impl, live. Verified by test."
  },
  {
   "id": "F-D03-026",
@@ -8458,7 +8469,7 @@
    "apps/server/src/lib.rs: keu export card (trust-csv-acct/btn)",
    "apps/server/tests/api.rs: trust_csv_export_returns_ledger"
   ],
-  "audit_note": "Report library: matters CSV x2, clients CSV, trust-ledger CSV — all Export/View-gated + audit."
+  "audit_note": "Report library: matters CSV x2, clients CSV, trust-ledger CSV \u00e2\u20ac\u201d all Export/View-gated + audit."
  },
  {
   "id": "F-D20-002",

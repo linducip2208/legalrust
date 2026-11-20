@@ -161,6 +161,8 @@ struct Inner {
     mnotes: HashMap<i64, MatterNoteRow>,
     mmemos: HashMap<i64, MatterMemoRow>,
     mcloses: HashMap<i64, MatterClosureRow>,
+    mtpls: HashMap<i64, MatterTemplateRow>,
+    mrcrs: HashMap<i64, MatterRecurrenceRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -413,6 +415,41 @@ fn check_mfeed(author: &str, body: &str) -> Result<(String, String), StoreError>
         return Err(StoreError::Conflict("body".into()));
     }
     Ok((a.into(), b.into()))
+}
+fn check_mtpl(
+    name: &str,
+    description: &str,
+    tasks_json: &str,
+) -> Result<(String, String, String), StoreError> {
+    let n = name.trim();
+    let d = description.trim();
+    let t = tasks_json.trim();
+    if n.is_empty() || n.len() > 160 || d.len() > 500 || t.is_empty() || t.len() > 4000 {
+        return Err(StoreError::Conflict("name/description/tasks".into()));
+    }
+    if !t.starts_with('[') {
+        return Err(StoreError::Conflict("tasks_json".into()));
+    }
+    Ok((n.into(), d.into(), t.into()))
+}
+fn check_mrcr(title: &str, cron: &str) -> Result<(String, String), StoreError> {
+    let t = title.trim();
+    let c = cron.trim().to_lowercase();
+    if t.is_empty()
+        || t.len() > 300
+        || ![
+            "hourly",
+            "daily",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "yearly",
+        ]
+        .contains(&c.as_str())
+    {
+        return Err(StoreError::Conflict("title/cron".into()));
+    }
+    Ok((t.into(), c))
 }
 #[async_trait::async_trait]
 impl OpsStore for MemoryOps {
@@ -4433,6 +4470,102 @@ impl OpsStore for MemoryOps {
             .filter(|r| r.org == org)
             .ok_or(StoreError::NotFound)?;
         r.done = done;
+        Ok(())
+    }
+    async fn mtpl_add(
+        &self,
+        org: &str,
+        name: &str,
+        description: &str,
+        tasks_json: &str,
+    ) -> Result<i64, StoreError> {
+        let (n, d, t) = check_mtpl(name, description, tasks_json)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mtpls.insert(
+            id,
+            MatterTemplateRow {
+                id,
+                org: org.into(),
+                name: n,
+                description: d,
+                tasks_json: t,
+            },
+        );
+        Ok(id)
+    }
+    async fn mtpl_list(&self, org: &str) -> Result<Vec<MatterTemplateRow>, StoreError> {
+        let mut v: Vec<MatterTemplateRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mtpls
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn mtpl_get(&self, org: &str, id: i64) -> Result<MatterTemplateRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .mtpls
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
+    async fn mrcr_add(
+        &self,
+        org: &str,
+        template_id: Option<i64>,
+        title: &str,
+        cron: &str,
+    ) -> Result<i64, StoreError> {
+        let (t, c) = check_mrcr(title, cron)?;
+        let mut m = self.inner.lock().unwrap();
+        if let Some(tid) = template_id {
+            if !m.mtpls.get(&tid).is_some_and(|r| r.org == org) {
+                return Err(StoreError::NotFound);
+            }
+        }
+        let id = self.next(&mut m);
+        m.mrcrs.insert(
+            id,
+            MatterRecurrenceRow {
+                id,
+                org: org.into(),
+                template_id,
+                title: t,
+                cron: c,
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn mrcr_list(&self, org: &str) -> Result<Vec<MatterRecurrenceRow>, StoreError> {
+        let mut v: Vec<MatterRecurrenceRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mrcrs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn mrcr_toggle(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .mrcrs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.active = active;
         Ok(())
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {

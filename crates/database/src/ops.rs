@@ -488,6 +488,25 @@ pub struct MatterClosureRow {
     pub title: String,
     pub done: bool,
 }
+/// Reusable matter template (task title list as JSON array).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterTemplateRow {
+    pub id: i64,
+    pub org: String,
+    pub name: String,
+    pub description: String,
+    pub tasks_json: String,
+}
+/// Recurring matter scheduler (cron label + active flag).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterRecurrenceRow {
+    pub id: i64,
+    pub org: String,
+    pub template_id: Option<i64>,
+    pub title: String,
+    pub cron: String,
+    pub active: bool,
+}
 /// Portal usage event (login/view/download/upload/message/rating/request).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalEventRow {
@@ -2525,6 +2544,26 @@ pub trait OpsStore: Send + Sync {
         matter_id: i64,
     ) -> Result<Vec<MatterClosureRow>, StoreError>;
     async fn mclose_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
+    /// Matter templates (name<=160, tasks JSON array<=4000) + instantiate.
+    async fn mtpl_add(
+        &self,
+        org: &str,
+        name: &str,
+        description: &str,
+        tasks_json: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mtpl_list(&self, org: &str) -> Result<Vec<MatterTemplateRow>, StoreError>;
+    async fn mtpl_get(&self, org: &str, id: i64) -> Result<MatterTemplateRow, StoreError>;
+    /// Recurring scheduler (cron label allowlist, active toggle).
+    async fn mrcr_add(
+        &self,
+        org: &str,
+        template_id: Option<i64>,
+        title: &str,
+        cron: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mrcr_list(&self, org: &str) -> Result<Vec<MatterRecurrenceRow>, StoreError>;
+    async fn mrcr_toggle(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

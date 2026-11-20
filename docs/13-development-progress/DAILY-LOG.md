@@ -686,3 +686,8 @@
 - Migrasi 0114 (matter_notes/memos/closure_items); OpsStore 7 metode (memory+mysql); 6 endpoint + toggle (memo-baca Update-gated, closure-tutup 409); 2 kartu /app; tes matter_notes_memos_closure + needle.
 - API 274 passed, 0 failed; clippy clean; live MySQL verifikasi 114 menyusul.
 - F-D03-026/027/030 PARTIAL/PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 182: templates + recurrences + gantt (main)
+- Migrasi 0115 (matter_templates + matter_recurrences); OpsStore::mtpl_*/mrcr_* (memory+mysql); 6 endpoint (instantiate bentuk perkara + butir closure + audit; gantt agregat tasks+milestones); kartu /app + JS; tes matter_templates_and_recurrences + needle (422/404/409/401).
+- Perbaikan tabrakan ID: checklist kepatuhan mcl-* -> mcc-* (JS+HTML+needle tes) karena menimpa closure mcl-*.
+- Workspace 476 passed, 0 failed; fmt+clippy+node clean; F-D03-024/025/012 PLANNED->IMPLEMENTED (~72.8 verified).

@@ -3506,6 +3506,132 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('mcl-reload', 'click', mclRefresh);
 
+  /* ---- matter templates + recurrences (F-D03-024/025) ---- */
+  async function mtpRefresh() {
+    var box = document.getElementById('mtp-list');
+    if (!box) return;
+    var v = await j('/api/v1/matter-templates');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.description || '') + '</td><td><button class="btn btn-sm" data-mtp-use="' + x.id + '" type="button">Pakai</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada template.</td></tr>';
+    qsa('[data-mtp-use]', function (b) {
+      b.addEventListener('click', function () {
+        var i = document.getElementById('mtp-use-id');
+        if (i) i.value = b.getAttribute('data-mtp-use');
+      });
+    });
+  }
+  on('mtp-add', 'click', async function () {
+    if (!pval('mtp-name') || !pval('mtp-tasks')) { pmsg('mtp-msg', 'Isi nama + tugas JSON.'); return; }
+    var r = await ppost('/api/v1/matter-templates', { name: pval('mtp-name'), description: pval('mtp-desc') || '', tasks_json: pval('mtp-tasks') });
+    if (!r.ok) { pmsg('mtp-msg', 'Gagal (' + r.status + '). JSON array?'); return; }
+    pmsg('mtp-msg', ''); mtpRefresh();
+  });
+  on('mtp-reload', 'click', mtpRefresh);
+  on('mtp-use', 'click', async function () {
+    if (!pval('mtp-use-id')) { pmsg('mtp-msg', 'Isi ID template.'); return; }
+    var body = {};
+    if (pval('mtp-use-title')) body.title = pval('mtp-use-title');
+    var r = await ppost('/api/v1/matter-templates/' + encodeURIComponent(pval('mtp-use-id')) + '/instantiate', body);
+    if (!r.ok) { pmsg('mtp-msg', 'Gagal (' + r.status + ').'); return; }
+    var d = await r.json().catch(function () { return null; });
+    pmsg('mtp-msg', '');
+    var i = document.getElementById('mtp-use-id');
+    if (i && d) i.placeholder = 'Perkara ' + (d.number || d.id) + ' (' + (d.tasks || 0) + ' butir)';
+    mtpRefresh();
+  });
+  async function mrcRefresh() {
+    var box = document.getElementById('mrc-list');
+    if (!box) return;
+    var v = await j('/api/v1/matter-recurrences');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.title) + '</td><td>' + esc(x.cron) + '</td><td>' + (x.active ? 'aktif' : 'nonaktif') + '</td><td><button class="btn btn-sm" data-mrc-tg="' + x.id + '" data-mrc-on="' + (x.active ? 0 : 1) + '" type="button">Toggle</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada jadwal.</td></tr>';
+    qsa('[data-mrc-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/matter-recurrences/' + b.getAttribute('data-mrc-tg') + '/toggle', { done: +b.getAttribute('data-mrc-on') });
+        if (!r.ok) { pmsg('mrc-msg', 'Gagal (' + r.status + ').'); return; }
+        mrcRefresh();
+      });
+    });
+  }
+  on('mrc-add', 'click', async function () {
+    if (!pval('mrc-title')) { pmsg('mrc-msg', 'Isi judul jadwal.'); return; }
+    var body = { title: pval('mrc-title'), cron: pval('mrc-cron') || 'monthly' };
+    if (pval('mrc-tpl')) body.template_id = +pval('mrc-tpl');
+    var r = await ppost('/api/v1/matter-recurrences', body);
+    if (!r.ok) { pmsg('mrc-msg', 'Gagal (' + r.status + '). Siklus?'); return; }
+    pmsg('mrc-msg', ''); mrcRefresh();
+  });
+  on('mrc-reload', 'click', mrcRefresh);
+  on('gantt-go', 'click', async function () {
+    var out = document.getElementById('gantt-out');
+    var v = await j('/api/v1/matters/gantt');
+    if (!v) { pmsg('gantt-msg', 'Gagal memuat.'); return; }
+    pmsg('gantt-msg', '');
+    if (out) out.innerHTML = v.slice(0, 50).map(function (m) {
+      return '<div>#' + m.matter_id + ' ' + esc(m.title) + ' [' + esc(m.status) + '] tugas ' + (m.tasks || []).length + ' milestone ' + (m.milestones || []).length + '</div>';
+    }).join('') || 'Belum ada perkara.';
+  });
+
+  /* ---- matter templates + recurring + gantt (F-D03-024/025/012) ---- */
+  async function mtpRefresh() {
+    var box = document.getElementById('mtp-list');
+    if (!box) return;
+    var v = await j('/api/v1/matter-templates');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.tasks_json) + '</td><td><button class="btn btn-sm" data-mtp-use="' + x.id + '" type="button">Buat perkara</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada template.</td></tr>';
+    qsa('[data-mtp-use]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/matters/from-template/' + b.getAttribute('data-mtp-use'), { title: '' });
+        if (!r.ok) { pmsg('mtp-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mtp-msg', 'Perkara dibuat.');
+      });
+    });
+  }
+  on('mtp-add', 'click', async function () {
+    if (!pval('mtp-name') || !pval('mtp-tasks')) { pmsg('mtp-msg', 'Isi nama + tugas JSON.'); return; }
+    var r = await ppost('/api/v1/matter-templates', { name: pval('mtp-name'), description: pval('mtp-desc') || '', tasks_json: pval('mtp-tasks') });
+    if (!r.ok) { pmsg('mtp-msg', 'Gagal (' + r.status + '). JSON array?'); return; }
+    pmsg('mtp-msg', ''); mtpRefresh();
+  });
+  on('mtp-reload', 'click', mtpRefresh);
+  async function mfrRefresh() {
+    var box = document.getElementById('mfr-list');
+    if (!box) return;
+    var v = await j('/api/v1/matter-recurrences');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.title) + '</td><td>' + esc(x.cron) + '</td><td>' + (x.active ? 'aktif' : 'mati') + '</td><td><button class="btn btn-sm" data-mfr-tg="' + x.id + '" data-mfr-on="' + (x.active ? 0 : 1) + '" type="button">Toggle</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada jadwal.</td></tr>';
+    qsa('[data-mfr-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/matter-recurrences/' + b.getAttribute('data-mfr-tg') + '/toggle', { active: +b.getAttribute('data-mfr-on') });
+        if (!r.ok) { pmsg('mfr-msg', 'Gagal (' + r.status + ').'); return; }
+        mfrRefresh();
+      });
+    });
+  }
+  on('mfr-add', 'click', async function () {
+    if (!pval('mfr-title')) { pmsg('mfr-msg', 'Isi judul jadwal.'); return; }
+    var body = { title: pval('mfr-title'), cron: pval('mfr-cron') || 'monthly' };
+    if (pval('mfr-tpl')) body.template_id = +pval('mfr-tpl');
+    var r = await ppost('/api/v1/matter-recurrences', body);
+    if (!r.ok) { pmsg('mfr-msg', 'Gagal (' + r.status + '). Cron/template?'); return; }
+    pmsg('mfr-msg', ''); mfrRefresh();
+  });
+  on('mfr-reload', 'click', mfrRefresh);
+  on('gnt-go', 'click', async function () {
+    var out = document.getElementById('gnt-out');
+    var v = await j('/api/v1/matters/gantt');
+    if (!v) { if (out) out.textContent = 'Gagal memuat.'; return; }
+    if (out) out.innerHTML = (v || []).slice(0, 20).map(function (m) { return '<div>' + esc(m.title) + ': ' + (m.tasks || []).length + ' tugas / ' + (m.milestones || []).length + ' tonggak</div>'; }).join('') || 'Belum ada perkara.';
+  });
+
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');
@@ -6566,45 +6692,45 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   });
   on('aplan-reload', 'click', aplanRefresh);
   /* ---- compliance: matter checklist ---- */
-  async function mclRefresh() {
-    var box = document.getElementById('mcl-list');
+  async function mccRefresh() {
+    var box = document.getElementById('mcc-list');
     if (!box) return;
-    var mid = pval('mcl-matter');
+    var mid = pval('mcc-matter');
     if (!mid) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID perkara lalu Muat.</td></tr>'; return; }
     var v = await j('/api/v1/matters/' + encodeURIComponent(mid) + '/checklist');
     if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
     var done = v.filter(function (x) { return x.done; }).length;
     box.innerHTML = v.map(function (x) {
       return '<tr><td>' + x.id + '</td><td>' + esc(x.item) + '</td><td>' + (x.done ? '<span class="badge bg-green-lt">ya</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td>'
-        + '<td><button class="btn btn-sm" data-mcl-tg="' + x.id + '" data-mcl-done="' + (!x.done) + '" type="button">Ubah</button> '
-        + '<button class="btn btn-sm btn-outline-danger" data-mcl-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+        + '<td><button class="btn btn-sm" data-mcc-tg="' + x.id + '" data-mcc-done="' + (!x.done) + '" type="button">Ubah</button> '
+        + '<button class="btn btn-sm btn-outline-danger" data-mcc-del="' + x.id + '" type="button">Hapus</button></td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada butir.</td></tr>';
     if (v.length) box.innerHTML += '<tr><td colspan="4" class="text-muted">Progres: ' + done + '/' + v.length + ' selesai.</td></tr>';
-    qsa('[data-mcl-tg]', function (b) {
+    qsa('[data-mcc-tg]', function (b) {
       b.addEventListener('click', async function () {
-        var r = await ppost('/api/v1/checklist/' + b.getAttribute('data-mcl-tg') + '/toggle', { done: b.getAttribute('data-mcl-done') === 'true' });
-        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
-        pmsg('mcl-msg', '');
-        mclRefresh();
+        var r = await ppost('/api/v1/checklist/' + b.getAttribute('data-mcc-tg') + '/toggle', { done: b.getAttribute('data-mcc-done') === 'true' });
+        if (!r.ok) { pmsg('mcc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mcc-msg', '');
+        mccRefresh();
       });
     });
-    qsa('[data-mcl-del]', function (b) {
+    qsa('[data-mcc-del]', function (b) {
       b.addEventListener('click', async function () {
-        var r = await fetch('/api/v1/checklist/' + b.getAttribute('data-mcl-del'), { method: 'DELETE', headers: H });
-        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
-        pmsg('mcl-msg', '');
-        mclRefresh();
+        var r = await fetch('/api/v1/checklist/' + b.getAttribute('data-mcc-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mcc-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mcc-msg', '');
+        mccRefresh();
       });
     });
   }
-  on('mcl-add', 'click', async function () {
-    if (!pval('mcl-matter') || !pval('mcl-item')) { pmsg('mcl-msg', 'Isi ID perkara dan butir.'); return; }
-    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcl-matter')) + '/checklist', { item: pval('mcl-item') });
-    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
-    pmsg('mcl-msg', '');
-    mclRefresh();
+  on('mcc-add', 'click', async function () {
+    if (!pval('mcc-matter') || !pval('mcc-item')) { pmsg('mcc-msg', 'Isi ID perkara dan butir.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mcc-matter')) + '/checklist', { item: pval('mcc-item') });
+    if (!r.ok) { pmsg('mcc-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mcc-msg', '');
+    mccRefresh();
   });
-  on('mcl-reload', 'click', mclRefresh);
+  on('mcc-reload', 'click', mccRefresh);
   /* ---- compliance: scorecard ---- */
   async function scoreRefresh() {
     var box = document.getElementById('score-list');

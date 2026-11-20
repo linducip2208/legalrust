@@ -4203,6 +4203,142 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn mtpl_add(
+        &self,
+        org: &str,
+        name: &str,
+        description: &str,
+        tasks_json: &str,
+    ) -> Result<i64, StoreError> {
+        let n = name.trim();
+        let d = description.trim();
+        let t = tasks_json.trim();
+        if n.is_empty() || n.len() > 160 || d.len() > 500 || t.is_empty() || t.len() > 4000 {
+            return Err(StoreError::Conflict("name/description/tasks".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_templates (org_id, name, description, tasks_json) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(n)
+        .bind(d)
+        .bind(t)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mtpl_list(&self, org: &str) -> Result<Vec<MatterTemplateRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, name, description, tasks_json FROM matter_templates WHERE org_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterTemplateRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                description: x.get::<String, _>("description"),
+                tasks_json: x.get::<String, _>("tasks_json"),
+            })
+            .collect())
+    }
+    async fn mtpl_get(&self, org: &str, id: i64) -> Result<MatterTemplateRow, StoreError> {
+        let row = sqlx::query(
+            "SELECT id, org_id, name, description, tasks_json FROM matter_templates WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        match row {
+            Some(x) => Ok(MatterTemplateRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                name: x.get::<String, _>("name"),
+                description: x.get::<String, _>("description"),
+                tasks_json: x.get::<String, _>("tasks_json"),
+            }),
+            None => Err(StoreError::NotFound),
+        }
+    }
+    async fn mrcr_add(
+        &self,
+        org: &str,
+        template_id: Option<i64>,
+        title: &str,
+        cron: &str,
+    ) -> Result<i64, StoreError> {
+        let t = title.trim();
+        let c = cron.trim().to_lowercase();
+        if t.is_empty()
+            || t.len() > 300
+            || ![
+                "hourly",
+                "daily",
+                "weekly",
+                "monthly",
+                "quarterly",
+                "yearly",
+            ]
+            .contains(&c.as_str())
+        {
+            return Err(StoreError::Conflict("title/cron".into()));
+        }
+        if let Some(tid) = template_id {
+            self.mtpl_get(org, tid).await?;
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_recurrences (org_id, template_id, title, cron) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(template_id.map(|v| v as u64))
+        .bind(t)
+        .bind(c.as_str())
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mrcr_list(&self, org: &str) -> Result<Vec<MatterRecurrenceRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, template_id, title, cron, active FROM matter_recurrences WHERE org_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterRecurrenceRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                template_id: x.get::<Option<u64>, _>("template_id").map(|v| v as i64),
+                title: x.get::<String, _>("title"),
+                cron: x.get::<String, _>("cron"),
+                active: x.get::<u8, _>("active") != 0,
+            })
+            .collect())
+    }
+    async fn mrcr_toggle(&self, org: &str, id: i64, active: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE matter_recurrences SET active=? WHERE id=? AND org_id=?")
+            .bind(if active { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM time_entries WHERE id=? AND org_id=?")
             .bind(id as u64)
