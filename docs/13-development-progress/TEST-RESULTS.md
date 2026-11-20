@@ -601,4 +601,4 @@
 
 ## 2026-11-20 AUDIT-1000 wave 188: merge w187-statement (main)
 - Workspace 489 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
-- Live MySQL: verifikasi 118 menyusul (rebuild target-ui5 dgn bool fix + relaunch + migrate; uji timer/archive non-kosong).
+- Live MySQL legalrust_wave188: migrate 118/118 + register PASS; matters/timer/archive/statement non-empty verified; /app needles OK.

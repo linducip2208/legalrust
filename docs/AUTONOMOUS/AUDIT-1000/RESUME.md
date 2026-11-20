@@ -809,4 +809,4 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 188: statement + bulk import (merge w187-statement) + MySQL bool-decode hardening
 - Tanpa migrasi: GET /api/v1/matters/{id}/statement(+.csv) + POST /api/v1/matters/import; kartu /app Statement & impor; uji totals/CSV/import + needle.
 - Hardening: 19 decode TINYINT(1)->u8 diganti bool/i8 (signed TINYINT memicu panic sqlx pada hasil non-kosong; bukti: crash live timer/archive); DATE_FORMAT/UNIX_TIMESTAMP untuk started_at.
-- F-D03-033 PARTIAL->IMPLEMENTED, F-D03-036 NOT_STARTED->IMPLEMENTED (~71.5 verified). Workspace 489/0; clippy clean; live 118 pending (rebuild dgn bool fix).
+- F-D03-033 PARTIAL->IMPLEMENTED, F-D03-036 NOT_STARTED->IMPLEMENTED (~71.5 verified). Workspace 489/0; clippy clean; live 118/118 + register PASS (legalrust_wave188; timer/archive/statement non-empty verified; u8->bool root cause fixed).

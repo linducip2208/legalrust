@@ -435,7 +435,7 @@ impl CoreStore for MysqlStores {
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
                 parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
-                archived: x.get::<u8, _>("archived") != 0,
+                archived: x.get::<bool, _>("archived"),
             })
             .collect())
     }
@@ -451,7 +451,7 @@ impl CoreStore for MysqlStores {
             practice_area: x.get::<String, _>("practice_area"),
             priority: x.get::<String, _>("priority"),
             parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
-            archived: x.get::<u8, _>("archived") != 0,
+            archived: x.get::<bool, _>("archived"),
         })
     }
     async fn set_matter_practice(
@@ -605,7 +605,7 @@ impl CoreStore for MysqlStores {
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
                 parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
-                archived: x.get::<u8, _>("archived") != 0,
+                archived: x.get::<bool, _>("archived"),
             })
             .collect())
     }
@@ -642,7 +642,7 @@ impl CoreStore for MysqlStores {
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
                 parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
-                archived: x.get::<u8, _>("archived") != 0,
+                archived: x.get::<bool, _>("archived"),
             })
             .collect())
     }
