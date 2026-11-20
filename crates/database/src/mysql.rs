@@ -417,10 +417,11 @@ impl CoreStore for MysqlStores {
             status: "open".into(),
             practice_area: "general".into(),
             priority: "normal".into(),
+            parent_id: None,
         })
     }
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MatterRow {
@@ -432,11 +433,12 @@ impl CoreStore for MysqlStores {
                 status: x.get::<String, _>("status"),
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
+                parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
             })
             .collect())
     }
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError> {
-        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
         Ok(MatterRow {
             id: x.get::<u64, _>("id") as i64,
             org_id: x.get::<String, _>("org_id"),
@@ -446,6 +448,7 @@ impl CoreStore for MysqlStores {
             status: x.get::<String, _>("status"),
             practice_area: x.get::<String, _>("practice_area"),
             priority: x.get::<String, _>("priority"),
+            parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
         })
     }
     async fn set_matter_practice(
@@ -542,6 +545,65 @@ impl CoreStore for MysqlStores {
             .await
             .map_err(db_err)?;
         self.get_matter(org, id).await
+    }
+    async fn set_matter_parent(
+        &self,
+        org: &str,
+        id: i64,
+        parent: Option<i64>,
+    ) -> Result<MatterRow, StoreError> {
+        self.get_matter(org, id).await?;
+        if let Some(pid) = parent {
+            if pid == id {
+                return Err(StoreError::Conflict("self-parent".into()));
+            }
+            self.get_matter(org, pid).await?;
+            // No cycles: pid must not descend from id (bounded walk).
+            let mut cur = pid;
+            for _ in 0..64 {
+                if cur == id {
+                    return Err(StoreError::Conflict("cycle".into()));
+                }
+                let row: Option<Option<u64>> =
+                    sqlx::query("SELECT parent_id FROM matters WHERE id=? AND org_id=?")
+                        .bind(cur as u64)
+                        .bind(org)
+                        .fetch_optional(&self.pool)
+                        .await
+                        .map_err(db_err)?
+                        .map(|x| x.get::<Option<u64>, _>("parent_id"));
+                match row.flatten() {
+                    Some(next) => cur = next as i64,
+                    None => break,
+                }
+            }
+        }
+        sqlx::query("UPDATE matters SET parent_id=? WHERE id=? AND org_id=?")
+            .bind(parent.map(|v| v as u64))
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.get_matter(org, id).await
+    }
+    async fn list_matter_children(&self, org: &str, id: i64) -> Result<Vec<MatterRow>, StoreError> {
+        self.get_matter(org, id).await?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE org_id=? AND parent_id=? ORDER BY id LIMIT 200").bind(org).bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterRow {
+                id: x.get::<u64, _>("id") as i64,
+                org_id: x.get::<String, _>("org_id"),
+                client_id: x.get::<Option<u64>, _>("client_id").map(|v| v as i64),
+                number: x.get::<String, _>("number"),
+                title: x.get::<String, _>("title"),
+                status: x.get::<String, _>("status"),
+                practice_area: x.get::<String, _>("practice_area"),
+                priority: x.get::<String, _>("priority"),
+                parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
+            })
+            .collect())
     }
     async fn update_client(
         &self,

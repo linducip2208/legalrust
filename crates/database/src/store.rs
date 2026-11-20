@@ -56,6 +56,7 @@ pub struct MatterRow {
     pub status: String,
     pub practice_area: String,
     pub priority: String,
+    pub parent_id: Option<i64>,
 }
 #[derive(Debug, Clone)]
 pub struct TaskRow {
@@ -198,6 +199,15 @@ pub trait CoreStore: Send + Sync {
         id: i64,
         to: &str,
     ) -> Result<MatterRow, StoreError>;
+    /// Sub-matter parent (same org, no self/cycle; None detaches).
+    async fn set_matter_parent(
+        &self,
+        org: &str,
+        id: i64,
+        parent: Option<i64>,
+    ) -> Result<MatterRow, StoreError>;
+    /// Direct children of a matter (same org, ordered by id).
+    async fn list_matter_children(&self, org: &str, id: i64) -> Result<Vec<MatterRow>, StoreError>;
     async fn update_client(
         &self,
         org: &str,

@@ -3450,6 +3450,41 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (out) out.innerHTML = (v || []).map(function (w) { return '<div>' + esc(w.user_id) + ': ' + w.matters + ' perkara / ' + w.open_tasks + ' tugas buka</div>'; }).join('') || 'Belum ada penugasan.';
   });
 
+  /* ---- sub-matter grouping (F-D03-022) ---- */
+  async function msubKids() {
+    var box = document.getElementById('msub-list');
+    var out = document.getElementById('msub-out');
+    if (!box) return;
+    if (!pval('msub-id')) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(pval('msub-id')) + '/children');
+    if (!v) { pmsg('msub-msg', 'Gagal memuat.'); return; }
+    pmsg('msub-msg', '');
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.number) + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada sub-perkara.</td></tr>';
+    if (out) out.textContent = v.length + ' sub-perkara.';
+  }
+  on('msub-set', 'click', async function () {
+    if (!pval('msub-id')) { pmsg('msub-msg', 'Isi ID perkara anak.'); return; }
+    var body = {};
+    if (pval('msub-parent')) body.parent_id = +pval('msub-parent');
+    else body.parent_id = null;
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('msub-id')) + '/parent', body);
+    if (!r.ok) { pmsg('msub-msg', 'Gagal (' + r.status + '). Siklus/induk?'); return; }
+    pmsg('msub-msg', ''); msubKids();
+  });
+  on('msub-kids', 'click', msubKids);
+  on('msub-tree', 'click', async function () {
+    var out = document.getElementById('msub-out');
+    if (!pval('msub-id')) { pmsg('msub-msg', 'Isi ID perkara.'); return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(pval('msub-id')) + '/tree');
+    if (!v) { pmsg('msub-msg', 'Gagal memuat pohon.'); return; }
+    pmsg('msub-msg', '');
+    if (out) out.innerHTML = 'Akar #' + v.root.id + ' ' + esc(v.root.title) + '<br>' + (v.children || []).map(function (c) {
+      return '<div>&#9492; #' + c.id + ' ' + esc(c.title) + ' (' + (c.children || []).length + ' anak)</div>';
+    }).join('') || 'Tidak ada anak.';
+  });
+
   /* ---- matter notes + memos + closure (F-D03-026/027/030) ---- */
   async function mntRefresh() {
     var box = document.getElementById('mnt-list');

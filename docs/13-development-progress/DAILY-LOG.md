@@ -691,3 +691,8 @@
 - Migrasi 0115 (matter_templates + matter_recurrences); OpsStore::mtpl_*/mrcr_* (memory+mysql); 6 endpoint (instantiate bentuk perkara + butir closure + audit; gantt agregat tasks+milestones); kartu /app + JS; tes matter_templates_and_recurrences + needle (422/404/409/401).
 - Perbaikan tabrakan ID: checklist kepatuhan mcl-* -> mcc-* (JS+HTML+needle tes) karena menimpa closure mcl-*.
 - Workspace 476 passed, 0 failed; fmt+clippy+node clean; F-D03-024/025/012 PLANNED->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 183: sub-matter grouping (main)
+- Migrasi 0116 (matters.parent_id + FK fk_matter_parent SET NULL + indeks); MatterRow.parent_id; CoreStore 2 metode (memory+mysql, guard same-org/self-parent/siklus bounded-walk 64); 3 endpoint + audit; parent_id di GET /api/v1/matters; kartu /app + JS; tes matter_submatter_grouping + needle.
+- Unifikasi paralel: validasi tasks_json pindah ke store (409 seragam, serde_json di legalrust-database); mrcr_toggle terima active|done; uji from-template disatukan ke instantiate.
+- Workspace 479 passed, 0 failed; fmt+clippy+node clean; F-D03-022 PLANNED->IMPLEMENTED (~72.8 verified).

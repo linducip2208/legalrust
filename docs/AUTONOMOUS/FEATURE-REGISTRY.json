@@ -1174,10 +1174,14 @@
   "id": "F-D03-022",
   "domain": "D03",
   "title": "Sub-matter / workstream grouping",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0116: matters.parent_id + FK SET NULL + index",
+   "store.rs: MatterRow.parent_id + CoreStore::set_matter_parent/list_matter_children (same-org, self/cycle guards)",
+   "lib.rs: POST /api/v1/matters/{id}/parent + GET children/tree (Update/View, 404/409, audit matter.reparented)",
+   "site.js: msub card (tautkan/anak/pohon); tests: matter_submatter_grouping e2e (attach/children/tree/self-409/cycle-409/ghost-404/detach/401) + needle"
+  ],
+  "audit_note": "Wave 183: sub-matter grouping live. Verified by test."
  },
  {
   "id": "F-D03-023",

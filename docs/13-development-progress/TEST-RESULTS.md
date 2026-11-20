@@ -574,3 +574,7 @@
 ## 2026-11-20 AUDIT-1000 wave 182: templates + recurrences + gantt (main)
 - Workspace 476 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
 - Live MySQL legalrust_wave182: migrate 115/115 + register PASS; matter_templates/matter_recurrences verified; /app needles OK (mtp/mrc/mcc/gantt).
+
+## 2026-11-20 AUDIT-1000 wave 183: sub-matter grouping (main)
+- Workspace 479 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL: verifikasi 116 menyusul (rebuild target-ui5 + relaunch + migrate).

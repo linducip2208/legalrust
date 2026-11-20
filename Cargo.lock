@@ -1389,6 +1389,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "serde",
+ "serde_json",
  "sqlx",
  "thiserror 2.0.21",
  "tokio",

@@ -427,7 +427,13 @@ fn check_mtpl(
     if n.is_empty() || n.len() > 160 || d.len() > 500 || t.is_empty() || t.len() > 4000 {
         return Err(StoreError::Conflict("name/description/tasks".into()));
     }
-    if !t.starts_with('[') {
+    // Tasks must be a JSON array of 1-50 non-empty titles (<=200 chars each).
+    let tasks: Vec<String> =
+        serde_json::from_str(t).map_err(|_| StoreError::Conflict("tasks_json".into()))?;
+    if tasks.is_empty()
+        || tasks.len() > 50
+        || tasks.iter().any(|x| x.trim().is_empty() || x.len() > 200)
+    {
         return Err(StoreError::Conflict("tasks_json".into()));
     }
     Ok((n.into(), d.into(), t.into()))

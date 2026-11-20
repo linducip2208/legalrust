@@ -285,6 +285,7 @@ impl CoreStore for MemoryStores {
             status: "open".into(),
             practice_area: "general".into(),
             priority: "normal".into(),
+            parent_id: None,
         };
         m.matters.insert(id, r.clone());
         Ok(r)
@@ -464,6 +465,64 @@ impl CoreStore for MemoryStores {
             .ok_or(StoreError::NotFound)?;
         r.priority = to;
         Ok(r.clone())
+    }
+    async fn set_matter_parent(
+        &self,
+        org: &str,
+        id: i64,
+        parent: Option<i64>,
+    ) -> Result<MatterRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let cur = m
+            .matters
+            .get(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        let _ = cur;
+        if let Some(pid) = parent {
+            if pid == id {
+                return Err(StoreError::Conflict("self-parent".into()));
+            }
+            if !m.matters.get(&pid).is_some_and(|x| x.org_id == org) {
+                return Err(StoreError::NotFound);
+            }
+            // No cycles: pid must not descend from id.
+            let mut seen = std::collections::HashSet::new();
+            let mut cur_id = pid;
+            for _ in 0..64 {
+                if cur_id == id {
+                    return Err(StoreError::Conflict("cycle".into()));
+                }
+                if !seen.insert(cur_id) {
+                    break;
+                }
+                match m.matters.get(&cur_id).and_then(|x| x.parent_id) {
+                    Some(next) => cur_id = next,
+                    None => break,
+                }
+            }
+        }
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        r.parent_id = parent;
+        Ok(r.clone())
+    }
+    async fn list_matter_children(&self, org: &str, id: i64) -> Result<Vec<MatterRow>, StoreError> {
+        let m = self.inner.lock().unwrap();
+        if !m.matters.get(&id).is_some_and(|x| x.org_id == org) {
+            return Err(StoreError::NotFound);
+        }
+        let mut v: Vec<MatterRow> = m
+            .matters
+            .values()
+            .filter(|x| x.org_id == org && x.parent_id == Some(id))
+            .cloned()
+            .collect();
+        v.sort_by_key(|x| x.id);
+        Ok(v)
     }
     async fn create_task(
         &self,

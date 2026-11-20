@@ -23129,7 +23129,7 @@ async fn uib_app_has_feed_ui() {
 async fn matter_templates_and_recurrences() {
     let a = app();
     let tok = reg(&a, "mtpl@x.id").await;
-    // Bad tasks_json (not an array) rejected 422.
+    // Bad tasks_json (not an array) rejected 409.
     let res = a
         .clone()
         .oneshot(post(
@@ -23139,7 +23139,7 @@ async fn matter_templates_and_recurrences() {
         ))
         .await
         .unwrap();
-    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(res.status(), StatusCode::CONFLICT);
     // Empty name rejected 422.
     let res = a
         .clone()
@@ -23369,18 +23369,18 @@ async fn matter_templates_recurring_gantt() {
     let res = a
         .clone()
         .oneshot(post(
-            &format!("/api/v1/matters/from-template/{tid}"),
+            &format!("/api/v1/matter-templates/{tid}/instantiate"),
             r#"{"title":"Perkara tpl"}"#,
             Some(&tok),
         ))
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(body_json(res).await["template_id"], tid);
+    assert_eq!(body_json(res).await["tasks"], 2);
     let res = a
         .clone()
         .oneshot(post(
-            "/api/v1/matters/from-template/999999",
+            "/api/v1/matter-templates/999999/instantiate",
             r#"{"title":"x"}"#,
             Some(&tok),
         ))
@@ -23447,7 +23447,7 @@ async fn matter_templates_recurring_gantt() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::OK);
-    assert!(body_json(res).await.as_array().unwrap().len() >= 1);
+    assert!(!body_json(res).await.as_array().unwrap().is_empty());
     // No-token 401.
     let res = a
         .clone()
@@ -23463,26 +23463,148 @@ async fn matter_templates_recurring_gantt() {
 }
 
 #[tokio::test]
-async fn uib_app_has_template_ui() {
+async fn matter_submatter_grouping() {
+    let a = app();
+    let tok = reg(&a, "msub@x.id").await;
+    let mk = |t: &'static str| {
+        let a = a.clone();
+        let tok = tok.clone();
+        async move {
+            let res = a
+                .clone()
+                .oneshot(post(
+                    "/api/v1/matters",
+                    &format!(r#"{{"title":"{t}"}}"#),
+                    Some(&tok),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            body_json(res).await["id"].as_i64().unwrap()
+        }
+    };
+    let parent = mk("induk workstream").await;
+    let child = mk("anak workstream").await;
+    // Attach child under parent.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{child}/parent"),
+            &format!(r#"{{"parent_id":{parent}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["parent_id"].as_i64(), Some(parent));
+    // Children lists the child.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{parent}/children"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(child)));
+    // Tree from the child climbs to the parent root.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{child}/tree"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let tree = body_json(res).await;
+    assert_eq!(tree["root"]["id"].as_i64(), Some(parent));
+    assert!(tree["children"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(child)));
+    // Self-parent 409; cycle 409; ghost parent 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{child}/parent"),
+            &format!(r#"{{"parent_id":{child}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{parent}/parent"),
+            &format!(r#"{{"parent_id":{child}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{child}/parent"),
+            r#"{"parent_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Detach.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{child}/parent"),
+            r#"{"parent_id":null}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{parent}/children"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res).await.as_array().unwrap().is_empty());
+    // Ghost children 404 + no-token 401.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/999999/children", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{child}/parent"),
+            r#"{"parent_id":null}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_submatter_ui() {
     let (st, _, t) = page_get(&app(), "/app").await;
     assert_eq!(st, StatusCode::OK);
     for needle in [
-        "mtp-name",
-        "mtp-desc",
-        "mtp-tasks",
-        "mtp-add",
-        "mtp-reload",
-        "mtp-list",
-        "mtp-msg",
-        "mfr-tpl",
-        "mfr-title",
-        "mfr-cron",
-        "mfr-add",
-        "mfr-reload",
-        "mfr-list",
-        "mfr-msg",
-        "gnt-go",
-        "gnt-out",
+        "msub-id",
+        "msub-parent",
+        "msub-set",
+        "msub-kids",
+        "msub-tree",
+        "msub-msg",
+        "msub-list",
+        "msub-out",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
     }

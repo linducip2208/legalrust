@@ -779,3 +779,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 182: templates + recurrences + gantt (main)
 - Migrasi 0115 (matter_templates + matter_recurrences, FK SET NULL); OpsStore 6 metode (memory+mysql); 6 endpoint (templates add/list, instantiate->matter+closure items+audit, recurrences add/list/toggle, gantt aggregate); kartu /app template+jadwal+gantt; mcc-* rename (compliance checklist ID collision fix).
 - F-D03-024/025/012 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 476/0; clippy clean; live 115/115 + register PASS (legalrust_wave182).
+
+## Done wave 183: sub-matter grouping (main)
+- Migrasi 0116 (matters.parent_id + FK SET NULL); CoreStore::set_matter_parent/list_matter_children (memory+mysql, same-org/self/cycle guards); 4 endpoint (parent/children/tree + parent_id di list); kartu /app sub-perkara; uji grouping + needle.
+- F-D03-022 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 479/0; clippy clean; live 116 pending.
