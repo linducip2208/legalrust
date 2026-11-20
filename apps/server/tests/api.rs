@@ -6154,6 +6154,71 @@ async fn uib_app_has_sod_ack_ui() {
 }
 
 #[tokio::test]
+async fn integration_health_live_probes() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "live@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/integrations/health", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    let all = v.as_array().unwrap();
+    let st = all
+        .iter()
+        .find(|x| x["name"] == "storage")
+        .expect("storage entry");
+    assert_eq!(st["configured"], true);
+    assert!(st["live"].is_boolean());
+    let ai = all.iter().find(|x| x["name"] == "ai").expect("ai entry");
+    assert!(ai["live"].is_boolean());
+    let db = all
+        .iter()
+        .find(|x| x["name"] == "database")
+        .expect("db entry");
+    assert!(db["live"].is_boolean());
+}
+
+#[tokio::test]
+async fn notification_audit_trail_surface() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "ntrail@x.id").await;
+    // Creating a matter emits a notify.* audit row with entity=notification.
+    let _ = mk_matter(&a, &tok).await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=notification", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rows = body_json(res).await;
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"].as_str().unwrap_or("").starts_with("notify.")));
+    // Non-privileged lawyer is forbidden (same gate as audit list).
+    let lawyer = forged_role_token(&tok, vec!["lawyer"]);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=notification", &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn uib_app_has_ntrail_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["ntrail-go", "ntrail-msg", "ntrail-list", "Jejak notifikasi"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn uib_jobs_enqueue_list_flow() {
     use tower::ServiceExt;
     let a = app();

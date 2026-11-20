@@ -874,3 +874,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 204: session rotation + security headers (main)
 - Rotasi sesi + Permissions-Policy + tes; flake tripay didokumentasikan.
 - F-D22-018/004 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 524/0; clippy clean; tanpa migrasi.
+
+## Done wave 205: live probes + notif trail (main)
+- Probe live integrasi + badge + kartu jejak notifikasi; uji + needle.
+- F-D21-031/F-D18-028 PARTIAL->IMPLEMENTED (~73.6 verified). Workspace 527/0; clippy clean; tanpa migrasi.

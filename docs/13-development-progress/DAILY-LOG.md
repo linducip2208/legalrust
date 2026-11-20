@@ -789,3 +789,7 @@
 ## 2026-11-20 AUDIT-1000 wave 204: session rotation + security headers (main)
 - password_change mencabut semua sesi lain (rotasi, sesi kini dipertahankan) + audit; Permissions-Policy baru; tes rotasi 2-sesi + 6 header + needle implisit.
 - Workspace 524 passed, 0 failed (1 flake balapan env tripay pada run pertama, hijau pada run ulang + serial); fmt+clippy+node clean; F-D22-018/004 PARTIAL->IMPLEMENTED (~72.8 verified); tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 205: live probes + notif trail (main)
+- integration_health: probe live AI (HTTP 3s bila dikonfigurasi) + storage roundtrip + DB SELECT 1; badge live/mati di UI; kartu Jejak notifikasi di panel audit + JS; tes + needle.
+- Workspace 527 passed, 0 failed; fmt+clippy+node clean; F-D21-031/F-D18-028 PARTIAL->IMPLEMENTED (~73.6 verified); tanpa migrasi.

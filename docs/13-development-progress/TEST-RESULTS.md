@@ -656,3 +656,6 @@
 
 ## 2026-11-20 AUDIT-1000 wave 204: rotation+headers (main)
 - Workspace 524 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi. Catatan flake: tripay env-race sekali, hijau serial/ulang.
+
+## 2026-11-20 AUDIT-1000 wave 205: probes+trail (main)
+- Workspace 527 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.

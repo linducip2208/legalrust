@@ -5601,6 +5601,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     wheRefresh();
   });
   on('whe-reload', 'click', wheRefresh);
+  async function ntrailRefresh() {
+    var box = document.getElementById('ntrail-list');
+    if (!box) return;
+    var v = await j('/api/v1/audit?entity=notification');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat (butuh hak audit).</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.action) + '</td><td>' + esc(x.actor || '-') + '</td><td class="text-muted">' + esc(x.created) + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada jejak notifikasi.</td></tr>';
+    pmsg('ntrail-msg', '');
+  }
+  on('ntrail-go', 'click', ntrailRefresh);
   qsa('.snav[data-tab="audit"]', function (a) {
     a.addEventListener('click', function () { whRefresh(); });
   });
@@ -7238,7 +7249,8 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     var v = await j('/api/v1/integrations/health');
     if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
     box.innerHTML = v.map(function (x) {
-      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.kind) + '</td><td>' + (x.configured ? '<span class="badge bg-green-lt">siap</span>' : '<span class="badge bg-yellow-lt">belum</span>') + '</td><td class="text-muted">' + esc(x.detail) + '</td></tr>';
+      var live = (x.live === true) ? ' <span class="badge bg-green-lt">live</span>' : ((x.live === false && x.configured) ? ' <span class="badge bg-red-lt">mati</span>' : '');
+      return '<tr><td>' + esc(x.name) + '</td><td>' + esc(x.kind) + '</td><td>' + (x.configured ? '<span class="badge bg-green-lt">siap</span>' : '<span class="badge bg-yellow-lt">belum</span>') + live + '</td><td class="text-muted">' + esc(x.detail) + '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-muted">Tidak ada integrasi.</td></tr>';
   }
   on('int-reload', 'click', intRefresh);
