@@ -3353,6 +3353,30 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     } else { pmsg(msg, 'Gagal memuat siaga SLA.'); }
   }
   on('mins-go', 'click', minsRefresh);
+  /* ---- matter statement + bulk import (F-D03-033/036) ---- */
+  async function mstRefresh() {
+    var out = document.getElementById('mst-out');
+    if (!pval('mst-mid')) { pmsg('mst-msg', 'Isi ID perkara.'); return; }
+    var v = await j('/api/v1/matters/' + encodeURIComponent(pval('mst-mid')) + '/statement');
+    if (!v) { pmsg('mst-msg', 'Gagal memuat.'); return; }
+    pmsg('mst-msg', '');
+    out.innerHTML = 'Ditagih ' + esc(v.totals.billed) + ' | Dibayar ' + esc(v.totals.paid) + ' | Sisa ' + esc(v.totals.outstanding)
+      + (v.invoices || []).map(function (x) { return '<div>#' + x.id + ' ' + esc(x.number) + ': ' + esc(x.paid) + '/' + esc(x.total) + '</div>'; }).join('');
+  }
+  on('mst-go', 'click', mstRefresh);
+  on('mst-csv', 'click', function () {
+    if (!pval('mst-mid')) { pmsg('mst-msg', 'Isi ID perkara.'); return; }
+    dlCsv('/api/v1/matters/' + encodeURIComponent(pval('mst-mid')) + '/statement.csv', 'statement.csv', 'mst-msg');
+  });
+  on('mimp-go', 'click', async function () {
+    var lines = pval('mimp-titles').split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!lines.length) { pmsg('mimp-msg', 'Isi minimal satu judul.'); return; }
+    var r = await ppost('/api/v1/matters/import', { rows: lines.map(function (t) { return { title: t }; }) });
+    if (!r.ok) { pmsg('mimp-msg', 'Gagal (' + r.status + '). Judul min 2 huruf?'); return; }
+    var v = await r.json();
+    pmsg('mimp-msg', '');
+    document.getElementById('mimp-out').textContent = 'Terbuat: ' + v.created + ' perkara.';
+  });
   /* ---- timesheet (F-D03-013/015) ---- */
   var TEN_NEXT = { draft: 'submitted', submitted: 'approved', rejected: 'draft' };
   async function tenRefresh() {

@@ -23957,3 +23957,158 @@ async fn uib_app_has_insights_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_statement_and_bulk_import() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "mst@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MSTM"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Ghost statement 404.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/999999/statement", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Invoice 1jt + payment 400rb -> totals + CSV.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":1000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":400000,"method":"transfer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/statement"), &tok))
+        .await
+        .unwrap();
+    let s = body_json(res).await;
+    assert_eq!(s["totals"]["billed"].as_i64(), Some(1_000_000));
+    assert_eq!(s["totals"]["paid"].as_i64(), Some(400_000));
+    assert_eq!(s["totals"]["outstanding"].as_i64(), Some(600_000));
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matters/{mid}/statement.csv"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Export-gated: client forbidden.
+    let client = forged_role_token(&tok, vec!["client"]);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/matters/{mid}/statement.csv"),
+            &client,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Import: one bad title rejects everything (nothing created).
+    let before = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/matters", &tok))
+            .await
+            .unwrap(),
+    )
+    .await
+    .as_array()
+    .unwrap()
+    .len();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/import",
+            r#"{"rows":[{"title":"OK Satu"},{"title":"x"}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Ghost client rejected before any write.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/import",
+            r#"{"rows":[{"title":"OK Dua","client_id":999999}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/import",
+            r#"{"rows":[{"title":"OK Satu"},{"title":"OK Dua"}]}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["created"].as_i64(), Some(2));
+    let after = body_json(
+        a.clone()
+            .oneshot(get("/api/v1/matters", &tok))
+            .await
+            .unwrap(),
+    )
+    .await
+    .as_array()
+    .unwrap()
+    .len();
+    assert_eq!(after, before + 2);
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matters/{mid}/statement"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_statement_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mst-mid",
+        "mst-go",
+        "mst-csv",
+        "mst-msg",
+        "mst-out",
+        "mimp-titles",
+        "mimp-go",
+        "mimp-msg",
+        "mimp-out",
+        "Statement &amp; impor perkara",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
