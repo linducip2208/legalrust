@@ -25658,3 +25658,87 @@ async fn uib_app_has_kth_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn document_verify_detects_tamper_free_store() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "docv@x.id").await;
+    // Upload "test" (sha256 9f86...) -> version 1 pinned.
+    let res = a
+        .clone()
+        .oneshot(
+            post(
+                "/api/v1/documents",
+                r#"{"name":"ev.txt","mime":"text/plain","size":4,"sha":"9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"}"#,
+                Some(&tok),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let did = body_json(res).await["id"].as_i64().unwrap();
+    let req = Request::builder()
+        .uri(format!("/api/v1/documents/{did}/content"))
+        .method("PUT")
+        .header(
+            "authorization",
+            format!("Bearer {tok}")
+                .parse::<axum::http::HeaderValue>()
+                .unwrap(),
+        )
+        .body(Body::from(b"test".to_vec()))
+        .unwrap();
+    let res = a.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Verify: intact store -> ok.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/documents/{did}/verify"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["bad"], 0);
+    assert_eq!(v["versions"], 1);
+    assert_eq!(v["rows"][0]["ok"], true);
+    // Ghost 404; unauth 401; audit trail records the verification.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/documents/999999/verify", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/documents/{did}/verify"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=document", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "document.verified:0"));
+}
+
+#[tokio::test]
+async fn uib_app_has_doc_verify_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["doc-verify-btn", "doc-verify-out"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

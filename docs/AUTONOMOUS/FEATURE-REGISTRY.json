@@ -9544,10 +9544,12 @@
   "id": "F-D22-027",
   "domain": "D22",
   "title": "Tamper-evident evidence store",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/documents/{id}/verify (View + portal guard): recompute SHA-256 per stored version vs pinned sha, audit document.verified:{bad}",
+   "verify_rows() pure helper + 2 unit tests (match/mismatch/missing); e2e intact-store + 404 + 401 + audit trail; /app verify button + needle"
+  ],
+  "audit_note": "Wave 201: out-of-band tamper detectable (upload gatekeeps via API); evidence vault separate."
  },
  {
   "id": "F-D22-028",

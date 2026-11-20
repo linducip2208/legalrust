@@ -858,3 +858,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 200: SoD enforcement (main)
 - Blokir pasangan baru + override teraudit + UI; uji + needle.
 - F-D14-038 PARTIAL->IMPLEMENTED (~76.0 verified). Workspace 516/0; clippy clean; tanpa migrasi.
+
+## Done wave 201: evidence integrity verify (main)
+- Verifikasi SHA per versi + audit + UI; unit + e2e + needle.
+- F-D22-027 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 520/0; clippy clean; tanpa migrasi.

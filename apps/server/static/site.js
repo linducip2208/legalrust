@@ -2529,6 +2529,17 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       + '</tbody></table></div>';
   }
   on('doc-version-btn', 'click', docVersionRefresh);
+  on('doc-verify-btn', 'click', async function () {
+    var id = pval('doc-version-id');
+    if (!id) { pmsg('doc-version-msg', 'Isi ID dokumen dulu.'); return; }
+    var v = await j('/api/v1/documents/' + encodeURIComponent(id) + '/verify');
+    var out = document.getElementById('doc-verify-out');
+    if (!v) { pmsg('doc-version-msg', 'Gagal verifikasi.'); return; }
+    pmsg('doc-version-msg', '');
+    out.textContent = v.ok
+      ? ('Integritas OK: ' + v.versions + ' versi cocok.')
+      : ('RUSAK: ' + v.bad + ' dari ' + v.versions + ' versi tidak cocok!');
+  });
   /* ---- marketing admin (RBAC-gated: Permission::Approve; 401 -> /login) ---- */
   var MKT_NEXT = { new: 'contacted', contacted: 'qualified', qualified: 'demo', demo: 'proposal', proposal: 'negotiation', negotiation: 'won' };
   var mktLeadCache = [], mktPlanCache = [], mktArtCache = [];
