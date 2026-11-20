@@ -821,4 +821,8 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 
 ## Done wave 191: inter-office referral (main)
 - Migrasi 0120 (office_referrals, FK cascade); OpsStore oref_* (memory+mysql, guard kantor-ganda/ghost/siklus-status); 3 endpoint + audit; kartu /app rujukan; uji referral + needle.
-- F-D17-007 PLANNED->IMPLEMENTED (~71.0 verified). Workspace 495/0; clippy clean; live 120 pending.
+- F-D17-007 PLANNED->IMPLEMENTED (~71.0 verified). Workspace 495/0; clippy clean; live 120/120 + register PASS (legalrust_wave191; referral create/list/accept/settle-409 verified). Note: 0118 logged transient success=0 on first boot while column+index landed; schema verified present, later boots recorded 118-120 success=1.
+
+## Done wave 191: matter access control (main, merge w190-access)
+- Visibility open|team + team-gated reads (23 situs), filter list/agregat/tree, endpoint + audit + UI; uji lifecycle/gating/bypass/member.
+- F-D03-034 PARTIAL->IMPLEMENTED (~72.2 verified). Workspace 493/0; clippy clean. Live 121/121 PASS (legalrust_wave191).

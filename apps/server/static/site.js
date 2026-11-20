@@ -3404,6 +3404,12 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('mpipe-msg', 'Buka ' + ((v.counts && v.counts.open) || 0) + ' | Tahan ' + ((v.counts && v.counts.on_hold) || 0) + ' | Tutup ' + ((v.counts && v.counts.closed) || 0));
   }
   on('mpipe-go', 'click', mpipeRefresh);
+  on('mvis-set', 'click', async function () {
+    if (!pval('mvis-mid')) { pmsg('mvis-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mvis-mid')) + '/visibility', { visibility: pval('mvis-val') });
+    if (!r.ok) { pmsg('mvis-msg', 'Gagal (' + r.status + '). Nilai open/team?'); return; }
+    pmsg('mvis-msg', ''); mpipeRefresh();
+  });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
     var msg = 'mins-msg';

@@ -735,3 +735,8 @@
 ## 2026-11-20 AUDIT-1000 wave 191: inter-office referral (main)
 - Migrasi 0120 (office_referrals); OfficeReferralRow; OpsStore::oref_add/list/set_status (memory+mysql); POST/GET referrals + POST status + audit office.referred; kartu /app + JS (terima/tolak); tes office_referrals + needle.
 - Workspace 495 passed, 0 failed; fmt+clippy+node clean; F-D17-007 PLANNED->IMPLEMENTED (~71.0 verified).
+
+## 2026-11-20 AUDIT-1000 wave 191: matter access control (main, merge w190-access)
+- Migrasi 0121 (visibility open|team + CHECK); MatterRow + set_matter_visibility (memory+MySQL); helper visible_matter/visible_matters (team + privileged SuperAdmin/OrgOwner/OfficeAdmin/Auditor, 404 anti-bocor); enforcement di 23 read/write per-perkara + filter list + 15 agregat + tree; endpoint visibility + audit + toggle /app + JS.
+- Batas jujur: portal client flows, conflict_check, dan doc/direct-read tetap model lama (follow-up); default open = nol regresi.
+- Workspace 493 passed, 0 failed; fmt+clippy+node clean; F-D03-034 PARTIAL->IMPLEMENTED (~72.2 verified); live MySQL 121/121 drill PASS (legalrust_wave191, visibility default open).

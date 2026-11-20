@@ -613,4 +613,8 @@
 
 ## 2026-11-20 AUDIT-1000 wave 191: inter-office referral (main)
 - Workspace 495 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
-- Live MySQL: verifikasi 120 menyusul (rebuild target-ui5 + relaunch + migrate).
+- Live MySQL legalrust_wave191: migrate 120/120 + register PASS; referral flow verified; /app needles OK. (0118 transient success=0 repaired by verification; schema intact.)
+
+## 2026-11-20 AUDIT-1000 wave 191: matter access control (main)
+- Workspace 493 passed, 0 failed; fmt+clippy clean, site.js node --check PASS.
+- Migrasi 0121 terverifikasi kompilasi + tes; live drill legalrust_wave191 PASS: migrate 121/121 + register ok (visibility default open); worktree 12GB dihapus -> 11.9GB bebas.

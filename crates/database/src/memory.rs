@@ -287,6 +287,7 @@ impl CoreStore for MemoryStores {
             priority: "normal".into(),
             parent_id: None,
             archived: false,
+            visibility: "open".into(),
         };
         m.matters.insert(id, r.clone());
         Ok(r)
@@ -465,6 +466,25 @@ impl CoreStore for MemoryStores {
             .filter(|x| x.org_id == org)
             .ok_or(StoreError::NotFound)?;
         r.priority = to;
+        Ok(r.clone())
+    }
+    async fn set_matter_visibility(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["open", "team"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("visibility".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        r.visibility = to;
         Ok(r.clone())
     }
     async fn set_matter_parent(
