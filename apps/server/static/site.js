@@ -3410,6 +3410,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (!r.ok) { pmsg('mvis-msg', 'Gagal (' + r.status + '). Nilai open/team?'); return; }
     pmsg('mvis-msg', ''); mpipeRefresh();
   });
+  /* ---- KPI dashboards (F-D20-007/008/015) ---- */
+  on('kpi-go', 'click', async function () {
+    var m = await j('/api/v1/kpi/matters');
+    if (m) document.getElementById('kpi-matter').textContent = 'Perkara ' + m.matters_total + ' | Tugas buka/telat ' + m.open_tasks + '/' + m.overdue_tasks + ' | Tanpa tim ' + m.matters_without_team;
+    var f = await j('/api/v1/kpi/finance');
+    if (f) document.getElementById('kpi-fin').textContent = 'Ditagih ' + f.billed + ' | Terkumpul ' + f.collected + ' | Sisa ' + f.outstanding + ' | Trust ' + f.trust_balance;
+    var t = await j('/api/v1/kpi/staff');
+    if (t) {
+      document.getElementById('kpi-staff').innerHTML = t.map(function (x) {
+        return '<tr><td>' + esc(x.user) + '</td><td>' + esc(x.minutes) + '</td><td>' + esc(x.open_tasks) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada data.</td></tr>';
+      pmsg('kpi-msg', '');
+    } else { pmsg('kpi-msg', 'Gagal memuat KPI.'); }
+  });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
     var msg = 'mins-msg';
