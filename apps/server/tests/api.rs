@@ -24868,3 +24868,110 @@ async fn uib_app_has_visibility_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn kpi_dashboards_rollup() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kpi@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"KPI1"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":2000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":500000,"method":"transfer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/time-entries",
+            &format!(
+                r#"{{"matter_id":{mid},"user_id":"ani","entry_date":"2027-03-01","minutes":120}}"#
+            ),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Matter KPIs carry the new matter; finance math matches seed.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/matters", &tok))
+        .await
+        .unwrap();
+    let m = body_json(res).await;
+    assert!(m["matters_total"].as_i64().unwrap() >= 1);
+    assert!(m["by_status"]["open"].as_i64().unwrap() >= 1);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/finance", &tok))
+        .await
+        .unwrap();
+    let f = body_json(res).await;
+    assert!(f["billed"].as_i64().unwrap() >= 2_000_000);
+    assert!(f["collected"].as_i64().unwrap() >= 500_000);
+    assert_eq!(
+        f["outstanding"].as_i64().unwrap(),
+        f["billed"].as_i64().unwrap() - f["collected"].as_i64().unwrap()
+    );
+    // Staff utilization surfaces ani with 120 minutes.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/staff", &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    assert!(rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["user"] == "ani" && r["minutes"].as_i64() == Some(120)));
+    // Auth guards.
+    for uri in [
+        "/api/v1/kpi/matters",
+        "/api/v1/kpi/finance",
+        "/api/v1/kpi/staff",
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{uri}");
+    }
+}
+
+#[tokio::test]
+async fn uib_app_has_kpi_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "kpi-go",
+        "kpi-msg",
+        "kpi-matter",
+        "kpi-fin",
+        "kpi-staff",
+        "KPI firma",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
