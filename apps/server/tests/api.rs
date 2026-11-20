@@ -25742,3 +25742,56 @@ async fn uib_app_has_doc_verify_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn kpi_deeds_compare_counts_and_guards() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "dcm@x.id").await;
+    let _did = mk_deed(&a, &tok).await;
+    // Invalid ranges rejected.
+    for uri in [
+        "/api/v1/kpi/deeds-compare?from=2027-13-01&to=2027-12-31",
+        "/api/v1/kpi/deeds-compare?from=2027-12-31&to=2027-01-01",
+        "/api/v1/kpi/deeds-compare?cmp_from=2027-12-31&cmp_to=2027-01-01",
+    ] {
+        let res = a.clone().oneshot(get(uri, &tok)).await.unwrap();
+        assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY, "{uri}");
+    }
+    // Wide window counts the fresh deed; compare math consistent.
+    let res = a
+        .clone()
+        .oneshot(get(
+            "/api/v1/kpi/deeds-compare?from=2020-01-01&to=2030-12-31",
+            &tok,
+        ))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v["current"].as_i64().unwrap() >= 1);
+    assert!(v["by_type"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["deed_type"] == "ajb"));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/deeds-compare?from=2020-01-01&to=2030-12-31&cmp_from=2000-01-01&cmp_to=2000-12-31", &tok))
+        .await
+        .unwrap();
+    let c = body_json(res).await;
+    assert_eq!(c["previous"].as_i64(), Some(0));
+    assert_eq!(c["delta"].as_i64(), c["current"].as_i64());
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/kpi/deeds-compare")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}

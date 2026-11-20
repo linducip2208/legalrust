@@ -20261,6 +20261,97 @@ async fn kpi_deliveries(
 }
 // ---------- end reports slice: flow KPIs ----------
 
+// ---------- reports slice: deeds compare JSON (F-D20-024) ----------
+// JSON twin of the CSV comparative analysis: per-type counts for a window,
+// plus delta vs a comparison window when cmp_from/cmp_to are given.
+#[derive(Debug, Deserialize)]
+struct DeedsCmpQ {
+    from: Option<String>,
+    to: Option<String>,
+    cmp_from: Option<String>,
+    cmp_to: Option<String>,
+}
+fn valid_day(v: Option<&str>) -> bool {
+    matches!(v, Some(d) if {
+        let b = d.as_bytes();
+        b.len() == 10 && b[4] == b'-' && b[7] == b'-'
+            && b[..4].iter().all(u8::is_ascii_digit)
+            && b[5..7].iter().all(u8::is_ascii_digit)
+            && b[8..10].iter().all(u8::is_ascii_digit)
+    })
+}
+async fn kpi_deeds_compare(
+    State(s): State<FullState>,
+    headers: HeaderMap,
+    Query(q): Query<DeedsCmpQ>,
+) -> Result<Json<Value>, AppError> {
+    let u = auth_user(&headers, &s).await?;
+    authorize(&u, Permission::View)?;
+    for (name, v) in [
+        ("from", q.from.as_deref()),
+        ("to", q.to.as_deref()),
+        ("cmp_from", q.cmp_from.as_deref()),
+        ("cmp_to", q.cmp_to.as_deref()),
+    ] {
+        if v.is_some() && !valid_day(v) {
+            return Err(AppError::Validation(name.into()));
+        }
+    }
+    if let (Some(f), Some(t)) = (q.from.as_deref(), q.to.as_deref()) {
+        if f > t {
+            return Err(AppError::Validation("from>to".into()));
+        }
+    }
+    if let (Some(f), Some(t)) = (q.cmp_from.as_deref(), q.cmp_to.as_deref()) {
+        if f > t {
+            return Err(AppError::Validation("cmp_from>cmp_to".into()));
+        }
+    }
+    let v = s
+        .stores
+        .ops
+        .deed_list(&u.claims.org)
+        .await
+        .map_err(map_store)?;
+    let in_range = |day: &str, a: Option<&str>, b: Option<&str>| match (a, b) {
+        (Some(x), Some(y)) => day >= x && day <= y,
+        _ => true,
+    };
+    let mut by_type: std::collections::BTreeMap<String, (i64, i64)> =
+        std::collections::BTreeMap::new();
+    let mut cur = 0i64;
+    let mut prev = 0i64;
+    for d in &v {
+        if d.created.len() < 10 {
+            continue;
+        }
+        let day: &str = &d.created[..10];
+        let in_cur = in_range(day, q.from.as_deref(), q.to.as_deref());
+        let in_cmp =
+            in_range(day, q.cmp_from.as_deref(), q.cmp_to.as_deref()) && q.cmp_from.is_some();
+        if in_cur {
+            cur += 1;
+        }
+        if in_cmp {
+            prev += 1;
+        }
+        if in_cur || in_cmp {
+            let e = by_type.entry(d.deed_type.clone()).or_insert((0, 0));
+            if in_cur {
+                e.0 += 1;
+            }
+            if in_cmp {
+                e.1 += 1;
+            }
+        }
+    }
+    Ok(Json(json!({
+        "current": cur, "previous": prev, "delta": cur - prev,
+        "by_type": by_type.iter().map(|(t, (c, p))| json!({"deed_type": t, "current": c, "previous": p, "delta": c - p})).collect::<Vec<_>>(),
+    })))
+}
+// ---------- end reports slice: deeds compare ----------
+
 // ---------- reports slice: role home + quality + dictionary (F-D20-006/019/029) ----------
 // Role-tailored KPI home, data-quality scorecard, metric dictionary. Read-only.
 async fn kpi_home(State(s): State<FullState>, headers: HeaderMap) -> Result<Json<Value>, AppError> {
@@ -26005,6 +26096,7 @@ pub fn build_router(state: FullState) -> Router {
         .route("/api/v1/kpi/bottlenecks", get(kpi_bottlenecks))
         .route("/api/v1/kpi/deadlines", get(kpi_deadlines))
         .route("/api/v1/kpi/deliveries", get(kpi_deliveries))
+        .route("/api/v1/kpi/deeds-compare", get(kpi_deeds_compare))
         .route("/api/v1/kpi/home", get(kpi_home))
         .route("/api/v1/kpi/quality", get(kpi_quality))
         .route("/api/v1/kpi/dictionary", get(kpi_dictionary))

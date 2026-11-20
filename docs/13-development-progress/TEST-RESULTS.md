@@ -647,3 +647,6 @@
 
 ## 2026-11-20 AUDIT-1000 wave 201: evidence verify (main)
 - Workspace 520 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 202: deeds compare JSON (main)
+- Workspace 521 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.

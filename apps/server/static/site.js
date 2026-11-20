@@ -3473,6 +3473,11 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       document.getElementById('kpi-flow').textContent = 'Persetujuan tertunda ' + b.pending + ' | Kepatuhan ' + d.done + '/' + d.total + ' (telat ' + d.overdue + ') | Pengiriman gagal ' + (v.recent_failed || []).length;
       pmsg('kpi-msg', '');
     }
+    var dc = await j('/api/v1/kpi/deeds-compare?from=2020-01-01&to=2030-12-31');
+    if (dc) {
+      var el = document.getElementById('kpi-flow');
+      el.textContent += ' | Akta ' + dc.current + ' (tipe ' + dc.by_type.length + ').';
+    }
   });
   on('kpi3-go', 'click', async function () {
     var h = await j('/api/v1/kpi/home');

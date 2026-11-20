@@ -8744,13 +8744,12 @@
   "id": "F-D20-024",
   "domain": "D20",
   "title": "Comparative period analysis",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: deeds_csv_export ?compare=1&from=&to=&cmp_from=&cmp_to= summary + guards",
-   "apps/server/static/site.js: deed-cmp handler + inputs",
-   "apps/server/tests/api.rs: compare delta math + guard cases + needles"
+   "GET /api/v1/kpi/deeds-compare (View): JSON twin of CSV compare (date guards, per-type current/previous/delta; single-window mode when cmp_* absent)",
+   "tests: guard cases + counts + delta math + unauth; /app flow line extended"
   ],
-  "audit_note": "Wave 41: comparative period summary live."
+  "audit_note": "Wave 202: PARTIAL->IMPLEMENTED via JSON twin."
  },
  {
   "id": "F-D20-025",

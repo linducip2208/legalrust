@@ -862,3 +862,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 201: evidence integrity verify (main)
 - Verifikasi SHA per versi + audit + UI; unit + e2e + needle.
 - F-D22-027 NOT_STARTED->IMPLEMENTED (~73.0 verified). Workspace 520/0; clippy clean; tanpa migrasi.
+
+## Done wave 202: deeds compare JSON (main)
+- JSON twin komparasi + UI + tes.
+- F-D20-024 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 521/0; clippy clean; tanpa migrasi.

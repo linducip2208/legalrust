@@ -777,3 +777,7 @@
 ## 2026-11-20 AUDIT-1000 wave 201: evidence integrity verify (main)
 - GET /api/v1/documents/{id}/verify (View + guard portal): SHA-256 ulang per versi vs pin + audit; helper murni + 2 unit test + e2e + needle.
 - Workspace 520 passed, 0 failed; fmt+clippy+node clean; F-D22-027 NOT_STARTED->IMPLEMENTED (~73.0 verified); tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 202: deeds compare JSON (main)
+- GET /api/v1/kpi/deeds-compare (View, guard tanggal, delta per tipe + mode jendela tunggal); /app flow line + tes.
+- Workspace 521 passed, 0 failed; fmt+clippy+node clean; F-D20-024 PARTIAL->IMPLEMENTED (~72.8 verified); tanpa migrasi.
