@@ -713,3 +713,8 @@
 ## 2026-11-20 AUDIT-1000 wave 187: archive & retrieval (main)
 - Migrasi 0118 (matters.archived + indeks); CoreStore::set_matter_archived/list_matter_archived (memory+mysql); POST archive/unarchive (Update, 404/409) + GET archived (View); flag archived di list/children/archive; kartu /app + JS; tes matter_archive_retrieval + needle.
 - Workspace 487 passed, 0 failed; fmt+clippy+node clean; F-D03-037 NOT_STARTED->IMPLEMENTED (~70.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 188: matter statement + bulk import (main, merge w187-statement)
+- Tanpa migrasi: GET /api/v1/matters/{id}/statement (+ .csv Export+audit) + POST /api/v1/matters/import (validasi total + cap 100 + audit per perkara); kartu /app + JS; tes statement/import + needle.
+- Merge cabang paralel w187-statement (konflik body raksasa -> HEAD + pasang ulang; api.js auto-merge bersih); mencakup fix decode timer MySQL yang sedang berjalan.
+- Workspace 489 passed, 0 failed; fmt+clippy+node clean; F-D03-033 PARTIAL->IMPLEMENTED, F-D03-036 NOT_STARTED->IMPLEMENTED (~72.8 verified).

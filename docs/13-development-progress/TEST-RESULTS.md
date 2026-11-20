@@ -594,3 +594,7 @@
 ## 2026-11-20 AUDIT-1000 wave 187: archive & retrieval (main)
 - Workspace 487 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
 - Live MySQL: verifikasi 118 menyusul (rebuild target-ui5 + relaunch + migrate).
+
+## 2026-11-20 AUDIT-1000 wave 188: matter statement + bulk import (main)
+- Workspace 489 passed, 0 failed (SQLX_OFFLINE=true); fmt+clippy clean, site.js node --check PASS.
+- Tanpa migrasi (statement di atas inv_list/inv_get; impor via create_matter + audit); live drill tidak diperlukan.

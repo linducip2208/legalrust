@@ -1028,7 +1028,7 @@ impl OpsStore for MysqlOps {
         Ok(match row {
             Some(x) => FreezeRow {
                 org: x.get::<String, _>("org_id"),
-                frozen: x.get::<u8, _>("frozen") != 0,
+                frozen: x.get::<bool, _>("frozen"),
                 reason: x.get::<String, _>("reason"),
                 set_by: x.get::<String, _>("set_by"),
             },
@@ -1220,18 +1220,18 @@ impl OpsStore for MysqlOps {
             }
         }
         let mut tx = self.pool.begin().await.map_err(db_err)?;
-        let cur: Option<(u64, u8, u8, u8, String, String)> =
+        let cur: Option<(u64, bool, bool, bool, String, String)> =
             sqlx::query("SELECT id, on_hold, archived, trashed, retain_until, note FROM doc_lifecycle WHERE org_id=? AND doc_id=?")
                 .bind(org).bind(doc_id as u64).fetch_optional(&mut *tx).await.map_err(db_err)?
-                .map(|x| (x.get::<u64, _>("id"), x.get::<u8, _>("on_hold"), x.get::<u8, _>("archived"), x.get::<u8, _>("trashed"), x.get::<String, _>("retain_until"), x.get::<String, _>("note")));
+                .map(|x| (x.get::<u64, _>("id"), x.get::<bool, _>("on_hold"), x.get::<bool, _>("archived"), x.get::<bool, _>("trashed"), x.get::<String, _>("retain_until"), x.get::<String, _>("note")));
         let row = match cur {
             Some((id, h, a, t, ru, n)) => DocLifecycleRow {
                 id: id as i64,
                 org: org.into(),
                 doc_id,
-                on_hold: on_hold.unwrap_or(h != 0),
-                archived: archived.unwrap_or(a != 0),
-                trashed: trashed.unwrap_or(t != 0),
+                on_hold: on_hold.unwrap_or(h),
+                archived: archived.unwrap_or(a),
+                trashed: trashed.unwrap_or(t),
                 retain_until: retain_until.map(|v| v.trim().to_string()).unwrap_or(ru),
                 note: note.map(|v| v.trim().to_string()).unwrap_or(n),
             },
@@ -1274,9 +1274,9 @@ impl OpsStore for MysqlOps {
             id: x.get::<u64, _>("id") as i64,
             org: x.get::<String, _>("org_id"),
             doc_id: x.get::<u64, _>("doc_id") as i64,
-            on_hold: x.get::<u8, _>("on_hold") != 0,
-            archived: x.get::<u8, _>("archived") != 0,
-            trashed: x.get::<u8, _>("trashed") != 0,
+            on_hold: x.get::<bool, _>("on_hold"),
+            archived: x.get::<bool, _>("archived"),
+            trashed: x.get::<bool, _>("trashed"),
             retain_until: x.get::<String, _>("retain_until"),
             note: x.get::<String, _>("note"),
         }))
@@ -1295,9 +1295,9 @@ impl OpsStore for MysqlOps {
                 id: x.get::<u64, _>("id") as i64,
                 org: x.get::<String, _>("org_id"),
                 doc_id: x.get::<u64, _>("doc_id") as i64,
-                on_hold: x.get::<u8, _>("on_hold") != 0,
-                archived: x.get::<u8, _>("archived") != 0,
-                trashed: x.get::<u8, _>("trashed") != 0,
+                on_hold: x.get::<bool, _>("on_hold"),
+                archived: x.get::<bool, _>("archived"),
+                trashed: x.get::<bool, _>("trashed"),
                 retain_until: x.get::<String, _>("retain_until"),
                 note: x.get::<String, _>("note"),
             })
@@ -1362,7 +1362,7 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 key: x.get::<String, _>("field_key"),
                 kind: x.get::<String, _>("kind"),
-                required: x.get::<u8, _>("required") != 0,
+                required: x.get::<bool, _>("required"),
                 note: x.get::<String, _>("note"),
             })
             .collect())
@@ -1847,7 +1847,7 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 checklist_id: x.get::<u64, _>("checklist_id") as i64,
                 label: x.get::<String, _>("label"),
-                done: x.get::<u8, _>("done") != 0,
+                done: x.get::<bool, _>("done"),
             })
             .collect())
     }
@@ -2678,7 +2678,7 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 client_id: x.get::<u64, _>("client_id") as i64,
                 channel: x.get::<String, _>("channel"),
-                allowed: x.get::<u8, _>("allowed") != 0,
+                allowed: x.get::<bool, _>("allowed"),
             })
             .collect())
     }
@@ -2841,7 +2841,7 @@ impl OpsStore for MysqlOps {
                     client_id: x.get::<u64, _>("client_id") as i64,
                     title: x.get::<String, _>("title"),
                     remind_on: x.get::<String, _>("remind_on"),
-                    done: x.get::<u8, _>("done") != 0,
+                    done: x.get::<bool, _>("done"),
                 };
                 if horizon
                     .as_ref()
@@ -3414,14 +3414,15 @@ impl OpsStore for MysqlOps {
         Ok(())
     }
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError> {
-        let x: Option<u8> = sqlx::query("SELECT enabled FROM org_flags WHERE org_id=? AND flag=?")
-            .bind(org)
-            .bind(flag)
-            .fetch_optional(&self.pool)
-            .await
-            .map_err(db_err)?
-            .map(|x| x.get::<u8, _>("enabled"));
-        Ok(x.unwrap_or(0) != 0)
+        let x: Option<bool> =
+            sqlx::query("SELECT enabled FROM org_flags WHERE org_id=? AND flag=?")
+                .bind(org)
+                .bind(flag)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<bool, _>("enabled"));
+        Ok(x.unwrap_or(false))
     }
     async fn cck_add(
         &self,
@@ -3659,7 +3660,7 @@ impl OpsStore for MysqlOps {
                 matter_id: x.get::<u64, _>("matter_id") as i64,
                 title: x.get::<String, _>("title"),
                 due_on: x.get::<String, _>("due_on"),
-                done: x.get::<u8, _>("done") != 0,
+                done: x.get::<bool, _>("done"),
             })
             .collect())
     }
@@ -4185,7 +4186,7 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 matter_id: x.get::<u64, _>("matter_id") as i64,
                 title: x.get::<String, _>("title"),
-                done: x.get::<u8, _>("done") != 0,
+                done: x.get::<bool, _>("done"),
             })
             .collect())
     }
@@ -4329,7 +4330,7 @@ impl OpsStore for MysqlOps {
                 template_id: x.get::<Option<u64>, _>("template_id").map(|v| v as i64),
                 title: x.get::<String, _>("title"),
                 cron: x.get::<String, _>("cron"),
-                active: x.get::<u8, _>("active") != 0,
+                active: x.get::<bool, _>("active"),
             })
             .collect())
     }
@@ -6146,7 +6147,7 @@ impl OpsStore for MysqlOps {
                 org: x.get::<String, _>("org_id"),
                 ppat_id: x.get::<u64, _>("ppat_id") as i64,
                 doc_name: x.get::<String, _>("doc_name"),
-                received: x.get::<u8, _>("received") != 0,
+                received: x.get::<bool, _>("received"),
                 note: x.get::<String, _>("note"),
             })
             .collect())
@@ -7067,7 +7068,7 @@ impl OpsStore for MysqlOps {
                 entity: x.get::<String, _>("entity"),
                 retain_years: x.get::<i32, _>("retain_years") as i64,
                 action: x.get::<String, _>("action"),
-                active: x.get::<u8, _>("active") != 0,
+                active: x.get::<bool, _>("active"),
                 note: x.get::<String, _>("note"),
             })
             .collect())
@@ -10549,7 +10550,7 @@ impl OpsStore for MysqlOps {
             .map(|x| OfficeHoursRow {
                 id: x.get::<u64, _>("id") as i64,
                 org: x.get::<String, _>("org_id"),
-                weekday: x.get::<u8, _>("weekday") as i64,
+                weekday: x.get::<i8, _>("weekday") as i64,
                 open_time: x.get::<String, _>("open_time"),
                 close_time: x.get::<String, _>("close_time"),
                 active: x.get::<i8, _>("active") != 0,
@@ -11731,7 +11732,7 @@ impl OpsStore for MysqlOps {
                 role: x.get::<String, _>("role"),
                 name: x.get::<String, _>("name"),
                 id_number: x.get::<String, _>("id_number"),
-                verified: x.get::<u8, _>("verified") != 0,
+                verified: x.get::<bool, _>("verified"),
             })
             .collect())
     }
@@ -12381,7 +12382,7 @@ impl OpsStore for MysqlOps {
                 ppat_id: x.get::<u64, _>("ppat_id") as i64,
                 kind: x.get::<String, _>("kind"),
                 party: x.get::<String, _>("party"),
-                verified: x.get::<u8, _>("verified") != 0,
+                verified: x.get::<bool, _>("verified"),
                 note: x.get::<String, _>("note"),
             })
             .collect())

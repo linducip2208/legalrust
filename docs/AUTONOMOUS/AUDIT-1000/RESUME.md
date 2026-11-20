@@ -801,3 +801,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 187: archive & retrieval (main)
 - Migrasi 0118 (matters.archived + indeks); MatterRow.archived; CoreStore 2 metode (memory+mysql, no-op->409, audit archived/unarchived); 2 endpoint + flag di list; kartu /app arsip; uji retrieval + needle.
 - F-D03-037 NOT_STARTED->IMPLEMENTED (~70.8 verified). Workspace 487/0; clippy clean; live 118 pending.
+
+## Done wave 188: matter statement + bulk import (main, merge w187-statement)
+- Statement per perkara + CSV teraudit; impor massal validate-all-then-create (cap 100, ghost-client 404 tanpa tulis); kartu /app + JS; uji math/guards/needle.
+- F-D03-033 PARTIAL->IMPLEMENTED, F-D03-036 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 489/0; clippy clean; tanpa migrasi.
