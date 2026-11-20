@@ -25284,3 +25284,178 @@ async fn uib_app_has_kpi_home_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn kpi_threshold_lifecycle_and_alerts() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kth@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Unknown metric + bad op rejected; ghost delete 404.
+    for (body, want) in [
+        (
+            r#"{"metric":"bogus","op":">=","threshold":1}"#,
+            StatusCode::CONFLICT,
+        ),
+        (
+            r#"{"metric":"overdue_tasks","op":"==","threshold":1}"#,
+            StatusCode::CONFLICT,
+        ),
+    ] {
+        let res = a
+            .clone()
+            .oneshot(post("/api/v1/kpi/thresholds", body, Some(&tok)))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), want, "{body}");
+    }
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/kpi/thresholds/999999")
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Seed: 1 overdue open task + 1 pending approval.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Telat Ambang"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2020-01-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Threshold overdue_tasks>=1 breaches; pending_approvals<=0 does not.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/kpi/thresholds",
+            r#"{"metric":"overdue_tasks","op":">=","threshold":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let kid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/kpi/thresholds",
+            r#"{"metric":"pending_approvals","op":"<=","threshold":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/thresholds", &tok))
+        .await
+        .unwrap();
+    assert_eq!(body_json(res).await.as_array().unwrap().len(), 2);
+    // Upsert same metric replaces (still 2 rows).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/kpi/thresholds",
+            r#"{"metric":"overdue_tasks","op":">=","threshold":5}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/alerts", &tok))
+        .await
+        .unwrap();
+    let al = body_json(res).await;
+    // overdue=1 <5 no breach on new threshold; pending=1 vs <=0 no breach.
+    assert_eq!(al["breached"].as_i64(), Some(0));
+    // Lower to >=1 -> breach surfaces with current value.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/kpi/thresholds",
+            r#"{"metric":"overdue_tasks","op":">=","threshold":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/alerts", &tok))
+        .await
+        .unwrap();
+    let al = body_json(res).await;
+    assert!(al["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["metric"] == "overdue_tasks" && x["value"].as_i64() == Some(1)));
+    assert!(al["evaluated"]["pending_approvals"].as_i64().unwrap() >= 1);
+    // Delete roundtrip.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/kpi/thresholds/{kid}"))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/kpi/alerts")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_kth_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "kth-metric",
+        "kth-op",
+        "kth-val",
+        "kth-add",
+        "kth-go",
+        "kth-msg",
+        "kth-out",
+        "kth-list",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

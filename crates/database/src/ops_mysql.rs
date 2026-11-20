@@ -539,6 +539,95 @@ impl OpsStore for MysqlOps {
             x.try_get::<i64, _>("o").unwrap_or(0),
         ))
     }
+    async fn kth_set(
+        &self,
+        org: &str,
+        metric: &str,
+        op: &str,
+        threshold: i64,
+    ) -> Result<i64, StoreError> {
+        const ALLOWED: &[&str] = &[
+            "overdue_tasks",
+            "outstanding",
+            "trust_balance",
+            "pending_approvals",
+            "unassigned_tasks",
+            "matters_without_team",
+        ];
+        let metric = metric.trim();
+        if metric.is_empty() || metric.len() > 80 || !ALLOWED.contains(&metric) {
+            return Err(StoreError::Conflict("metric".into()));
+        }
+        let op = op.trim();
+        if op != ">=" && op != "<=" {
+            return Err(StoreError::Conflict("op".into()));
+        }
+        let upd = sqlx::query(
+            "UPDATE kpi_thresholds SET op=?, threshold=?, active=1 WHERE org_id=? AND metric=?",
+        )
+        .bind(op)
+        .bind(threshold)
+        .bind(org)
+        .bind(metric)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        if upd.rows_affected() > 0 {
+            let id: Option<u64> =
+                sqlx::query("SELECT id FROM kpi_thresholds WHERE org_id=? AND metric=?")
+                    .bind(org)
+                    .bind(metric)
+                    .fetch_optional(&self.pool)
+                    .await
+                    .map_err(db_err)?
+                    .map(|x| x.get::<u64, _>("id"));
+            return Ok(id.unwrap_or(0) as i64);
+        }
+        let r = sqlx::query(
+            "INSERT INTO kpi_thresholds (org_id, metric, op, threshold) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(metric)
+        .bind(op)
+        .bind(threshold)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn kth_list(&self, org: &str) -> Result<Vec<KpiThresholdRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, metric, op, threshold, active FROM kpi_thresholds WHERE org_id=? ORDER BY metric LIMIT 100",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| KpiThresholdRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                metric: x.get::<String, _>("metric"),
+                op: x.get::<String, _>("op"),
+                threshold: x.get::<i64, _>("threshold"),
+                active: x.get::<bool, _>("active"),
+            })
+            .collect())
+    }
+    async fn kth_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM kpi_thresholds WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn ai_stats(&self, org: &str) -> Result<(i64, i64, i64), StoreError> {
         let c: i64 = sqlx::query("SELECT COUNT(*) AS n FROM ai_conversations WHERE org_id=?")
             .bind(org)

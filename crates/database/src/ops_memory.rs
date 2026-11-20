@@ -161,6 +161,7 @@ struct Inner {
     tmrs: HashMap<i64, MatterTimerRow>,
     mbgs: HashMap<i64, MatterBudgetRow>,
     mxps: HashMap<i64, MatterExpenseRow>,
+    kths: HashMap<i64, KpiThresholdRow>,
     mtms: HashMap<i64, MatterTeamRow>,
     mnotes: HashMap<i64, MatterNoteRow>,
     mmemos: HashMap<i64, MatterMemoRow>,
@@ -753,6 +754,77 @@ impl OpsStore for MemoryOps {
             }
         }
         Ok((convs, user, asst))
+    }
+    async fn kth_set(
+        &self,
+        org: &str,
+        metric: &str,
+        op: &str,
+        threshold: i64,
+    ) -> Result<i64, StoreError> {
+        const ALLOWED: &[&str] = &[
+            "overdue_tasks",
+            "outstanding",
+            "trust_balance",
+            "pending_approvals",
+            "unassigned_tasks",
+            "matters_without_team",
+        ];
+        let metric = metric.trim();
+        if metric.is_empty() || metric.len() > 80 || !ALLOWED.contains(&metric) {
+            return Err(StoreError::Conflict("metric".into()));
+        }
+        let op = op.trim();
+        if op != ">=" && op != "<=" {
+            return Err(StoreError::Conflict("op".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, r)) = m
+            .kths
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.metric == metric)
+        {
+            r.op = op.into();
+            r.threshold = threshold;
+            r.active = true;
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.kths.insert(
+            id,
+            KpiThresholdRow {
+                id,
+                org: org.into(),
+                metric: metric.into(),
+                op: op.into(),
+                threshold,
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn kth_list(&self, org: &str) -> Result<Vec<KpiThresholdRow>, StoreError> {
+        let mut v: Vec<KpiThresholdRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .kths
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.metric.cmp(&b.metric));
+        Ok(v)
+    }
+    async fn kth_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.kths.get(&id) {
+            Some(r) if r.org == org => {
+                m.kths.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
     }
     async fn usage_add(&self, org: &str, input: i64, output: i64) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

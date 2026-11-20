@@ -3458,6 +3458,36 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       pmsg('kpi-msg', '');
     } else { pmsg('kpi-msg', 'Gagal memuat kamus.'); }
   });
+  async function kthRefresh() {
+    var box = document.getElementById('kth-list');
+    if (!box) return;
+    var v = await j('/api/v1/kpi/thresholds');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.metric) + '</td><td>' + esc(x.op) + ' ' + esc(x.threshold) + '</td><td><button class="btn btn-sm" data-kth-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada ambang.</td></tr>';
+    qsa('[data-kth-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/kpi/thresholds/' + b.getAttribute('data-kth-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('kth-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('kth-msg', ''); kthRefresh();
+      });
+    });
+  }
+  on('kth-add', 'click', async function () {
+    var r = await ppost('/api/v1/kpi/thresholds', { metric: pval('kth-metric'), op: pval('kth-op'), threshold: +pval('kth-val') || 0 });
+    if (!r.ok) { pmsg('kth-msg', 'Gagal (' + r.status + '). Metrik/op?'); return; }
+    pmsg('kth-msg', ''); kthRefresh();
+  });
+  on('kth-go', 'click', async function () {
+    kthRefresh();
+    var v = await j('/api/v1/kpi/alerts');
+    if (!v) { pmsg('kth-msg', 'Gagal evaluasi.'); return; }
+    document.getElementById('kth-out').textContent = v.breached
+      ? ('SIAGA: ' + v.items.map(function (x) { return x.metric + ' ' + x.op + ' ' + x.threshold + ' (kini ' + x.value + ')'; }).join('; '))
+      : 'Aman: tidak ada ambang terlampaui.';
+    pmsg('kth-msg', '');
+  });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
     var msg = 'mins-msg';

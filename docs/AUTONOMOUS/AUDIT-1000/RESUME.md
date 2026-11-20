@@ -842,3 +842,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 196: role home + quality + dictionary (main)
 - Beranda peran + scorecard mutu + kamus metrik; uji + needle.
 - F-D20-006/019/029 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 503/0; clippy clean; tanpa migrasi.
+
+## Done wave 197: KPI alert thresholds (main)
+- Ambang siaga + evaluasi live + UI; uji + needle; live 122/122.
+- F-D20-030 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 505/0; clippy clean.

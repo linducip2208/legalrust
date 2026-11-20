@@ -462,6 +462,16 @@ pub struct TimeEntryRow {
     pub note: String,
     pub status: String,
 }
+/// KPI alert threshold row (metric + op + value, one per metric per org).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KpiThresholdRow {
+    pub id: i64,
+    pub org: String,
+    pub metric: String,
+    pub op: String,
+    pub threshold: i64,
+    pub active: bool,
+}
 /// Matter budget line (per category, amount in minor units, >= 0).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatterBudgetRow {
@@ -1916,6 +1926,16 @@ pub trait OpsStore: Send + Sync {
     async fn usage_sum(&self, org: &str) -> Result<(i64, i64), StoreError>;
     /// AI quality rollup: (conversations, user_msgs, assistant_msgs) for an org.
     async fn ai_stats(&self, org: &str) -> Result<(i64, i64, i64), StoreError>;
+    /// KPI alert threshold (upsert by metric; op >=|<=).
+    async fn kth_set(
+        &self,
+        org: &str,
+        metric: &str,
+        op: &str,
+        threshold: i64,
+    ) -> Result<i64, StoreError>;
+    async fn kth_list(&self, org: &str) -> Result<Vec<KpiThresholdRow>, StoreError>;
+    async fn kth_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     async fn rag_put(&self, doc: i64, chunks: &[String]) -> Result<(), StoreError>;
     async fn rag_search(&self, org: &str, q: &str, limit: i64) -> Result<Vec<RagHit>, StoreError>;
     async fn inv_create(

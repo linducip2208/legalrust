@@ -8809,10 +8809,13 @@
   "id": "F-D20-030",
   "domain": "D20",
   "title": "KPI alert thresholds",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "Migration 0122 kpi_thresholds (metric allowlist 6 + op CHECK + uq org/metric); OpsStore kth_set/list/delete (memory+MySQL upsert)",
+   "POST|GET|DELETE /api/v1/kpi/thresholds + GET /api/v1/kpi/alerts (live eval over visible matters: overdue/unassigned/team-less/outstanding/trust/pending)",
+   "tests: unknown metric/op 409, ghost delete 404, upsert idempotent, breach math, unauth; /app thresholds card + needle"
+  ],
+  "audit_note": "Wave 197: NOT_STARTED->IMPLEMENTED; live 122/122 drill PASS."
  },
  {
   "id": "F-D20-031",

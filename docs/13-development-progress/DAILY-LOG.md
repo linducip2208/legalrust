@@ -756,3 +756,7 @@
 ## 2026-11-20 AUDIT-1000 wave 196: role home + quality + dictionary (main)
 - Tanpa migrasi: GET /api/v1/kpi/home|quality|dictionary (View) + kartu /app + JS; tes + needle. Macro sec! untuk borrow-check.
 - Workspace 503 passed, 0 failed; fmt+clippy+node clean; F-D20-006/019/029 NOT_STARTED->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 197: KPI alert thresholds (main)
+- Migrasi 0122 (kpi_thresholds + allowlist 6 metrik + CHECK + uq); OpsStore kth_* (memory+MySQL upsert); 4 endpoint + evaluasi live + kartu /app + JS; tes lifecycle/breach + needle.
+- Workspace 505 passed, 0 failed; fmt+clippy+node clean; F-D20-030 NOT_STARTED->IMPLEMENTED (~72.8 verified); live 122/122 drill PASS (legalrust_wave197).
