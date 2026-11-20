@@ -673,3 +673,6 @@
 ## 2026-11-18 - benchmarks wave 8 + B-WH-RETRY queued (main)
 - Dev benchmarks live-DB (Laragon MySQL): healthz p50 5.9-19.1ms; matters POST p50 20.4ms; approvals POST p50 27.5ms / list p50 8.9ms; webhooks deliveries p50 8.4ms; consents p50 7.5ms; deeds.csv p50 13.2ms (n=5-10, debug build, smoke only).
 - B-WH-RETRY queued (retry queue + dead-letter + failure alerting); B-BENCH partial (dev numbers recorded, prod thresholds pending).
+
+## 2026-11-20 AUDIT-1000 wave 179: restore 0112 + kredit budget/panjar (main)
+- Migrasi 0112 dipulihkan (code+tes sudah ada sejak wave 178); F-D03-016/017/018 IMPLEMENTED; workspace 470 passed, 0 failed.

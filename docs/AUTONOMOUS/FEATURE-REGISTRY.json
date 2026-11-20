@@ -1096,28 +1096,40 @@
   "id": "F-D03-016",
   "domain": "D03",
   "title": "Matter budget vs actual",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0112_matter_budgets_expenses.sql: matter_budgets (org,matter,category,amount>=0, upsert)",
+   "crates/database/src/ops.rs: MatterBudgetRow + OpsStore::bdg_set/bdg_list/bdg_delete",
+   "apps/server/src/lib.rs: POST/GET /api/v1/budgets + DELETE /api/v1/budgets/{id} + GET /api/v1/matters/{id}/cost-summary (budget vs actual math)",
+   "apps/server/tests/api.rs: budgets_expenses_and_cost_summary e2e (409 negative, upsert, summary math, delete)"
+  ],
+  "audit_note": "Wave 179: restored 0112 (was dropped in 980ae8c) + credited live-tested code; 470/0 green."
  },
  {
   "id": "F-D03-017",
   "domain": "D03",
   "title": "Cost advance (panjar) tracking",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0112: matter_expenses kind=advance (panjar) + CHECK kind IN (expense,advance)",
+   "ops.rs: MatterExpenseRow + mxp_add/mxp_list(kind filter)/mxp_delete",
+   "lib.rs: POST/GET /api/v1/expenses?kind=advance + cost-summary advances math",
+   "tests: advance branch asserted in budgets_expenses_and_cost_summary"
+  ],
+  "audit_note": "Wave 179: restored 0112 (was dropped in 980ae8c) + credited live-tested code; 470/0 green."
  },
  {
   "id": "F-D03-018",
   "domain": "D03",
   "title": "Expense attachment to matter",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0112: matter_expenses (org,matter,entry_date,category,amount>0)",
+   "ops.rs: mxp_add guards kind/amount + matter existence",
+   "lib.rs: POST /api/v1/expenses + GET /api/v1/expenses?matter_id + DELETE",
+   "tests: expense lifecycle + ghost-matter 404 + summary asserted"
+  ],
+  "audit_note": "Wave 179: restored 0112 (was dropped in 980ae8c) + credited live-tested code; 470/0 green."
  },
  {
   "id": "F-D03-019",

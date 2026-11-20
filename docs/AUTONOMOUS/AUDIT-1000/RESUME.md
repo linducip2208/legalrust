@@ -763,3 +763,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 - No push without explicit user authorization (Phase 21).
 - Never inflate scores: default-scored features must be individually
   re-audited before any IMPLEMENTED claim.
+
+## Done wave 179: restore 0112 + credit budgets/expenses/panjar (main)
+- Restored migrations/0112_matter_budgets_expenses.sql (dropped in 980ae8c while code+tests remained); registry F-D03-016/017/018 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified); no new code (handlers/store/UI/tests already live).
+- Workspace 470 passed / 0 failed (target-test, SQLX_OFFLINE=true); fmt clean. Registry ~33.1 (327 IMPLEMENTED).
