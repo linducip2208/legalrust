@@ -24974,8 +24974,121 @@ async fn uib_app_has_kpi_ui() {
         "kpi2-go",
         "kpi-oa",
         "kpi-cli",
+        "kpi-flow",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
+async fn kpi_flow_bottleneck_deadline_delivery() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kpif@x.id").await;
+    let mid = mk_matter(&a, &tok).await;
+    // Bottleneck: pending approval with a pending step.
+    let aid = mk_approval(&a, &tok, mid, r#"[{"step_no":1,"role":"office_admin"}]"#).await;
+    // Deadline: one overdue open task + one done task (excluded from overdue).
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Telat KPI"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/due"),
+            r#"{"due":"2020-01-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Selesai KPI"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let done_tid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{done_tid}/due"),
+            r#"{"due":"2020-01-01 09:00:00"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // done via legal transition path (open->in_progress->done needs due? use direct patch sequence)
+    for st in ["in_progress", "done"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                &format!("/api/v1/tasks/{done_tid}"),
+                &format!(r#"{{"status":"{st}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK, "task to {st}");
+    }
+    // Bottleneck surfaces the pending approval with age math.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/bottlenecks", &tok))
+        .await
+        .unwrap();
+    let b = body_json(res).await;
+    assert!(b["pending"].as_i64().unwrap() >= 1);
+    assert!(b["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(aid) && r["stuck_role"] == "office_admin"));
+    // Deadlines: overdue counts the open task, done excluded; compliance row exists.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/deadlines?days=3650", &tok))
+        .await
+        .unwrap();
+    let d = body_json(res).await;
+    assert!(d["overdue"].as_i64().unwrap() >= 1);
+    assert!(d["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["matter_id"].as_i64() == Some(mid) && r["overdue"].as_i64().unwrap() >= 1));
+    // Deliveries digest shape.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/deliveries", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v["total"].as_i64().is_some());
+    assert!(v["by_status"].is_object());
+    // Auth guards.
+    for uri in [
+        "/api/v1/kpi/bottlenecks",
+        "/api/v1/kpi/deadlines",
+        "/api/v1/kpi/deliveries",
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{uri}");
     }
 }
 
