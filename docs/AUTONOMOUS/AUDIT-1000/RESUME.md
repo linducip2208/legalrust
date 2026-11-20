@@ -771,3 +771,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 180: matter team + workload + priority (main)
 - matter_team (0113, role lead|member|viewer, upsert) + matters.priority (low|normal|high|urgent) + GET /api/v1/reports/workload + kartu + uji.
 - F-D03-019/020 PLANNED->IMPLEMENTED, F-D03-021 PARTIAL->IMPLEMENTED (~72.8 verified). API 272/0; live 113/113 + register PASS.
+
+## Done wave 181: notes + memos + closure (main)
+- matter_notes/memos/closure_items (0114) + 6 endpoint + toggle + kartu + uji.
+- F-D03-026/027/030 -> IMPLEMENTED (~72.8 verified). API 274/0; live pending.

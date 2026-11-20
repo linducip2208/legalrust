@@ -22926,3 +22926,201 @@ async fn uib_app_has_team_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_notes_memos_closure() {
+    let a = app();
+    let tok = reg(&a, "mfeed@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MFEED"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Empty body rejected (validator 422).
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-notes",
+            &format!(r#"{{"matter_id":{mid},"author":"budi","body":""}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Ghost matter 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-notes",
+            r#"{"matter_id":999999,"author":"budi","body":"halo"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Note roundtrip.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-notes",
+            &format!(r#"{{"matter_id":{mid},"author":"budi","body":"telepon klien"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matter-notes?matter_id={mid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["body"] == "telepon klien"));
+    // Memo: lawyer can write but auditor-blocked read is Update-gated; owner reads.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-memos",
+            &format!(r#"{{"matter_id":{mid},"author":"budi","body":"strategi internal"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matter-memos?matter_id={mid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["body"] == "strategi internal"));
+    // Memo read forbidden for viewer role (Update-gated).
+    let vw = forged_role_token(&tok, vec!["viewer"]);
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matter-memos?matter_id={mid}"), &vw))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Closure: add + toggle + closed-matter guard.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-closure",
+            &format!(r#"{{"matter_id":{mid},"title":"arsip final"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matter-closure/{cid}/toggle"),
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/matter-closure?matter_id={mid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["title"] == "arsip final" && r["done"] == true));
+    // Close matter then closure-add 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/status"),
+            r#"{"status":"closed"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-closure",
+            &format!(r#"{{"matter_id":{mid},"title":"terlambat"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Ghost toggle 404 + no-token 401.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-closure/999999/toggle",
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matter-notes?matter_id=1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_feed_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mnt-mid",
+        "mnt-who",
+        "mnt-body",
+        "mnt-add",
+        "mnt-reload",
+        "mnt-list",
+        "mnt-msg",
+        "mmo-mid",
+        "mmo-who",
+        "mmo-body",
+        "mmo-add",
+        "mmo-reload",
+        "mmo-list",
+        "mmo-msg",
+        "mcl-mid",
+        "mcl-title",
+        "mcl-add",
+        "mcl-reload",
+        "mcl-list",
+        "mcl-msg",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

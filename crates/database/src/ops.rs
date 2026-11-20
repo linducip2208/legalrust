@@ -461,6 +461,33 @@ pub struct MatterTeamRow {
     pub user_id: String,
     pub role: String,
 }
+/// Matter note (activity feed line).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterNoteRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub author: String,
+    pub body: String,
+}
+/// Internal matter memo (staff-only, RBAC-gated read).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterMemoRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub author: String,
+    pub body: String,
+}
+/// Matter closure checklist item.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterClosureRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub title: String,
+    pub done: bool,
+}
 /// Portal usage event (login/view/download/upload/message/rating/request).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalEventRow {
@@ -2472,6 +2499,32 @@ pub trait OpsStore: Send + Sync {
     async fn mteam_list(&self, org: &str, matter_id: i64)
         -> Result<Vec<MatterTeamRow>, StoreError>;
     async fn mteam_remove(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Matter notes (open feed) + internal memos (staff-gated) + closure checklist.
+    async fn mnote_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mnote_list(&self, org: &str, matter_id: i64)
+        -> Result<Vec<MatterNoteRow>, StoreError>;
+    async fn mmemo_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mmemo_list(&self, org: &str, matter_id: i64)
+        -> Result<Vec<MatterMemoRow>, StoreError>;
+    async fn mclose_add(&self, org: &str, matter_id: i64, title: &str) -> Result<i64, StoreError>;
+    async fn mclose_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterClosureRow>, StoreError>;
+    async fn mclose_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

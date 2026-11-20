@@ -1212,21 +1212,27 @@
   "id": "F-D03-026",
   "domain": "D03",
   "title": "Matter notes & activity feed",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:1691 audit_list (RBAC-gated read)",
-   "crates/database/src/ops.rs:392 audit_add; e.g. matter.created event at :365-403",
-   "migrations/0001_foundation.sql: audit_events"
-  ]
+   "migrations/0114: matter_notes (org,matter,author,body<=2000)",
+   "ops.rs: MatterNoteRow + OpsStore::mnote_add/mnote_list",
+   "lib.rs: POST/GET /api/v1/matter-notes (Create/View, 404/422)",
+   "site.js: mnt card; tests: matter_notes_memos_closure e2e (422 empty, 404 ghost, roundtrip, 401)"
+  ],
+  "audit_note": "Wave 181: notes/memo/closure live. Verified by test."
  },
  {
   "id": "F-D03-027",
   "domain": "D03",
   "title": "Internal memo on matter",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0114: matter_memos (staff-only table)",
+   "ops.rs: MatterMemoRow + mmemo_add/mmemo_list",
+   "lib.rs: POST /api/v1/matter-memos (Create) + GET (Update-gated, viewer 403)",
+   "site.js: mmo card; tests: write+read + viewer-403 asserted"
+  ],
+  "audit_note": "Wave 181: notes/memo/closure live. Verified by test."
  },
  {
   "id": "F-D03-028",
@@ -1256,10 +1262,14 @@
   "id": "F-D03-030",
   "domain": "D03",
   "title": "Matter closure checklist",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0114: matter_closure_items (title<=300, done bool)",
+   "ops.rs: MatterClosureRow + mclose_add/list/toggle",
+   "lib.rs: POST/GET /api/v1/matter-closure + POST toggle; closed-matter add 409",
+   "site.js: mcl card; tests: add+toggle+closed-guard+ghost-404 asserted"
+  ],
+  "audit_note": "Wave 181: notes/memo/closure live. Verified by test."
  },
  {
   "id": "F-D03-031",

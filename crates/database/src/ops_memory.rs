@@ -158,6 +158,9 @@ struct Inner {
     mbgs: HashMap<i64, MatterBudgetRow>,
     mxps: HashMap<i64, MatterExpenseRow>,
     mtms: HashMap<i64, MatterTeamRow>,
+    mnotes: HashMap<i64, MatterNoteRow>,
+    mmemos: HashMap<i64, MatterMemoRow>,
+    mcloses: HashMap<i64, MatterClosureRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -399,6 +402,17 @@ fn qround_tally(members: usize, required: i64, approves: usize, rejects: usize) 
     } else {
         "open"
     }
+}
+fn check_mfeed(author: &str, body: &str) -> Result<(String, String), StoreError> {
+    let a = author.trim();
+    let b = body.trim();
+    if a.is_empty() || a.len() > 160 {
+        return Err(StoreError::Conflict("author".into()));
+    }
+    if b.is_empty() || b.len() > 2000 {
+        return Err(StoreError::Conflict("body".into()));
+    }
+    Ok((a.into(), b.into()))
 }
 #[async_trait::async_trait]
 impl OpsStore for MemoryOps {
@@ -4290,6 +4304,136 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn mnote_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_id <= 0 {
+            return Err(StoreError::Conflict("matter".into()));
+        }
+        let (a, b) = check_mfeed(author, body)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mnotes.insert(
+            id,
+            MatterNoteRow {
+                id,
+                org: org.into(),
+                matter_id,
+                author: a,
+                body: b,
+            },
+        );
+        Ok(id)
+    }
+    async fn mnote_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterNoteRow>, StoreError> {
+        let mut v: Vec<MatterNoteRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mnotes
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn mmemo_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        if matter_id <= 0 {
+            return Err(StoreError::Conflict("matter".into()));
+        }
+        let (a, b) = check_mfeed(author, body)?;
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mmemos.insert(
+            id,
+            MatterMemoRow {
+                id,
+                org: org.into(),
+                matter_id,
+                author: a,
+                body: b,
+            },
+        );
+        Ok(id)
+    }
+    async fn mmemo_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterMemoRow>, StoreError> {
+        let mut v: Vec<MatterMemoRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mmemos
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn mclose_add(&self, org: &str, matter_id: i64, title: &str) -> Result<i64, StoreError> {
+        let t = title.trim();
+        if matter_id <= 0 || t.is_empty() || t.len() > 300 {
+            return Err(StoreError::Conflict("matter/title".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let id = self.next(&mut m);
+        m.mcloses.insert(
+            id,
+            MatterClosureRow {
+                id,
+                org: org.into(),
+                matter_id,
+                title: t.into(),
+                done: false,
+            },
+        );
+        Ok(id)
+    }
+    async fn mclose_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterClosureRow>, StoreError> {
+        let mut v: Vec<MatterClosureRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mcloses
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn mclose_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .mcloses
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        r.done = done;
+        Ok(())
     }
     async fn cpi_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
         let mut m = self.inner.lock().unwrap();

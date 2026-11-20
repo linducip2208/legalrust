@@ -4053,6 +4053,156 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn mnote_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let a = author.trim();
+        let b = body.trim();
+        if matter_id <= 0 || a.is_empty() || a.len() > 160 || b.is_empty() || b.len() > 2000 {
+            return Err(StoreError::Conflict("author/body".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_notes (org_id, matter_id, author, body) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(a)
+        .bind(b)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mnote_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterNoteRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, matter_id, author, body FROM matter_notes WHERE org_id=? AND matter_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterNoteRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                author: x.get::<String, _>("author"),
+                body: x.get::<String, _>("body"),
+            })
+            .collect())
+    }
+    async fn mmemo_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        author: &str,
+        body: &str,
+    ) -> Result<i64, StoreError> {
+        let a = author.trim();
+        let b = body.trim();
+        if matter_id <= 0 || a.is_empty() || a.len() > 160 || b.is_empty() || b.len() > 2000 {
+            return Err(StoreError::Conflict("author/body".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_memos (org_id, matter_id, author, body) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(a)
+        .bind(b)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mmemo_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterMemoRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, matter_id, author, body FROM matter_memos WHERE org_id=? AND matter_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterMemoRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                author: x.get::<String, _>("author"),
+                body: x.get::<String, _>("body"),
+            })
+            .collect())
+    }
+    async fn mclose_add(&self, org: &str, matter_id: i64, title: &str) -> Result<i64, StoreError> {
+        let t = title.trim();
+        if matter_id <= 0 || t.is_empty() || t.len() > 300 {
+            return Err(StoreError::Conflict("matter/title".into()));
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_closure_items (org_id, matter_id, title) VALUES (?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(t)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mclose_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterClosureRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, matter_id, title, done FROM matter_closure_items WHERE org_id=? AND matter_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterClosureRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                title: x.get::<String, _>("title"),
+                done: x.get::<u8, _>("done") != 0,
+            })
+            .collect())
+    }
+    async fn mclose_toggle(&self, org: &str, id: i64, done: bool) -> Result<(), StoreError> {
+        let n = sqlx::query("UPDATE matter_closure_items SET done=? WHERE id=? AND org_id=?")
+            .bind(if done { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM time_entries WHERE id=? AND org_id=?")
             .bind(id as u64)

@@ -562,3 +562,11 @@
 - `cargo test --workspace`: **296 passed, 0 failed** (compliance lifecycle + store tests; deeds CSV repertorium + wh deliveries + approvals UI needles; OCR 21; AI 19; full matrix).
 - Registry: IMPLEMENTED 51 -> **54**; PARTIAL 99 -> 104 -> 102; skor **17.4/100**; 8-cat mean 18.8 (22 verified).
 - Live MySQL: migrasi 0001-0015 verified; api_db stale-test fixed -> PASS.
+
+## 2026-11-20 AUDIT-1000 wave 180: team + priority + workload (main)
+- Workspace 472 passed, 0 failed (SQLX_OFFLINE=true, target-test); server API 272 (incl. matter_team_priority_and_workload + team needle); fmt+clippy clean.
+- Live MySQL legalrust_mig180: migrate 113/113 + register PASS; matters.priority + matter_team + matter_budgets verified.
+
+## 2026-11-20 AUDIT-1000 wave 181: notes + memo + closure (main)
+- API 274 passed, 0 failed (target-test); fmt+clippy clean.
+- Live MySQL legalrust_mig181: FK collision fk_mcl_* (0042) fixed to fk_mclo_*, partial state cleared (drop notes/memos + delete success=0), migrate 114/114 + register PASS; matter_notes/memos/closure_items verified.

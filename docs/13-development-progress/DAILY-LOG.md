@@ -681,3 +681,8 @@
 - Migrasi 0113 (matter_team + matters.priority); CoreStore::set_matter_priority + OpsStore::mteam_* (memory+mysql); 5 endpoint + audit matter.priority.*; kartu /app Tim & prioritas + beban kerja; tes matter_team_priority_and_workload + needle UI.
 - API 272 passed, 0 failed; live MySQL legalrust_mig180: migrate 113/113 + register PASS; kolom priority + tabel matter_team/matter_budgets terkonfirmasi.
 - F-D03-019/020/021 PLANNED/PARTIAL->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 181: notes + memo + closure (main)
+- Migrasi 0114 (matter_notes/memos/closure_items); OpsStore 7 metode (memory+mysql); 6 endpoint + toggle (memo-baca Update-gated, closure-tutup 409); 2 kartu /app; tes matter_notes_memos_closure + needle.
+- API 274 passed, 0 failed; clippy clean; live MySQL verifikasi 114 menyusul.
+- F-D03-026/027/030 PARTIAL/PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified).

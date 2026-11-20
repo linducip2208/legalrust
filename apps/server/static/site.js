@@ -3450,6 +3450,62 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     if (out) out.innerHTML = (v || []).map(function (w) { return '<div>' + esc(w.user_id) + ': ' + w.matters + ' perkara / ' + w.open_tasks + ' tugas buka</div>'; }).join('') || 'Belum ada penugasan.';
   });
 
+  /* ---- matter notes + memos + closure (F-D03-026/027/030) ---- */
+  async function mntRefresh() {
+    var box = document.getElementById('mnt-list');
+    if (!box) return;
+    if (!pval('mnt-mid')) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/matter-notes?matter_id=' + encodeURIComponent(pval('mnt-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) { return '<tr><td>' + esc(x.author) + '</td><td>' + esc(x.body) + '</td></tr>'; }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada catatan.</td></tr>';
+  }
+  on('mnt-add', 'click', async function () {
+    if (!pval('mnt-mid') || !pval('mnt-body')) { pmsg('mnt-msg', 'Isi perkara + catatan.'); return; }
+    var r = await ppost('/api/v1/matter-notes', { matter_id: +pval('mnt-mid'), author: pval('mnt-who') || 'staff', body: pval('mnt-body') });
+    if (!r.ok) { pmsg('mnt-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mnt-msg', ''); mntRefresh();
+  });
+  on('mnt-reload', 'click', mntRefresh);
+  async function mmoRefresh() {
+    var box = document.getElementById('mmo-list');
+    if (!box) return;
+    if (!pval('mmo-mid')) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/matter-memos?matter_id=' + encodeURIComponent(pval('mmo-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="2" class="text-muted">Gagal/staf saja.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) { return '<tr><td>' + esc(x.author) + '</td><td>' + esc(x.body) + '</td></tr>'; }).join('') || '<tr><td colspan="2" class="text-muted">Belum ada memo.</td></tr>';
+  }
+  on('mmo-add', 'click', async function () {
+    if (!pval('mmo-mid') || !pval('mmo-body')) { pmsg('mmo-msg', 'Isi perkara + memo.'); return; }
+    var r = await ppost('/api/v1/matter-memos', { matter_id: +pval('mmo-mid'), author: pval('mmo-who') || 'staff', body: pval('mmo-body') });
+    if (!r.ok) { pmsg('mmo-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mmo-msg', ''); mmoRefresh();
+  });
+  on('mmo-reload', 'click', mmoRefresh);
+  async function mclRefresh() {
+    var box = document.getElementById('mcl-list');
+    if (!box) return;
+    if (!pval('mcl-mid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/matter-closure?matter_id=' + encodeURIComponent(pval('mcl-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.title) + '</td><td>' + (x.done ? 'selesai' : 'buka') + '</td><td><button class="btn btn-sm" data-mcl-tg="' + x.id + '" data-mcl-done="' + (x.done ? 0 : 1) + '" type="button">Toggle</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada butir.</td></tr>';
+    qsa('[data-mcl-tg]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/matter-closure/' + b.getAttribute('data-mcl-tg') + '/toggle', { done: +b.getAttribute('data-mcl-done') });
+        if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + ').'); return; }
+        mclRefresh();
+      });
+    });
+  }
+  on('mcl-add', 'click', async function () {
+    if (!pval('mcl-mid') || !pval('mcl-title')) { pmsg('mcl-msg', 'Isi perkara + butir.'); return; }
+    var r = await ppost('/api/v1/matter-closure', { matter_id: +pval('mcl-mid'), title: pval('mcl-title') });
+    if (!r.ok) { pmsg('mcl-msg', 'Gagal (' + r.status + '). Perkara tutup?'); return; }
+    pmsg('mcl-msg', ''); mclRefresh();
+  });
+  on('mcl-reload', 'click', mclRefresh);
+
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');
