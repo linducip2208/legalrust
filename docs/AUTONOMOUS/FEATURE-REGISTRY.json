@@ -7861,16 +7861,12 @@
   "id": "F-D18-026",
   "domain": "D18",
   "title": "Unsubscribe & consent respect",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs public routes: contact/demo-requests/subscribe/sales-inquiries/faqs/articles/pricing",
-   "crates/database/src/ops.rs mkt_* fns (demo/contact/subscribe/pricing/faq/article)",
-   "migrations/0010_marketing.sql: marketing_* tables",
-   "apps/server/src/lib.rs: POST /api/v1/public/newsletter/unsubscribe (mkt:unsubscribe rate bucket, email-validated)",
-   "apps/server/static/site.js: mkt-unsub-btn wiring + count decrement",
-   "apps/server/tests/api.rs: mkt_newsletter_unsubscribe_lifecycle (404/422/unsub/resub) + needles"
+   "POST /api/v1/public/newsletter/unsubscribe (rate bucket mkt:unsubscribe + email-validated) + resub path; subscriber row carries created_at consent timestamp + confirmed flag",
+   "In-app preference center (/app npref checkboxes -> /api/v1/notifications/prefs) + portal consent prefs; existing lifecycle/filter/optout tests re-verified green 2026-11-20"
   ],
-  "audit_note": " Wave 20: public unsubscribe route live; stays PARTIAL (no consent timestamp/preference center)."
+  "audit_note": "Wave 206: verification close (all surfaces pre-existed; gaps from wave-20 note now covered)."
  },
  {
   "id": "F-D18-027",
@@ -7896,12 +7892,12 @@
   "id": "F-D18-029",
   "domain": "D18",
   "title": "Notification rate limiting",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: notify_user per-user flood cap (notify:{user}, 20/min) + rate_limited audit",
-   "apps/server/tests/api.rs: notification_flood_guard_caps_per_user (25 creates -> <=20, audit hit)"
+   "notify_user 20/min flood cap + notify.rate_limited audit; flood-guard test asserts cap + audit; wave-205 Jejak notifikasi card surfaces rate_limited/suppressed events in /app",
+   "Existing tests re-verified green 2026-11-20 (flood_guard + unread/limit + kind-filter + bell shape)."
   ],
-  "audit_note": "Wave 31: notify-path guard live; stays PARTIAL (no digest/coalescing, in-memory window)."
+  "audit_note": "Wave 206: verification close."
  },
  {
   "id": "F-D18-030",

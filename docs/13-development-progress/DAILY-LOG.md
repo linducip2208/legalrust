@@ -793,3 +793,7 @@
 ## 2026-11-20 AUDIT-1000 wave 205: live probes + notif trail (main)
 - integration_health: probe live AI (HTTP 3s bila dikonfigurasi) + storage roundtrip + DB SELECT 1; badge live/mati di UI; kartu Jejak notifikasi di panel audit + JS; tes + needle.
 - Workspace 527 passed, 0 failed; fmt+clippy+node clean; F-D21-031/F-D18-028 PARTIAL->IMPLEMENTED (~73.6 verified); tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 206: notification closes (main, verification)
+- Tanpa kode baru: F-D18-026 (unsub/resub + timestamp + preference center) dan F-D18-029 (flood cap + audit + visibilitas trail) diverifikasi lengkap via test eksisting yang hijau + bukti jejak UI wave-205.
+- F-D18-026/029 PARTIAL->IMPLEMENTED (~73.4 verified).

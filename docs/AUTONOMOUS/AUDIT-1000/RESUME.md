@@ -878,3 +878,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 205: live probes + notif trail (main)
 - Probe live integrasi + badge + kartu jejak notifikasi; uji + needle.
 - F-D21-031/F-D18-028 PARTIAL->IMPLEMENTED (~73.6 verified). Workspace 527/0; clippy clean; tanpa migrasi.
+
+## Done wave 206: notification closes (main, verification)
+- Verifikasi unsub/consent + flood guard; tanpa kode baru.
+- F-D18-026/029 PARTIAL->IMPLEMENTED (~73.4 verified).
