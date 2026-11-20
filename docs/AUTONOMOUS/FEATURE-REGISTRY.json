@@ -954,13 +954,12 @@
   "id": "F-D03-004",
   "domain": "D03",
   "title": "Matter stage pipeline",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:3448 route /api/v1/matters",
-   "apps/server/src/lib.rs:365 create_matter (auto number M-, in-app notify, audit event)",
-   "apps/server/src/lib.rs:404 list_matters",
-   "migrations/0002_core.sql: table matters"
-  ]
+   "lib.rs: GET /api/v1/matters/pipeline (View, read-only rollup open/on_hold/closed + counts)",
+   "site.js: mpipe card (Muat pipa); tests: matter_stage_pipeline_groups_by_status e2e (grouping, hold-moves-column, counts) + needle"
+  ],
+  "audit_note": "Wave 184 (merge w182-pipeline): stage pipeline live. Verified by test."
  },
  {
   "id": "F-D03-005",

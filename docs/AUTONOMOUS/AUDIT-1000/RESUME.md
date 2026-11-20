@@ -783,3 +783,8 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 183: sub-matter grouping (main)
 - Migrasi 0116 (matters.parent_id + FK SET NULL); CoreStore::set_matter_parent/list_matter_children (memory+mysql, same-org/self/cycle guards); 4 endpoint (parent/children/tree + parent_id di list); kartu /app sub-perkara; uji grouping + needle.
 - F-D03-022 PLANNED->IMPLEMENTED (~72.8 verified). Workspace 479/0; clippy clean; live 116 pending.
+
+## Done wave 184: stage pipeline (merge w182-pipeline)
+- Read-only GET /api/v1/matters/pipeline (group by open/on_hold/closed + counts); kartu /app pipa; uji grouping + needle.
+- Merge-conflict repair: lib.rs HTML line resolved (HEAD + mpipe card); api.rs notes-test interleaving reconstructed from HEAD + w182-pipeline.
+- F-D03-004 PARTIAL->IMPLEMENTED (~71.3 verified). Workspace 481/0; clippy clean; live 116/116 + register PASS (legalrust_wave184).

@@ -577,4 +577,8 @@
 
 ## 2026-11-20 AUDIT-1000 wave 183: sub-matter grouping (main)
 - Workspace 479 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
-- Live MySQL: verifikasi 116 menyusul (rebuild target-ui5 + relaunch + migrate).
+- Live MySQL legalrust_wave184: migrate 116/116 + register PASS; parent_id + pipeline/submatter/templates/gantt verified; /app needles OK.
+
+## 2026-11-20 AUDIT-1000 wave 184: merge w182-pipeline (main)
+- Workspace 481 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL legalrust_wave184: migrate 116/116 + register PASS; parent_id + pipeline/submatter/templates/gantt verified; /app needles OK.

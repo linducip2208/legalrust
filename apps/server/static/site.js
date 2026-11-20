@@ -3313,6 +3313,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('kan-go', 'click', kanRefresh);
   on('cal-dl', 'click', function () { dlCsv('/api/v1/calendar.ics', 'tugas.ics', 'kan-msg'); });
+    /* ---- matter stage pipeline (F-D03-004) ---- */
+  async function mpipeRefresh() {
+    var box = document.getElementById('mpipe-body');
+    if (!box) return;
+    var v = await j('/api/v1/matters/pipeline');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    function cell(arr) {
+      return (arr || []).map(function (m) { return '<div>' + esc(m.title) + ' <span class="text-muted">#' + m.id + '</span></div>'; }).join('') || '<span class="text-muted">-</span>';
+    }
+    box.innerHTML = '<tr><td>' + cell(v.open) + '</td><td>' + cell(v.on_hold) + '</td><td>' + cell(v.closed) + '</td></tr>';
+    pmsg('mpipe-msg', 'Buka ' + ((v.counts && v.counts.open) || 0) + ' | Tahan ' + ((v.counts && v.counts.on_hold) || 0) + ' | Tutup ' + ((v.counts && v.counts.closed) || 0));
+  }
+  on('mpipe-go', 'click', mpipeRefresh);
   /* ---- timesheet (F-D03-013/015) ---- */
   var TEN_NEXT = { draft: 'submitted', submitted: 'approved', rejected: 'draft' };
   async function tenRefresh() {

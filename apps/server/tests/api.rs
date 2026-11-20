@@ -10796,7 +10796,7 @@ async fn client_onboarding_offboarding_checklists() {
             .unwrap();
         assert_eq!(res.status(), StatusCode::OK, "offboarding to {st}");
     }
-    // Items: add/toggle/list; ghost list 404? (empty ok) — ghost add 404s.
+    // Items: add/toggle/list; ghost list 404? (empty ok) ??? ghost add 404s.
     let res = a
         .clone()
         .oneshot(post(
@@ -18832,7 +18832,7 @@ async fn mortgage_charges_and_expiry_monitor() {
         .await
         .unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
-    // Expiry monitor: 2026-04-15 within 60 days of 2026-03-01? No — use wide window.
+    // Expiry monitor: 2026-04-15 within 60 days of 2026-03-01? No ??? use wide window.
     let res = a
         .clone()
         .oneshot(get("/api/v1/charges/due?days=3650", &tok))
@@ -23095,6 +23095,86 @@ async fn matter_notes_memos_closure() {
     assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
+#[tokio::test]
+async fn uib_app_has_pipeline_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["mpipe-go", "mpipe-msg", "mpipe-body", "Pipa status perkara"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
+async fn matter_stage_pipeline_groups_by_status() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pipe@x.id").await;
+    for title in ["P1", "P2"] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/matters",
+                &format!(r#"{{"title":"{title}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/pipeline", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let p = body_json(res).await;
+    let open = p["open"].as_array().unwrap();
+    assert!(open.iter().any(|m| m["title"] == "P1"));
+    assert!(open.iter().any(|m| m["title"] == "P2"));
+    assert_eq!(p["counts"]["open"].as_u64(), Some(open.len() as u64));
+    // Hold one matter -> moves columns; counts stay consistent.
+    let held = open.iter().find(|m| m["title"] == "P1").unwrap()["id"]
+        .as_i64()
+        .unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{held}/status"),
+            r#"{"status":"on_hold"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/pipeline", &tok))
+        .await
+        .unwrap();
+    let p2 = body_json(res).await;
+    assert!(p2["on_hold"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["id"].as_i64() == Some(held)));
+    assert!(!p2["open"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|m| m["id"].as_i64() == Some(held)));
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matters/pipeline")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
 #[tokio::test]
 async fn uib_app_has_feed_ui() {
     let (st, _, t) = page_get(&app(), "/app").await;
