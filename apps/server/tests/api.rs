@@ -24230,3 +24230,139 @@ async fn uib_app_has_statement_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn triage_queue_and_suggest() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "trg@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MTRG"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/tasks"),
+            r#"{"title":"Tanpa pemilik"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let tid = body_json(res).await["id"].as_i64().unwrap();
+    // Queue surfaces matter without team + unassigned task.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/triage/queue", &tok))
+        .await
+        .unwrap();
+    let items = body_json(res).await["items"].as_array().unwrap().clone();
+    assert!(items
+        .iter()
+        .any(|x| x["kind"] == "matter_no_team" && x["matter_id"].as_i64() == Some(mid)));
+    assert!(items
+        .iter()
+        .any(|x| x["kind"] == "task_unassigned" && x["task_id"].as_i64() == Some(tid)));
+    // Ghost task 404; no team yet -> null suggestion.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/triage/suggest",
+            r#"{"task_id":999999}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/triage/suggest",
+            &format!(r#"{{"task_id":{tid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let s = body_json(res).await;
+    assert!(s["suggested"].is_null());
+    assert_eq!(s["reason"].as_str(), Some("no_team"));
+    // Add member -> suggestion names them; assign sticks.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-team",
+            &format!(r#"{{"matter_id":{mid},"user_id":"ani","role":"member"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/triage/suggest",
+            &format!(r#"{{"task_id":{tid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let s = body_json(res).await;
+    assert_eq!(s["suggested"].as_str(), Some("ani"));
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/tasks/{tid}/assign"),
+            r#"{"assignee":"ani"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // Assigned task leaves the queue; suggest reports already_assigned.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/triage/queue", &tok))
+        .await
+        .unwrap();
+    assert!(!body_json(res).await["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["task_id"].as_i64() == Some(tid)));
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/triage/suggest",
+            &format!(r#"{{"task_id":{tid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        body_json(res).await["reason"].as_str(),
+        Some("already_assigned")
+    );
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/triage/queue")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_triage_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["trg-go", "trg-msg", "trg-list", "Triase inbox"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

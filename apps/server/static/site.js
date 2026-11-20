@@ -3377,6 +3377,40 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     pmsg('mimp-msg', '');
     document.getElementById('mimp-out').textContent = 'Terbuat: ' + v.created + ' perkara.';
   });
+  /* ---- inbox triage (F-D03-040) ---- */
+  async function trgRefresh() {
+    var box = document.getElementById('trg-list');
+    if (!box) return;
+    var v = await j('/api/v1/triage/queue');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = (v.items || []).map(function (x) {
+      var label = x.kind === 'task_unassigned' ? ('tugas #' + x.task_id + ' (' + esc(x.title) + ')') : ('perkara #' + x.matter_id + ' (' + esc(x.title) + ') tanpa tim');
+      var act = x.kind === 'task_unassigned'
+        ? '<button class="btn btn-sm" data-trg-sug="' + x.task_id + '" type="button">Sarankan</button> <button class="btn btn-sm" data-trg-asg="' + x.task_id + '" type="button">Tetapkan saran</button>'
+        : '';
+      return '<tr><td>' + esc(x.kind) + '</td><td>' + label + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Antrean kosong. Bagus.</td></tr>';
+    qsa('[data-trg-sug]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/triage/suggest', { task_id: +b.getAttribute('data-trg-sug') });
+        if (!r.ok) { pmsg('trg-msg', 'Gagal (' + r.status + ').'); return; }
+        var v = await r.json();
+        pmsg('trg-msg', v.suggested ? ('Saran: ' + v.suggested + ' (' + v.reason + ')') : ('Tanpa saran: ' + v.reason));
+        b.setAttribute('data-trg-who', v.suggested || '');
+      });
+    });
+    qsa('[data-trg-asg]', function (b) {
+      b.addEventListener('click', async function () {
+        var sib = b.parentElement.querySelector('[data-trg-sug]');
+        var who = sib ? sib.getAttribute('data-trg-who') : '';
+        if (!who) { pmsg('trg-msg', 'Minta saran dulu.'); return; }
+        var r = await ppost('/api/v1/tasks/' + b.getAttribute('data-trg-asg') + '/assign', { assignee: who });
+        if (!r.ok) { pmsg('trg-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('trg-msg', ''); trgRefresh();
+      });
+    });
+  }
+  on('trg-go', 'click', trgRefresh);
   /* ---- timesheet (F-D03-013/015) ---- */
   var TEN_NEXT = { draft: 'submitted', submitted: 'approved', rejected: 'draft' };
   async function tenRefresh() {
