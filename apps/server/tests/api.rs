@@ -23804,6 +23804,124 @@ async fn uib_app_has_timer_ui() {
 }
 
 #[tokio::test]
+async fn matter_archive_retrieval() {
+    let a = app();
+    let tok = reg(&a, "march@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MARCH"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Archive ghost 404; double-archive 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/999999/archive",
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/archive"),
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["archived"], true);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/archive"),
+            r#"{"done":1}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Archived list contains it; detail flag set.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters/archived", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(mid)));
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/matters", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(mid) && r["archived"] == true));
+    // Unarchive + double-unarchive 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/archive"),
+            r#"{"done":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["archived"], false);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/archive"),
+            r#"{"done":0}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // No-token 401.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/archive"),
+            r#"{"done":1}"#,
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_archive_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "march-id",
+        "march-do",
+        "march-un",
+        "march-reload",
+        "march-msg",
+        "march-list",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn matter_insights_dashboard_profitability_sla() {
     use tower::ServiceExt;
     let a = app();

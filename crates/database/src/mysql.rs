@@ -418,10 +418,11 @@ impl CoreStore for MysqlStores {
             practice_area: "general".into(),
             priority: "normal".into(),
             parent_id: None,
+            archived: false,
         })
     }
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id, archived FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MatterRow {
@@ -434,11 +435,12 @@ impl CoreStore for MysqlStores {
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
                 parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
+                archived: x.get::<u8, _>("archived") != 0,
             })
             .collect())
     }
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError> {
-        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id, archived FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
         Ok(MatterRow {
             id: x.get::<u64, _>("id") as i64,
             org_id: x.get::<String, _>("org_id"),
@@ -449,6 +451,7 @@ impl CoreStore for MysqlStores {
             practice_area: x.get::<String, _>("practice_area"),
             priority: x.get::<String, _>("priority"),
             parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
+            archived: x.get::<u8, _>("archived") != 0,
         })
     }
     async fn set_matter_practice(
@@ -589,7 +592,7 @@ impl CoreStore for MysqlStores {
     }
     async fn list_matter_children(&self, org: &str, id: i64) -> Result<Vec<MatterRow>, StoreError> {
         self.get_matter(org, id).await?;
-        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id FROM matters WHERE org_id=? AND parent_id=? ORDER BY id LIMIT 200").bind(org).bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id, archived FROM matters WHERE org_id=? AND parent_id=? ORDER BY id LIMIT 200").bind(org).bind(id as u64).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MatterRow {
@@ -602,6 +605,44 @@ impl CoreStore for MysqlStores {
                 practice_area: x.get::<String, _>("practice_area"),
                 priority: x.get::<String, _>("priority"),
                 parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
+                archived: x.get::<u8, _>("archived") != 0,
+            })
+            .collect())
+    }
+    async fn set_matter_archived(
+        &self,
+        org: &str,
+        id: i64,
+        archived: bool,
+    ) -> Result<MatterRow, StoreError> {
+        let cur = self.get_matter(org, id).await?;
+        if cur.archived == archived {
+            return Err(StoreError::Conflict("no-op".into()));
+        }
+        sqlx::query("UPDATE matters SET archived=? WHERE id=? AND org_id=?")
+            .bind(if archived { 1u8 } else { 0u8 })
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.get_matter(org, id).await
+    }
+    async fn list_matter_archived(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority, parent_id, archived FROM matters WHERE org_id=? AND archived=1 ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterRow {
+                id: x.get::<u64, _>("id") as i64,
+                org_id: x.get::<String, _>("org_id"),
+                client_id: x.get::<Option<u64>, _>("client_id").map(|v| v as i64),
+                number: x.get::<String, _>("number"),
+                title: x.get::<String, _>("title"),
+                status: x.get::<String, _>("status"),
+                practice_area: x.get::<String, _>("practice_area"),
+                priority: x.get::<String, _>("priority"),
+                parent_id: x.get::<Option<u64>, _>("parent_id").map(|v| v as i64),
+                archived: x.get::<u8, _>("archived") != 0,
             })
             .collect())
     }

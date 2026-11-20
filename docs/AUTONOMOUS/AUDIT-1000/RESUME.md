@@ -797,3 +797,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 - Tanpa migrasi (read-only): GET /api/v1/matters/dashboard + /profitability + /sla-alerts?days= (clamp 1..90); kartu /app Wawasan; uji KPI/profit/SLA + needle.
 - Merge-conflict repair: api.rs timer/insights interleave direkonstruksi dari HEAD + w185-insights; lib.rs/site.js automerge OK.
 - F-D03-032/038 NOT_STARTED->IMPLEMENTED, F-D03-039 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 485/0; clippy clean; live 117/117 + register PASS (legalrust_wave186; timer start/active/stop + dashboard/profit/pipeline/sla verified).
+
+## Done wave 187: archive & retrieval (main)
+- Migrasi 0118 (matters.archived + indeks); MatterRow.archived; CoreStore 2 metode (memory+mysql, no-op->409, audit archived/unarchived); 2 endpoint + flag di list; kartu /app arsip; uji retrieval + needle.
+- F-D03-037 NOT_STARTED->IMPLEMENTED (~70.8 verified). Workspace 487/0; clippy clean; live 118 pending.

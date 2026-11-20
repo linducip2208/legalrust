@@ -3555,6 +3555,26 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     }).join('') || 'Tidak ada anak.';
   });
 
+  /* ---- matter archive & retrieval (F-D03-037) ---- */
+  async function marchRefresh() {
+    var box = document.getElementById('march-list');
+    if (!box) return;
+    var v = await j('/api/v1/matters/archived');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + x.id + '</td><td>' + esc(x.number) + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.status) + '</td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Arsip kosong.</td></tr>';
+  }
+  async function marchSet(to) {
+    if (!pval('march-id')) { pmsg('march-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('march-id')) + '/archive', { done: to ? 1 : 0 });
+    if (!r.ok) { pmsg('march-msg', 'Gagal (' + r.status + '). Sudah diarsip / tidak ada?'); return; }
+    pmsg('march-msg', ''); marchRefresh();
+  }
+  on('march-do', 'click', function () { marchSet(true); });
+  on('march-un', 'click', function () { marchSet(false); });
+  on('march-reload', 'click', marchRefresh);
+
   /* ---- matter notes + memos + closure (F-D03-026/027/030) ---- */
   async function mntRefresh() {
     var box = document.getElementById('mnt-list');

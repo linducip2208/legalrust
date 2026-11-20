@@ -57,6 +57,7 @@ pub struct MatterRow {
     pub practice_area: String,
     pub priority: String,
     pub parent_id: Option<i64>,
+    pub archived: bool,
 }
 #[derive(Debug, Clone)]
 pub struct TaskRow {
@@ -208,6 +209,15 @@ pub trait CoreStore: Send + Sync {
     ) -> Result<MatterRow, StoreError>;
     /// Direct children of a matter (same org, ordered by id).
     async fn list_matter_children(&self, org: &str, id: i64) -> Result<Vec<MatterRow>, StoreError>;
+    /// Archive / restore a matter (retrieval-safe; content untouched).
+    async fn set_matter_archived(
+        &self,
+        org: &str,
+        id: i64,
+        archived: bool,
+    ) -> Result<MatterRow, StoreError>;
+    /// Archived matters (same org, ordered by id desc, capped).
+    async fn list_matter_archived(&self, org: &str) -> Result<Vec<MatterRow>, StoreError>;
     async fn update_client(
         &self,
         org: &str,

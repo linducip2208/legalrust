@@ -286,6 +286,7 @@ impl CoreStore for MemoryStores {
             practice_area: "general".into(),
             priority: "normal".into(),
             parent_id: None,
+            archived: false,
         };
         m.matters.insert(id, r.clone());
         Ok(r)
@@ -522,6 +523,37 @@ impl CoreStore for MemoryStores {
             .cloned()
             .collect();
         v.sort_by_key(|x| x.id);
+        Ok(v)
+    }
+    async fn set_matter_archived(
+        &self,
+        org: &str,
+        id: i64,
+        archived: bool,
+    ) -> Result<MatterRow, StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.archived == archived {
+            return Err(StoreError::Conflict("no-op".into()));
+        }
+        r.archived = archived;
+        Ok(r.clone())
+    }
+    async fn list_matter_archived(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
+        let mut v: Vec<MatterRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .matters
+            .values()
+            .filter(|x| x.org_id == org && x.archived)
+            .cloned()
+            .collect();
+        v.sort_by_key(|x| -x.id);
         Ok(v)
     }
     async fn create_task(

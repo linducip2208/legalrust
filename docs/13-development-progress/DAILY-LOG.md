@@ -709,3 +709,7 @@
 - Tanpa migrasi (read-only di atas list_matters/list_tasks/mms_list/bdg_list/mxp_list/ten_list): GET /api/v1/matters/dashboard (KPI firm-wide), /profitability (budget/spent/remaining/menit per perkara), /sla-alerts?days= (item breached/due_soon, clamp 1..90); kartu /app Wawasan + JS; tes matter_insights_dashboard_profitability_sla + needle.
 - Merge cabang paralel w185-insights (konflik body raksasa -> ambil HEAD + pasang ulang; uji terjalin -> rekonstruksi dari HEAD + test murni); artefak encoding dikembalikan persis.
 - Workspace 485 passed, 0 failed; fmt+clippy+node clean; F-D03-032/038 NOT_STARTED->IMPLEMENTED, F-D03-039 PARTIAL->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 187: archive & retrieval (main)
+- Migrasi 0118 (matters.archived + indeks); CoreStore::set_matter_archived/list_matter_archived (memory+mysql); POST archive/unarchive (Update, 404/409) + GET archived (View); flag archived di list/children/archive; kartu /app + JS; tes matter_archive_retrieval + needle.
+- Workspace 487 passed, 0 failed; fmt+clippy+node clean; F-D03-037 NOT_STARTED->IMPLEMENTED (~70.8 verified).
