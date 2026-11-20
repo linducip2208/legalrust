@@ -731,3 +731,7 @@
 ## 2026-11-20 AUDIT-1000 wave 190: office registry + hierarchy (main, D17 pertama)
 - Migrasi 0119 (offices + office_links); OfficeRow/OfficeLinkRow; OpsStore::office_*/olink_* (memory+mysql, relasi branch/division/unit, guard siklus bounded-walk); POST/GET offices + POST/GET/DELETE office-links + audit; kartu /app + JS; tes office_branches_and_hierarchy + needle.
 - Workspace 493 passed, 0 failed; fmt+clippy+node clean; F-D17-004/005 PLANNED->IMPLEMENTED (~71.0 verified).
+
+## 2026-11-20 AUDIT-1000 wave 191: inter-office referral (main)
+- Migrasi 0120 (office_referrals); OfficeReferralRow; OpsStore::oref_add/list/set_status (memory+mysql); POST/GET referrals + POST status + audit office.referred; kartu /app + JS (terima/tolak); tes office_referrals + needle.
+- Workspace 495 passed, 0 failed; fmt+clippy+node clean; F-D17-007 PLANNED->IMPLEMENTED (~71.0 verified).

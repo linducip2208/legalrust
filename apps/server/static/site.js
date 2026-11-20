@@ -2873,6 +2873,42 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     oflRefresh();
   });
   on('ofl-reload', 'click', oflRefresh);
+  /* ---- office referrals (F-D17-007) ---- */
+  async function orfRefresh() {
+    var box = document.getElementById('orf-list');
+    if (!box) return;
+    var url = '/api/v1/office-referrals';
+    if (pval('orf-mid')) url += '?matter_id=' + encodeURIComponent(pval('orf-mid'));
+    var v = await j(url);
+    if (!v) { box.innerHTML = '<tr><td colspan="5" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      var act = x.status === 'pending'
+        ? '<button class="btn btn-sm" data-orf-ok="' + x.id + '" type="button">Terima</button> <button class="btn btn-sm btn-outline-danger" data-orf-no="' + x.id + '" type="button">Tolak</button>'
+        : esc(x.status);
+      return '<tr><td>#' + x.matter_id + '</td><td>#' + x.from_office_id + '</td><td>#' + x.to_office_id + '</td><td>' + badge(x.status) + '</td><td>' + act + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="text-muted">Belum ada rujukan.</td></tr>';
+    qsa('[data-orf-ok]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/office-referrals/' + b.getAttribute('data-orf-ok') + '/status', { to: 'accepted' });
+        if (!r.ok) { pmsg('orf-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('orf-msg', ''); orfRefresh();
+      });
+    });
+    qsa('[data-orf-no]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await ppost('/api/v1/office-referrals/' + b.getAttribute('data-orf-no') + '/status', { to: 'declined' });
+        if (!r.ok) { pmsg('orf-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('orf-msg', ''); orfRefresh();
+      });
+    });
+  }
+  on('orf-add', 'click', async function () {
+    if (!pval('orf-mid') || !pval('orf-from') || !pval('orf-to')) { pmsg('orf-msg', 'Isi perkara + kantor asal/tujuan.'); return; }
+    var r = await ppost('/api/v1/office-referrals', { matter_id: +pval('orf-mid'), from_office_id: +pval('orf-from'), to_office_id: +pval('orf-to'), note: pval('orf-note') || '' });
+    if (!r.ok) { pmsg('orf-msg', 'Gagal (' + r.status + '). Kantor/perkara?'); return; }
+    pmsg('orf-msg', ''); orfRefresh();
+  });
+  on('orf-reload', 'click', orfRefresh);
   async function csgRefresh() {
     var box = document.getElementById('csg-list');
     if (!box) return;

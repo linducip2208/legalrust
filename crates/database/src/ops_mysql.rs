@@ -1793,6 +1793,91 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn oref_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        from_office_id: i64,
+        to_office_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let n = note.trim();
+        if matter_id <= 0 || from_office_id <= 0 || to_office_id <= 0 || n.len() > 300 {
+            return Err(StoreError::Conflict("matter/offices/note".into()));
+        }
+        if from_office_id == to_office_id {
+            return Err(StoreError::Conflict("same office".into()));
+        }
+        self.office_get(org, from_office_id).await?;
+        self.office_get(org, to_office_id).await?;
+        let r = sqlx::query(
+            "INSERT INTO office_referrals (org_id, matter_id, from_office_id, to_office_id, note) VALUES (?,?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(from_office_id as u64)
+        .bind(to_office_id as u64)
+        .bind(n)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn oref_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<OfficeReferralRow>, StoreError> {
+        let rows = match matter_id {
+            Some(m) => sqlx::query("SELECT id, org_id, matter_id, from_office_id, to_office_id, note, status FROM office_referrals WHERE org_id=? AND matter_id=? ORDER BY id DESC LIMIT 200").bind(org).bind(m as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            None => sqlx::query("SELECT id, org_id, matter_id, from_office_id, to_office_id, note, status FROM office_referrals WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| OfficeReferralRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                from_office_id: x.get::<u64, _>("from_office_id") as i64,
+                to_office_id: x.get::<u64, _>("to_office_id") as i64,
+                note: x.get::<String, _>("note"),
+                status: x.get::<String, _>("status"),
+            })
+            .collect())
+    }
+    async fn oref_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["accepted", "declined"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let cur: Option<String> =
+            sqlx::query("SELECT status FROM office_referrals WHERE id=? AND org_id=?")
+                .bind(id as u64)
+                .bind(org)
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(db_err)?
+                .map(|x| x.get::<String, _>("status"));
+        match cur {
+            Some(s) if s == "pending" => {}
+            Some(_) => return Err(StoreError::Conflict("settled".into())),
+            None => return Err(StoreError::NotFound),
+        }
+        let n = sqlx::query(
+            "UPDATE office_referrals SET status=? WHERE id=? AND org_id=? AND status='pending'",
+        )
+        .bind(&to)
+        .bind(id as u64)
+        .bind(org)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StoreError::Conflict("settled".into()));
+        }
+        Ok(())
+    }
     async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError> {
         if client_id <= 0 {
             return Err(StoreError::Conflict("client".into()));

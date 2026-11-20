@@ -7316,10 +7316,14 @@
   "id": "F-D17-007",
   "domain": "D17",
   "title": "Inter-office matter referral",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0120: office_referrals (org,matter,from,to,note,status pending; FK cascade)",
+   "ops.rs: OfficeReferralRow + OpsStore::oref_add/list/set_status (same-office/ghost->404/409, pending->accepted|declined, settled->409)",
+   "lib.rs: POST/GET /api/v1/office-referrals + POST {id}/status (Create/View/Update, audit office.referred)",
+   "site.js: orf card (rujuk/terima/tolak); tests: office_referrals e2e + needle"
+  ],
+  "audit_note": "Wave 191: inter-office referral live. Verified by test."
  },
  {
   "id": "F-D17-008",

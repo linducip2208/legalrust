@@ -610,3 +610,7 @@
 ## 2026-11-20 AUDIT-1000 wave 190: office registry + hierarchy (main)
 - Workspace 493 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
 - Live MySQL legalrust_wave190: migrate 119/119 + register PASS; offices/link/cycle/unlink verified (bool decode OK); /app needles OK.
+
+## 2026-11-20 AUDIT-1000 wave 191: inter-office referral (main)
+- Workspace 495 passed, 0 failed (SQLX_OFFLINE=true, target-ui-test); fmt+clippy clean, site.js node --check PASS.
+- Live MySQL: verifikasi 120 menyusul (rebuild target-ui5 + relaunch + migrate).

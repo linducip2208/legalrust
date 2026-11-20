@@ -24135,6 +24135,165 @@ async fn uib_app_has_office_ui() {
 }
 
 #[tokio::test]
+async fn office_referrals() {
+    let a = app();
+    let tok = reg(&a, "orf@x.id").await;
+    let mkoffice = |code: &'static str| {
+        let a = a.clone();
+        let tok = tok.clone();
+        async move {
+            let res = a
+                .clone()
+                .oneshot(post(
+                    "/api/v1/offices",
+                    &format!(r#"{{"code":"{code}","name":"{code}"}}"#),
+                    Some(&tok),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(res.status(), StatusCode::OK);
+            body_json(res).await["id"].as_i64().unwrap()
+        }
+    };
+    let hq = mkoffice("HQ2").await;
+    let sby = mkoffice("SBY2").await;
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MORF"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Ghost matter 404; same office 409; ghost office 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals",
+            &format!(r#"{{"matter_id":999999,"from_office_id":{hq},"to_office_id":{sby}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals",
+            &format!(r#"{{"matter_id":{mid},"from_office_id":{hq},"to_office_id":{hq}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals",
+            &format!(r#"{{"matter_id":{mid},"from_office_id":{hq},"to_office_id":999999}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Referral roundtrip.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals",
+            &format!(r#"{{"matter_id":{mid},"from_office_id":{hq},"to_office_id":{sby},"note":"butuh litigasi"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(get(
+            &format!("/api/v1/office-referrals?matter_id={mid}"),
+            &tok,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(rid) && r["status"] == "pending"));
+    // Accept; second settle 409; bad status 409; ghost 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/office-referrals/{rid}/status"),
+            r#"{"to":"accepted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/office-referrals/{rid}/status"),
+            r#"{"to":"declined"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/office-referrals/{rid}/status"),
+            r#"{"to":"maybe"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals/999999/status",
+            r#"{"to":"accepted"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // No-token 401.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-referrals",
+            &format!(r#"{{"matter_id":{mid},"from_office_id":{hq},"to_office_id":{sby}}}"#),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_referral_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "orf-mid",
+        "orf-from",
+        "orf-to",
+        "orf-note",
+        "orf-add",
+        "orf-reload",
+        "orf-msg",
+        "orf-list",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn matter_insights_dashboard_profitability_sla() {
     use tower::ServiceExt;
     let a = app();

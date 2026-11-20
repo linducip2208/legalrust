@@ -818,3 +818,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 190: office registry + hierarchy (main)
 - Migrasi 0119 (offices + office_links, unique code/pair, cascade); OpsStore 6 metode (memory+mysql, dup/ghost/self/cycle guards); 5 endpoint + audit; kartu /app kantor; uji registry+hierarchy + needle.
 - F-D17-004/005 PLANNED->IMPLEMENTED (~71.0 verified). Workspace 493/0; clippy clean; live 119/119 + register PASS (legalrust_wave190; offices/link/cycle-409/unlink + bool active decode verified).
+
+## Done wave 191: inter-office referral (main)
+- Migrasi 0120 (office_referrals, FK cascade); OpsStore oref_* (memory+mysql, guard kantor-ganda/ghost/siklus-status); 3 endpoint + audit; kartu /app rujukan; uji referral + needle.
+- F-D17-007 PLANNED->IMPLEMENTED (~71.0 verified). Workspace 495/0; clippy clean; live 120 pending.

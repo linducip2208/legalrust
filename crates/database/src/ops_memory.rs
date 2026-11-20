@@ -135,6 +135,7 @@ struct Inner {
     chlinks: HashMap<i64, ClientLinkRow>,
     ofcs: HashMap<i64, OfficeRow>,
     oflnks: HashMap<i64, OfficeLinkRow>,
+    orefs: HashMap<i64, OfficeReferralRow>,
     csegs: HashMap<i64, ClientSegRow>,
     cchks: HashMap<i64, ClientCheckRow>,
     cchits: HashMap<i64, ClientCheckItemRow>,
@@ -2333,6 +2334,76 @@ impl OpsStore for MemoryOps {
             }
             _ => Err(StoreError::NotFound),
         }
+    }
+    async fn oref_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        from_office_id: i64,
+        to_office_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError> {
+        let n = note.trim();
+        if matter_id <= 0 || from_office_id <= 0 || to_office_id <= 0 || n.len() > 300 {
+            return Err(StoreError::Conflict("matter/offices/note".into()));
+        }
+        if from_office_id == to_office_id {
+            return Err(StoreError::Conflict("same office".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if !m.ofcs.get(&from_office_id).is_some_and(|r| r.org == org)
+            || !m.ofcs.get(&to_office_id).is_some_and(|r| r.org == org)
+        {
+            return Err(StoreError::NotFound);
+        }
+        let id = self.next(&mut m);
+        m.orefs.insert(
+            id,
+            OfficeReferralRow {
+                id,
+                org: org.into(),
+                matter_id,
+                from_office_id,
+                to_office_id,
+                note: n.into(),
+                status: "pending".into(),
+            },
+        );
+        Ok(id)
+    }
+    async fn oref_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<OfficeReferralRow>, StoreError> {
+        let mut v: Vec<OfficeReferralRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .orefs
+            .values()
+            .filter(|r| r.org == org && matter_id.map(|m| r.matter_id == m).unwrap_or(true))
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn oref_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["accepted", "declined"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("status".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .orefs
+            .get_mut(&id)
+            .filter(|r| r.org == org)
+            .ok_or(StoreError::NotFound)?;
+        if r.status != "pending" {
+            return Err(StoreError::Conflict("settled".into()));
+        }
+        r.status = to;
+        Ok(())
     }
     async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError> {
         if client_id <= 0 {

@@ -187,6 +187,17 @@ pub struct OfficeLinkRow {
     pub parent_id: i64,
     pub relation: String,
 }
+/// Inter-office matter referral (pending -> accepted/declined).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfficeReferralRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub from_office_id: i64,
+    pub to_office_id: i64,
+    pub note: String,
+    pub status: String,
+}
 /// Client segment tag assignment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSegRow {
@@ -2152,6 +2163,21 @@ pub trait OpsStore: Send + Sync {
         office_id: Option<i64>,
     ) -> Result<Vec<OfficeLinkRow>, StoreError>;
     async fn olink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Inter-office matter referrals (offices must exist; status machine).
+    async fn oref_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        from_office_id: i64,
+        to_office_id: i64,
+        note: &str,
+    ) -> Result<i64, StoreError>;
+    async fn oref_list(
+        &self,
+        org: &str,
+        matter_id: Option<i64>,
+    ) -> Result<Vec<OfficeReferralRow>, StoreError>;
+    async fn oref_set_status(&self, org: &str, id: i64, to: &str) -> Result<(), StoreError>;
     /// Client segment tags.
     async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError>;
     async fn cseg_list(
