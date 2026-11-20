@@ -55,6 +55,7 @@ pub struct MatterRow {
     pub title: String,
     pub status: String,
     pub practice_area: String,
+    pub priority: String,
 }
 #[derive(Debug, Clone)]
 pub struct TaskRow {
@@ -185,6 +186,13 @@ pub trait CoreStore: Send + Sync {
     ) -> Result<MatterRow, StoreError>;
     /// Status lifecycle: open->on_hold->open|closed, open->closed. Closed is terminal.
     async fn set_matter_status(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError>;
+    /// Matter priority: low|normal|high|urgent. Free transition, audited.
+    async fn set_matter_priority(
         &self,
         org: &str,
         id: i64,

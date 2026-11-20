@@ -452,6 +452,15 @@ pub struct MatterMilestoneRow {
     pub due_on: String,
     pub done: bool,
 }
+/// Matter team assignment (lead|member|viewer, unique per matter+user).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterTeamRow {
+    pub id: i64,
+    pub org: String,
+    pub matter_id: i64,
+    pub user_id: String,
+    pub role: String,
+}
 /// Portal usage event (login/view/download/upload/message/rating/request).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PortalEventRow {
@@ -2452,6 +2461,17 @@ pub trait OpsStore: Send + Sync {
         kind: Option<String>,
     ) -> Result<Vec<MatterExpenseRow>, StoreError>;
     async fn mxp_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Matter team (lead|member|viewer; upsert per matter+user).
+    async fn mteam_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        role: &str,
+    ) -> Result<i64, StoreError>;
+    async fn mteam_list(&self, org: &str, matter_id: i64)
+        -> Result<Vec<MatterTeamRow>, StoreError>;
+    async fn mteam_remove(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Org feature flags (e.g. maintenance). Unknown flags read as off.
     async fn flag_set(&self, org: &str, flag: &str, enabled: bool) -> Result<(), StoreError>;
     async fn flag_get(&self, org: &str, flag: &str) -> Result<bool, StoreError>;

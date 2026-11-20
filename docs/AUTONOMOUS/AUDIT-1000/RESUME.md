@@ -767,3 +767,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 179: restore 0112 + credit budgets/expenses/panjar (main)
 - Restored migrations/0112_matter_budgets_expenses.sql (dropped in 980ae8c while code+tests remained); registry F-D03-016/017/018 PLANNED/NOT_STARTED->IMPLEMENTED (~72.8 verified); no new code (handlers/store/UI/tests already live).
 - Workspace 470 passed / 0 failed (target-test, SQLX_OFFLINE=true); fmt clean. Registry ~33.1 (327 IMPLEMENTED).
+
+## Done wave 180: matter team + workload + priority (main)
+- matter_team (0113, role lead|member|viewer, upsert) + matters.priority (low|normal|high|urgent) + GET /api/v1/reports/workload + kartu + uji.
+- F-D03-019/020 PLANNED->IMPLEMENTED, F-D03-021 PARTIAL->IMPLEMENTED (~72.8 verified). API 272/0; live 113/113 + register PASS.

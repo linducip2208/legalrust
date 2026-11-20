@@ -676,3 +676,8 @@
 
 ## 2026-11-20 AUDIT-1000 wave 179: restore 0112 + kredit budget/panjar (main)
 - Migrasi 0112 dipulihkan (code+tes sudah ada sejak wave 178); F-D03-016/017/018 IMPLEMENTED; workspace 470 passed, 0 failed.
+
+## 2026-11-20 AUDIT-1000 wave 180: matter team + workload + priority (main)
+- Migrasi 0113 (matter_team + matters.priority); CoreStore::set_matter_priority + OpsStore::mteam_* (memory+mysql); 5 endpoint + audit matter.priority.*; kartu /app Tim & prioritas + beban kerja; tes matter_team_priority_and_workload + needle UI.
+- API 272 passed, 0 failed; live MySQL legalrust_mig180: migrate 113/113 + register PASS; kolom priority + tabel matter_team/matter_budgets terkonfirmasi.
+- F-D03-019/020/021 PLANNED/PARTIAL->IMPLEMENTED (~72.8 verified).

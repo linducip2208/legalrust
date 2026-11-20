@@ -157,6 +157,7 @@ struct Inner {
     tens: HashMap<i64, TimeEntryRow>,
     mbgs: HashMap<i64, MatterBudgetRow>,
     mxps: HashMap<i64, MatterExpenseRow>,
+    mtms: HashMap<i64, MatterTeamRow>,
     ccks: HashMap<i64, ConflictCheckRow>,
     oflags: HashMap<(String, String), bool>,
     pevs: HashMap<i64, PortalEventRow>,
@@ -4221,6 +4222,70 @@ impl OpsStore for MemoryOps {
         match m.mxps.get(&id) {
             Some(r) if r.org == org => {
                 m.mxps.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn mteam_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        role: &str,
+    ) -> Result<i64, StoreError> {
+        let uid = user_id.trim();
+        let role = role.trim().to_lowercase();
+        if matter_id <= 0 || uid.is_empty() || uid.len() > 160 {
+            return Err(StoreError::Conflict("matter/user".into()));
+        }
+        if !["lead", "member", "viewer"].contains(&role.as_str()) {
+            return Err(StoreError::Conflict("role lead|member|viewer".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if let Some((id, r)) = m
+            .mtms
+            .iter_mut()
+            .find(|(_, r)| r.org == org && r.matter_id == matter_id && r.user_id == uid)
+        {
+            r.role = role;
+            return Ok(*id);
+        }
+        let id = self.next(&mut m);
+        m.mtms.insert(
+            id,
+            MatterTeamRow {
+                id,
+                org: org.into(),
+                matter_id,
+                user_id: uid.into(),
+                role,
+            },
+        );
+        Ok(id)
+    }
+    async fn mteam_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterTeamRow>, StoreError> {
+        let mut v: Vec<MatterTeamRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .mtms
+            .values()
+            .filter(|r| r.org == org && r.matter_id == matter_id)
+            .cloned()
+            .collect();
+        v.sort_by(|a, b| a.user_id.cmp(&b.user_id));
+        Ok(v)
+    }
+    async fn mteam_remove(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.mtms.get(&id) {
+            Some(r) if r.org == org => {
+                m.mtms.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),

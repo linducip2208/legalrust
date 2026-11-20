@@ -416,10 +416,11 @@ impl CoreStore for MysqlStores {
             title: title.into(),
             status: "open".into(),
             practice_area: "general".into(),
+            priority: "normal".into(),
         })
     }
     async fn list_matters(&self, org: &str) -> Result<Vec<MatterRow>, StoreError> {
-        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
+        let rows = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority FROM matters WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?;
         Ok(rows
             .into_iter()
             .map(|x| MatterRow {
@@ -430,11 +431,12 @@ impl CoreStore for MysqlStores {
                 title: x.get::<String, _>("title"),
                 status: x.get::<String, _>("status"),
                 practice_area: x.get::<String, _>("practice_area"),
+                priority: x.get::<String, _>("priority"),
             })
             .collect())
     }
     async fn get_matter(&self, org: &str, id: i64) -> Result<MatterRow, StoreError> {
-        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
+        let x = sqlx::query("SELECT id, org_id, client_id, number, title, status, practice_area, priority FROM matters WHERE id=? AND org_id=?").bind(id as u64).bind(org).fetch_optional(&self.pool).await.map_err(db_err)?.ok_or(StoreError::NotFound)?;
         Ok(MatterRow {
             id: x.get::<u64, _>("id") as i64,
             org_id: x.get::<String, _>("org_id"),
@@ -443,6 +445,7 @@ impl CoreStore for MysqlStores {
             title: x.get::<String, _>("title"),
             status: x.get::<String, _>("status"),
             practice_area: x.get::<String, _>("practice_area"),
+            priority: x.get::<String, _>("priority"),
         })
     }
     async fn set_matter_practice(
@@ -503,6 +506,35 @@ impl CoreStore for MysqlStores {
             return Err(StoreError::Conflict("bad transition".into()));
         }
         sqlx::query("UPDATE matters SET status=? WHERE id=? AND org_id=?")
+            .bind(&to)
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        self.get_matter(org, id).await
+    }
+    async fn set_matter_priority(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["low", "normal", "high", "urgent"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("priority".into()));
+        }
+        let exists: Option<i64> = sqlx::query("SELECT id FROM matters WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(db_err)?
+            .map(|_| id);
+        if exists.is_none() {
+            return Err(StoreError::NotFound);
+        }
+        sqlx::query("UPDATE matters SET priority=? WHERE id=? AND org_id=?")
             .bind(&to)
             .bind(id as u64)
             .bind(org)

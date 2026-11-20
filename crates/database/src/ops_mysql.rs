@@ -3966,6 +3966,93 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn mteam_add(
+        &self,
+        org: &str,
+        matter_id: i64,
+        user_id: &str,
+        role: &str,
+    ) -> Result<i64, StoreError> {
+        let uid = user_id.trim();
+        let role = role.trim().to_lowercase();
+        if matter_id <= 0 || uid.is_empty() || uid.len() > 160 {
+            return Err(StoreError::Conflict("matter/user".into()));
+        }
+        if !["lead", "member", "viewer"].contains(&role.as_str()) {
+            return Err(StoreError::Conflict("role lead|member|viewer".into()));
+        }
+        let n = sqlx::query(
+            "UPDATE matter_team SET role=? WHERE org_id=? AND matter_id=? AND user_id=?",
+        )
+        .bind(&role)
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(uid)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?
+        .rows_affected();
+        if n > 0 {
+            let x = sqlx::query(
+                "SELECT id FROM matter_team WHERE org_id=? AND matter_id=? AND user_id=?",
+            )
+            .bind(org)
+            .bind(matter_id as u64)
+            .bind(uid)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(db_err)?;
+            return Ok(x.get::<u64, _>("id") as i64);
+        }
+        let r = sqlx::query(
+            "INSERT INTO matter_team (org_id, matter_id, user_id, role) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .bind(uid)
+        .bind(&role)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn mteam_list(
+        &self,
+        org: &str,
+        matter_id: i64,
+    ) -> Result<Vec<MatterTeamRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, matter_id, user_id, role FROM matter_team WHERE org_id=? AND matter_id=? ORDER BY user_id LIMIT 200",
+        )
+        .bind(org)
+        .bind(matter_id as u64)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| MatterTeamRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                matter_id: x.get::<u64, _>("matter_id") as i64,
+                user_id: x.get::<String, _>("user_id"),
+                role: x.get::<String, _>("role"),
+            })
+            .collect())
+    }
+    async fn mteam_remove(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM matter_team WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn ten_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
         let n = sqlx::query("DELETE FROM time_entries WHERE id=? AND org_id=?")
             .bind(id as u64)

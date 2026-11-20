@@ -284,6 +284,7 @@ impl CoreStore for MemoryStores {
             title: title.into(),
             status: "open".into(),
             practice_area: "general".into(),
+            priority: "normal".into(),
         };
         m.matters.insert(id, r.clone());
         Ok(r)
@@ -443,6 +444,25 @@ impl CoreStore for MemoryStores {
             return Err(StoreError::Conflict("bad transition".into()));
         }
         r.status = to;
+        Ok(r.clone())
+    }
+    async fn set_matter_priority(
+        &self,
+        org: &str,
+        id: i64,
+        to: &str,
+    ) -> Result<MatterRow, StoreError> {
+        let to = to.trim().to_lowercase();
+        if !["low", "normal", "high", "urgent"].contains(&to.as_str()) {
+            return Err(StoreError::Conflict("priority".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        let r = m
+            .matters
+            .get_mut(&id)
+            .filter(|x| x.org_id == org)
+            .ok_or(StoreError::NotFound)?;
+        r.priority = to;
         Ok(r.clone())
     }
     async fn create_task(

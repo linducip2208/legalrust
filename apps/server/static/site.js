@@ -3412,6 +3412,44 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       + (v.lines || []).map(function (l) { return '<div>' + esc(l.category) + ': ' + esc(l.spent) + '/' + esc(l.budget) + '</div>'; }).join('');
   });
 
+  /* ---- matter team + priority + workload (F-D03-019/020/021) ---- */
+  async function mtmRefresh() {
+    var box = document.getElementById('mtm-list');
+    if (!box) return;
+    if (!pval('mtm-mid')) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Isi ID perkara.</td></tr>'; return; }
+    var v = await j('/api/v1/matter-team?matter_id=' + encodeURIComponent(pval('mtm-mid')));
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.user_id) + '</td><td>' + badge(x.role) + '</td><td><button class="btn btn-sm" data-mtm-del="' + x.id + '" type="button">Hapus</button></td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada anggota.</td></tr>';
+    qsa('[data-mtm-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/matter-team/' + b.getAttribute('data-mtm-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('mtm-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('mtm-msg', ''); mtmRefresh();
+      });
+    });
+  }
+  on('mtm-add', 'click', async function () {
+    if (!pval('mtm-mid') || !pval('mtm-user')) { pmsg('mtm-msg', 'Isi perkara + pengguna.'); return; }
+    var r = await ppost('/api/v1/matter-team', { matter_id: +pval('mtm-mid'), user_id: pval('mtm-user'), role: pval('mtm-role') || 'member' });
+    if (!r.ok) { pmsg('mtm-msg', 'Gagal (' + r.status + '). Peran lead/member/viewer?'); return; }
+    pmsg('mtm-msg', ''); mtmRefresh();
+  });
+  on('mtm-reload', 'click', mtmRefresh);
+  on('mprio-set', 'click', async function () {
+    if (!pval('mprio-mid')) { pmsg('mprio-msg', 'Isi ID perkara.'); return; }
+    var r = await ppost('/api/v1/matters/' + encodeURIComponent(pval('mprio-mid')) + '/priority', { priority: pval('mprio-val') || 'normal' });
+    if (!r.ok) { pmsg('mprio-msg', 'Gagal (' + r.status + ').'); return; }
+    pmsg('mprio-msg', 'Prioritas tersimpan.');
+  });
+  on('wl-go', 'click', async function () {
+    var out = document.getElementById('wl-out');
+    var v = await j('/api/v1/reports/workload');
+    if (!v) { pmsg('mtm-msg', 'Gagal memuat beban.'); return; }
+    if (out) out.innerHTML = (v || []).map(function (w) { return '<div>' + esc(w.user_id) + ': ' + w.matters + ' perkara / ' + w.open_tasks + ' tugas buka</div>'; }).join('') || 'Belum ada penugasan.';
+  });
+
   /* ---- conflict screening (F-D02-008) ---- */
   on('cfx-go', 'click', async function () {
     var out = document.getElementById('cfx-out');

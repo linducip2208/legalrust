@@ -22732,3 +22732,197 @@ async fn uib_app_has_budget_ui() {
         assert!(t.contains(needle), "/app missing {needle}");
     }
 }
+
+#[tokio::test]
+async fn matter_team_priority_and_workload() {
+    let a = app();
+    let tok = reg(&a, "mteam@x.id").await;
+    // Auditor cannot create team (Create-gated).
+    let aud = forged_role_token(&tok, vec!["auditor"]);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-team",
+            r#"{"matter_id":1,"user_id":"u","role":"member"}"#,
+            Some(&aud),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Create matter.
+    let res = a
+        .clone()
+        .oneshot(post("/api/v1/matters", r#"{"title":"MTEAM"}"#, Some(&tok)))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    // Bad role rejected.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-team",
+            &format!(r#"{{"matter_id":{mid},"user_id":"budi","role":"boss"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Ghost matter 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matter-team",
+            r#"{"matter_id":999999,"user_id":"budi","role":"member"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Add lead + member; upsert same user keeps one row.
+    for (who, role) in [("budi", "lead"), ("siti", "member"), ("budi", "member")] {
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/matter-team",
+                &format!(r#"{{"matter_id":{mid},"user_id":"{who}","role":"{role}"}}"#),
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/matter-team?matter_id={mid}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let rows = body_json(res).await;
+    let arr = rows.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert!(arr
+        .iter()
+        .any(|r| r["user_id"] == "budi" && r["role"] == "member"));
+    // Priority: bad value 409, ghost 404, happy path + audit.
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/priority"),
+            r#"{"priority":"super"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters/999999/priority",
+            r#"{"priority":"high"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/priority"),
+            r#"{"priority":"urgent"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert_eq!(body_json(res).await["priority"], "urgent");
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit?entity=matter", &tok))
+        .await
+        .unwrap();
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["action"] == "matter.priority.urgent" && e["entity_id"].as_i64() == Some(mid)));
+    // Workload aggregates per user.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/reports/workload", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let wl = body_json(res).await;
+    assert!(wl
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|w| w["user_id"] == "budi" && w["matters"].as_i64() == Some(1)));
+    // Remove member; repeat delete 404.
+    let tid = arr.iter().find(|r| r["user_id"] == "siti").unwrap()["id"]
+        .as_i64()
+        .unwrap();
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/matter-team/{tid}"))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/matter-team/999999")
+                .method("DELETE")
+                .header("authorization", format!("Bearer {tok}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // No-token 401.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/reports/workload")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_team_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "mtm-mid",
+        "mtm-user",
+        "mtm-role",
+        "mtm-add",
+        "mtm-reload",
+        "mtm-list",
+        "mtm-msg",
+        "mprio-mid",
+        "mprio-val",
+        "mprio-set",
+        "mprio-msg",
+        "wl-go",
+        "wl-out",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

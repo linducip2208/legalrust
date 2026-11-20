@@ -1135,29 +1135,37 @@
   "id": "F-D03-019",
   "domain": "D03",
   "title": "Matter team & staffing",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0113_matter_team_priority.sql: matter_team (org,matter,user,role lead|member|viewer, uq org+matter+user)",
+   "ops.rs: MatterTeamRow + OpsStore::mteam_add/mteam_list/mteam_remove",
+   "lib.rs: POST/GET /api/v1/matter-team + DELETE /api/v1/matter-team/{id} (Create/View/Delete, 404/409)",
+   "site.js: mtm card (tambah/muat/hapus); tests: matter_team_priority_and_workload e2e (403/404/409, upsert, delete, 401)"
+  ],
+  "audit_note": "Wave 180: team+workload+priority live. Verified by test."
  },
  {
   "id": "F-D03-020",
   "domain": "D03",
   "title": "Workload & capacity view",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "lib.rs: GET /api/v1/reports/workload (View-gated, derive matters+open tasks per team user)",
+   "site.js: wl-go/wl-out card; tests: workload aggregates asserted (budi 1 matter)"
+  ],
+  "audit_note": "Wave 180: team+workload+priority live. Verified by test."
  },
  {
   "id": "F-D03-021",
   "domain": "D03",
   "title": "Matter priority & escalation",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs:3449-3453 task routes (create/list/patch, illegal transition rejected)",
-   "migrations/0002_core.sql: table tasks"
-  ]
+   "migrations/0113: matters.priority low|normal|high|urgent default normal",
+   "store.rs/memory.rs/mysql.rs: CoreStore::set_matter_priority + audited matter.priority.* trail",
+   "lib.rs: POST /api/v1/matters/{id}/priority + mprio card; tests: bad 409, ghost 404, urgent + audit 401"
+  ],
+  "audit_note": "Wave 180: team+workload+priority live. Verified by test."
  },
  {
   "id": "F-D03-022",
