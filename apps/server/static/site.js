@@ -2831,6 +2831,48 @@ qsa('#sbToggle, #sbToggle2', function (b) {
     chlRefresh();
   });
   on('chl-reload', 'click', chlRefresh);
+  /* ---- office branches + hierarchy (F-D17-004/005) ---- */
+  async function ofcRefresh() {
+    var box = document.getElementById('ofc-list');
+    if (!box) return;
+    var v = await j('/api/v1/offices');
+    if (!v) { box.innerHTML = '<tr><td colspan="3" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>' + esc(x.code) + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.city || '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="3" class="text-muted">Belum ada kantor.</td></tr>';
+  }
+  on('ofc-add', 'click', async function () {
+    if (!pval('ofc-code') || !pval('ofc-name')) { pmsg('ofc-msg', 'Isi kode + nama.'); return; }
+    var r = await ppost('/api/v1/offices', { code: pval('ofc-code'), name: pval('ofc-name'), city: pval('ofc-city') || '' });
+    if (!r.ok) { pmsg('ofc-msg', 'Gagal (' + r.status + '). Kode ganda?'); return; }
+    pmsg('ofc-msg', ''); ofcRefresh();
+  });
+  on('ofc-reload', 'click', ofcRefresh);
+  async function oflRefresh() {
+    var box = document.getElementById('ofl-list');
+    if (!box) return;
+    var v = await j('/api/v1/office-links');
+    if (!v) { box.innerHTML = '<tr><td colspan="4" class="text-muted">Gagal memuat.</td></tr>'; return; }
+    box.innerHTML = v.map(function (x) {
+      return '<tr><td>#' + x.child_id + '</td><td>#' + x.parent_id + '</td><td>' + badge(x.relation) + '</td><td><button class="btn btn-sm btn-outline-danger" data-ofl-del="' + x.id + '" type="button">Lepas</button></td></tr>';
+    }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada tautan.</td></tr>';
+    qsa('[data-ofl-del]', function (b) {
+      b.addEventListener('click', async function () {
+        var r = await fetch('/api/v1/office-links/' + b.getAttribute('data-ofl-del'), { method: 'DELETE', headers: H });
+        if (!r.ok) { pmsg('ofl-msg', 'Gagal (' + r.status + ').'); return; }
+        pmsg('ofl-msg', '');
+        oflRefresh();
+      });
+    });
+  }
+  on('ofl-add', 'click', async function () {
+    if (!pval('ofl-child') || !pval('ofl-parent')) { pmsg('ofl-msg', 'Isi ID anak dan induk.'); return; }
+    var r = await ppost('/api/v1/office-links', { child_id: +pval('ofl-child'), parent_id: +pval('ofl-parent'), relation: pval('ofl-rel') || 'branch' });
+    if (!r.ok) { pmsg('ofl-msg', 'Gagal (' + r.status + '). Siklus / ganda / kantor?'); return; }
+    pmsg('ofl-msg', '');
+    oflRefresh();
+  });
+  on('ofl-reload', 'click', oflRefresh);
   async function csgRefresh() {
     var box = document.getElementById('csg-list');
     if (!box) return;

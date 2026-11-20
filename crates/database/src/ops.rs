@@ -168,6 +168,25 @@ pub struct ClientLinkRow {
     pub parent_id: i64,
     pub relation: String,
 }
+/// Office branch registry entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfficeRow {
+    pub id: i64,
+    pub org: String,
+    pub code: String,
+    pub name: String,
+    pub city: String,
+    pub active: bool,
+}
+/// Office hierarchy link (branch/division/unit of a parent office).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OfficeLinkRow {
+    pub id: i64,
+    pub org: String,
+    pub child_id: i64,
+    pub parent_id: i64,
+    pub relation: String,
+}
 /// Client segment tag assignment.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClientSegRow {
@@ -2110,6 +2129,29 @@ pub trait OpsStore: Send + Sync {
         client_id: Option<i64>,
     ) -> Result<Vec<ClientLinkRow>, StoreError>;
     async fn chlink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
+    /// Office branch registry (code unique per org) + hierarchy links (cycle-guarded).
+    async fn office_add(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        city: &str,
+    ) -> Result<i64, StoreError>;
+    async fn office_list(&self, org: &str) -> Result<Vec<OfficeRow>, StoreError>;
+    async fn office_get(&self, org: &str, id: i64) -> Result<OfficeRow, StoreError>;
+    async fn olink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError>;
+    async fn olink_list(
+        &self,
+        org: &str,
+        office_id: Option<i64>,
+    ) -> Result<Vec<OfficeLinkRow>, StoreError>;
+    async fn olink_delete(&self, org: &str, id: i64) -> Result<(), StoreError>;
     /// Client segment tags.
     async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError>;
     async fn cseg_list(

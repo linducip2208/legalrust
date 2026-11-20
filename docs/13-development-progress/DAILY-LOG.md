@@ -727,3 +727,7 @@
 ## 2026-11-20 AUDIT-1000 wave 189: inbox triage via merge w189-triage (main)
 - Merge cabang paralel: antrean triase read-only (matter tanpa tim + tugas tanpa pelaksana, cap 200) + saran beban-teringan; assignment pakai endpoint eksisting; kartu /app + JS; tes triage_queue_and_suggest + needle.
 - Workspace 491 passed, 0 failed; fmt+clippy+node clean; F-D03-040 NOT_STARTED->IMPLEMENTED (~70.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 190: office registry + hierarchy (main, D17 pertama)
+- Migrasi 0119 (offices + office_links); OfficeRow/OfficeLinkRow; OpsStore::office_*/olink_* (memory+mysql, relasi branch/division/unit, guard siklus bounded-walk); POST/GET offices + POST/GET/DELETE office-links + audit; kartu /app + JS; tes office_branches_and_hierarchy + needle.
+- Workspace 493 passed, 0 failed; fmt+clippy+node clean; F-D17-004/005 PLANNED->IMPLEMENTED (~71.0 verified).

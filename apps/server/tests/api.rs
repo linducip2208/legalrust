@@ -23922,6 +23922,219 @@ async fn uib_app_has_archive_ui() {
 }
 
 #[tokio::test]
+async fn office_branches_and_hierarchy() {
+    let a = app();
+    let tok = reg(&a, "ofc@x.id").await;
+    // Empty code rejected 422.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/offices",
+            r#"{"code":"","name":"Pusat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Create HQ + branch.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/offices",
+            r#"{"code":"HQ","name":"Kantor Pusat","city":"Jakarta"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let hq = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/offices",
+            r#"{"code":"SBY","name":"Cabang Surabaya","city":"Surabaya"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let sby = body_json(res).await["id"].as_i64().unwrap();
+    // Duplicate code 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/offices",
+            r#"{"code":"hq","name":"Duplikat"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // List contains both.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/offices", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let names: Vec<String> = body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["code"].as_str().unwrap().to_string())
+        .collect();
+    assert!(names.contains(&"hq".to_string()) && names.contains(&"sby".to_string()));
+    // Link branch under HQ; bad relation 409; ghost office 404.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            &format!(r#"{{"child_id":{sby},"parent_id":{hq},"relation":"branch"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let lid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            &format!(r#"{{"child_id":{sby},"parent_id":{hq},"relation":"franchise"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            r#"{"child_id":999999,"parent_id":1,"relation":"branch"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    // Duplicate link 409; self-link 409; cycle 409.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            &format!(r#"{{"child_id":{sby},"parent_id":{hq},"relation":"unit"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            &format!(r#"{{"child_id":{hq},"parent_id":{hq},"relation":"branch"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/office-links",
+            &format!(r#"{{"child_id":{hq},"parent_id":{sby},"relation":"division"}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::CONFLICT);
+    // Filtered list + delete + ghost delete 404 + no-token 401.
+    let res = a
+        .clone()
+        .oneshot(get(&format!("/api/v1/office-links?office_id={hq}"), &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    assert!(body_json(res)
+        .await
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["id"].as_i64() == Some(lid)));
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/office-links/{lid}"))
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/office-links/999999")
+                .method("DELETE")
+                .header(
+                    "authorization",
+                    format!("Bearer {tok}")
+                        .parse::<axum::http::HeaderValue>()
+                        .unwrap(),
+                )
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/offices")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_office_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in [
+        "ofc-code",
+        "ofc-name",
+        "ofc-city",
+        "ofc-add",
+        "ofc-reload",
+        "ofc-list",
+        "ofc-msg",
+        "ofl-child",
+        "ofl-parent",
+        "ofl-rel",
+        "ofl-add",
+        "ofl-reload",
+        "ofl-list",
+        "ofl-msg",
+    ] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn matter_insights_dashboard_profitability_sla() {
     use tower::ServiceExt;
     let a = app();

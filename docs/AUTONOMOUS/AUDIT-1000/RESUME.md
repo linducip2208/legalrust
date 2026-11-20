@@ -814,3 +814,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 189: inbox triage (merge w189-triage)
 - Tanpa migrasi (read-only): GET /api/v1/triage/queue + POST /api/v1/triage/suggest (least-load); kartu /app triase; uji queue/suggest + needle.
 - F-D03-040 NOT_STARTED->IMPLEMENTED (~70.8 verified). Workspace 491/0; clippy clean; live 118/118 + register PASS (legalrust_wave189; queue+suggest verified, needles OK).
+
+## Done wave 190: office registry + hierarchy (main)
+- Migrasi 0119 (offices + office_links, unique code/pair, cascade); OpsStore 6 metode (memory+mysql, dup/ghost/self/cycle guards); 5 endpoint + audit; kartu /app kantor; uji registry+hierarchy + needle.
+- F-D17-004/005 PLANNED->IMPLEMENTED (~71.0 verified). Workspace 493/0; clippy clean; live 119/119 + register PASS (legalrust_wave190; offices/link/cycle-409/unlink + bool active decode verified).

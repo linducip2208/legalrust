@@ -7281,19 +7281,27 @@
   "id": "F-D17-004",
   "domain": "D17",
   "title": "Office branch registry",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0119: offices (org,code unique,name,city,active)",
+   "ops.rs: OfficeRow + OpsStore::office_add/list/get (code lowercased, dup->409)",
+   "lib.rs: POST/GET /api/v1/offices (Create/View, audit office.created)",
+   "site.js: ofc card; tests: office_branches_and_hierarchy e2e (422/roundtrip/dup-409/401) + needle"
+  ],
+  "audit_note": "Wave 190: office registry+hierarchy live. Verified by test."
  },
  {
   "id": "F-D17-005",
   "domain": "D17",
   "title": "Office hierarchy",
-  "status": "PLANNED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "migrations/0119: office_links (org,child,parent,relation; unique pair; cascade)",
+   "ops.rs: OfficeLinkRow + OpsStore::olink_add/list/delete (branch/division/unit, ghost->404, self/dup/cycle->409)",
+   "lib.rs: POST/GET /api/v1/office-links + DELETE {id} (Create/View/Delete, audit office.linked)",
+   "site.js: ofl card; tests: link cycle/dup/delete + needle di office_branches_and_hierarchy"
+  ],
+  "audit_note": "Wave 190: office registry+hierarchy live. Verified by test."
  },
  {
   "id": "F-D17-006",

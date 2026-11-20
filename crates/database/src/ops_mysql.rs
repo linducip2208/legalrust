@@ -1638,6 +1638,161 @@ impl OpsStore for MysqlOps {
         }
         Ok(())
     }
+    async fn office_add(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        city: &str,
+    ) -> Result<i64, StoreError> {
+        let c = code.trim().to_lowercase();
+        let n = name.trim();
+        let y = city.trim();
+        if c.is_empty() || c.len() > 40 || n.is_empty() || n.len() > 160 || y.len() > 120 {
+            return Err(StoreError::Conflict("code/name/city".into()));
+        }
+        let r = sqlx::query("INSERT INTO offices (org_id, code, name, city) VALUES (?,?,?,?)")
+            .bind(org)
+            .bind(&c)
+            .bind(n)
+            .bind(y)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn office_list(&self, org: &str) -> Result<Vec<OfficeRow>, StoreError> {
+        let rows = sqlx::query(
+            "SELECT id, org_id, code, name, city, active FROM offices WHERE org_id=? ORDER BY id LIMIT 200",
+        )
+        .bind(org)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(rows
+            .into_iter()
+            .map(|x| OfficeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                name: x.get::<String, _>("name"),
+                city: x.get::<String, _>("city"),
+                active: x.get::<bool, _>("active"),
+            })
+            .collect())
+    }
+    async fn office_get(&self, org: &str, id: i64) -> Result<OfficeRow, StoreError> {
+        let row = sqlx::query(
+            "SELECT id, org_id, code, name, city, active FROM offices WHERE id=? AND org_id=?",
+        )
+        .bind(id as u64)
+        .bind(org)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(db_err)?;
+        match row {
+            Some(x) => Ok(OfficeRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                code: x.get::<String, _>("code"),
+                name: x.get::<String, _>("name"),
+                city: x.get::<String, _>("city"),
+                active: x.get::<bool, _>("active"),
+            }),
+            None => Err(StoreError::NotFound),
+        }
+    }
+    async fn olink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if child_id <= 0 || parent_id <= 0 || child_id == parent_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let r = relation.trim().to_lowercase();
+        if !["branch", "division", "unit"].contains(&r.as_str()) {
+            return Err(StoreError::Conflict("relation".into()));
+        }
+        self.office_get(org, child_id).await?;
+        self.office_get(org, parent_id).await?;
+        // Cycle guard: walk ancestors of the would-be parent.
+        let links: Vec<(i64, i64)> =
+            sqlx::query("SELECT child_id, parent_id FROM office_links WHERE org_id=?")
+                .bind(org)
+                .fetch_all(&self.pool)
+                .await
+                .map_err(db_err)?
+                .into_iter()
+                .map(|x| {
+                    (
+                        x.get::<u64, _>("child_id") as i64,
+                        x.get::<u64, _>("parent_id") as i64,
+                    )
+                })
+                .collect();
+        let mut seen = std::collections::HashSet::new();
+        let mut frontier = vec![parent_id];
+        while let Some(cur) = frontier.pop() {
+            if cur == child_id {
+                return Err(StoreError::Conflict("cycle".into()));
+            }
+            if !seen.insert(cur) {
+                continue;
+            }
+            for (c, p) in &links {
+                if *c == cur {
+                    frontier.push(*p);
+                }
+            }
+        }
+        let r = sqlx::query(
+            "INSERT INTO office_links (org_id, child_id, parent_id, relation) VALUES (?,?,?,?)",
+        )
+        .bind(org)
+        .bind(child_id as u64)
+        .bind(parent_id as u64)
+        .bind(&r)
+        .execute(&self.pool)
+        .await
+        .map_err(db_err)?;
+        Ok(r.last_insert_id() as i64)
+    }
+    async fn olink_list(
+        &self,
+        org: &str,
+        office_id: Option<i64>,
+    ) -> Result<Vec<OfficeLinkRow>, StoreError> {
+        let rows = match office_id {
+            Some(o) => sqlx::query("SELECT id, org_id, child_id, parent_id, relation FROM office_links WHERE org_id=? AND (child_id=? OR parent_id=?) ORDER BY id DESC LIMIT 200").bind(org).bind(o as u64).bind(o as u64).fetch_all(&self.pool).await.map_err(db_err)?,
+            None => sqlx::query("SELECT id, org_id, child_id, parent_id, relation FROM office_links WHERE org_id=? ORDER BY id DESC LIMIT 200").bind(org).fetch_all(&self.pool).await.map_err(db_err)?,
+        };
+        Ok(rows
+            .into_iter()
+            .map(|x| OfficeLinkRow {
+                id: x.get::<u64, _>("id") as i64,
+                org: x.get::<String, _>("org_id"),
+                child_id: x.get::<u64, _>("child_id") as i64,
+                parent_id: x.get::<u64, _>("parent_id") as i64,
+                relation: x.get::<String, _>("relation"),
+            })
+            .collect())
+    }
+    async fn olink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let n = sqlx::query("DELETE FROM office_links WHERE id=? AND org_id=?")
+            .bind(id as u64)
+            .bind(org)
+            .execute(&self.pool)
+            .await
+            .map_err(db_err)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StoreError::NotFound);
+        }
+        Ok(())
+    }
     async fn cseg_add(&self, org: &str, client_id: i64, tag: &str) -> Result<i64, StoreError> {
         if client_id <= 0 {
             return Err(StoreError::Conflict("client".into()));

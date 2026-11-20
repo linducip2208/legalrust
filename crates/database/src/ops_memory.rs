@@ -133,6 +133,8 @@ struct Inner {
     mfields: HashMap<i64, MetaFieldRow>,
     dmeta: HashMap<i64, DocMetaRow>,
     chlinks: HashMap<i64, ClientLinkRow>,
+    ofcs: HashMap<i64, OfficeRow>,
+    oflnks: HashMap<i64, OfficeLinkRow>,
     csegs: HashMap<i64, ClientSegRow>,
     cchks: HashMap<i64, ClientCheckRow>,
     cchits: HashMap<i64, ClientCheckItemRow>,
@@ -208,6 +210,13 @@ fn month_ok(month: &str) -> Result<(), StoreError> {
 fn chrel_ok(relation: &str) -> Result<String, StoreError> {
     let r = relation.trim().to_lowercase();
     if !["subsidiary", "branch", "division", "holding"].contains(&r.as_str()) {
+        return Err(StoreError::Conflict("relation".into()));
+    }
+    Ok(r)
+}
+fn ofrel_ok(relation: &str) -> Result<String, StoreError> {
+    let r = relation.trim().to_lowercase();
+    if !["branch", "division", "unit"].contains(&r.as_str()) {
         return Err(StoreError::Conflict("relation".into()));
     }
     Ok(r)
@@ -2180,6 +2189,146 @@ impl OpsStore for MemoryOps {
         match m.chlinks.get(&id) {
             Some(r) if r.org == org => {
                 m.chlinks.remove(&id);
+                Ok(())
+            }
+            _ => Err(StoreError::NotFound),
+        }
+    }
+    async fn office_add(
+        &self,
+        org: &str,
+        code: &str,
+        name: &str,
+        city: &str,
+    ) -> Result<i64, StoreError> {
+        let c = code.trim().to_lowercase();
+        let n = name.trim();
+        let y = city.trim();
+        if c.is_empty() || c.len() > 40 || n.is_empty() || n.len() > 160 || y.len() > 120 {
+            return Err(StoreError::Conflict("code/name/city".into()));
+        }
+        let mut m = self.inner.lock().unwrap();
+        if m.ofcs.values().any(|r| r.org == org && r.code == c) {
+            return Err(StoreError::Conflict("code taken".into()));
+        }
+        let id = self.next(&mut m);
+        m.ofcs.insert(
+            id,
+            OfficeRow {
+                id,
+                org: org.into(),
+                code: c,
+                name: n.into(),
+                city: y.into(),
+                active: true,
+            },
+        );
+        Ok(id)
+    }
+    async fn office_list(&self, org: &str) -> Result<Vec<OfficeRow>, StoreError> {
+        let mut v: Vec<OfficeRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .ofcs
+            .values()
+            .filter(|r| r.org == org)
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| r.id);
+        Ok(v)
+    }
+    async fn office_get(&self, org: &str, id: i64) -> Result<OfficeRow, StoreError> {
+        self.inner
+            .lock()
+            .unwrap()
+            .ofcs
+            .get(&id)
+            .filter(|r| r.org == org)
+            .cloned()
+            .ok_or(StoreError::NotFound)
+    }
+    async fn olink_add(
+        &self,
+        org: &str,
+        child_id: i64,
+        parent_id: i64,
+        relation: &str,
+    ) -> Result<i64, StoreError> {
+        if child_id <= 0 || parent_id <= 0 || child_id == parent_id {
+            return Err(StoreError::Conflict("link".into()));
+        }
+        let relation = ofrel_ok(relation)?;
+        let mut m = self.inner.lock().unwrap();
+        if !m.ofcs.get(&child_id).is_some_and(|r| r.org == org)
+            || !m.ofcs.get(&parent_id).is_some_and(|r| r.org == org)
+        {
+            return Err(StoreError::NotFound);
+        }
+        if m.oflnks
+            .values()
+            .any(|r| r.org == org && r.child_id == child_id && r.parent_id == parent_id)
+        {
+            return Err(StoreError::Conflict("already linked".into()));
+        }
+        // No cycles: parent must not already descend from child.
+        let mut seen = std::collections::HashSet::new();
+        let mut frontier = vec![parent_id];
+        while let Some(cur) = frontier.pop() {
+            if cur == child_id {
+                return Err(StoreError::Conflict("cycle".into()));
+            }
+            if !seen.insert(cur) {
+                continue;
+            }
+            for r in m
+                .oflnks
+                .values()
+                .filter(|r| r.org == org && r.child_id == cur)
+            {
+                frontier.push(r.parent_id);
+            }
+        }
+        let id = self.next(&mut m);
+        m.oflnks.insert(
+            id,
+            OfficeLinkRow {
+                id,
+                org: org.into(),
+                child_id,
+                parent_id,
+                relation,
+            },
+        );
+        Ok(id)
+    }
+    async fn olink_list(
+        &self,
+        org: &str,
+        office_id: Option<i64>,
+    ) -> Result<Vec<OfficeLinkRow>, StoreError> {
+        let mut v: Vec<OfficeLinkRow> = self
+            .inner
+            .lock()
+            .unwrap()
+            .oflnks
+            .values()
+            .filter(|r| {
+                r.org == org
+                    && office_id
+                        .map(|c| r.child_id == c || r.parent_id == c)
+                        .unwrap_or(true)
+            })
+            .cloned()
+            .collect();
+        v.sort_by_key(|r| -r.id);
+        Ok(v)
+    }
+    async fn olink_delete(&self, org: &str, id: i64) -> Result<(), StoreError> {
+        let mut m = self.inner.lock().unwrap();
+        match m.oflnks.get(&id) {
+            Some(r) if r.org == org => {
+                m.oflnks.remove(&id);
                 Ok(())
             }
             _ => Err(StoreError::NotFound),
