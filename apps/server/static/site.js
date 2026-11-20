@@ -3424,6 +3424,20 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       pmsg('kpi-msg', '');
     } else { pmsg('kpi-msg', 'Gagal memuat KPI.'); }
   });
+  on('kpi2-go', 'click', async function () {
+    var o = await j('/api/v1/kpi/ocr');
+    var q = await j('/api/v1/kpi/ai');
+    if (o && q) {
+      document.getElementById('kpi-oa').textContent = 'OCR olahan ' + o.jobs_processed + '/' + o.jobs_total + ' (keyakinan ' + Math.round(o.overall_confidence * 100) + '%) | AI ' + q.conversations + ' percakapan, ' + q.total_tokens + ' token, balas ' + Math.round(q.reply_rate * 100) + '%';
+    }
+    var c = await j('/api/v1/kpi/clients');
+    if (c) {
+      document.getElementById('kpi-cli').innerHTML = c.slice(0, 50).map(function (x) {
+        return '<tr><td>' + esc(x.client) + '</td><td>' + esc(x.matters) + '</td><td>' + esc(x.billed) + '</td><td>' + esc(x.outstanding) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="text-muted">Belum ada data.</td></tr>';
+      pmsg('kpi-msg', '');
+    } else { pmsg('kpi-msg', 'Gagal memuat laporan lanjutan.'); }
+  });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
     var msg = 'mins-msg';

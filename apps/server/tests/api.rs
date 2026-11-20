@@ -24971,7 +24971,137 @@ async fn uib_app_has_kpi_ui() {
         "kpi-fin",
         "kpi-staff",
         "KPI firma",
+        "kpi2-go",
+        "kpi-oa",
+        "kpi-cli",
     ] {
         assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
+async fn kpi_exec_reports_ai_ocr_clients() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kpix@x.id").await;
+    // Seed client + matter + invoice + partial payment.
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/clients",
+            r#"{"display_name":"Klien KPI","kind":"individual"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let cid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            "/api/v1/matters",
+            &format!(r#"{{"title":"MKPI","client_id":{cid}}}"#),
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let mid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/matters/{mid}/invoices"),
+            r#"{"total_minor":3000000}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    let iid = body_json(res).await["id"].as_i64().unwrap();
+    let res = a
+        .clone()
+        .oneshot(post(
+            &format!("/api/v1/invoices/{iid}/payments"),
+            r#"{"amount_minor":1000000,"method":"transfer"}"#,
+            Some(&tok),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // AI: drive one stub chat -> conv + user/asst msgs + usage recorded.
+    {
+        use std::io::{Read, Write};
+        let _env = ai_env_lock().await;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind ai stub");
+        let addr = listener.local_addr().expect("ai stub addr");
+        let stub = std::thread::spawn(move || {
+            let (mut s, _) = listener.accept().expect("ai stub accept");
+            let mut buf = vec![0u8; 65536];
+            let _ = s.read(&mut buf);
+            let body = br#"{"id":"c1","object":"chat.completion","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":5,"completion_tokens":3,"total_tokens":8}}"#;
+            let head = format!("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+            s.write_all(head.as_bytes()).expect("stub head");
+            s.write_all(body).expect("stub body");
+        });
+        std::env::set_var("AI_BASE_URL", format!("http://{addr}"));
+        std::env::set_var("AI_MODEL", "stub-model");
+        std::env::remove_var("AI_API_KEY");
+        let res = a
+            .clone()
+            .oneshot(post(
+                "/api/v1/ai/chat",
+                r#"{"messages":[{"role":"user","content":"halo"}]}"#,
+                Some(&tok),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::OK);
+        let _ = stub.join();
+    }
+    // kpi_ai reflects the stub conversation.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/ai", &tok))
+        .await
+        .unwrap();
+    let v = body_json(res).await;
+    assert!(v["conversations"].as_i64().unwrap() >= 1);
+    assert!(v["assistant_messages"].as_i64().unwrap() >= 1);
+    assert!(v["total_tokens"].as_i64().unwrap() > 0);
+    // kpi_ocr mirrors CSV sampling (empty ok, structure asserted).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/ocr", &tok))
+        .await
+        .unwrap();
+    let o = body_json(res).await;
+    assert!(o["jobs_total"].as_i64().is_some());
+    assert!(o["by_type"].as_array().is_some());
+    // kpi_clients aggregates the seeded invoice (or zeros when clientless).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/clients", &tok))
+        .await
+        .unwrap();
+    let rows = body_json(res).await;
+    let row = rows
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["client_id"].as_i64() == Some(cid))
+        .expect("client row")
+        .clone();
+    assert!(row["matters"].as_i64().unwrap() >= 1);
+    assert!(row["billed"].as_i64().unwrap() >= 3_000_000);
+    assert_eq!(
+        row["outstanding"].as_i64().unwrap(),
+        row["billed"].as_i64().unwrap() - row["collected"].as_i64().unwrap()
+    );
+    // Auth guards.
+    for uri in ["/api/v1/kpi/ai", "/api/v1/kpi/ocr", "/api/v1/kpi/clients"] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{uri}");
     }
 }

@@ -1914,6 +1914,8 @@ pub trait OpsStore: Send + Sync {
     async fn msg_add(&self, conv: i64, role: &str, content: &str) -> Result<(), StoreError>;
     async fn usage_add(&self, org: &str, input: i64, output: i64) -> Result<(), StoreError>;
     async fn usage_sum(&self, org: &str) -> Result<(i64, i64), StoreError>;
+    /// AI quality rollup: (conversations, user_msgs, assistant_msgs) for an org.
+    async fn ai_stats(&self, org: &str) -> Result<(i64, i64, i64), StoreError>;
     async fn rag_put(&self, doc: i64, chunks: &[String]) -> Result<(), StoreError>;
     async fn rag_search(&self, org: &str, q: &str, limit: i64) -> Result<Vec<RagHit>, StoreError>;
     async fn inv_create(
