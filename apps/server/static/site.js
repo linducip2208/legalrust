@@ -7162,6 +7162,15 @@ qsa('#sbToggle, #sbToggle2', function (b) {
   }
   on('posture-reload', 'click', postureRefresh);
   on('posture-csv', 'click', function () { dlCsv('/api/v1/reports/compliance.csv', 'compliance.csv', 'posture-msg'); });
+  on('chain-go', 'click', async function () {
+    var v = await j('/api/v1/audit/verify');
+    var out = document.getElementById('chain-out');
+    if (!v) { pmsg('posture-msg', 'Gagal verifikasi.'); return; }
+    out.textContent = v.ok
+      ? ('Rantai utuh: ' + v.checked + ' entri terverifikasi' + (v.legacy_skipped ? ' (' + v.legacy_skipped + ' lawas dilewati)' : '') + '.')
+      : ('RANTAI RUSAK pada id ' + v.bad_id + ' — selidiki segera.');
+    pmsg('posture-msg', '');
+  });
   /* ---- compliance: alert feed ---- */
   async function alertsRefresh() {
     var box = document.getElementById('alerts-list');

@@ -764,3 +764,8 @@
 ## 2026-11-20 AUDIT-1000 wave 198: exec pack + posture refactor (main)
 - Tanpa migrasi: posture_rows() diekstrak (21 register, output identik — tes posture lama hijau) + GET /api/v1/kpi/pack (View, 7 seksi) + tombol paket + JS; tes pack + needle.
 - Workspace 506 passed, 0 failed; fmt+clippy+node clean; F-D20-039/017 PARTIAL->IMPLEMENTED, F-D25-017 PARTIAL->IMPLEMENTED (verifikasi, digest baru) (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 199: audit hash-chain (main)
+- Kolom rantai sudah ada (0001) tapi tak pernah diisi -> kini chaining di record() + ops audit_add (memory+MySQL, tx + FOR UPDATE, tip per-tenant); canonical hash + verify per-tenant di audit crate; AuditRow += tenant/hashes; GET /api/v1/audit/verify (gate = audit list) + tombol /app.
+- Batas jujur: portal/conflict/doc-direct reads tetap model lama (follow-up).
+- Workspace 514 passed, 0 failed (9 audit-crate incl. tamper/multi-tenant); fmt+clippy+node clean; F-D22-026 NOT_STARTED->IMPLEMENTED (~74.1 verified); live 122/122 + after_hash terisi (legalrust_wave199, target-dblive dibersihkan 12GB).

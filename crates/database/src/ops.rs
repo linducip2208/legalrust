@@ -1654,11 +1654,14 @@ pub struct JobRow {
 #[derive(Debug, Clone)]
 pub struct AuditRow {
     pub id: i64,
+    pub tenant: String,
     pub actor: Option<String>,
     pub action: String,
     pub entity: String,
     pub entity_id: i64,
     pub created: String,
+    pub before_hash: Option<String>,
+    pub after_hash: Option<String>,
 }
 #[derive(Debug, Clone)]
 pub struct MarketingLeadRow {

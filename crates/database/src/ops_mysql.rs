@@ -13318,20 +13318,23 @@ impl OpsStore for MysqlOps {
     ) -> Result<Vec<AuditRow>, StoreError> {
         let like = actor.map(|q| format!("%{q}%"));
         let rows = match (entity, like) {
-            (Some(e), Some(l)) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
-            (Some(e), None) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
-            (None, Some(l)) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
-            (None, None) => sqlx::query("SELECT id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(e), Some(l)) => sqlx::query("SELECT id, tenant_id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at, before_hash, after_hash FROM audit_events WHERE tenant_id=? AND entity=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (Some(e), None) => sqlx::query("SELECT id, tenant_id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at, before_hash, after_hash FROM audit_events WHERE tenant_id=? AND entity=? ORDER BY id DESC LIMIT ?").bind(org).bind(e).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, Some(l)) => sqlx::query("SELECT id, tenant_id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at, before_hash, after_hash FROM audit_events WHERE tenant_id=? AND actor_id LIKE ? ORDER BY id DESC LIMIT ?").bind(org).bind(l).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
+            (None, None) => sqlx::query("SELECT id, tenant_id, actor_id, action, entity, entity_id, DATE_FORMAT(created_at,'%Y-%m-%d %H:%i:%s') AS created_at, before_hash, after_hash FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT ?").bind(org).bind(limit).fetch_all(&self.pool).await.map_err(db_err)?,
         };
         Ok(rows
             .into_iter()
             .map(|x| AuditRow {
                 id: x.get::<u64, _>("id") as i64,
+                tenant: x.get::<String, _>("tenant_id"),
                 actor: x.get::<Option<String>, _>("actor_id"),
                 action: x.get::<String, _>("action"),
                 entity: x.get::<String, _>("entity"),
                 entity_id: x.get::<i64, _>("entity_id"),
                 created: x.get::<String, _>("created_at"),
+                before_hash: x.get::<Option<String>, _>("before_hash"),
+                after_hash: x.get::<Option<String>, _>("after_hash"),
             })
             .collect())
     }
@@ -13343,7 +13346,38 @@ impl OpsStore for MysqlOps {
         entity: &str,
         entity_id: i64,
     ) -> Result<(), StoreError> {
-        sqlx::query("INSERT INTO audit_events (tenant_id, actor_id, action, entity, entity_id) VALUES (?,?,?,?,?)").bind(tenant).bind(actor).bind(action).bind(entity).bind(entity_id).execute(&self.pool).await.map_err(db_err)?;
+        let mut tx = self.pool.begin().await.map_err(db_err)?;
+        let prev: Option<String> = sqlx::query(
+            "SELECT after_hash FROM audit_events WHERE tenant_id=? ORDER BY id DESC LIMIT 1 FOR UPDATE",
+        )
+        .bind(tenant)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_err)?
+        .map(|x| x.get::<Option<String>, _>("after_hash"))
+        .unwrap_or(None);
+        let before = prev.as_deref().unwrap_or(legalrust_audit::GENESIS_HASH);
+        let r = sqlx::query(
+            "INSERT INTO audit_events (tenant_id, actor_id, action, entity, entity_id, before_hash) VALUES (?,?,?,?,?,?)",
+        )
+        .bind(tenant)
+        .bind(actor)
+        .bind(action)
+        .bind(entity)
+        .bind(entity_id)
+        .bind(before)
+        .execute(&mut *tx)
+        .await
+        .map_err(db_err)?;
+        let id = r.last_insert_id();
+        let after = legalrust_audit::chain_hash(before, tenant, actor, action, entity, entity_id);
+        sqlx::query("UPDATE audit_events SET after_hash=? WHERE id=?")
+            .bind(&after)
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .map_err(db_err)?;
+        tx.commit().await.map_err(db_err)?;
         Ok(())
     }
     async fn trust_create_account(

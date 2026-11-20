@@ -6001,6 +6001,55 @@ async fn uib_audit_403_for_lawyer_role() {
 }
 
 #[tokio::test]
+async fn audit_chain_verify_ok_and_gated() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "chain@x.id").await;
+    // Register flow already emitted audits; add one more audited action.
+    let mid = mk_matter(&a, &tok).await;
+    assert!(mid > 0);
+    let lawyer = lawyer_token_from(&tok);
+    // Lawyer forbidden (same gate as audit list).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit/verify", &lawyer))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::FORBIDDEN);
+    // Owner verifies: chain intact, at least the actions above checked.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/audit/verify", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let v = body_json(res).await;
+    assert_eq!(v["ok"], true);
+    assert!(v["checked"].as_i64().unwrap() >= 2);
+    // Unauthenticated blocked.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/audit/verify")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn uib_app_has_chain_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["chain-go", "chain-out"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}
+
+#[tokio::test]
 async fn uib_jobs_enqueue_list_flow() {
     use tower::ServiceExt;
     let a = app();

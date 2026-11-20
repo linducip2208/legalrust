@@ -1166,17 +1166,27 @@ impl OpsStore for MemoryOps {
         entity: &str,
         entity_id: i64,
     ) -> Result<(), StoreError> {
-        let _ = tenant;
         let mut m = self.inner.lock().unwrap();
+        let prev = m
+            .audits
+            .iter()
+            .rev()
+            .find(|r| r.tenant == tenant)
+            .and_then(|r| r.after_hash.clone());
+        let before = prev.as_deref().unwrap_or(legalrust_audit::GENESIS_HASH);
+        let after = legalrust_audit::chain_hash(before, tenant, actor, action, entity, entity_id);
         let id = m.seq + 1;
         m.seq = id;
         m.audits.push(AuditRow {
             id,
+            tenant: tenant.into(),
             actor: actor.map(str::to_string),
             action: action.into(),
             entity: entity.into(),
             entity_id,
             created: chrono::Utc::now().naive_utc().to_string(),
+            before_hash: Some(before.into()),
+            after_hash: Some(after),
         });
         Ok(())
     }

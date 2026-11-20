@@ -850,3 +850,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 198: exec pack + posture refactor (main)
 - Pack eksekutif 7 seksi + helper posture bersama + UI; uji + needle.
 - F-D20-039/017 PARTIAL->IMPLEMENTED, F-D25-017 PARTIAL->IMPLEMENTED (verified). Workspace 506/0; clippy clean; tanpa migrasi.
+
+## Done wave 199: audit hash-chain (main)
+- Rantai hash audit + verifikasi + UI; 6 unit test rantai + e2e + needle; live proof hash terisi.
+- F-D22-026 NOT_STARTED->IMPLEMENTED (~74.1 verified). Workspace 514/0; clippy clean; tanpa migrasi.

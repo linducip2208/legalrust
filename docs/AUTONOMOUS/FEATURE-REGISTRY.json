@@ -9534,10 +9534,14 @@
   "id": "F-D22-026",
   "domain": "D22",
   "title": "Audit-log integrity (hash chain)",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "Kolom before_hash/after_hash sudah ada sejak 0001; kini dihitung: audit crate record() + ops audit_add (memory+MySQL) chaining dalam transaksi (tip per-tenant, GENESIS awal)",
+   "Canonical hash tunggal legalrust_audit::chain_hash + verify_chain per-tenant (legacy prefix dilewati & dihitung); AuditRow += tenant/before/after",
+   "GET /api/v1/audit/verify (gate = audit list) + tombol /app; 6 unit test rantai (tamper/order/legacy/multi-tenant) + e2e ok + needle",
+   "Live MySQL: migrate 122/122 + register menulis after_hash terisi (legalrust_wave199)"
+  ],
+  "audit_note": "Wave 199: NOT_STARTED->IMPLEMENTED; portal/conflict/doc-direct reads follow-up (batas jujur)."
  },
  {
   "id": "F-D22-027",
