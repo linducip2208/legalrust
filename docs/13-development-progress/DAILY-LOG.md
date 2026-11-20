@@ -744,3 +744,7 @@
 ## 2026-11-20 AUDIT-1000 wave 193: KPI dashboards (main, merge w193-kpi)
 - Tanpa migrasi: GET /api/v1/kpi/matters|finance|staff (View, read-only rollups) + kartu /app KPI + JS; tes math/guards + needle. Merge bersih.
 - Workspace 499 passed, 0 failed; fmt+clippy+node clean; F-D20-007/008 NOT_STARTED->IMPLEMENTED, F-D20-015 NOT_STARTED->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 194: exec reporting AI/OCR/clients (main, merge w194-exec)
+- Tanpa migrasi: OpsStore::ai_stats baru + GET /api/v1/kpi/ai|ocr|clients (View) + kartu /app KPI-lanjutan + JS; tes stub-chat + math + needle. Merge bersih.
+- Workspace 500 passed, 0 failed; fmt+clippy+node clean; F-D20-010 PARTIAL->IMPLEMENTED, F-D20-011 NOT_STARTED->IMPLEMENTED, F-D20-014 PARTIAL->IMPLEMENTED (~72.8 verified).
