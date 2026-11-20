@@ -8550,10 +8550,12 @@
   "id": "F-D20-006",
   "domain": "D20",
   "title": "Role-based dashboards",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/home (View): role->sections mapping (privileged/lawyer/finance/admin/auditor + fallback)",
+   "tests: owner sees finance section; 401 guards"
+  ],
+  "audit_note": "Wave 196: NOT_STARTED->IMPLEMENTED."
  },
  {
   "id": "F-D20-007",
@@ -8696,10 +8698,12 @@
   "id": "F-D20-019",
   "domain": "D20",
   "title": "Data-quality scorecard",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/quality (View): matters_with_client/team/budget pct + tasks dated/assigned pct over visible_matters",
+   "tests: structure + pct fields asserted"
+  ],
+  "audit_note": "Wave 196: NOT_STARTED->IMPLEMENTED."
  },
  {
   "id": "F-D20-020",
@@ -8794,10 +8798,12 @@
   "id": "F-D20-029",
   "domain": "D20",
   "title": "Metric dictionary",
-  "status": "NOT_STARTED",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "negative: no route/handler/table match in apps/server/src/lib.rs, crates/database/src/ops.rs, migrations/ (code-only grep)"
-  ]
+   "GET /api/v1/kpi/dictionary (View): 10 metric definitions (formula+endpoint+unit)",
+   "tests: >=10 entries + finance endpoint present; /app dictionary table"
+  ],
+  "audit_note": "Wave 196: NOT_STARTED->IMPLEMENTED."
  },
  {
   "id": "F-D20-030",

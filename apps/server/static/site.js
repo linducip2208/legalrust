@@ -3445,6 +3445,19 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       pmsg('kpi-msg', '');
     }
   });
+  on('kpi3-go', 'click', async function () {
+    var h = await j('/api/v1/kpi/home');
+    if (h) document.getElementById('kpi-home').textContent = 'Peran: ' + (h.roles || []).join(', ') + ' | Bagian: ' + (h.sections || []).map(function (s) { return s.title; }).join(', ');
+    var q = await j('/api/v1/kpi/quality');
+    if (q) document.getElementById('kpi-qual').textContent = 'Klien ' + Math.round(q.matters_with_client_pct) + '% | Tim ' + Math.round(q.matters_with_team_pct) + '% | Anggaran ' + Math.round(q.matters_with_budget_pct) + '% | Tugas bertanggal ' + Math.round(q.tasks_dated_pct) + '%';
+    var w = await j('/api/v1/kpi/dictionary');
+    if (w) {
+      document.getElementById('kpi-dict').innerHTML = w.map(function (x) {
+        return '<tr><td>' + esc(x.metric) + '</td><td>' + esc(x.definition) + '</td><td>' + esc(x.endpoint) + '</td></tr>';
+      }).join('');
+      pmsg('kpi-msg', '');
+    } else { pmsg('kpi-msg', 'Gagal memuat kamus.'); }
+  });
   /* ---- matter insights (F-D03-032/038/039) ---- */
   async function minsRefresh() {
     var msg = 'mins-msg';

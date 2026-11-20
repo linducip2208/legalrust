@@ -838,3 +838,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 195: flow KPIs bottleneck/deadline/delivery (main, merge w195-flow)
 - 3 endpoint JSON + UI aliran; uji + needle.
 - F-D20-012/013/028 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 501/0; clippy clean; tanpa migrasi.
+
+## Done wave 196: role home + quality + dictionary (main)
+- Beranda peran + scorecard mutu + kamus metrik; uji + needle.
+- F-D20-006/019/029 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 503/0; clippy clean; tanpa migrasi.

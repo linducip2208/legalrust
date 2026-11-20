@@ -25218,3 +25218,69 @@ async fn kpi_exec_reports_ai_ocr_clients() {
         assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{uri}");
     }
 }
+
+#[tokio::test]
+async fn kpi_home_quality_dictionary() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "kpih@x.id").await;
+    // Home returns role-tailored sections (owner sees finance + audit).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/home", &tok))
+        .await
+        .unwrap();
+    let h = body_json(res).await;
+    assert!(!h["roles"].as_array().unwrap().is_empty());
+    let keys: Vec<&str> = h["sections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["key"].as_str().unwrap())
+        .collect();
+    assert!(keys.contains(&"finance"), "owner sees finance");
+    // Quality scorecard structure (fresh org: zeros, 100% defaults on empty).
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/quality", &tok))
+        .await
+        .unwrap();
+    let q = body_json(res).await;
+    assert!(q["matters_total"].as_i64().is_some());
+    assert!(q["tasks_dated_pct"].as_f64().is_some());
+    // Dictionary lists documented metrics.
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/dictionary", &tok))
+        .await
+        .unwrap();
+    let w = body_json(res).await;
+    assert!(w.as_array().unwrap().len() >= 10);
+    assert!(w
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|x| x["endpoint"] == "/api/v1/kpi/finance"));
+    // Auth guards.
+    for uri in [
+        "/api/v1/kpi/home",
+        "/api/v1/kpi/quality",
+        "/api/v1/kpi/dictionary",
+    ] {
+        let res = a
+            .clone()
+            .oneshot(Request::builder().uri(uri).body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{uri}");
+    }
+}
+
+#[tokio::test]
+async fn uib_app_has_kpi_home_ui() {
+    let (st, _, t) = page_get(&app(), "/app").await;
+    assert_eq!(st, StatusCode::OK);
+    for needle in ["kpi3-go", "kpi-home", "kpi-qual", "kpi-dict"] {
+        assert!(t.contains(needle), "/app missing {needle}");
+    }
+}

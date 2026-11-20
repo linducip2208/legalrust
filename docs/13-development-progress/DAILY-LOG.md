@@ -752,3 +752,7 @@
 ## 2026-11-20 AUDIT-1000 wave 195: flow KPIs bottleneck + deadline + delivery (main, merge w195-flow)
 - Tanpa migrasi: GET /api/v1/kpi/bottlenecks|deadlines|deliveries (View) + kartu /app KPI-lanjutan (aliran) + JS; tes + needle. Merge bersih.
 - Workspace 501 passed, 0 failed; fmt+clippy+node clean; F-D20-012/013/028 PARTIAL->IMPLEMENTED (~72.8 verified).
+
+## 2026-11-20 AUDIT-1000 wave 196: role home + quality + dictionary (main)
+- Tanpa migrasi: GET /api/v1/kpi/home|quality|dictionary (View) + kartu /app + JS; tes + needle. Macro sec! untuk borrow-check.
+- Workspace 503 passed, 0 failed; fmt+clippy+node clean; F-D20-006/019/029 NOT_STARTED->IMPLEMENTED (~72.8 verified).

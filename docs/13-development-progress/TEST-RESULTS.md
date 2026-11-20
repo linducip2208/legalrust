@@ -627,3 +627,6 @@
 
 ## 2026-11-20 AUDIT-1000 wave 195: flow KPIs (main)
 - Workspace 501 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.
+
+## 2026-11-20 AUDIT-1000 wave 196: home/quality/dictionary (main)
+- Workspace 503 passed, 0 failed; fmt+clippy clean, site.js node --check PASS; tanpa migrasi.
