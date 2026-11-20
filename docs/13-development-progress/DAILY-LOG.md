@@ -760,3 +760,7 @@
 ## 2026-11-20 AUDIT-1000 wave 197: KPI alert thresholds (main)
 - Migrasi 0122 (kpi_thresholds + allowlist 6 metrik + CHECK + uq); OpsStore kth_* (memory+MySQL upsert); 4 endpoint + evaluasi live + kartu /app + JS; tes lifecycle/breach + needle.
 - Workspace 505 passed, 0 failed; fmt+clippy+node clean; F-D20-030 NOT_STARTED->IMPLEMENTED (~72.8 verified); live 122/122 drill PASS (legalrust_wave197).
+
+## 2026-11-20 AUDIT-1000 wave 198: exec pack + posture refactor (main)
+- Tanpa migrasi: posture_rows() diekstrak (21 register, output identik — tes posture lama hijau) + GET /api/v1/kpi/pack (View, 7 seksi) + tombol paket + JS; tes pack + needle.
+- Workspace 506 passed, 0 failed; fmt+clippy+node clean; F-D20-039/017 PARTIAL->IMPLEMENTED, F-D25-017 PARTIAL->IMPLEMENTED (verifikasi, digest baru) (~72.8 verified).

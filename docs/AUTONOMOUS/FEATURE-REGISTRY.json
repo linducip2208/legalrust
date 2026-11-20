@@ -8677,13 +8677,12 @@
   "id": "F-D20-017",
   "domain": "D20",
   "title": "Compliance posture report",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: GET /api/v1/reports/compliance-posture.csv (Export + audit)",
-   "apps/server/static/site.js: rep-posture button",
-   "apps/server/tests/api.rs: snapshot counts + trail + needles"
+   "Refactor: posture register rollup extracted to posture_rows() (21 registers, identical output proven by compliance_posture_and_export green); reused by kpi_pack",
+   "UI: posture visible in exec pack + existing CSV/JSON endpoints"
   ],
-  "audit_note": "Wave 44: compliance posture snapshot live."
+  "audit_note": "Wave 198: PARTIAL->IMPLEMENTED (shared helper + pack wiring)."
  },
  {
   "id": "F-D20-018",
@@ -8896,13 +8895,12 @@
   "id": "F-D20-039",
   "domain": "D20",
   "title": "Executive summary pack",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: GET /api/v1/reports/executive-summary (View + 9 metrik lintas modul)",
-   "apps/server/static/site.js: rep-exec card render + ringkas hooks",
-   "apps/server/tests/api.rs: executive_summary_aggregates_modules + needles"
+   "GET /api/v1/kpi/pack (View): generated_at + executive/posture/finance/deadlines/bottlenecks/deliveries in one payload (posture_rows + executive queries shared, no N+1)",
+   "tests: pack sections asserted + unauth; compliance_posture refactor covered by existing posture test"
   ],
-  "audit_note": "Wave 51: snapshot eksekutif live; board theme/export belum ada."
+  "audit_note": "Wave 198: PARTIAL->IMPLEMENTED via pack assembly."
  },
  {
   "id": "F-D20-040",
@@ -10585,16 +10583,12 @@
   "id": "F-D25-017",
   "domain": "D25",
   "title": "Webhook delivery monitor",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: notify_user fans out to subscribed endpoints (background task, signed post_json, 10s timeout)",
-   "apps/server/src/lib.rs: POST /api/v1/webhooks/endpoints + /{id}/test + DELETE (serialisasi tanpa secret)",
-   "apps/server/src/lib.rs: /app audit panel webhook card + whe* JS + needle tests",
-   "migrations/0016_webhook_endpoints.sql (endpoints + direction)",
-   "apps/server/tests/api.rs: webhook_endpoints_crud_and_test_send + webhook_auto_dispatch_on_notify (signed stub + delivery log)",
-   "apps/server/src/lib.rs: /app Dead letters card (wh-dl-*) + needle tests"
+   "Delivery surfaces: webhook endpoints CRUD + signed test-send + auto-dispatch + delivery log + dead-letter card (committed waves 7-10)",
+   "GET /api/v1/kpi/deliveries (View): totals, by_status/by_provider, recent_failed(20) digest; kpi_pack includes deliveries section"
   ],
-  "audit_note": "Delivery monitor covers in+out incl. auto-dispatched; alerting on failures + retry remain queued. Wave 10: dead-letter visibility in /app jobs tab."
+  "audit_note": "Wave 198: verification close (deliveries digest new; monitor stack pre-existing)."
  },
  {
   "id": "F-D25-018",

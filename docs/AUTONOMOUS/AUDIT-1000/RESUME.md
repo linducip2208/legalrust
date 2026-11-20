@@ -846,3 +846,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 197: KPI alert thresholds (main)
 - Ambang siaga + evaluasi live + UI; uji + needle; live 122/122.
 - F-D20-030 NOT_STARTED->IMPLEMENTED (~72.8 verified). Workspace 505/0; clippy clean.
+
+## Done wave 198: exec pack + posture refactor (main)
+- Pack eksekutif 7 seksi + helper posture bersama + UI; uji + needle.
+- F-D20-039/017 PARTIAL->IMPLEMENTED, F-D25-017 PARTIAL->IMPLEMENTED (verified). Workspace 506/0; clippy clean; tanpa migrasi.

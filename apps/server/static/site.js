@@ -3458,6 +3458,13 @@ qsa('#sbToggle, #sbToggle2', function (b) {
       pmsg('kpi-msg', '');
     } else { pmsg('kpi-msg', 'Gagal memuat kamus.'); }
   });
+  on('kpi-pack-go', 'click', async function () {
+    var p = await j('/api/v1/kpi/pack');
+    if (!p) { pmsg('kpi-msg', 'Gagal memuat paket.'); return; }
+    document.getElementById('kpi-qual').textContent = 'Paket ' + p.generated_at + ': perkara ' + p.executive.matters + ', piutang ' + p.executive.open_balance + ', telat ' + p.executive.tasks_overdue + ', siaga pengiriman ' + p.deliveries.failed + ', register kepatuhan ' + p.posture.length + '.';
+    pmsg('kpi-msg', '');
+    kthRefresh();
+  });
   async function kthRefresh() {
     var box = document.getElementById('kth-list');
     if (!box) return;

@@ -25280,9 +25280,55 @@ async fn kpi_home_quality_dictionary() {
 async fn uib_app_has_kpi_home_ui() {
     let (st, _, t) = page_get(&app(), "/app").await;
     assert_eq!(st, StatusCode::OK);
-    for needle in ["kpi3-go", "kpi-home", "kpi-qual", "kpi-dict"] {
+    for needle in ["kpi3-go", "kpi-home", "kpi-qual", "kpi-dict", "kpi-pack-go"] {
         assert!(t.contains(needle), "/app missing {needle}");
     }
+}
+
+#[tokio::test]
+async fn kpi_exec_pack_bundles_sections() {
+    use tower::ServiceExt;
+    let a = app();
+    let tok = reg(&a, "pkx@x.id").await;
+    let res = a
+        .clone()
+        .oneshot(get("/api/v1/kpi/pack", &tok))
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let p = body_json(res).await;
+    assert!(p["generated_at"].as_str().is_some());
+    for key in [
+        "executive",
+        "posture",
+        "finance",
+        "deadlines",
+        "bottlenecks",
+        "deliveries",
+    ] {
+        assert!(
+            p[key].is_object() || p[key].is_array(),
+            "pack missing {key}"
+        );
+    }
+    assert!(p["executive"]["matters"].as_i64().is_some());
+    assert!(p["posture"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["register"] == "obligations"));
+    // Auth guard.
+    let res = a
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/kpi/pack")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
