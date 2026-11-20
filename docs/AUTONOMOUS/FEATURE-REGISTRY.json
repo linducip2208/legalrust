@@ -8622,25 +8622,23 @@
   "id": "F-D20-012",
   "domain": "D20",
   "title": "Approval bottleneck report",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: GET /api/v1/reports/approvals-bottleneck.csv (Export + audit)",
-   "apps/server/static/site.js: appr-csv button",
-   "apps/server/tests/api.rs: bottleneck stuck-step assertions + trail"
+   "GET /api/v1/kpi/bottlenecks (View): pending approvals + stuck step/role + open steps + age_days, sorted oldest-first",
+   "tests: pending approval surfaces with stuck_role office_admin in kpi_flow_bottleneck_deadline_delivery"
   ],
-  "audit_note": "Wave 43: bottleneck report live; timing/SLA math pending."
+  "audit_note": "Wave 195: JSON twin of CSV; PARTIAL->IMPLEMENTED."
  },
  {
   "id": "F-D20-013",
   "domain": "D20",
   "title": "Deadline compliance report",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: GET /api/v1/reports/deadline-compliance.csv (Export + audit)",
-   "apps/server/static/site.js: rep-deadlines button",
-   "apps/server/tests/api.rs: counts incl. done-exclusion + trail + needles"
+   "GET /api/v1/kpi/deadlines (View): per-matter total/done/overdue/due_soon + compliance_pct (done excluded from overdue, like CSV)",
+   "tests: overdue counted, done task excluded, compliance row asserted"
   ],
-  "audit_note": "Wave 44: deadline compliance report live."
+  "audit_note": "Wave 195: PARTIAL->IMPLEMENTED."
  },
  {
   "id": "F-D20-014",
@@ -8785,13 +8783,12 @@
   "id": "F-D20-028",
   "domain": "D20",
   "title": "Report delivery log",
-  "status": "PARTIAL",
+  "status": "IMPLEMENTED",
   "evidence": [
-   "apps/server/src/lib.rs: webhook_log/log_wh on every inbound receipt + delivery attempts",
-   "apps/server/src/lib.rs: GET /api/v1/webhooks/deliveries (+?provider/?status) + /app audit panel",
-   "apps/server/tests/api.rs: Tripay E2E asserts delivery rows; report trails under entity=report"
+   "GET /api/v1/kpi/deliveries (View): totals, by_status/by_provider, recent_failed(20)",
+   "tests: digest shape asserted in kpi_flow_bottleneck_deadline_delivery"
   ],
-  "audit_note": "Wave 56: delivery logging verified live; dedicated report-delivery view pending."
+  "audit_note": "Wave 195: PARTIAL->IMPLEMENTED (digest over delivery log)."
  },
  {
   "id": "F-D20-029",

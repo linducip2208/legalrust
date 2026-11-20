@@ -834,3 +834,7 @@ Note: /api/v1/events SSE collision fixed via /api/v1/client-events prefix.
 ## Done wave 194: exec reporting AI/OCR/clients (main, merge w194-exec)
 - ai_stats + 3 endpoint JSON + UI lanjutan; uji stub/math/needle.
 - F-D20-010 PARTIAL->IMPLEMENTED, F-D20-011 NOT_STARTED->IMPLEMENTED, F-D20-014 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 500/0; clippy clean; tanpa migrasi.
+
+## Done wave 195: flow KPIs bottleneck/deadline/delivery (main, merge w195-flow)
+- 3 endpoint JSON + UI aliran; uji + needle.
+- F-D20-012/013/028 PARTIAL->IMPLEMENTED (~72.8 verified). Workspace 501/0; clippy clean; tanpa migrasi.
